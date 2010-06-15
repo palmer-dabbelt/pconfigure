@@ -25,11 +25,11 @@ class RubyLang
 		return path.split(".")[-1] == "rb"
 	end
 	
-	def is_object(path, u)
+	def is_object(path, u=nil)
 		return is_source(path)
 	end
 	
-	def compile_deps(to_check)
+	def compile_deps(to_check, u=nil)
 		out = Array.new
 		stack = Array.new
 		stack.push(to_check)
@@ -67,19 +67,19 @@ class RubyLang
 		return out
 	end
 	
-	def compile(source, deps, options, u)
+	def compile(source, deps, options, u=nil)
 		return Array.new
 	end
 	
-	def compile_clean(source, deps, options, u)
+	def compile_clean(source, deps, options, u=nil)
 		return Array.new
 	end
 	
-	def compile_object(source, u)
+	def compile_object(source, u=nil)
 		return source
 	end
 	
-	def to_link(source, deps, options, u)
+	def to_link(source, deps, options, u=nil)
 		out = Array.new
 		
 		out.push(source)
@@ -87,7 +87,7 @@ class RubyLang
 		return out
 	end
 	
-	def link_deps(source, deps, options, u)
+	def link_deps(source, deps, options, u=nil, v=nil)
 		out = compile_deps(source)
 		
 		out.push(source)
@@ -99,7 +99,7 @@ class RubyLang
 		return Array.new
 	end
 	
-	def link(target, deps, options, objects, u)
+	def link(target, deps, options, objects, u=nil)
 		out = Array.new
 		
 		out.push("#{@prbc} #{objects.join(" ")} -o #{target}")

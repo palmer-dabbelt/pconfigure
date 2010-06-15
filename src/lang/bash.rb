@@ -7,27 +7,27 @@ class BashLang
 		return path.split(".")[-1] == "bash"
 	end
 	
-	def is_object(path, u)
+	def is_object(path, u=nil)
 		return is_source(path)
 	end
 	
-	def compile_deps(to_check)
+	def compile_deps(to_check, u=nil)
 		return Array.new
 	end
 	
-	def compile(source, deps, options, u)
+	def compile(source, deps, options, u=nil)
 		return Array.new
 	end
 	
-	def compile_clean(source, deps, options, u)
+	def compile_clean(source, deps, options, u=nil)
 		return Array.new
 	end
 	
-	def compile_object(source, u)
+	def compile_object(source, u=nil)
 		return source
 	end
 	
-	def to_link(source, deps, options, u)
+	def to_link(source, deps, options, u=nil)
 		out = Array.new
 		
 		out.push(source)
@@ -35,7 +35,7 @@ class BashLang
 		return out
 	end
 	
-	def link_deps(source, deps, options, u)
+	def link_deps(source, deps, options, u=nil)
 		out = compile_deps(source)
 		
 		out.push(source)
@@ -47,7 +47,7 @@ class BashLang
 		return Array.new
 	end
 	
-	def link(target, deps, options, objects, u)
+	def link(target, deps, options, objects, u=nil)
 		out = Array.new
 		
 		out.push("#{@pbashc} #{objects.join(" ")} -o #{target}")
