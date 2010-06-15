@@ -1,0 +1,16 @@
+LANGUAGES += ruby
+
+TARGETS += pconfigure
+SOURCES += main.rb
+
+TARGETS += prbc
+SOURCES += prbc.rb
+
+TARGETS += pclean
+SOURCES += pclean.rb
+
+TARGETS += pplt-scheme-c
+SOURCES += pplt-scheme-c.rb
+
+TARGETS += pchdrc
+SOURCES += pchdrc.rb
