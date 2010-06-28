@@ -24,11 +24,64 @@ command_processors["pconfopts"] = lambda{|op, val| command_PCONFOPTS(op, val)}
 command_processors["lib_targets"] = lambda{|op, val| command_LIBTARGETS(op, val)}
 command_processors["hdrdir"] = lambda{|op, val| command_HDRDIR(op, val)}
 command_processors["hdr_targets"] = lambda{|op, val| command_HDRTARGETS(op, val)}
+command_processors["bindir"] = lambda{|op, val| command_BINDIR(op, val)}
 
 @@srcdir = "src/"
 @@libdir = "lib/"
 @@bindir = "bin/"
 @@hdrdir = "include/"
+
+class IncludeEntry
+	attr_accessor :file
+	
+	def initialize()
+		@file = nil
+		@path = "."
+		@srcdir = "src/"
+		@bindir = "bin/"
+		@libdir = "lib/"
+		@hdrdir = "include/"
+		@o_regen = true
+		@o_clean = true
+		@o_doxygen = false
+		@o_hdrchomp = false
+	end
+	
+	def save()
+		@srcdir = @@srcdir
+		@bindir = @@bindir
+		@libdir = @@libdir
+		@hdrdir = @@hdrdir
+		
+		@o_regen = @@pconfopts_regen
+		@o_clean = @@pconfpots_clean
+		@o_doxygen = @@pconfopts_doxygen
+		@o_hdrchomp = @@pconfopts_hdrchomp
+	end
+	
+	def restore()
+		@@srcdir = @srcdir
+		@@bindir = @bindir
+		@@libdir = @libdir
+		@@hdrdir = @hdrdir
+		
+		@@pconfopts_regen = @o_regen
+		@@pconfopts_clean = @o_clean
+		@@pconfopts_doxygen = @o_doxygen
+		@@pconfopts_hdrchomp = @o_hdrchomp
+	end
+end
+
+def command_BINDIR(op, val)
+	if (op != "+=")
+		puts "Only support += for BINDIR"
+		return true
+	end
+	
+	@@bindir = val.strip
+	
+	return true
+end
 
 def command_HDRDIR(op, val)
 	if (op != "=")
