@@ -73,14 +73,13 @@ class IncludeEntry
 end
 
 def command_BINDIR(op, val)
-	if (op != "+=")
-		puts "Only support += for BINDIR"
+	if (op != "=")
+		puts "Only support = for BINDIR"
 		return true
 	end
 	
 	@@bindir = val.strip
-	
-	return true
+	return false
 end
 
 def command_HDRDIR(op, val)
