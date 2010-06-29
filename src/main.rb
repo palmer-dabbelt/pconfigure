@@ -386,31 +386,33 @@ def command_PCONFOPTS(op, val)
 end
 
 # Begins reading from the input file
-input_file = File.new(INPUT_PATH, "r")
-input_linenumber = 1
+["#{INPUT_PATH}.local", INPUT_PATH].each{|input_filename|
+	input_file = File.new(input_filename, "r")
+	input_linenumber = 1
 
-while (read = input_file.gets)
-	read.strip!
-	
-	if (read != "")
-		command = read.split(" ")[0].downcase
-		op = read.split(" ")[1].strip.downcase
-		val = read.split(" ")[2..-1].join(" ").strip
+	while (read = input_file.gets)
+		read.strip!
 		
-		if (command_processors[command] == nil)
-			puts "#{input_linenumber}: command not found #{command.inspect}"
-			exit 1
+		if (read != "")
+			command = read.split(" ")[0].downcase
+			op = read.split(" ")[1].strip.downcase
+			val = read.split(" ")[2..-1].join(" ").strip
+			
+			if (command_processors[command] == nil)
+				puts "#{input_linenumber}: command not found #{command.inspect}"
+				exit 1
+			end
+			
+			if (command_processors[command].call(op, val))
+				puts "#{input_linenumber}: error at command #{read.inspect}"
+				exit 1
+			end
 		end
 		
-		if (command_processors[command].call(op, val))
-			puts "#{input_linenumber}: error at command #{read.inspect}"
-			exit 1
-		end
+		input_linenumber = input_linenumber + 1
 	end
-	
-	input_linenumber = input_linenumber + 1
-end
-input_file.close
+	input_file.close
+}
 
 # There's a tummy targets call here to clean up
 command_TARGETS(nil, nil)
