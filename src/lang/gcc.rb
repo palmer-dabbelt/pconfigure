@@ -43,7 +43,7 @@ end
 class GccLang
 	HEADER_EXTENSIONS = [".h"]
 	EXTENSIONS = [".h", ".c"]
-	OBJECT_EXTENSIONS = lambda{|mode| [".c#{mode}o", ".asm#{mode}o"] }
+	OBJECT_EXTENSIONS = lambda{|mode| [".c#{mode}o", ".asm#{mode}o", ".h#{mode}o"] }
 	
 	def initialize()
 		@gpp = "gcc"
