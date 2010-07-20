@@ -31,6 +31,8 @@ command_processors["bindir"] = lambda{|op, val| command_BINDIR(op, val)}
 @@bindir = "bin/"
 @@hdrdir = "include/"
 
+@@libs = Array.new
+
 class IncludeEntry
 	attr_accessor :file
 	
@@ -173,6 +175,7 @@ def command_TARGETS(op, val)
 	@@current_target.mode = "b"
 	@@current_target.name = "#{@@bindir}/#{@@current_target.name}".path_fix
 	@@current_target.deps.push("#{@@bindir}/.pconfigure_directory")
+	@@current_target.deps.push("pconfigure__libs")
 	
 	return out
 end
@@ -182,6 +185,8 @@ def command_LIBTARGETS(op, val)
 	@@current_target.mode = "l"
 	@@current_target.name = "#{@@libdir}/#{@@current_target.name}".path_fix
 	@@current_target.deps.push("#{@@libdir}/.pconfigure_directory")
+	
+	@@libs.push("#{@@current_target.name}".path_fix)
 	
 	return out
 end
@@ -418,6 +423,11 @@ end
 
 # There's a tummy targets call here to clean up
 command_TARGETS(nil, nil)
+
+# Adds the dummy libs target
+lib_target = MakeTarget.new("pconfigure__libs")
+lib_target.deps = @@libs
+@@makefile.targets.push(lib_target)
 
 # Creates the makefile
 outfile = File.new(OUTPUT_PATH, "w")
