@@ -243,6 +243,10 @@ class GppLang
 					if (File.exists?("#{item.chomp(ext)}.c++"))
 						out.push("#{item.chomp(ext)}.c++")
 					end
+					
+					if (File.exists?("#{item.chomp(ext)}.c"))
+						out.push("#{item.chomp(ext)}.c")
+					end
 				}
 				
 				if (item.strip != "")
