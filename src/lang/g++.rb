@@ -42,8 +42,8 @@ end
 
 class GppLang
 	HEADER_EXTENSIONS = [".h", ".h++"]
-	EXTENSIONS = [".h", ".c", ".h++", ".c++"]
-	OBJECT_EXTENSIONS = lambda{|mode| EXTENSIONS.map{|e| "#{e}#{mode}o"} }
+	EXTENSIONS = [".h", ".h++", ".c++"]
+	OBJECT_EXTENSIONS = lambda{|mode| [".h", ".c", ".h++", ".c++"].map{|e| "#{e}#{mode}o"} }
 	
 	def initialize()
 		@gpp = "g++"

@@ -68,7 +68,7 @@ class MocLang
 		end
 		
 		out = Array.new
-		out.push("#{@moc} -I#{hdrdir} #{options.join(" ")} #{source.chomp(".moc")}.h++ -o #{source.chomp(".moc")}.moc")
+		out.push("#{@moc} -I#{hdrdir} #{options.join(" ").gsub("-Wall", "").gsub("-Werror", "").gsub("-g", "")} #{source.chomp(".moc")}.h++ -o #{source.chomp(".moc")}.moc")
 		
 		return out
 	end
