@@ -41,9 +41,9 @@ class String
 end
 
 class GppLang
-	HEADER_EXTENSIONS = [".h", ".h++"]
-	EXTENSIONS = [".h", ".h++", ".c++"]
-	OBJECT_EXTENSIONS = lambda{|mode| [".h", ".c", ".h++", ".c++"].map{|e| "#{e}#{mode}o"} }
+	HEADER_EXTENSIONS = [".h", ".h++", ".hpp"]
+	EXTENSIONS = [".h", ".h++", ".hpp", ".c++", ".cpp"]
+	OBJECT_EXTENSIONS = lambda{|mode| [".h", ".c", ".h++", ".c++", ".cpp", ".hpp"].map{|e| "#{e}#{mode}o"} }
 	
 	def initialize()
 		@gpp = "g++"
@@ -242,6 +242,10 @@ class GppLang
 				HEADER_EXTENSIONS.each{|ext|
 					if (File.exists?("#{item.chomp(ext)}.c++"))
 						out.push("#{item.chomp(ext)}.c++")
+					end
+					
+					if (File.exists?("#{item.chomp(ext)}.cpp"))
+						out.push("#{item.chomp(ext)}.cpp")
 					end
 					
 					if (File.exists?("#{item.chomp(ext)}.c"))
