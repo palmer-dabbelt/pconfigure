@@ -294,7 +294,7 @@ class GppLang
 		end
 		
 		out = Array.new
-		out.push("#{comp} #{options.join(" ")} #{objects.map{|o| o.inspect}.join(" ")} -o #{target}")
+		out.push("#{comp} #{objects.map{|o| o.inspect}.join(" ")} -o #{target} #{options.join(" ")}")
 		
 		return out
 	end
