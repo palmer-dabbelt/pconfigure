@@ -43,7 +43,7 @@ class Makefile
 		stream.puts("\t")
 		stream.puts("")
 		
-		[@@bindir, @@libdir, @@hdrdir].each{|dir|
+		[@@bindir, @@libdir, @@hdrdir, @@objdir].each{|dir|
 			stream.puts("#{dir}/.pconfigure_directory:")
 			stream.puts("\tmkdir -p #{dir}")
 			stream.puts("\ttouch #{dir}/.pconfigure_directory")
@@ -63,7 +63,7 @@ class Makefile
 		if (@@pconfopts_clean)
 			stream.puts("\tpclean")
 		end
-		[@@bindir, @@libdir, @@hdrdir].each{|dir|
+		[@@bindir, @@libdir, @@hdrdir, @@objdir].each{|dir|
 			stream.puts("\trm #{dir}/.pconfigure_directory 2>/dev/null || true")
 			dir.split("/").size.downto(1){|length|
 				subdir = dir.split("/")[0..length-1].join("/")

@@ -19,7 +19,7 @@ class String
 		return self.reverse.chomp(other.reverse).reverse
 	end
 	
-	def path_clean!()
+	def path_clean()
 		out = Array.new
 		
 		self.split("/").each{|item|
@@ -36,7 +36,25 @@ class String
 			out.gsub!("//", "/")
 		end
 		
-		replace(out)
+		return out
+	end
+	
+	def path_clean!()
+		replace(path_clean())
+	end
+	
+	def hash()
+		`echo \"#{to_s}\" | md5sum`.strip.split(" ")[0].strip
+	end
+	
+	def gsub_s(from, to)
+		out = to_s
+		
+		while (out.include?(from))
+			out.gsub!(from, to)
+		end
+		
+		return out
 	end
 end
 
@@ -151,6 +169,10 @@ class GccLang
 			out.push(to_check)
 		end
 		
+		if (mode != "h")
+			out.push("#{@@objdir}/.pconfigure_directory")
+		end
+		
 		# All deps have been processed
 		return out
 	end
@@ -178,7 +200,7 @@ class GccLang
 		end
 		
 		out = Array.new
-		out.push("#{@gpp} -I#{hdrdir} #{options.join(" ")} -c #{source.inspect} -o #{"#{source}#{mode}o".inspect}")
+		out.push("#{@gpp} -I#{hdrdir} #{options.join(" ")} -c #{source.inspect} -o #{compile_object(source, mode)}")
 		
 		return out
 	end
@@ -196,7 +218,7 @@ class GccLang
 		}
 		
 		out = Array.new
-		out.push("#{source}#{mode}o")
+		out.push(compile_object(source, mode))
 		
 		return out
 	end
@@ -213,7 +235,7 @@ class GccLang
 			end
 		}
 		
-		return "#{source}#{mode}o"
+		return "#{@@objdir}/#{"#{source}#{mode}o".gsub_s("/", "__")}".path_clean
 	end
 	
 	def to_link(source, deps, options, mode)
@@ -248,6 +270,8 @@ class GccLang
 				end
 			end
 		}
+		
+		out.delete("#{@@objdir}/.pconfigure_directory")
 		
 		return out
 	end

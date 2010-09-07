@@ -31,6 +31,7 @@ command_processors["bindir"] = lambda{|op, val| command_BINDIR(op, val)}
 @@libdir = "lib/"
 @@bindir = "bin/"
 @@hdrdir = "include/"
+@@objdir = "obj/"
 
 @@libs = Array.new
 
@@ -238,8 +239,10 @@ def command_SOURCES(op, val)
 				current.deps.push(dep)
 			}
 			
-			# Adds the last one to the compile list
+			# Figures out the correct compilation name
 			objname = LangBase.compile_object(current.name, mode)
+			
+			# Adds the last one to the compile list
 			mt = MakeTarget.new(objname)
 			current.deps.each{|dep|
 				if (dep != objname)
