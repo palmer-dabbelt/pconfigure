@@ -93,11 +93,13 @@ class GccLang
 		out = Array.new
 		
 		# We don't compile headers
-		HEADER_EXTENSIONS.each{|ext|
-			if (to_check.ends_with(ext))
-				return out
-			end
-		}
+		if (mode != "h")
+			HEADER_EXTENSIONS.each{|ext|
+				if (to_check.ends_with(ext))
+					return out
+				end
+			}
+		end
 		
 		# And all the files we must process
 		stack = Array.new

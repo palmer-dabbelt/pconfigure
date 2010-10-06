@@ -26,6 +26,7 @@ command_processors["lib_targets"] = lambda{|op, val| command_LIBTARGETS(op, val)
 command_processors["hdrdir"] = lambda{|op, val| command_HDRDIR(op, val)}
 command_processors["hdr_targets"] = lambda{|op, val| command_HDRTARGETS(op, val)}
 command_processors["bindir"] = lambda{|op, val| command_BINDIR(op, val)}
+command_processors["srcdir"] = lambda{|op, val| command_SRCDIR(op, val)}
 
 @@srcdir = "src/"
 @@libdir = "lib/"
@@ -83,6 +84,16 @@ def command_BINDIR(op, val)
 	end
 	
 	@@bindir = val.strip
+	return false
+end
+
+def command_SRCDIR(op, val)
+	if (op != "=")
+		puts "Only support = for SRCDIR"
+		return true
+	end
+	
+	@@srcdir = val.strip
 	return false
 end
 
