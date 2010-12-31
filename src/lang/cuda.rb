@@ -58,13 +58,14 @@ class String
 	end
 end
 
-class GasLang
-	HEADER_EXTENSIONS = [".h"]
-	EXTENSIONS = [".h", ".asm"]
-	OBJECT_EXTENSIONS = lambda{|mode| [".c#{mode}o", ".asm#{mode}o", ".h#{mode}o"] }
+class CudaLang
+	HEADER_EXTENSIONS = [".h", ".h++", ".hpp", ".cuh"]
+	EXTENSIONS = [".h", ".h++", ".cuh", ".cu"]
+	OBJECT_EXTENSIONS = lambda{|mode| [".c#{mode}.o", ".asm#{mode}.o", ".h#{mode}.o", ".c++#{mode}.o", ".cu#{mode}.o"] }
 	
 	def initialize()
-		@gpp = "gcc -x assembler"
+		@nvcc = "nvcc"
+		@gpp = "nvcc"
 		@exthdr = Hash.new
 	end
 	
@@ -202,7 +203,7 @@ class GasLang
 		end
 		
 		out = Array.new
-		out.push("#{@gpp} -I#{hdrdir} #{options.join(" ")} -c #{source.inspect} -o #{compile_object(source, mode)}")
+		out.push("#{@nvcc} -I#{hdrdir} #{options.join(" ")} -c #{source.inspect} -o #{compile_object(source, mode)}")
 		
 		return out
 	end
@@ -237,7 +238,7 @@ class GasLang
 			end
 		}
 		
-		return "#{@@objdir}/#{"#{source}#{mode}o".gsub_s("/", "__")}".path_clean
+		return "#{@@objdir}/#{"#{source}#{mode}.o".gsub_s("/", "__")}".path_clean
 	end
 	
 	def to_link(source, deps, options, mode)
@@ -262,8 +263,8 @@ class GasLang
 		compile_deps(source, "b").each{|item|
 			if (item != source)
 				HEADER_EXTENSIONS.each{|ext|
-					if (File.exists?("#{item.chomp(ext)}.asm"))
-						out.push("#{item.chomp(ext)}.asm")
+					if (File.exists?("#{item.chomp(ext)}.c++"))
+						out.push("#{item.chomp(ext)}.c++")
 					end
 				}
 				
@@ -321,4 +322,4 @@ class GasLang
 	end
 end
 
-@@languages["gas"] = GasLang
+@@languages["cuda"] = CudaLang

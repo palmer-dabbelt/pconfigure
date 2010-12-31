@@ -9,6 +9,7 @@ require 'lang/g++.rb'
 require 'lang/gcc.rb'
 require 'lang/gas.rb'
 require 'lang/moc.rb'
+require 'lang/cuda.rb'
 
 require 'make.rb'
 require 'path_fix.rb'

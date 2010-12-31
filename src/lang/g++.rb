@@ -19,7 +19,7 @@ class String
 		return self.reverse.chomp(other.reverse).reverse
 	end
 	
-	def path_clean!()
+	def path_clean()
 		out = Array.new
 		
 		self.split("/").each{|item|
@@ -36,14 +36,32 @@ class String
 			out.gsub!("//", "/")
 		end
 		
-		replace(out)
+		return out
+	end
+	
+	def path_clean!()
+		replace(path_clean())
+	end
+	
+	def hash()
+		`echo \"#{to_s}\" | md5sum`.strip.split(" ")[0].strip
+	end
+	
+	def gsub_s(from, to)
+		out = to_s
+		
+		while (out.include?(from))
+			out.gsub!(from, to)
+		end
+		
+		return out
 	end
 end
 
 class GppLang
 	HEADER_EXTENSIONS = [".h", ".h++", ".hpp"]
 	EXTENSIONS = [".h", ".h++", ".hpp", ".c++", ".cpp"]
-	OBJECT_EXTENSIONS = lambda{|mode| [".h", ".c", ".h++", ".c++", ".cpp", ".hpp"].map{|e| "#{e}#{mode}o"} }
+	OBJECT_EXTENSIONS = lambda{|mode| [".c#{mode}.o", ".asm#{mode}.o", ".h#{mode}.o", ".c++#{mode}.o"] }
 	
 	def initialize()
 		@gpp = "g++"
@@ -185,7 +203,7 @@ class GppLang
 		
 		out = Array.new
 		out.push("#{@gpp} -I#{hdrdir} #{options.join(" ")} -c #{source.inspect} -o #{compile_object(source, mode)}")
-
+		
 		return out
 	end
 	
@@ -202,7 +220,7 @@ class GppLang
 		}
 		
 		out = Array.new
-		out.push("#{source}#{mode}o")
+		out.push(compile_object(source, mode))
 		
 		return out
 	end
@@ -219,7 +237,7 @@ class GppLang
 			end
 		}
 		
-		return "#{@@objdir}/#{"#{source}#{mode}o".gsub_s("/", "__")}".path_clean
+		return "#{@@objdir}/#{"#{source}#{mode}.o".gsub_s("/", "__")}".path_clean
 	end
 	
 	def to_link(source, deps, options, mode)
@@ -247,14 +265,6 @@ class GppLang
 					if (File.exists?("#{item.chomp(ext)}.c++"))
 						out.push("#{item.chomp(ext)}.c++")
 					end
-					
-					if (File.exists?("#{item.chomp(ext)}.cpp"))
-						out.push("#{item.chomp(ext)}.cpp")
-					end
-					
-					if (File.exists?("#{item.chomp(ext)}.c"))
-						out.push("#{item.chomp(ext)}.c")
-					end
 				}
 				
 				if (item.strip != "")
@@ -262,6 +272,8 @@ class GppLang
 				end
 			end
 		}
+		
+		out.delete("#{@@objdir}/.pconfigure_directory")
 		
 		return out
 	end
@@ -284,12 +296,10 @@ class GppLang
 			
 			if (@exthdr[target.chomp_front(tc)].class == Array)
 				@exthdr[target.chomp_front(tc)].each{|t|
-					if (t != nil)
-						t.deps.push(target)
-						
-						if (t.mt != nil)
-							t.mt.deps.push(target)
-						end
+					t.deps.push(target)
+					
+					if (t.mt != nil)
+						t.mt.deps.push(target)
 					end
 				}
 			end
@@ -298,7 +308,7 @@ class GppLang
 		end
 		
 		out = Array.new
-		out.push("#{comp} #{objects.map{|o| o.inspect}.join(" ")} -o #{target} #{options.join(" ")}")
+		out.push("#{comp} #{options.join(" ")} #{objects.map{|o| o.inspect}.join(" ")} -o #{target}")
 		
 		return out
 	end
