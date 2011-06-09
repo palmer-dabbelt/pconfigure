@@ -6,6 +6,10 @@ class String
 			out.gsub!("//", "/")
 		end
 		
+		while (out.include?("~"))
+			out.gsub!("~", `echo $HOME`.strip)
+		end
+		
 		return out
 	end
 end

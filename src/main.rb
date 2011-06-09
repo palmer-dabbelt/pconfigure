@@ -28,12 +28,18 @@ command_processors["hdrdir"] = lambda{|op, val| command_HDRDIR(op, val)}
 command_processors["hdr_targets"] = lambda{|op, val| command_HDRTARGETS(op, val)}
 command_processors["bindir"] = lambda{|op, val| command_BINDIR(op, val)}
 command_processors["srcdir"] = lambda{|op, val| command_SRCDIR(op, val)}
+command_processors["prefix"] = lambda{|op, val| command_PREFIX(op, val)}
 
 @@srcdir = "src/"
 @@libdir = "lib/"
 @@bindir = "bin/"
 @@hdrdir = "include/"
 @@objdir = "obj/"
+@@prefix = nil
+
+@@install_hdrs = Array.new
+@@install_bins = Array.new
+@@install_libs = Array.new
 
 @@libs = Array.new
 
@@ -105,6 +111,16 @@ def command_HDRDIR(op, val)
 	end
 	
 	@@hdrdir = val.strip
+	return false
+end
+
+def command_PREFIX(op, val)
+	if (op != "=")
+		puts "Only support = for PREFIX"
+		return true
+	end
+	
+	@@prefix = val.strip
 	return false
 end
 
@@ -185,6 +201,10 @@ def targets_common(op, val)
 end
 
 def command_TARGETS(op, val)
+	if (val != nil) && (!@@install_bins.include?(val.strip.path_fix))
+		@@install_bins.push(val.strip.path_fix)
+	end
+	
 	out = targets_common(op, val)
 	@@current_target.mode = "b"
 	@@current_target.name = "#{@@bindir}/#{@@current_target.name}".path_fix
@@ -195,6 +215,10 @@ def command_TARGETS(op, val)
 end
 
 def command_LIBTARGETS(op, val)
+	if (val != nil) && (!@@install_libs.include?(val.strip.path_fix))
+		@@install_libs.push(val.strip.path_fix)
+	end
+	
 	out = targets_common(op, val)
 	@@current_target.mode = "l"
 	@@current_target.name = "#{@@libdir}/#{@@current_target.name}".path_fix
@@ -206,6 +230,10 @@ def command_LIBTARGETS(op, val)
 end
 
 def command_HDRTARGETS(op, val)
+	if (val != nil) && (!@@install_hdrs.include?(val.strip.path_fix))
+		@@install_hdrs.push(val.strip.path_fix)
+	end
+	
 	out = targets_common(op, val)
 	@@current_target.mode = "h"
 	@@current_target.name = "#{@@hdrdir}/#{@@current_target.name}".path_fix
@@ -437,11 +465,37 @@ end
 	end
 }
 
-# There's a tummy targets call here to clean up
+# There's a dummy targets call here to clean up
 command_TARGETS(nil, nil)
 
 # Creates the makefile
 outfile = File.new(OUTPUT_PATH, "w")
 @@makefile.write(outfile)
+
+# Creates the install and uninstall targets if they're requested
+if (@@prefix != nil)
+	outfile.puts("install:")
+	@@install_bins.each{|bin|
+		outfile.puts("\tinstall \"#{@@bindir}/#{bin}\" \"#{@@prefix}/#{@@bindir}/#{bin}\"".path_fix)
+	}
+	@@install_libs.each{|lib|
+		outfile.puts("\tinstall \"#{@@libdir}/#{lib}\" \"#{@@prefix}/#{@@libdir}/#{lib}\"".path_fix)
+	}
+	@@install_hdrs.each{|hdr|
+		outfile.puts("\tinstall \"#{@@hdrdir}/#{hdr}\" \"#{@@prefix}/#{@@hdrdir}/#{hdr}\"".path_fix)
+	}
+	outfile.puts("")
+	outfile.puts("uninstall:")
+	@@install_bins.each{|bin|
+		outfile.puts("\trm \"#{@@prefix}/#{@@bindir}/#{bin}\" || true".path_fix)
+	}
+	@@install_libs.each{|lib|
+		outfile.puts("\trm \"#{@@prefix}/#{@@libdir}/#{lib}\" || true".path_fix)
+	}
+	@@install_hdrs.each{|hdr|
+		outfile.puts("\trm \"#{@@prefix}/#{@@hdrdir}/#{hdr}\" || true".path_fix)
+	}
+	outfile.puts("")
+end
 outfile.close
 
