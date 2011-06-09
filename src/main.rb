@@ -29,6 +29,7 @@ command_processors["hdr_targets"] = lambda{|op, val| command_HDRTARGETS(op, val)
 command_processors["bindir"] = lambda{|op, val| command_BINDIR(op, val)}
 command_processors["srcdir"] = lambda{|op, val| command_SRCDIR(op, val)}
 command_processors["prefix"] = lambda{|op, val| command_PREFIX(op, val)}
+command_processors["skip"] = lambda{|op, val| command_SKIP(op, val)}
 
 @@srcdir = "src/"
 @@libdir = "lib/"
@@ -40,6 +41,9 @@ command_processors["prefix"] = lambda{|op, val| command_PREFIX(op, val)}
 @@install_hdrs = Array.new
 @@install_bins = Array.new
 @@install_libs = Array.new
+
+@@skip = Array.new
+@@skip_on = false
 
 @@libs = Array.new
 
@@ -135,6 +139,15 @@ def command_LANGUAGES(op, val)
 	end
 end
 
+# The list of files that we should skip
+def command_SKIP(op, val)
+	if (op == "+=")
+		@@skip.push(val.strip)
+	end
+	
+	return false
+end
+
 # Where all our output ends up
 @@makefile = Makefile.new
 
@@ -201,6 +214,13 @@ def targets_common(op, val)
 end
 
 def command_TARGETS(op, val)
+	if (val != nil) && (@@skip.include?(val.strip))
+		@@skip_on = true
+		return false
+	else
+		@@skip_on = false
+	end
+
 	if (val != nil) && (!@@install_bins.include?(val.strip.path_fix))
 		@@install_bins.push(val.strip.path_fix)
 	end
@@ -215,6 +235,10 @@ def command_TARGETS(op, val)
 end
 
 def command_LIBTARGETS(op, val)
+	if (@@skip_on == true)
+		return false
+	end
+
 	if (val != nil) && (!@@install_libs.include?(val.strip.path_fix))
 		@@install_libs.push(val.strip.path_fix)
 	end
@@ -230,6 +254,10 @@ def command_LIBTARGETS(op, val)
 end
 
 def command_HDRTARGETS(op, val)
+	if (@@skip_on == true)
+		return false
+	end
+	
 	if (val != nil) && (!@@install_hdrs.include?(val.strip.path_fix))
 		@@install_hdrs.push(val.strip.path_fix)
 	end
@@ -263,6 +291,10 @@ class ConfigSource
 end
 
 def command_SOURCES(op, val)
+	if (@@skip_on == true)
+		return false
+	end
+	
 	if (@@current_source != nil)
 		mode = @@current_target.mode
 		stack = Array.new
@@ -344,6 +376,10 @@ end
 # Adds a compile-time option
 @@compile_opts = Array.new
 def command_COMPILEOPTS(op, val)
+	if (@@skip_on == true)
+		return false
+	end
+	
 	array = @@compile_opts
 	
 	if (@@current_source != nil)
@@ -366,6 +402,10 @@ end
 # Adds a link-time option
 @@link_opts = Array.new
 def command_LINKOPTS(op, val)
+	if (@@skip_on == true)
+		return false
+	end
+	
 	array = @@link_opts
 	
 	if (@@current_target != nil)
