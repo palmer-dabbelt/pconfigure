@@ -19,11 +19,14 @@ end
 # Parses the arguments
 @@inputs = Array.new
 @@output = Array.new
+@@others = Array.new
 
 argv_parse = @@inputs
 ARGV.each{|arg|
 	if (arg == "-o")
 		argv_parse = @@output
+	elsif (arg.starts_with("-D"))
+		argv_parse = @@others
 	else
 		argv_parse.push(arg)
 		argv_parse = @@inputs

@@ -1,4 +1,10 @@
 LANGUAGES += ruby
+LANGUAGES += gcc
+
+COMPILEOPTS += -Wall -Werror -ansi
+
+TARGETS += pconfigure-c
+SOURCES += pconfigure/main.c
 
 TARGETS += pconfigure
 SOURCES += main.rb

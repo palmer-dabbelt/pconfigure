@@ -3,3 +3,4 @@ old/
 Makefile
 *~
 Configfile.local
+obj/
