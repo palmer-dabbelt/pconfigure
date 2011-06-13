@@ -3,6 +3,7 @@
 
 #include "string_list.h"
 #include "language_list.h"
+#include "target.h"
 
 /* Stores all the context of a single pconfigure instance.  Note that all
    pointers here need to be free'd whenever they are changed, and should be
@@ -24,14 +25,18 @@ struct context
 	char * man_dir;
 	char * shr_dir;
 	char * etc_dir;
+	char * src_dir;
 	
 	/* Contains a list of the current compilation options */
-	struct string_list compile_options;
-	struct string_list link_options;
+	struct string_list compile_opts;
+	struct string_list link_opts;
 	
 	/* Lists all the languages that could possibly be used by the current
 		 context */
 	struct language_list languages;
+	
+	/* The current target that will get built into */
+	struct target target;
 };
 
 /* Initializes a context to have all default values */

@@ -14,5 +14,6 @@
 #define DEFAULT_CONTEXT_MANDIR	"man"
 #define DEFAULT_CONTEXT_SHRDIR	"share"
 #define DEFAULT_CONTEXT_ETCDIR	"etc"
+#define DEFAULT_CONTEXT_SRCDIR	"src"
 
 #endif

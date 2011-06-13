@@ -23,5 +23,14 @@ struct language_list_node
 	 before using any of the other methods in this file */
 void language_list_boot(void);
 
+/* Initializes a new non-global langage list */
+void language_list_init(struct language_list * list);
+
+/* Adds a new language list to a sub-list, returns 0 on success */
+int language_list_add(struct language_list * list, const char * name);
+
+/* Removes a language list from a sub-list, returns 0 on success */
+int language_list_remove(struct language_list * list, const char * name);
+
 #endif
 

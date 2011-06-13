@@ -16,6 +16,7 @@ typedef int (*parsefunc)(char *, char *);
 
 static int parsefunc_languages(char *, char *);
 static int parsefunc_prefix(char *, char *);
+static int parsefunc_compileopts(char *, char *);
 
 /* Selects the correct parsing function to use, calls it, and gets returns
    what it returns */
@@ -39,6 +40,9 @@ int main(int argc, char ** argv)
 	
 	/* Sets up the initial context and the context stack */
 	context_stack_init(&cstack);
+	
+	/* Initializes the list of languages the system can support */
+	language_list_boot();
 	
 	/* Parses the two given files */
 	if (parse_file(DEFAULT_INFILE_LOCAL) == 1)
@@ -165,12 +169,21 @@ int select_parsefunc(char * left, char * op, char * right)
 		return parsefunc_languages(op, right);
 	if (strcmp(left, "PREFIX") == 0)
 		return parsefunc_prefix(op, right);
+	if (strcmp(left, "COMPILEOPTS") == 0)
+		return parsefunc_compileopts(op, right);
 		
 	return 1;
 }
 
 int parsefunc_languages(char * op, char * right)
 {
+	if (strcmp(op, "+=") == 0)
+		return language_list_add(&(context_stack_peek(&cstack)->languages),
+														 right);
+	if (strcmp(op, "-=") == 0)
+		return language_list_remove(&(context_stack_peek(&cstack)->languages),
+																right);
+	
 	return 1;
 }
 
@@ -184,6 +197,20 @@ int parsefunc_prefix(char * op, char * right)
 	c = context_stack_peek(&cstack);
 	free(c->prefix);
 	c->prefix = strdup(right);
+	
+	return 0;
+}
+
+int parsefunc_compileopts(char * op, char * right)
+{
+	struct context * c;
+	
+	c = context_stack_peek(&cstack);
+	
+	if (strcmp(op, "+=") == 0)
+		return string_list_addifnew(&(c->compile_opts), right);
+	if (strcmp(op, "-=") == 0)
+		return string_list_remove(&(c->compile_opts), right);
 	
 	return 0;
 }

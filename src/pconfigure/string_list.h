@@ -16,13 +16,13 @@ struct string_list_node
 };
 
 /* These methods all pretty much do what they say.  Copies and clears are deep.
-   */
-void string_list_init(struct string_list * list);
-void string_list_copy(struct string_list * target,
-											const struct string_list * source);
-void string_list_add(struct string_list * list, const char * toadd);
+   Everything returns 0 on success and 1 on failure */
+int string_list_init(struct string_list * list);
+int string_list_copy(struct string_list * target,
+										 const struct string_list * source);
+int string_list_add(struct string_list * list, const char * toadd);
 int string_list_remove(struct string_list * list, const char * tofind);
-void string_list_clear(struct string_list * list);
+int string_list_clear(struct string_list * list);
 
 /* This serializes the string list into a buffer, seperated by a given string.
    The method returns 0 on success, and the size of the buffer that would be
@@ -36,7 +36,7 @@ unsigned int string_list_serialize(struct string_list * list,
 int string_list_search(struct string_list * list, const char * tofind);
 
 /* This adds a string to the list if and only if it does not already exist.  It
-   returns 1 on success and 0 on failure. */
+   returns 0 on success and 1 on failure. */
 int string_list_addifnew(struct string_list * list, const char * toadd);
 
 #endif
