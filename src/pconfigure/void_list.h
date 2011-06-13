@@ -26,7 +26,7 @@ typedef struct void_list_node * (*voidlist_alloc_func_t)(void);
 typedef void (*voidlist_free_func_t)(struct void_list_node *);
 
 /* These methods all pretty much do what they say.  Copies and clears are deep.
-   */
+   The given function pointers are used to allocate, free, and copy */
 void void_list_init(struct void_list * list);
 
 void void_list_copy(struct void_list * target,

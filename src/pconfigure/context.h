@@ -2,6 +2,7 @@
 #define CONTEXT_H
 
 #include "string_list.h"
+#include "language_list.h"
 
 /* Stores all the context of a single pconfigure instance.  Note that all
    pointers here need to be free'd whenever they are changed, and should be
@@ -30,6 +31,7 @@ struct context
 	
 	/* Lists all the languages that could possibly be used by the current
 		 context */
+	struct language_list languages;
 };
 
 /* Initializes a context to have all default values */
