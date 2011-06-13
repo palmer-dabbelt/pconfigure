@@ -1,7 +1,9 @@
 LANGUAGES += ruby
 LANGUAGES += gcc
 
-COMPILEOPTS += -Wall -Werror -pedantic
+COMPILEOPTS += -Wall
+COMPILEOPTS += -Werror
+COMPILEOPTS += -pedantic
 
 TARGETS += pconfigure-c
 SOURCES += pconfigure/main.c
