@@ -1,6 +1,6 @@
 #!/bin/sh
 
-gcc `find src/ -iname "*.c"` -o "bin/pconfigure"
-./bin/pconfigure
-make
+gcc `find src/pconfigure/ -iname "*.c"` -o "bin/pconfigure" || exit $?
+./bin/pconfigure || exit $?
+make || exit $?
 echo "run 'make install' to install this to the system"
