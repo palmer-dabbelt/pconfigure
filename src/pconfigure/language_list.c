@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "languages/gcc.h"
+#include "languages/c.h"
 #include "languages/ruby.h"
 
 /* This holds every language that exists in the system, and is populated at
@@ -26,7 +26,7 @@ void language_list_boot(void)
 	
 	/* Adds a bunch of languages */
 	if (tail == NULL) return ;
-	tail->lang = language_gcc_boot();
+	tail->lang = language_c_boot();
 	
 	tail->next = malloc(sizeof(*(tail->next)));
 	tail = tail->next;
