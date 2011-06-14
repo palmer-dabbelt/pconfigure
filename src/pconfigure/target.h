@@ -16,6 +16,10 @@ enum target_type
 struct target
 {
 	enum target_type type;
+	
+	char * target;
 };
+
+void target_init(struct target * t);
 
 #endif

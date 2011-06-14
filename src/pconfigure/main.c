@@ -17,6 +17,7 @@ typedef int (*parsefunc)(char *, char *);
 static int parsefunc_languages(char *, char *);
 static int parsefunc_prefix(char *, char *);
 static int parsefunc_compileopts(char *, char *);
+static int parsefunc_targets(char *, char *);
 
 /* Selects the correct parsing function to use, calls it, and gets returns
    what it returns */
@@ -171,6 +172,8 @@ int select_parsefunc(char * left, char * op, char * right)
 		return parsefunc_prefix(op, right);
 	if (strcmp(left, "COMPILEOPTS") == 0)
 		return parsefunc_compileopts(op, right);
+	if (strcmp(left, "TARGETS") == 0)
+		return parsefunc_targets(op, right);
 		
 	return 1;
 }
@@ -195,6 +198,7 @@ int parsefunc_prefix(char * op, char * right)
 		return 1;
 	
 	c = context_stack_peek(&cstack);
+	assert(c != NULL);
 	free(c->prefix);
 	c->prefix = strdup(right);
 	
@@ -206,6 +210,7 @@ int parsefunc_compileopts(char * op, char * right)
 	struct context * c;
 	
 	c = context_stack_peek(&cstack);
+	assert(c != NULL);
 	
 	if (strcmp(op, "+=") == 0)
 		return string_list_addifnew(&(c->compile_opts), right);
@@ -214,3 +219,17 @@ int parsefunc_compileopts(char * op, char * right)
 	
 	return 0;
 }
+
+int parsefunc_targets(char * op, char * right)
+{
+	struct context * c;
+	
+	if (strcmp(op, "+=") != 0)
+		return 1;
+	
+	c = context_stack_peek(&cstack);
+	assert(c != NULL);
+	
+	return 0;
+}
+

@@ -30,5 +30,5 @@ void context_init(struct context * context)
 	
 	language_list_init(&(context->languages));
 	
-	context->target.type = TARGET_TYPE_NONE;
+	target_init(&(context->target));
 }
