@@ -80,3 +80,4 @@ int language_list_remove(struct language_list * list, const char * name)
 {
 	return 1;
 }
+

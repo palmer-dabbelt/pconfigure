@@ -6,9 +6,13 @@
 
 #include "defaults.h"
 #include "context_stack.h"
+#include "makefile.h"
 
 /* The global context stack for the entire parser */
 static struct context_stack cstack;
+
+/* We always output to only one makefile */
+static struct makefile mf;
 
 /* Functions for parsing the different types of options availiable in pconfigure
    files.  These all return 1 on failure. */
@@ -18,6 +22,7 @@ static int parsefunc_languages(char *, char *);
 static int parsefunc_prefix(char *, char *);
 static int parsefunc_compileopts(char *, char *);
 static int parsefunc_targets(char *, char *);
+static int parsefunc_sources(char *, char *);
 
 /* Selects the correct parsing function to use, calls it, and gets returns
    what it returns */
@@ -45,6 +50,9 @@ int main(int argc, char ** argv)
 	/* Initializes the list of languages the system can support */
 	language_list_boot();
 	
+	/* Starts an empty makefile */
+	makefile_init(&mf);
+	
 	/* Parses the two given files */
 	if (parse_file(DEFAULT_INFILE_LOCAL) == 1)
 	{
@@ -53,6 +61,9 @@ int main(int argc, char ** argv)
 	}
 	
 	err = parse_file(DEFAULT_INFILE);
+	if (err != 0)
+		makefile_clear(&mf);
+	
 	if (err == 2)
 		printf("Unable to read %s\n", DEFAULT_INFILE);
 	if (err == 1)
@@ -174,6 +185,8 @@ int select_parsefunc(char * left, char * op, char * right)
 		return parsefunc_compileopts(op, right);
 	if (strcmp(left, "TARGETS") == 0)
 		return parsefunc_targets(op, right);
+	if (strcmp(left, "SOURCES") == 0)
+		return parsefunc_sources(op, right);
 		
 	return 1;
 }
@@ -229,6 +242,25 @@ int parsefunc_targets(char * op, char * right)
 	
 	c = context_stack_peek(&cstack);
 	assert(c != NULL);
+	
+	target_flush(&(c->target));
+	target_clear(&(c->target));
+	target_set_bin(&(c->target), right);
+	
+	return 0;
+}
+
+int parsefunc_sources(char * op, char * right)
+{
+	struct context * c;
+	struct target t;
+	
+	if (strcmp(op, "+=") != 0)
+		return 1;
+	
+	target_init(&t);
+	target_set_src(&t, right, &(c->target));
+	target_flush(&t);
 	
 	return 0;
 }

@@ -3,6 +3,8 @@
 
 #include "void_list.h"
 
+#include <stdio.h>
+
 /* Contains a list of voids, that can be added to and deleted from.  Strings
    are stored in arbitrary order. */
 struct string_list
@@ -30,6 +32,11 @@ int string_list_clear(struct string_list * list);
 unsigned int string_list_serialize(struct string_list * list,
 																	 char * buffer, unsigned int size,
 																	 const char * seperator);
+																	 
+/* Serializes to a file, which is much simpler. */
+int string_list_fserialize(struct string_list * list,
+													 FILE * outfile,
+													 const char * seperator);
 
 /* This searches the list for a given string.  It returns -1 if no found, and
    otherwise it returns the index of the string in the list. */

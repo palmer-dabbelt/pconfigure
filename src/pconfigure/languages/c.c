@@ -10,7 +10,8 @@ struct language * language_c_boot(void)
 	out = malloc(sizeof(*out));
 	if (out == NULL) return NULL;
 	
-	out->lang.name = strdup("c");
+	/* TODO: change this to "c", here for compatibility */
+	out->lang.name = strdup("gcc");
 	
 	return (struct language *)out;
 }
