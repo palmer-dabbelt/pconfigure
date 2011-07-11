@@ -15,69 +15,71 @@ static struct language_list ll_all;
 
 void language_list_boot(void)
 {
-	struct language_list_node * tail;
+    struct language_list_node *tail;
 
-	/* Start out with an empty list of languages */
-	ll_all.head = NULL;
-	
-	/* Initializes our adding sequence */
-	ll_all.head = malloc(sizeof(*(ll_all.head)));
-	tail = ll_all.head;
-	
-	/* Adds a bunch of languages */
-	if (tail == NULL) return ;
-	tail->lang = language_c_boot();
-	
-	tail->next = malloc(sizeof(*(tail->next)));
-	tail = tail->next;
-	if (tail == NULL) return ;
-	tail->lang = language_ruby_boot();
-	
-	/* Ends the list */
-	tail->next = NULL;
+    /* Start out with an empty list of languages */
+    ll_all.head = NULL;
+
+    /* Initializes our adding sequence */
+    ll_all.head = malloc(sizeof(*(ll_all.head)));
+    tail = ll_all.head;
+
+    /* Adds a bunch of languages */
+    if (tail == NULL)
+        return;
+    tail->lang = language_c_boot();
+
+    tail->next = malloc(sizeof(*(tail->next)));
+    tail = tail->next;
+    if (tail == NULL)
+        return;
+    tail->lang = language_ruby_boot();
+
+    /* Ends the list */
+    tail->next = NULL;
 }
 
-void language_list_init(struct language_list * list)
+void language_list_init(struct language_list *list)
 {
-	list->head = NULL;
+    list->head = NULL;
 }
 
-int language_list_add(struct language_list * list, const char * name)
+int language_list_add(struct language_list *list, const char *name)
 {
-	struct language * lang;
-	struct language_list_node * cur, * add;
-	
-	/* Searches the list of all languages for one to duplicate */
-	cur = ll_all.head;
-	lang = NULL;
-	while (cur != NULL)
-	{
-		if (strcmp(name, cur->lang->name) == 0)
-			lang = cur->lang;
-		
-		cur = cur->next;
-	}
-	
-	/* It's an error if we didn't find a language */
-	if (lang == NULL)
-	{
-		fprintf(stderr, "Language '%s' not found\n", name);
-		return 2;
-	}
-		
-	/* Allocates some space so we can easily add the node in */
-	add = malloc(sizeof(*add));
-	if (add == NULL) return 3;
-	
-	add->lang = lang;
-	add->next = ll_all.head;
-	ll_all.head = add;
-	
-	return 0;
+    struct language *lang;
+    struct language_list_node *cur, *add;
+
+    /* Searches the list of all languages for one to duplicate */
+    cur = ll_all.head;
+    lang = NULL;
+    while (cur != NULL)
+    {
+        if (strcmp(name, cur->lang->name) == 0)
+            lang = cur->lang;
+
+        cur = cur->next;
+    }
+
+    /* It's an error if we didn't find a language */
+    if (lang == NULL)
+    {
+        fprintf(stderr, "Language '%s' not found\n", name);
+        return 2;
+    }
+
+    /* Allocates some space so we can easily add the node in */
+    add = malloc(sizeof(*add));
+    if (add == NULL)
+        return 3;
+
+    add->lang = lang;
+    add->next = ll_all.head;
+    ll_all.head = add;
+
+    return 0;
 }
 
-int language_list_remove(struct language_list * list, const char * name)
+int language_list_remove(struct language_list *list, const char *name)
 {
-	return 1;
+    return 1;
 }
-

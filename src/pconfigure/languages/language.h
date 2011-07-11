@@ -3,8 +3,7 @@
 
 struct language
 {
-	char * name;
+    char *name;
 };
 
 #endif
-

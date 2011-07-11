@@ -5,10 +5,10 @@
 
 struct language_c
 {
-	struct language lang;
+    struct language lang;
 };
 
 /* This initializes the entire GCC subsystem */
-struct language * language_c_boot(void);
+struct language *language_c_boot(void);
 
 #endif

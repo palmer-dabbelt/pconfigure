@@ -9,14 +9,14 @@
 
 struct language_list
 {
-	struct language_list_node * head;
+    struct language_list_node *head;
 };
 
 struct language_list_node
 {
-	struct language * lang;
-	
-	struct language_list_node * next;
+    struct language *lang;
+
+    struct language_list_node *next;
 };
 
 /* Initializes the global language list, this must be called exactly once
@@ -24,13 +24,12 @@ struct language_list_node
 void language_list_boot(void);
 
 /* Initializes a new non-global langage list */
-void language_list_init(struct language_list * list);
+void language_list_init(struct language_list *list);
 
 /* Adds a new language list to a sub-list, returns 0 on success */
-int language_list_add(struct language_list * list, const char * name);
+int language_list_add(struct language_list *list, const char *name);
 
 /* Removes a language list from a sub-list, returns 0 on success */
-int language_list_remove(struct language_list * list, const char * name);
+int language_list_remove(struct language_list *list, const char *name);
 
 #endif
-
