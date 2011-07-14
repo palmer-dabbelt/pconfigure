@@ -22,12 +22,17 @@ int target_clear(struct target *t)
         return 0;
 
     case TARGET_TYPE_BIN:
+        free(t->target);
+        t->type = TARGET_TYPE_NONE;
+        return 0;
+
     case TARGET_TYPE_INC:
     case TARGET_TYPE_LIB:
     case TARGET_TYPE_MAN:
     case TARGET_TYPE_SHR:
     case TARGET_TYPE_ETC:
     case TARGET_TYPE_SRC:
+        t->type = TARGET_TYPE_NONE;
         return 1;
     }
 
@@ -39,6 +44,8 @@ int target_flush(struct target *t)
     switch (t->type)
     {
     case TARGET_TYPE_NONE:
+        return 0;
+
     case TARGET_TYPE_BIN:
     case TARGET_TYPE_INC:
     case TARGET_TYPE_LIB:
@@ -70,6 +77,8 @@ int target_set_src(struct target *t, const char *source,
     t->type = TARGET_TYPE_SRC;
     t->source = strdup(source);
     t->parent = parent;
+
+    /* Attempts to find the language of this source */
 
     return 0;
 }

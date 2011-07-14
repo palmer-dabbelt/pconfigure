@@ -9,10 +9,12 @@ static inline struct string_list_node *sl_head(struct string_list *sl)
 {
     return (struct string_list_node *)(sl->vl.head);
 }
+
 static inline char *sln_data(struct string_list_node *sln)
 {
     return (char *)(sln->vln.data);
 }
+
 static inline struct string_list_node *sln_next(struct string_list_node *sln)
 {
     return (struct string_list_node *)(sln->vln.next);
