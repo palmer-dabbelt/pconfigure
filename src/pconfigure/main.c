@@ -238,6 +238,7 @@ int parsefunc_compileopts(char *op, char *right)
 int parsefunc_targets(char *op, char *right)
 {
     struct context *c;
+    int err;
 
     if (strcmp(op, "+=") != 0)
         return 1;
@@ -245,9 +246,17 @@ int parsefunc_targets(char *op, char *right)
     c = context_stack_peek(&cstack);
     assert(c != NULL);
 
-    target_flush(&(c->target));
-    target_clear(&(c->target));
-    target_set_bin(&(c->target), right);
+    err = target_flush(&(c->target));
+    if (err != 0)
+        return err;
+
+    err = target_clear(&(c->target));
+    if (err != 0)
+        return err;
+
+    err = target_set_bin(&(c->target), right);
+    if (err != 0)
+        return err;
 
     return 0;
 }

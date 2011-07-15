@@ -16,7 +16,6 @@ struct language *language_c_boot(void)
     out = malloc(sizeof(*out));
     if (out == NULL)
         return NULL;
-
     language_init((struct language *)out);
 
     /* TODO: change this to "c", here for compatibility */
