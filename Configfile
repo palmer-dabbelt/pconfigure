@@ -4,6 +4,7 @@ LANGUAGES += gcc
 COMPILEOPTS += -Wall
 COMPILEOPTS += -Werror
 COMPILEOPTS += -pedantic
+COMPILEOPTS += -g -DDEBUG
 
 TARGETS += pconfigure-c
 SOURCES += pconfigure/main.c

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <stdio.h>
 
 int target_init(struct target *t)
 {
@@ -70,7 +71,7 @@ int target_set_bin(struct target *t, const char *target)
 }
 
 int target_set_src(struct target *t, const char *source,
-                   struct target *parent)
+                   struct target *parent, const struct language_list *langs)
 {
     assert(t->type == TARGET_TYPE_NONE);
 
@@ -79,6 +80,15 @@ int target_set_src(struct target *t, const char *source,
     t->parent = parent;
 
     /* Attempts to find the language of this source */
+    t->lang = language_list_search(langs, t->source);
+    if (t->lang == NULL)
+    {
+        fprintf(stderr, "Could not find language for source '%s'\n",
+                t->source);
+        return 1;
+    }
+
+    printf("language: %s\n", t->lang->name);
 
     return 0;
 }

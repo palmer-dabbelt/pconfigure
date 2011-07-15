@@ -32,4 +32,8 @@ int language_list_add(struct language_list *list, const char *name);
 /* Removes a language list from a sub-list, returns 0 on success */
 int language_list_remove(struct language_list *list, const char *name);
 
+/* Searches a sub-list for a language based on the filename */
+struct language *language_list_search(const struct language_list *list,
+                                      const char *filename);
+
 #endif

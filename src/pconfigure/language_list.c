@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <assert.h>
 
 #include "languages/c.h"
 #include "languages/ruby.h"
@@ -73,8 +74,8 @@ int language_list_add(struct language_list *list, const char *name)
         return 3;
 
     add->lang = lang;
-    add->next = ll_all.head;
-    ll_all.head = add;
+    add->next = list->head;
+    list->head = add;
 
     return 0;
 }
@@ -82,4 +83,27 @@ int language_list_add(struct language_list *list, const char *name)
 int language_list_remove(struct language_list *list, const char *name)
 {
     return 1;
+}
+
+struct language *language_list_search(const struct language_list *list,
+                                      const char *filename)
+{
+    struct language_list_node *cur;
+
+    if (list == NULL)
+        return NULL;
+
+    /* Checks every language in the list until we find one that matches */
+    cur = list->head;
+    while (cur != NULL)
+    {
+        assert(cur->lang != NULL);
+
+        if (language_match(cur->lang, filename))
+            return cur->lang;
+
+        cur = cur->next;
+    }
+
+    return NULL;
 }

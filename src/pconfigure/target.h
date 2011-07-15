@@ -1,6 +1,9 @@
 #ifndef PCONFIGURE_TARGET_H
 #define PCONFIGURE_TARGET_H
 
+#include "language_list.h"
+#include "languages/language.h"
+
 enum target_type
 {
     TARGET_TYPE_NONE,
@@ -20,6 +23,8 @@ struct target
     char *target;
     char *source;
     struct target *parent;
+
+    struct language *lang;
 };
 
 /* Starts out with an empty target, or sets an existing target to be
@@ -35,6 +40,6 @@ int target_flush(struct target *t);
    but instead will error out. */
 int target_set_bin(struct target *t, const char *target);
 int target_set_src(struct target *t, const char *source,
-                   struct target *parent);
+                   struct target *parent, const struct language_list *langs);
 
 #endif

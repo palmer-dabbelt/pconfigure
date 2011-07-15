@@ -107,6 +107,8 @@ int parse_file(const char *file_name)
                     err, line_num, file_name, line);
             return err;
         }
+
+        line_num++;
     }
 
     fclose(file);
@@ -254,13 +256,22 @@ int parsefunc_sources(char *op, char *right)
 {
     struct context *c;
     struct target t;
+    int err;
 
     if (strcmp(op, "+=") != 0)
         return 1;
 
-    target_init(&t);
-    target_set_src(&t, right, &(c->target));
-    target_flush(&t);
+    err = target_init(&t);
+    if (err != 0)
+        return err;
+
+    err = target_set_src(&t, right, &(c->target), &(c->languages));
+    if (err != 0)
+        return err;
+
+    err = target_flush(&t);
+    if (err != 0)
+        return err;
 
     return 0;
 }
