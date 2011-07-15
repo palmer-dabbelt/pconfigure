@@ -6,12 +6,13 @@
 
 void makefile_init(struct makefile *mf)
 {
-    if (mf == NULL)
-        return;
+    assert(mf != NULL);
 
     mf->file = fopen("Makefile-c", "w");
     if (mf->file == NULL)
         return;
+
+    string_list_init(&(mf->targets_all));
 
     /* Make sure to use bash as our shell */
     fprintf(mf->file, "SHELL=/bin/bash\n\n");
@@ -19,10 +20,14 @@ void makefile_init(struct makefile *mf)
     /* Write a dummy "all" target, we will actually write this later but it is
      * expected to be the first target in the list */
     fprintf(mf->file, "all: dummy__all\n\t\n\n");
+
+    /* Disables all suffixes to prevent any trouble */
+    fprintf(mf->file, ".SUFFIXES:\n");
 }
 
 void makefile_clear(struct makefile *mf)
 {
+    assert(mf != NULL);
     assert(mf->file != NULL);
 
     /* Writes out our list of all targets for the end */

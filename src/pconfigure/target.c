@@ -33,6 +33,8 @@ int target_clear(struct target *t)
     case TARGET_TYPE_SHR:
     case TARGET_TYPE_ETC:
     case TARGET_TYPE_SRC:
+    default:
+        fprintf(stderr, "Unknown target type for target_clear()\n");
         t->type = TARGET_TYPE_NONE;
         return 1;
     }
@@ -40,12 +42,27 @@ int target_clear(struct target *t)
     return 1;
 }
 
-int target_flush(struct target *t)
+int target_flush(struct target *t, struct makefile *mf)
 {
+    if (t == NULL)
+        return 1;
+
     switch (t->type)
     {
     case TARGET_TYPE_NONE:
         return 0;
+
+    case TARGET_TYPE_SRC:
+    {
+        int err;
+
+        assert(t->lang != NULL);
+        err = language_adddeps(t->lang, t, mf);
+        if (err != 0)
+            return err;
+
+        return 0;
+    }
 
     case TARGET_TYPE_BIN:
     case TARGET_TYPE_INC:
@@ -53,7 +70,8 @@ int target_flush(struct target *t)
     case TARGET_TYPE_MAN:
     case TARGET_TYPE_SHR:
     case TARGET_TYPE_ETC:
-    case TARGET_TYPE_SRC:
+    default:
+        fprintf(stderr, "Unknown target type for targt_flush()\n");
         return 1;
     }
 
@@ -87,8 +105,6 @@ int target_set_src(struct target *t, const char *source,
                 t->source);
         return 1;
     }
-
-    printf("language: %s\n", t->lang->name);
 
     return 0;
 }

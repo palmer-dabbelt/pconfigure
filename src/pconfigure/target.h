@@ -1,8 +1,11 @@
 #ifndef PCONFIGURE_TARGET_H
 #define PCONFIGURE_TARGET_H
 
+struct target;
+
 #include "language_list.h"
 #include "languages/language.h"
+#include "makefile.h"
 
 enum target_type
 {
@@ -34,7 +37,7 @@ int target_clear(struct target *t);
 
 /* Flushes the current target out to a makefile.  This will not clear the
    target, that must be done later.  */
-int target_flush(struct target *t);
+int target_flush(struct target *t, struct makefile *mf);
 
 /* Fills in targets of the different types, these will not clear a target
    but instead will error out. */

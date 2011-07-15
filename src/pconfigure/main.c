@@ -7,6 +7,7 @@
 #include "defaults.h"
 #include "context_stack.h"
 #include "makefile.h"
+#include "target.h"
 
 /* The global context stack for the entire parser */
 static struct context_stack cstack;
@@ -209,11 +210,15 @@ int parsefunc_prefix(char *op, char *right)
 {
     struct context *c;
 
+    assert(op != NULL);
+    assert(right != NULL);
     if (strcmp(op, "=") != 0)
         return 1;
 
     c = context_stack_peek(&cstack);
     assert(c != NULL);
+
+    assert(c->prefix != NULL);
     free(c->prefix);
     c->prefix = strdup(right);
 
@@ -240,13 +245,15 @@ int parsefunc_targets(char *op, char *right)
     struct context *c;
     int err;
 
+    assert(op != NULL);
+    assert(right != NULL);
     if (strcmp(op, "+=") != 0)
         return 1;
 
     c = context_stack_peek(&cstack);
     assert(c != NULL);
 
-    err = target_flush(&(c->target));
+    err = target_flush(&(c->target), &mf);
     if (err != 0)
         return err;
 
@@ -267,8 +274,16 @@ int parsefunc_sources(char *op, char *right)
     struct target t;
     int err;
 
+    assert(op != NULL);
+    assert(right != NULL);
     if (strcmp(op, "+=") != 0)
+    {
+        fprintf(stderr, "SOURCES only supports +=\n");
         return 1;
+    }
+
+    c = context_stack_peek(&cstack);
+    assert(c != NULL);
 
     err = target_init(&t);
     if (err != 0)
@@ -278,7 +293,11 @@ int parsefunc_sources(char *op, char *right)
     if (err != 0)
         return err;
 
-    err = target_flush(&t);
+    err = target_flush(&t, &mf);
+    if (err != 0)
+        return err;
+
+    err = target_clear(&t);
     if (err != 0)
         return err;
 
