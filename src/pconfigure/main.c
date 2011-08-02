@@ -277,6 +277,9 @@ int parsefunc_sources(char *op, char *right)
     struct target t;
     int err;
 
+    c = context_stack_peek(&cstack);
+    assert(c != NULL);
+
     assert(op != NULL);
     assert(right != NULL);
     if (strcmp(op, "+=") != 0)

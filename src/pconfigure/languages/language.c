@@ -32,6 +32,5 @@ int language_adddeps(struct language *lang, struct target *src,
 
     /* All valid languages must have an adddeps function */
     assert(lang->adddeps != NULL);
-    fprintf(stderr, "language_adddeps() unimplemented\n");
-    return 1;
+    return lang->adddeps(lang, src, mf);
 }

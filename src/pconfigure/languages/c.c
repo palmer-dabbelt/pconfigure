@@ -3,12 +3,22 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 /* Polymorphic functions */
 static int lf_match(struct language *lang, const char *filename)
 {
-    printf("Language: '%s'\tComparison: '%s'\n", lang->name, filename);
+    return 1;
+}
 
+static int lf_adddeps(struct language *lang, struct target *src,
+                      struct makefile *mf)
+{
+    assert(lang != NULL);
+    assert(src != NULL);
+    assert(mf != NULL);
+
+    printf("lf_adddps not implemented for C\n");
     return 1;
 }
 
@@ -25,6 +35,7 @@ struct language *language_c_boot(void)
     out->lang.name = strdup("gcc");
 
     out->lang.match = &lf_match;
+    out->lang.adddeps = &lf_adddeps;
 
     return (struct language *)out;
 }

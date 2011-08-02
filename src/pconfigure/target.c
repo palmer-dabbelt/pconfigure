@@ -57,18 +57,6 @@ int target_flush(struct target *t, struct makefile *mf)
     case TARGET_TYPE_NONE:
         return 0;
 
-    case TARGET_TYPE_SRC:
-    {
-        int err;
-
-        assert(t->lang != NULL);
-        err = language_adddeps(t->lang, t, mf);
-        if (err != 0)
-            return err;
-
-        return 0;
-    }
-
     case TARGET_TYPE_BIN:
         return 1;
     case TARGET_TYPE_INC:
@@ -82,6 +70,18 @@ int target_flush(struct target *t, struct makefile *mf)
     case TARGET_TYPE_ETC:
         return 1;
     case TARGET_TYPE_SRC:
+    {
+        int err;
+
+        assert(t->lang != NULL);
+        err = language_adddeps(t->lang, t, mf);
+        if (err != 0)
+            return err;
+
+        return 0;
+    }
+    default:
+        fprintf(stderr, "Unknown target type for targt_flush()\n");
         return 1;
     }
 
