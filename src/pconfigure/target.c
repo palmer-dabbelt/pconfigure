@@ -28,10 +28,15 @@ int target_clear(struct target *t)
         return 0;
 
     case TARGET_TYPE_INC:
+        return 1;
     case TARGET_TYPE_LIB:
+        return 1;
     case TARGET_TYPE_MAN:
+        return 1;
     case TARGET_TYPE_SHR:
+        return 1;
     case TARGET_TYPE_ETC:
+        return 1;
     case TARGET_TYPE_SRC:
     default:
         fprintf(stderr, "Unknown target type for target_clear()\n");
@@ -65,13 +70,18 @@ int target_flush(struct target *t, struct makefile *mf)
     }
 
     case TARGET_TYPE_BIN:
+        return 1;
     case TARGET_TYPE_INC:
+        return 1;
     case TARGET_TYPE_LIB:
+        return 1;
     case TARGET_TYPE_MAN:
+        return 1;
     case TARGET_TYPE_SHR:
+        return 1;
     case TARGET_TYPE_ETC:
-    default:
-        fprintf(stderr, "Unknown target type for targt_flush()\n");
+        return 1;
+    case TARGET_TYPE_SRC:
         return 1;
     }
 

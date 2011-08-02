@@ -1,11 +1,14 @@
 #include "c.h"
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 /* Polymorphic functions */
 static int lf_match(struct language *lang, const char *filename)
 {
+    printf("Language: '%s'\tComparison: '%s'\n", lang->name, filename);
+
     return 1;
 }
 

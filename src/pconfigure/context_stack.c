@@ -6,7 +6,7 @@
 
 static struct context *frame_to_context(const struct context_stack_frame *f)
 {
-    return (struct context *)f;
+    return (struct context *)&(f->context);
 }
 
 void context_stack_init(struct context_stack *stack)

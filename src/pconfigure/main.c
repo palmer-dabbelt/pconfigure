@@ -196,12 +196,15 @@ int select_parsefunc(char *left, char *op, char *right)
 
 int parsefunc_languages(char *op, char *right)
 {
+    struct context *c;
+
+    c = context_stack_peek(&cstack);
+    assert(c != NULL);
+
     if (strcmp(op, "+=") == 0)
-        return language_list_add(&(context_stack_peek(&cstack)->languages),
-                                 right);
+        return language_list_add(&(c->languages), right);
     if (strcmp(op, "-=") == 0)
-        return language_list_remove(&(context_stack_peek(&cstack)->languages),
-                                    right);
+        return language_list_remove(&(c->languages), right);
 
     return 1;
 }
