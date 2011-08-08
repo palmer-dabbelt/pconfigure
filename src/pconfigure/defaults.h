@@ -15,5 +15,6 @@
 #define DEFAULT_CONTEXT_SHRDIR	"share"
 #define DEFAULT_CONTEXT_ETCDIR	"etc"
 #define DEFAULT_CONTEXT_SRCDIR	"src"
+#define DEFAULT_CONTEXT_OBJDIR	"obj"
 
 #endif

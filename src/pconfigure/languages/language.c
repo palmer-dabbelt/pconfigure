@@ -26,11 +26,11 @@ int language_match(struct language *lang, const char *filename)
 }
 
 int language_adddeps(struct language *lang, struct target *src,
-                     struct makefile *mf)
+                     struct makefile *mf, struct context *c)
 {
     assert(lang != NULL);
 
     /* All valid languages must have an adddeps function */
     assert(lang->adddeps != NULL);
-    return lang->adddeps(lang, src, mf);
+    return lang->adddeps(lang, src, mf, c);
 }

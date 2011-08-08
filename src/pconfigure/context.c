@@ -24,11 +24,16 @@ void context_init(struct context *context)
     context->shr_dir = strdup(DEFAULT_CONTEXT_SHRDIR);
     context->etc_dir = strdup(DEFAULT_CONTEXT_ETCDIR);
     context->src_dir = strdup(DEFAULT_CONTEXT_SRCDIR);
+    context->obj_dir = strdup(DEFAULT_CONTEXT_OBJDIR);
 
     string_list_init(&(context->compile_opts));
     string_list_init(&(context->link_opts));
 
-    language_list_init(&(context->languages));
+    context->languages = malloc(sizeof(*context->languages));
+    assert(context->languages != NULL);
+    language_list_init(context->languages);
 
-    target_init(&(context->target));
+    context->target = malloc(sizeof(*context->target));
+    assert(context->target != NULL);
+    target_init(context->target);
 }

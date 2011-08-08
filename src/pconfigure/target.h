@@ -6,6 +6,7 @@ struct target;
 #include "language_list.h"
 #include "languages/language.h"
 #include "makefile.h"
+#include "context.h"
 
 enum target_type
 {
@@ -37,12 +38,12 @@ int target_clear(struct target *t);
 
 /* Flushes the current target out to a makefile.  This will not clear the
    target, that must be done later.  */
-int target_flush(struct target *t, struct makefile *mf);
+int target_flush(struct target *t, struct makefile *mf, struct context *c);
 
 /* Fills in targets of the different types, these will not clear a target
    but instead will error out. */
 int target_set_bin(struct target *t, const char *target);
 int target_set_src(struct target *t, const char *source,
-                   struct target *parent, const struct language_list *langs);
+                   struct target *parent, struct context *c);
 
 #endif

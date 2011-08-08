@@ -4,9 +4,13 @@ LANGUAGES += gcc
 COMPILEOPTS += -Wall
 COMPILEOPTS += -Werror
 COMPILEOPTS += -pedantic
-COMPILEOPTS += -g -DDEBUG
+COMPILEOPTS += -g
+COMPILEOPTS += -DDEBUG
 
 TARGETS += pconfigure-c
+LINKOPTS += -lclang
+LINKOPTS += -lLLVM-2.8
+LINKOPTS += -L/usr/lib/llvm/
 SOURCES += pconfigure/main.c
 
 TARGETS += pconfigure

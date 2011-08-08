@@ -90,8 +90,7 @@ struct language *language_list_search(const struct language_list *list,
 {
     struct language_list_node *cur;
 
-    if (list == NULL)
-        return NULL;
+    assert(list != NULL);
 
     /* Checks every language in the list until we find one that matches */
     cur = list->head;

@@ -22,13 +22,20 @@ void makefile_init(struct makefile *mf)
     fprintf(mf->file, "all: dummy__all\n\t\n\n");
 
     /* Disables all suffixes to prevent any trouble */
-    fprintf(mf->file, ".SUFFIXES:\n");
+    fprintf(mf->file, ".SUFFIXES:\n\t\n\n");
+
+    /* The makefile has been initialized */
+    mf->state = MAKEFILE_STATE_INIT;
 }
 
 void makefile_clear(struct makefile *mf)
 {
     assert(mf != NULL);
     assert(mf->file != NULL);
+
+    /* There may be leftover things, make sure they're gone */
+    if (mf->state == MAKEFILE_STATE_DEPS)
+        fprintf(mf->file, "\n\t\n\n");
 
     /* Writes out our list of all targets for the end */
     fprintf(mf->file, "dummy__all: ");
@@ -37,4 +44,32 @@ void makefile_clear(struct makefile *mf)
 
     fclose(mf->file);
     mf->file = NULL;
+
+    /* The makefile has been cleared */
+    mf->state = MAKEFILE_STATE_CLEARED;
+}
+
+void makefile_add_target(struct makefile *mf, const char *tar)
+{
+    assert(mf != NULL);
+    assert(tar != NULL);
+
+    assert(mf->state != MAKEFILE_STATE_DEPS);
+    assert(mf->state != MAKEFILE_STATE_CLEARED);
+    assert(mf->file != NULL);
+
+    fprintf(mf->file, "%s:", tar);
+
+    mf->state = MAKEFILE_STATE_DEPS;
+}
+
+void makefile_add_dep(struct makefile *mf, const char *dep)
+{
+    assert(mf != NULL);
+    assert(dep != NULL);
+
+    assert(mf->state == MAKEFILE_STATE_DEPS);
+    assert(mf->file != NULL);
+
+    fprintf(mf->file, " %s", dep);
 }

@@ -47,7 +47,7 @@ int target_clear(struct target *t)
     return 1;
 }
 
-int target_flush(struct target *t, struct makefile *mf)
+int target_flush(struct target *t, struct makefile *mf, struct context *c)
 {
     if (t == NULL)
         return 1;
@@ -74,7 +74,7 @@ int target_flush(struct target *t, struct makefile *mf)
         int err;
 
         assert(t->lang != NULL);
-        err = language_adddeps(t->lang, t, mf);
+        err = language_adddeps(t->lang, t, mf, c);
         if (err != 0)
             return err;
 
@@ -99,16 +99,22 @@ int target_set_bin(struct target *t, const char *target)
 }
 
 int target_set_src(struct target *t, const char *source,
-                   struct target *parent, const struct language_list *langs)
+                   struct target *parent, struct context *c)
 {
     assert(t->type == TARGET_TYPE_NONE);
 
     t->type = TARGET_TYPE_SRC;
-    t->source = strdup(source);
+
+    t->source = malloc(strlen(source) + strlen(c->src_dir) + strlen("/") + 1);
+    t->source[0] = '\0';
+    strcat(t->source, c->src_dir);
+    strcat(t->source, "/");
+    strcat(t->source, source);
+
     t->parent = parent;
 
     /* Attempts to find the language of this source */
-    t->lang = language_list_search(langs, t->source);
+    t->lang = language_list_search(c->languages, t->source);
     if (t->lang == NULL)
     {
         fprintf(stderr, "Could not find language for source '%s'\n",

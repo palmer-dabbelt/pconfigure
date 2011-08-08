@@ -22,6 +22,7 @@ typedef int (*parsefunc) (char *, char *);
 static int parsefunc_languages(char *, char *);
 static int parsefunc_prefix(char *, char *);
 static int parsefunc_compileopts(char *, char *);
+static int parsefunc_linkopts(char *, char *);
 static int parsefunc_targets(char *, char *);
 static int parsefunc_sources(char *, char *);
 
@@ -186,6 +187,8 @@ int select_parsefunc(char *left, char *op, char *right)
         return parsefunc_prefix(op, right);
     if (strcmp(left, "COMPILEOPTS") == 0)
         return parsefunc_compileopts(op, right);
+    if (strcmp(left, "LINKOPTS") == 0)
+        return parsefunc_linkopts(op, right);
     if (strcmp(left, "TARGETS") == 0)
         return parsefunc_targets(op, right);
     if (strcmp(left, "SOURCES") == 0)
@@ -202,9 +205,9 @@ int parsefunc_languages(char *op, char *right)
     assert(c != NULL);
 
     if (strcmp(op, "+=") == 0)
-        return language_list_add(&(c->languages), right);
+        return language_list_add(c->languages, right);
     if (strcmp(op, "-=") == 0)
-        return language_list_remove(&(c->languages), right);
+        return language_list_remove(c->languages, right);
 
     return 1;
 }
@@ -243,6 +246,21 @@ int parsefunc_compileopts(char *op, char *right)
     return 0;
 }
 
+int parsefunc_linkopts(char *op, char *right)
+{
+    struct context *c;
+
+    c = context_stack_peek(&cstack);
+    assert(c != NULL);
+
+    if (strcmp(op, "+=") == 0)
+        return string_list_addifnew(&(c->link_opts), right);
+    if (strcmp(op, "-=") == 0)
+        return string_list_remove(&(c->link_opts), right);
+
+    return 0;
+}
+
 int parsefunc_targets(char *op, char *right)
 {
     struct context *c;
@@ -256,15 +274,15 @@ int parsefunc_targets(char *op, char *right)
     c = context_stack_peek(&cstack);
     assert(c != NULL);
 
-    err = target_flush(&(c->target), &mf);
+    err = target_flush(c->target, &mf, c);
     if (err != 0)
         return err;
 
-    err = target_clear(&(c->target));
+    err = target_clear(c->target);
     if (err != 0)
         return err;
 
-    err = target_set_bin(&(c->target), right);
+    err = target_set_bin(c->target, right);
     if (err != 0)
         return err;
 
@@ -276,9 +294,6 @@ int parsefunc_sources(char *op, char *right)
     struct context *c;
     struct target t;
     int err;
-
-    c = context_stack_peek(&cstack);
-    assert(c != NULL);
 
     assert(op != NULL);
     assert(right != NULL);
@@ -295,11 +310,11 @@ int parsefunc_sources(char *op, char *right)
     if (err != 0)
         return err;
 
-    err = target_set_src(&t, right, &(c->target), &(c->languages));
+    err = target_set_src(&t, right, c->target, c);
     if (err != 0)
         return err;
 
-    err = target_flush(&t, &mf);
+    err = target_flush(&t, &mf, c);
     if (err != 0)
         return err;
 

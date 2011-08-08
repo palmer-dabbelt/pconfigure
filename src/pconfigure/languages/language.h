@@ -4,6 +4,7 @@
 /* TODO: Fix the backwards dependency */
 #include "../target.h"
 #include "../makefile.h"
+#include "../context.h"
 
 struct language;
 
@@ -14,7 +15,7 @@ struct language;
  */
 typedef int (*language_func_match_t) (struct language *, const char *);
 typedef int (*language_func_adddeps_t) (struct language *, struct target *,
-                                        struct makefile * mf);
+                                        struct makefile *, struct context *);
 
 struct language
 {
@@ -37,6 +38,6 @@ int language_match(struct language *lang, const char *filename);
  * them in the given Makefile
  */
 int language_adddeps(struct language *lang, struct target *src,
-                     struct makefile *mf);
+                     struct makefile *mf, struct context *c);
 
 #endif
