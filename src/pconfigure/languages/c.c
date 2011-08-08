@@ -148,8 +148,9 @@ static int lf_adddeps(struct language *lang, struct target *src,
 
     /* Makes a new dependency */
     makefile_start_cmd(mf);
-    fprintf(makefile_cmd_fd(mf), "@echo \"CC\t%s\" ; %s ",
-            src->source, src->lang->compiler);
+    fprintf(makefile_cmd_fd(mf),
+            "@echo \"CC\t%s\" ; mkdir -p `dirname \"%s\"` ; %s ",
+            src->source, objfile, src->lang->compiler);
     string_list_fserialize(c->compile_opts, makefile_cmd_fd(mf), " ");
     fprintf(makefile_cmd_fd(mf), " -c \"%s\" -o \"%s\"",
             src->source, objfile);
@@ -179,8 +180,8 @@ struct language *language_c_boot(void)
 
     /* TODO: change this to "c", here for compatibility */
     out->lang.name = strdup("gcc");
-    out->lang.compiler = strdup("clang");
-    out->lang.linker = strdup("clang");
+    out->lang.compiler = strdup("gcc");
+    out->lang.linker = strdup("gcc");
 
     out->lang.match = &lf_match;
     out->lang.adddeps = &lf_adddeps;
