@@ -12,7 +12,9 @@ void makefile_init(struct makefile *mf)
     if (mf->file == NULL)
         return;
 
-    string_list_init(&(mf->targets_all));
+    mf->targets = malloc(sizeof(*(mf->targets)));
+    assert(mf->targets != NULL);
+    string_list_init(mf->targets);
 
     /* Make sure to use bash as our shell */
     fprintf(mf->file, "SHELL=/bin/bash\n\n");
@@ -36,14 +38,21 @@ void makefile_clear(struct makefile *mf)
     /* There may be leftover things, make sure they're gone */
     if (mf->state == MAKEFILE_STATE_DEPS)
         fprintf(mf->file, "\n\t\n\n");
+    if (mf->state == MAKEFILE_STATE_CMDS)
+        fprintf(mf->file, "\n");
 
     /* Writes out our list of all targets for the end */
     fprintf(mf->file, "dummy__all: ");
-    string_list_fserialize(&(mf->targets_all), mf->file, " ");
+    string_list_fserialize(mf->targets, mf->file, " ");
     fprintf(mf->file, "\n\t\n\n");
 
     fclose(mf->file);
     mf->file = NULL;
+
+    /* Empty the list of targets, and unallocate it */
+    string_list_clear(mf->targets);
+    free(mf->targets);
+    mf->targets = NULL;
 
     /* The makefile has been cleared */
     mf->state = MAKEFILE_STATE_CLEARED;
@@ -72,4 +81,50 @@ void makefile_add_dep(struct makefile *mf, const char *dep)
     assert(mf->file != NULL);
 
     fprintf(mf->file, " %s", dep);
+}
+
+void makefile_end_deps(struct makefile *mf)
+{
+    assert(mf != NULL);
+
+    assert(mf->state == MAKEFILE_STATE_DEPS);
+    assert(mf->file != NULL);
+
+    fprintf(mf->file, "\n");
+
+    mf->state = MAKEFILE_STATE_CMDS;
+}
+
+void makefile_start_cmd(struct makefile *mf)
+{
+    assert(mf != NULL);
+
+    assert(mf->state == MAKEFILE_STATE_CMDS);
+    assert(mf->file != NULL);
+
+    fprintf(mf->file, "\t");
+
+    mf->state = MAKEFILE_STATE_CMD_WRITE;
+}
+
+void makefile_end_cmd(struct makefile *mf)
+{
+    assert(mf != NULL);
+
+    assert(mf->state == MAKEFILE_STATE_CMD_WRITE);
+    assert(mf->file != NULL);
+
+    fprintf(mf->file, "\n");
+
+    mf->state = MAKEFILE_STATE_CMDS;
+}
+
+FILE *makefile_cmd_fd(struct makefile *mf)
+{
+    assert(mf != NULL);
+
+    assert(mf->state == MAKEFILE_STATE_CMD_WRITE);
+    assert(mf->file != NULL);
+
+    return mf->file;
 }

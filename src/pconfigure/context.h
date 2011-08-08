@@ -31,8 +31,8 @@ struct context
     char *obj_dir;
 
     /* Contains a list of the current compilation options */
-    struct string_list compile_opts;
-    struct string_list link_opts;
+    struct string_list *compile_opts;
+    struct string_list *link_opts;
 
     /* Lists all the languages that could possibly be used by the current
      * context */

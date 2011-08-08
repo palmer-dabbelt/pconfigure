@@ -105,7 +105,12 @@ int void_list_remove(struct void_list *list,
     return 0;
 }
 
-int void_list_clear(struct void_list *list, voidlist_free_func_t tofree);
+int void_list_clear(struct void_list *list, voidlist_free_func_t tofree)
+{
+    /* TODO: unimplemented */
+    fprintf(stderr, "void_list_clear unimplemented\n");
+    return 1;
+}
 
 /* This searches the list for a given string.  It returns -1 if no found, and
    otherwise it returns the index of the string in the list. */

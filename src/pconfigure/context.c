@@ -26,8 +26,13 @@ void context_init(struct context *context)
     context->src_dir = strdup(DEFAULT_CONTEXT_SRCDIR);
     context->obj_dir = strdup(DEFAULT_CONTEXT_OBJDIR);
 
-    string_list_init(&(context->compile_opts));
-    string_list_init(&(context->link_opts));
+    context->compile_opts = malloc(sizeof(*context->compile_opts));
+    assert(context->compile_opts != NULL);
+    string_list_init(context->compile_opts);
+
+    context->link_opts = malloc(sizeof(*context->link_opts));
+    assert(context->link_opts != NULL);
+    string_list_init(context->link_opts);
 
     context->languages = malloc(sizeof(*context->languages));
     assert(context->languages != NULL);

@@ -48,7 +48,11 @@ int string_list_remove(struct string_list *list, const char *tofind)
                             (voidlist_free_func_t) free_func, (void *)tofind);
 }
 
-int string_list_clear(struct string_list *list);
+int string_list_clear(struct string_list *list)
+{
+    return void_list_clear((struct void_list *)list,
+                           (voidlist_free_func_t) free_func);
+}
 
 unsigned int string_list_serialize(struct string_list *list,
                                    char *buffer, unsigned int size,
@@ -88,6 +92,8 @@ int string_list_search(struct string_list *list, const char *tofind)
 
 int string_list_addifnew(struct string_list *list, const char *toadd)
 {
+    assert(list != NULL);
+
     if (string_list_search(list, toadd) == -1)
         return string_list_add(list, toadd);
 
@@ -99,7 +105,7 @@ int match_func(const char *a, const char *b)
 {
     assert(a != NULL);
     assert(b != NULL);
-    return !strcmp(a, b);
+    return strcmp(a, b) == 0;
 }
 
 struct string_list_node *alloc_func(const char *data)

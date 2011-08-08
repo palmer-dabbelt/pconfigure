@@ -20,6 +20,8 @@ typedef int (*language_func_adddeps_t) (struct language *, struct target *,
 struct language
 {
     char *name;
+    char *compiler;
+    char *linker;
 
     language_func_match_t match;
     language_func_adddeps_t adddeps;

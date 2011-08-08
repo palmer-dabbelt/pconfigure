@@ -239,9 +239,9 @@ int parsefunc_compileopts(char *op, char *right)
     assert(c != NULL);
 
     if (strcmp(op, "+=") == 0)
-        return string_list_addifnew(&(c->compile_opts), right);
+        return string_list_addifnew(c->compile_opts, right);
     if (strcmp(op, "-=") == 0)
-        return string_list_remove(&(c->compile_opts), right);
+        return string_list_remove(c->compile_opts, right);
 
     return 0;
 }
@@ -254,9 +254,9 @@ int parsefunc_linkopts(char *op, char *right)
     assert(c != NULL);
 
     if (strcmp(op, "+=") == 0)
-        return string_list_addifnew(&(c->link_opts), right);
+        return string_list_addifnew(c->link_opts, right);
     if (strcmp(op, "-=") == 0)
-        return string_list_remove(&(c->link_opts), right);
+        return string_list_remove(c->link_opts, right);
 
     return 0;
 }

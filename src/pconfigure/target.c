@@ -11,6 +11,8 @@ int target_init(struct target *t)
     t->target = NULL;
     t->source = NULL;
     t->parent = NULL;
+    t->deps = NULL;
+    t->lang = NULL;
 
     return 0;
 }
@@ -24,6 +26,12 @@ int target_clear(struct target *t)
 
     case TARGET_TYPE_BIN:
         free(t->target);
+        t->source = NULL;
+
+        string_list_clear(t->deps);
+        free(t->deps);
+        t->deps = NULL;
+
         t->type = TARGET_TYPE_NONE;
         return 0;
 
@@ -38,6 +46,15 @@ int target_clear(struct target *t)
     case TARGET_TYPE_ETC:
         return 1;
     case TARGET_TYPE_SRC:
+        free(t->source);
+        t->source = NULL;
+
+        t->parent = NULL;
+        t->lang = NULL;
+
+        t->type = TARGET_TYPE_NONE;
+
+        return 0;
     default:
         fprintf(stderr, "Unknown target type for target_clear()\n");
         t->type = TARGET_TYPE_NONE;
@@ -94,6 +111,10 @@ int target_set_bin(struct target *t, const char *target)
 
     t->type = TARGET_TYPE_BIN;
     t->target = strdup(target);
+
+    t->deps = malloc(sizeof(*t->deps));
+    assert(t->deps != NULL);
+    string_list_init(t->deps);
 
     return 0;
 }

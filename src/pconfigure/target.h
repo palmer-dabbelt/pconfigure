@@ -7,6 +7,7 @@ struct target;
 #include "languages/language.h"
 #include "makefile.h"
 #include "context.h"
+#include "string_list.h"
 
 enum target_type
 {
@@ -29,6 +30,8 @@ struct target
     struct target *parent;
 
     struct language *lang;
+
+    struct string_list *deps;
 };
 
 /* Starts out with an empty target, or sets an existing target to be
