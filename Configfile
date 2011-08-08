@@ -10,8 +10,9 @@ COMPILEOPTS += -DDEBUG
 TARGETS += pconfigure-c
 LINKOPTS += -lclang
 LINKOPTS += -lLLVM-2.8
-LINKOPTS += -L/usr/lib/llvm/
+LINKOPTS += -L`llvm-config --libdir`
 SOURCES += pconfigure/main.c
+COMPILEOPTS += -I`llvm-config --includedir`
 
 TARGETS += pconfigure
 SOURCES += main.rb
