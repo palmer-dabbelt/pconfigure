@@ -95,6 +95,37 @@ static void lf_adddeps_help_iv_mfputs(CXFile included_file,
     filename_cstr = NULL;
 }
 
+/* This helper recurses over every included file, checking if there are any
+   .c files that should be built as well */
+struct adddeps_help_iv_recurse_cd
+{
+    struct languages *lang;
+    struct target *src;
+    struct makefile *mf;
+    struct context *c;
+};
+static void lf_adddeps_help_iv_recurse(CXFile included_file,
+                                       CXSourceLocation * inclusion_stack,
+                                       unsigned include_len,
+                                       CXClientData client_data)
+{
+    CXString filename;
+    const char *filename_cstr;
+    struct adddeps_help_iv_recurse_cd *args;
+
+    args = (struct adddeps_help_iv_recurse_cd *)client_data;
+    assert(args != NULL);
+
+    filename = clang_getFileName(included_file);
+
+    filename_cstr = clang_getCString(filename);
+
+    printf("recurse: %s\n", filename_cstr);
+
+    clang_disposeString(filename);
+    filename_cstr = NULL;
+}
+
 static int lf_adddeps(struct language *lang, struct target *src,
                       struct makefile *mf, struct context *c)
 {
@@ -142,6 +173,7 @@ static int lf_adddeps(struct language *lang, struct target *src,
     /* Adds every file included by this file into the makefile */
     mfputs_args.mf = mf;
     clang_getInclusions(tu, &lf_adddeps_help_iv_mfputs, &mfputs_args);
+    clang_getInclusions(tu, &lf_adddeps_help_iv_recurse, &mfputs_args);
 
     /* Ends the list of dependencies of this file */
     makefile_end_deps(mf);
