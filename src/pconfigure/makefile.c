@@ -67,6 +67,9 @@ void makefile_add_target(struct makefile *mf, const char *tar)
     assert(mf->state != MAKEFILE_STATE_CLEARED);
     assert(mf->file != NULL);
 
+    if (mf->state == MAKEFILE_STATE_CMDS)
+        fprintf(mf->file, "\n");
+
     fprintf(mf->file, "%s:", tar);
 
     mf->state = MAKEFILE_STATE_DEPS;

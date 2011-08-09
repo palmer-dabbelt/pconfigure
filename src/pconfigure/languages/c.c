@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <unistd.h>
 
 #include <clang-c/Index.h>
 
@@ -59,12 +60,13 @@ static char *source2object(const char *source, struct context *c)
     strcat(object, hash);
     strcat(object, ".o");
 
-    printf("object: '%s'\n", object);
-
     return object;
 }
 
 /* Polymorphic functions */
+static int lf_adddeps(struct language *lang, struct target *src,
+                      struct makefile *mf, struct context *c);
+
 static int lf_match(struct language *lang, const char *filename)
 {
     return 1;
@@ -99,7 +101,7 @@ static void lf_adddeps_help_iv_mfputs(CXFile included_file,
    .c files that should be built as well */
 struct adddeps_help_iv_recurse_cd
 {
-    struct languages *lang;
+    struct language *lang;
     struct target *src;
     struct makefile *mf;
     struct context *c;
@@ -111,16 +113,53 @@ static void lf_adddeps_help_iv_recurse(CXFile included_file,
 {
     CXString filename;
     const char *filename_cstr;
+    char *sourcefile;
     struct adddeps_help_iv_recurse_cd *args;
+    struct target t;
 
     args = (struct adddeps_help_iv_recurse_cd *)client_data;
     assert(args != NULL);
 
     filename = clang_getFileName(included_file);
-
     filename_cstr = clang_getCString(filename);
 
-    printf("recurse: %s\n", filename_cstr);
+    /* Converts the header file into a c source file */
+    sourcefile = malloc(strlen(filename_cstr) + 1);
+    memset(sourcefile, '\0', strlen(filename_cstr) + 1);
+    {
+        const char *from;
+        char *to;
+
+        to = sourcefile;
+        for (from = filename_cstr; *from != '\0'; from++)
+        {
+            /* Checks for .., and if so removes the previous directory */
+            if (*from == '.' && *(from - 1) == '.')
+            {
+                to -= 2;
+                while (*to != '/' && to >= sourcefile)
+                    to--;
+            }
+            else
+            {
+                *to = *from;
+                to++;
+            }
+        }
+    }
+    sourcefile[strlen(sourcefile) - 1] = 'c';
+
+    /* Makes a new target */
+    if (access(sourcefile, R_OK) == 0)
+    {
+        target_init(&t);
+        target_set_src_fullname(&t, sourcefile, args->src->parent, args->c);
+        lf_adddeps(args->lang, &t, args->mf, args->c);
+        target_clear(&t);
+    }
+
+    free(sourcefile);
+    sourcefile = NULL;
 
     clang_disposeString(filename);
     filename_cstr = NULL;
@@ -134,13 +173,12 @@ static int lf_adddeps(struct language *lang, struct target *src,
     CXIndex index;
     CXTranslationUnit tu;
     struct adddeps_help_iv_mfputs_cd mfputs_args;
+    struct adddeps_help_iv_recurse_cd recurse_args;
     char *objfile;
 
     assert(lang != NULL);
     assert(src != NULL);
     assert(mf != NULL);
-
-    printf("clang parsing '%s'\n", src->source);
 
     /* Figures out the object name for this input source */
     objfile = source2object(src->source, c);
@@ -149,10 +187,7 @@ static int lf_adddeps(struct language *lang, struct target *src,
      * add it to the list of files to build */
     string_list_addifnew(src->parent->deps, objfile);
     if (string_list_addifnew(mf->targets, objfile) == 1)
-    {
-        printf("duplicate found\n");
         return 0;
-    }
 
     /* Adds this object to the source */
     makefile_add_target(mf, objfile);
@@ -173,7 +208,6 @@ static int lf_adddeps(struct language *lang, struct target *src,
     /* Adds every file included by this file into the makefile */
     mfputs_args.mf = mf;
     clang_getInclusions(tu, &lf_adddeps_help_iv_mfputs, &mfputs_args);
-    clang_getInclusions(tu, &lf_adddeps_help_iv_recurse, &mfputs_args);
 
     /* Ends the list of dependencies of this file */
     makefile_end_deps(mf);
@@ -187,6 +221,14 @@ static int lf_adddeps(struct language *lang, struct target *src,
     fprintf(makefile_cmd_fd(mf), " -c \"%s\" -o \"%s\"",
             src->source, objfile);
     makefile_end_cmd(mf);
+
+    /* Recurses through every file and attemps to add those with matching
+     * .c files */
+    recurse_args.lang = lang;
+    recurse_args.src = src;
+    recurse_args.mf = mf;
+    recurse_args.c = c;
+    clang_getInclusions(tu, &lf_adddeps_help_iv_recurse, &recurse_args);
 
     /* Cleanup code for libclang */
     clang_disposeTranslationUnit(tu);

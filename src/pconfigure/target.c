@@ -145,3 +145,25 @@ int target_set_src(struct target *t, const char *source,
 
     return 0;
 }
+
+int target_set_src_fullname(struct target *t, const char *source,
+                            struct target *parent, struct context *c)
+{
+    assert(t->type == TARGET_TYPE_NONE);
+
+    t->type = TARGET_TYPE_SRC;
+
+    t->source = strdup(source);
+    t->parent = parent;
+
+    /* Attempts to find the language of this source */
+    t->lang = language_list_search(c->languages, t->source);
+    if (t->lang == NULL)
+    {
+        fprintf(stderr, "Could not find language for source '%s'\n",
+                t->source);
+        return 1;
+    }
+
+    return 0;
+}

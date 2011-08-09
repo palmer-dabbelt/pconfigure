@@ -9,7 +9,7 @@ COMPILEOPTS += -DDEBUG
 
 TARGETS += pconfigure-c
 LINKOPTS += -lclang
-LINKOPTS += -lLLVMCore
+LINKOPTS += -lLLVM-2.8
 LINKOPTS += -L`llvm-config --libdir`
 LINKOPTS += -Wl,-R`llvm-config --libdir`
 SOURCES += pconfigure/main.c

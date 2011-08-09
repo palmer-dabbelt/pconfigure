@@ -48,5 +48,7 @@ int target_flush(struct target *t, struct makefile *mf, struct context *c);
 int target_set_bin(struct target *t, const char *target);
 int target_set_src(struct target *t, const char *source,
                    struct target *parent, struct context *c);
+int target_set_src_fullname(struct target *t, const char *source,
+                            struct target *parent, struct context *c);
 
 #endif
