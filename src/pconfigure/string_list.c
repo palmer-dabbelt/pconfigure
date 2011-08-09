@@ -92,12 +92,9 @@ int string_list_search(struct string_list *list, const char *tofind)
 
 int string_list_addifnew(struct string_list *list, const char *toadd)
 {
-    assert(list != NULL);
-
-    if (string_list_search(list, toadd) == -1)
-        return string_list_add(list, toadd);
-
-    return 1;
+    return void_list_addifnew((struct void_list *)list,
+                              (voidlist_match_func_t) & match_func,
+                              (voidlist_alloc_func_t) & alloc_func, toadd);
 }
 
 /* Static functions */

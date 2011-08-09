@@ -50,6 +50,7 @@ int void_list_search(struct void_list *list,
 /* This adds a string to the list if and only if it does not already exist.  It
    returns 1 on success and 0 on failure. */
 int void_list_addifnew(struct void_list *list,
-                       voidlist_match_func_t match, const void *toadd);
+                       voidlist_match_func_t match,
+                       voidlist_alloc_func_t alloc, const void *toadd);
 
 #endif

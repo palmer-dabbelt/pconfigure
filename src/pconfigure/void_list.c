@@ -47,6 +47,7 @@ int void_list_remove(struct void_list *list,
 {
     struct void_list_node *cur, *prev;
 
+    assert(list != NULL);
     if ((list->head == NULL) || (list->tail == NULL))
         return -1;
 
@@ -107,9 +108,21 @@ int void_list_remove(struct void_list *list,
 
 int void_list_clear(struct void_list *list, voidlist_free_func_t tofree)
 {
-    /* TODO: unimplemented */
-    fprintf(stderr, "void_list_clear unimplemented\n");
-    return 1;
+    struct void_list_node *cur, *next;
+
+    assert(list != NULL);
+
+    cur = list->head;
+    while (cur != NULL)
+    {
+        next = cur->next;
+        tofree(cur);
+        cur = next;
+    }
+
+    list->head = NULL;
+
+    return 0;
 }
 
 /* This searches the list for a given string.  It returns -1 if no found, and
@@ -119,6 +132,8 @@ int void_list_search(struct void_list *list,
 {
     int i;
     struct void_list_node *cur;
+
+    assert(list != NULL);
 
     i = 0;
     cur = list->head;
@@ -137,4 +152,13 @@ int void_list_search(struct void_list *list,
 /* This adds a string to the list if and only if it does not already exist.  It
    returns 1 on success and 0 on failure. */
 int void_list_addifnew(struct void_list *list,
-                       voidlist_match_func_t match, const void *toadd);
+                       voidlist_match_func_t match,
+                       voidlist_alloc_func_t alloc, const void *toadd)
+{
+    assert(list != NULL);
+
+    if (void_list_search(list, match, toadd) == -1)
+        return void_list_add(list, alloc, toadd);
+
+    return 1;
+}
