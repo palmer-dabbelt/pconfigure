@@ -20,6 +20,7 @@ struct makefile
     enum makefile_state state;
     FILE *file;
     struct string_list *targets;
+    struct string_list *cleans;
 };
 
 void makefile_init(struct makefile *mf);

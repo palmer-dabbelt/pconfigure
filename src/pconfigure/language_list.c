@@ -30,19 +30,52 @@ void language_list_boot(void)
         return;
     tail->lang = language_c_boot();
 
+    /* FIXME: Ruby support isn't added yet */
+#if 0
     tail->next = malloc(sizeof(*(tail->next)));
     tail = tail->next;
     if (tail == NULL)
         return;
     tail->lang = language_ruby_boot();
+#endif
 
     /* Ends the list */
     tail->next = NULL;
 }
 
+void language_list_unboot(void)
+{
+    while (ll_all.head != NULL)
+    {
+        struct language_list_node *next;
+
+        next = ll_all.head->next;
+        language_clear(ll_all.head->lang);
+        free(ll_all.head->lang);
+        free(ll_all.head);
+        ll_all.head = next;
+    }
+}
+
 void language_list_init(struct language_list *list)
 {
+    assert(list != NULL);
+
     list->head = NULL;
+}
+
+void language_list_clear(struct language_list *list)
+{
+    assert(list != NULL);
+
+    while (list->head != NULL)
+    {
+        struct language_list_node *next;
+
+        next = list->head->next;
+        free(list->head);
+        list->head = next;
+    }
 }
 
 int language_list_add(struct language_list *list, const char *name)

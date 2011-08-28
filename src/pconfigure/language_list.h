@@ -22,9 +22,11 @@ struct language_list_node
 /* Initializes the global language list, this must be called exactly once
 	 before using any of the other methods in this file */
 void language_list_boot(void);
+void language_list_unboot(void);
 
 /* Initializes a new non-global langage list */
 void language_list_init(struct language_list *list);
+void language_list_clear(struct language_list *list);
 
 /* Adds a new language list to a sub-list, returns 0 on success */
 int language_list_add(struct language_list *list, const char *name);

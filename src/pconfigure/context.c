@@ -42,3 +42,34 @@ void context_init(struct context *context)
     assert(context->target != NULL);
     target_init(context->target);
 }
+
+void context_clear(struct context *context)
+{
+    assert(context != NULL);
+
+    free(context->cur_dir);
+    free(context->prefix);
+    free(context->bin_dir);
+    free(context->inc_dir);
+    free(context->lib_dir);
+    free(context->man_dir);
+    free(context->shr_dir);
+    free(context->etc_dir);
+    free(context->src_dir);
+    free(context->obj_dir);
+
+    string_list_clear(context->compile_opts);
+    free(context->compile_opts);
+
+    string_list_clear(context->link_opts);
+    free(context->link_opts);
+
+    language_list_clear(context->languages);
+    free(context->languages);
+
+    if (context->target != NULL)
+    {
+        target_clear(context->target);
+        free(context->target);
+    }
+}

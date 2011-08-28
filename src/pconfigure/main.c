@@ -69,7 +69,12 @@ int main(int argc, char **argv)
     else if (err == 1)
         printf("pconfigure failed on file %s\n", DEFAULT_INFILE);
 
+    /* Flushes the makefile */
     makefile_clear(&mf);
+
+    /* Tears down all context created */
+    context_stack_clear(&cstack);
+    language_list_unboot();
 
     return err;
 }

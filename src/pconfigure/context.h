@@ -45,4 +45,8 @@ struct context
 /* Initializes a context to have all default values */
 void context_init(struct context *context);
 
+/* Clears a stack, frees all the memory allocated when the stack was
+   created */
+void context_clear(struct context *context);
+
 #endif

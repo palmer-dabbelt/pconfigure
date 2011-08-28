@@ -24,6 +24,10 @@ struct context_stack
    frame, whose members are set from the #define's in defaults.h */
 void context_stack_init(struct context_stack *stack);
 
+/* Clears a context stack, which by definition undo's everything done in the
+   init */
+void context_stack_clear(struct context_stack *stack);
+
 /* Creates a new stack frame on top of the current one.  The values in this
    frame will default to a copy of those in the previous frame */
 void context_stack_push(struct context_stack *stack);

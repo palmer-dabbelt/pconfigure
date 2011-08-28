@@ -18,6 +18,14 @@ void makefile_init(struct makefile *mf)
     assert(mf->targets != NULL);
     string_list_init(mf->targets);
 
+    mf->cleans = malloc(sizeof(*(mf->cleans)));
+    assert(mf->cleans != NULL);
+    string_list_init(mf->cleans);
+
+    /* Starts with the default set of junk to clean */
+    string_list_addifnew(mf->cleans, DEFAULT_CONTEXT_BINDIR);
+    string_list_addifnew(mf->cleans, DEFAULT_CONTEXT_OBJDIR);
+
     /* Make sure to use bash as our shell */
     fprintf(mf->file, "SHELL=/bin/bash\n\n");
 
@@ -48,6 +56,11 @@ void makefile_clear(struct makefile *mf)
     string_list_fserialize(mf->targets, mf->file, " ");
     fprintf(mf->file, "\n\t\n\n");
 
+    /* Writes out the list of clean-targets */
+    fprintf(mf->file, "clean:\n\t@rm -r ");
+    string_list_fserialize(mf->cleans, mf->file, " || true\n\t@rm -r ");
+    fprintf(mf->file, " || true");
+
     fclose(mf->file);
     mf->file = NULL;
 
@@ -55,6 +68,10 @@ void makefile_clear(struct makefile *mf)
     string_list_clear(mf->targets);
     free(mf->targets);
     mf->targets = NULL;
+
+    string_list_clear(mf->cleans);
+    free(mf->cleans);
+    mf->cleans = NULL;
 
     /* The makefile has been cleared */
     mf->state = MAKEFILE_STATE_CLEARED;

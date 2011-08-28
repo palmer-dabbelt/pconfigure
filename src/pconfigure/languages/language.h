@@ -19,6 +19,7 @@ typedef int (*language_func_builddeps_t) (struct language *, struct target *,
                                           struct context *);
 typedef int (*language_func_linkdeps_t) (struct language *, struct target *,
                                          struct makefile *, struct context *);
+typedef int (*language_func_clear_t) (struct language *);
 
 struct language
 {
@@ -29,10 +30,12 @@ struct language
     language_func_match_t match;
     language_func_builddeps_t builddeps;
     language_func_linkdeps_t linkdeps;
+    language_func_clear_t clear;
 };
 
 /* Ensures that all fields get properly initialized */
 int language_init(struct language *lang);
+int language_clear(struct language *lang);
 
 /* Returns 1 if the given file can be parsed by the given language, otherwise
    returns 0 */

@@ -19,6 +19,20 @@ void context_stack_init(struct context_stack *stack)
     stack->top->parent = NULL;
 }
 
+void context_stack_clear(struct context_stack *stack)
+{
+    while (stack->top != NULL)
+    {
+        struct context_stack_frame *parent;
+
+        printf("context_stack freeing\n");
+        parent = stack->top->parent;
+        context_clear(frame_to_context(stack->top));
+        free(stack->top);
+        stack->top = parent;
+    }
+}
+
 struct context *context_stack_peek(const struct context_stack *stack)
 {
     if (stack == NULL)

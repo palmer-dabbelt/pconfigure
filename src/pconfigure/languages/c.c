@@ -199,7 +199,10 @@ static int lf_builddeps(struct language *lang, struct target *src,
      * add it to the list of files to build */
     string_list_addifnew(src->parent->deps, objfile);
     if (string_list_addifnew(mf->targets, objfile) == 1)
+    {
+        free(objfile);
         return 0;
+    }
 
     /* Adds this object to the source */
     makefile_add_target(mf, objfile);
@@ -292,6 +295,19 @@ static int lf_linkdeps(struct language *lang, struct target *bin,
     return 0;
 }
 
+static int lf_clear(struct language *lang)
+{
+    struct language_c *c;
+
+    c = (struct language_c *)lang;
+
+    free(lang->name);
+    free(lang->compiler);
+    free(lang->linker);
+
+    return 0;
+}
+
 struct language *language_c_boot(void)
 {
     struct language_c *out;
@@ -309,6 +325,7 @@ struct language *language_c_boot(void)
     out->lang.match = &lf_match;
     out->lang.builddeps = &lf_builddeps;
     out->lang.linkdeps = &lf_linkdeps;
+    out->lang.clear = &lf_clear;
 
     return (struct language *)out;
 }
