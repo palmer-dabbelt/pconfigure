@@ -1,5 +1,7 @@
 #include "makefile.h"
 
+#include "defaults.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -8,7 +10,7 @@ void makefile_init(struct makefile *mf)
 {
     assert(mf != NULL);
 
-    mf->file = fopen("Makefile-c", "w");
+    mf->file = fopen(DEFAULT_OUTFILE, "w");
     if (mf->file == NULL)
         return;
 
@@ -70,7 +72,7 @@ void makefile_add_target(struct makefile *mf, const char *tar)
     if (mf->state == MAKEFILE_STATE_CMDS)
         fprintf(mf->file, "\n");
 
-    fprintf(mf->file, "%s: ", tar);
+    fprintf(mf->file, "%s: %s ", tar, DEFAULT_OUTFILE);
 
     mf->state = MAKEFILE_STATE_TARGET;
 }

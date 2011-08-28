@@ -7,7 +7,7 @@ COMPILEOPTS += -pedantic
 COMPILEOPTS += -g
 COMPILEOPTS += -DDEBUG
 
-TARGETS += pconfigure-c
+TARGETS += pconfigure
 LINKOPTS += -lclang
 LINKOPTS += -lLLVM-2.8
 LINKOPTS += -L`llvm-config --libdir`
@@ -15,20 +15,3 @@ LINKOPTS += -Wl,-R`llvm-config --libdir`
 SOURCES += pconfigure/main.c
 COMPILEOPTS += -I`llvm-config --includedir`
 
-TARGETS += pconfigure
-SOURCES += main.rb
-
-TARGETS += prbc
-SOURCES += prbc.rb
-
-TARGETS += pclean
-SOURCES += pclean.rb
-
-TARGETS += pplt-scheme-c
-SOURCES += pplt-scheme-c.rb
-
-TARGETS += pchdrc
-SOURCES += pchdrc.rb
-
-TARGETS += pbashc
-SOURCES += pbashc.rb
