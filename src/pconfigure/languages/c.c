@@ -8,6 +8,8 @@
 
 #include <clang-c/Index.h>
 
+#include "util/pstring.h"
+
 /* Helper functions (not specific to one of the functions below) */
 static char *source2object(const char *source, struct context *c)
 {
@@ -64,29 +66,31 @@ static char *source2object(const char *source, struct context *c)
 }
 
 /* Polymorphic functions */
-static int lf_adddeps(struct language *lang, struct target *src,
-                      struct makefile *mf, struct context *c);
+static int lf_builddeps(struct language *lang, struct target *src,
+                        struct makefile *mf, struct context *c);
 
 static int lf_match(struct language *lang, const char *filename)
 {
-    return 1;
+    assert(filename != NULL);
+
+    return util_pstring_ends_with(filename, ".c");
 }
 
 /* This helper writes every included file out to the makefile as a dependency */
-struct adddeps_help_iv_mfputs_cd
+struct builddeps_help_iv_mfputs_cd
 {
     struct makefile *mf;
 };
-static void lf_adddeps_help_iv_mfputs(CXFile included_file,
-                                      CXSourceLocation * inclusion_stack,
-                                      unsigned include_len,
-                                      CXClientData client_data)
+static void lf_builddeps_help_iv_mfputs(CXFile included_file,
+                                        CXSourceLocation * inclusion_stack,
+                                        unsigned include_len,
+                                        CXClientData client_data)
 {
     CXString filename;
     const char *filename_cstr;
-    struct adddeps_help_iv_mfputs_cd *args;
+    struct builddeps_help_iv_mfputs_cd *args;
 
-    args = (struct adddeps_help_iv_mfputs_cd *)client_data;
+    args = (struct builddeps_help_iv_mfputs_cd *)client_data;
     assert(args != NULL);
 
     filename = clang_getFileName(included_file);
@@ -99,25 +103,25 @@ static void lf_adddeps_help_iv_mfputs(CXFile included_file,
 
 /* This helper recurses over every included file, checking if there are any
    .c files that should be built as well */
-struct adddeps_help_iv_recurse_cd
+struct builddeps_help_iv_recurse_cd
 {
     struct language *lang;
     struct target *src;
     struct makefile *mf;
     struct context *c;
 };
-static void lf_adddeps_help_iv_recurse(CXFile included_file,
-                                       CXSourceLocation * inclusion_stack,
-                                       unsigned include_len,
-                                       CXClientData client_data)
+static void lf_builddeps_help_iv_recurse(CXFile included_file,
+                                         CXSourceLocation * inclusion_stack,
+                                         unsigned include_len,
+                                         CXClientData client_data)
 {
     CXString filename;
     const char *filename_cstr;
     char *sourcefile;
-    struct adddeps_help_iv_recurse_cd *args;
+    struct builddeps_help_iv_recurse_cd *args;
     struct target t;
 
-    args = (struct adddeps_help_iv_recurse_cd *)client_data;
+    args = (struct builddeps_help_iv_recurse_cd *)client_data;
     assert(args != NULL);
 
     filename = clang_getFileName(included_file);
@@ -154,7 +158,7 @@ static void lf_adddeps_help_iv_recurse(CXFile included_file,
     {
         target_init(&t);
         target_set_src_fullname(&t, sourcefile, args->src->parent, args->c);
-        lf_adddeps(args->lang, &t, args->mf, args->c);
+        lf_builddeps(args->lang, &t, args->mf, args->c);
         target_clear(&t);
     }
 
@@ -165,23 +169,31 @@ static void lf_adddeps_help_iv_recurse(CXFile included_file,
     filename_cstr = NULL;
 }
 
-static int lf_adddeps(struct language *lang, struct target *src,
-                      struct makefile *mf, struct context *c)
+static int lf_builddeps(struct language *lang, struct target *src,
+                        struct makefile *mf, struct context *c)
 {
     int clang_argc;
     char **clang_argv;
     CXIndex index;
     CXTranslationUnit tu;
-    struct adddeps_help_iv_mfputs_cd mfputs_args;
-    struct adddeps_help_iv_recurse_cd recurse_args;
+    struct builddeps_help_iv_mfputs_cd mfputs_args;
+    struct builddeps_help_iv_recurse_cd recurse_args;
     char *objfile;
 
     assert(lang != NULL);
     assert(src != NULL);
     assert(mf != NULL);
+    assert(src->type == TARGET_TYPE_SRC);
 
     /* Figures out the object name for this input source */
     objfile = source2object(src->source, c);
+
+    /* Checks if this target's parent is compatible with C */
+    if (src->parent->lang == NULL)
+        src->parent->lang = lang;
+
+    if (strcmp(src->parent->lang->name, lang->name) != 0)
+        return 1;
 
     /* If the file already exists, then skip the rest of this parsing, just
      * add it to the list of files to build */
@@ -205,9 +217,12 @@ static int lf_adddeps(struct language *lang, struct target *src,
     tu = clang_parseTranslationUnit(index, 0, (const char *const *)clang_argv,
                                     clang_argc, 0, 0, CXTranslationUnit_None);
 
+    /* Start writing dependencies to the makefile */
+    makefile_start_deps(mf);
+
     /* Adds every file included by this file into the makefile */
     mfputs_args.mf = mf;
-    clang_getInclusions(tu, &lf_adddeps_help_iv_mfputs, &mfputs_args);
+    clang_getInclusions(tu, &lf_builddeps_help_iv_mfputs, &mfputs_args);
 
     /* Ends the list of dependencies of this file */
     makefile_end_deps(mf);
@@ -228,7 +243,7 @@ static int lf_adddeps(struct language *lang, struct target *src,
     recurse_args.src = src;
     recurse_args.mf = mf;
     recurse_args.c = c;
-    clang_getInclusions(tu, &lf_adddeps_help_iv_recurse, &recurse_args);
+    clang_getInclusions(tu, &lf_builddeps_help_iv_recurse, &recurse_args);
 
     /* Cleanup code for libclang */
     clang_disposeTranslationUnit(tu);
@@ -239,6 +254,40 @@ static int lf_adddeps(struct language *lang, struct target *src,
 
     /* Removes the extra copy of the object file that is lying around */
     free(objfile);
+
+    return 0;
+}
+
+static int lf_linkdeps(struct language *lang, struct target *bin,
+                       struct makefile *mf, struct context *c)
+{
+    assert(lang != NULL);
+    assert(bin != NULL);
+    assert(mf != NULL);
+    assert(bin->type == TARGET_TYPE_BIN);
+
+    /* Checks if we've already somehow tried to make this target */
+    if (string_list_addifnew(mf->targets, bin->target) == 1)
+        return 0;
+
+    /* Links the given target */
+    makefile_add_target(mf, bin->target);
+
+    /* Target depends on all the object files that got pulled in */
+    makefile_start_deps(mf);
+    string_list_fserialize(bin->deps, makefile_dep_fd(mf), " ");
+    makefile_end_deps(mf);
+
+    /* Adds the actual linking command */
+    makefile_start_cmd(mf);
+    fprintf(makefile_cmd_fd(mf),
+            "@echo \"CC\t%s\" ; mkdir -p `dirname \"%s\"` ; %s ",
+            bin->target, bin->target, bin->lang->linker);
+    string_list_fserialize(c->link_opts, makefile_cmd_fd(mf), " ");
+    fprintf(makefile_cmd_fd(mf), " ");
+    string_list_fserialize(bin->deps, makefile_cmd_fd(mf), " ");
+    fprintf(makefile_cmd_fd(mf), " -o \"%s\"", bin->target);
+    makefile_end_cmd(mf);
 
     return 0;
 }
@@ -258,7 +307,8 @@ struct language *language_c_boot(void)
     out->lang.linker = strdup("gcc");
 
     out->lang.match = &lf_match;
-    out->lang.adddeps = &lf_adddeps;
+    out->lang.builddeps = &lf_builddeps;
+    out->lang.linkdeps = &lf_linkdeps;
 
     return (struct language *)out;
 }

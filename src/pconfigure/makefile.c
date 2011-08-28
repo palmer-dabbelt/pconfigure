@@ -70,9 +70,9 @@ void makefile_add_target(struct makefile *mf, const char *tar)
     if (mf->state == MAKEFILE_STATE_CMDS)
         fprintf(mf->file, "\n");
 
-    fprintf(mf->file, "%s:", tar);
+    fprintf(mf->file, "%s: ", tar);
 
-    mf->state = MAKEFILE_STATE_DEPS;
+    mf->state = MAKEFILE_STATE_TARGET;
 }
 
 void makefile_add_dep(struct makefile *mf, const char *dep)
@@ -80,10 +80,25 @@ void makefile_add_dep(struct makefile *mf, const char *dep)
     assert(mf != NULL);
     assert(dep != NULL);
 
-    assert(mf->state == MAKEFILE_STATE_DEPS);
+    assert(mf->state == MAKEFILE_STATE_DEPS ||
+           mf->state == MAKEFILE_STATE_FIRSTDEP);
     assert(mf->file != NULL);
 
-    fprintf(mf->file, " %s", dep);
+    if (mf->state == MAKEFILE_STATE_FIRSTDEP)
+        fprintf(mf->file, "%s", dep);
+    else
+        fprintf(mf->file, " %s", dep);
+
+    mf->state = MAKEFILE_STATE_DEPS;
+}
+
+void makefile_start_deps(struct makefile *mf)
+{
+    assert(mf != NULL);
+    assert(mf->state == MAKEFILE_STATE_TARGET);
+    assert(mf->file != NULL);
+
+    mf->state = MAKEFILE_STATE_FIRSTDEP;
 }
 
 void makefile_end_deps(struct makefile *mf)
@@ -96,6 +111,19 @@ void makefile_end_deps(struct makefile *mf)
     fprintf(mf->file, "\n");
 
     mf->state = MAKEFILE_STATE_CMDS;
+}
+
+FILE *makefile_dep_fd(struct makefile *mf)
+{
+    assert(mf != NULL);
+
+    assert(mf->state == MAKEFILE_STATE_DEPS ||
+           mf->state == MAKEFILE_STATE_FIRSTDEP);
+    assert(mf->file != NULL);
+
+    if (mf->state == MAKEFILE_STATE_FIRSTDEP)
+        mf->state = MAKEFILE_STATE_DEPS;
+    return mf->file;
 }
 
 void makefile_start_cmd(struct makefile *mf)

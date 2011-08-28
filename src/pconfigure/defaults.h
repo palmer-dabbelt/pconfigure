@@ -3,8 +3,8 @@
 
 #define MAX_LINE_SIZE						1024
 
-#define DEFAULT_INFILE					"Configfile"
-#define DEFAULT_INFILE_LOCAL		"Configfile.local"
+#define DEFAULT_INFILE					"Configfile-c"
+#define DEFAULT_INFILE_LOCAL		"Configfile-c.local"
 
 #define DEFAULT_CONTEXT_CURDIR	"."
 #define DEFAULT_CONTEXT_PREFIX	"/usr/local"

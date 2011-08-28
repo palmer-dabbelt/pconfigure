@@ -45,7 +45,7 @@ int target_flush(struct target *t, struct makefile *mf, struct context *c);
 
 /* Fills in targets of the different types, these will not clear a target
    but instead will error out. */
-int target_set_bin(struct target *t, const char *target);
+int target_set_bin(struct target *t, const char *target, struct context *c);
 int target_set_src(struct target *t, const char *source,
                    struct target *parent, struct context *c);
 int target_set_src_fullname(struct target *t, const char *source,

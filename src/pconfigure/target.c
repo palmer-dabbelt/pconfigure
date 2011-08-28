@@ -66,8 +66,7 @@ int target_clear(struct target *t)
 
 int target_flush(struct target *t, struct makefile *mf, struct context *c)
 {
-    if (t == NULL)
-        return 1;
+    assert(t != NULL);
 
     switch (t->type)
     {
@@ -75,7 +74,20 @@ int target_flush(struct target *t, struct makefile *mf, struct context *c)
         return 0;
 
     case TARGET_TYPE_BIN:
-        return 1;
+    {
+        int err;
+
+        c->target = t->parent;
+
+        assert(t->lang != NULL);
+        err = language_linkdeps(t->lang, t, mf, c);
+        if (err != 0)
+            return err;
+
+        c->target = t->parent;
+
+        return 0;
+    }
     case TARGET_TYPE_INC:
         return 1;
     case TARGET_TYPE_LIB:
@@ -91,9 +103,11 @@ int target_flush(struct target *t, struct makefile *mf, struct context *c)
         int err;
 
         assert(t->lang != NULL);
-        err = language_adddeps(t->lang, t, mf, c);
+        err = language_builddeps(t->lang, t, mf, c);
         if (err != 0)
             return err;
+
+        c->target = t->parent;
 
         return 0;
     }
@@ -105,12 +119,17 @@ int target_flush(struct target *t, struct makefile *mf, struct context *c)
     return 1;
 }
 
-int target_set_bin(struct target *t, const char *target)
+int target_set_bin(struct target *t, const char *target, struct context *c)
 {
     assert(t->type == TARGET_TYPE_NONE);
 
     t->type = TARGET_TYPE_BIN;
-    t->target = strdup(target);
+    t->target = malloc(strlen(target) + strlen(c->bin_dir) + strlen("/") + 1);
+    assert(t->target != NULL);
+    t->target[0] = '\0';
+    strcat(t->target, c->bin_dir);
+    strcat(t->target, "/");
+    strcat(t->target, target);
 
     t->deps = malloc(sizeof(*t->deps));
     assert(t->deps != NULL);
@@ -127,6 +146,7 @@ int target_set_src(struct target *t, const char *source,
     t->type = TARGET_TYPE_SRC;
 
     t->source = malloc(strlen(source) + strlen(c->src_dir) + strlen("/") + 1);
+    assert(t->source != NULL);
     t->source[0] = '\0';
     strcat(t->source, c->src_dir);
     strcat(t->source, "/");

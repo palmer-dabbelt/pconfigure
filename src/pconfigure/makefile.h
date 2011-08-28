@@ -8,6 +8,8 @@ enum makefile_state
 {
     MAKEFILE_STATE_INIT,
     MAKEFILE_STATE_CLEARED,
+    MAKEFILE_STATE_TARGET,
+    MAKEFILE_STATE_FIRSTDEP,
     MAKEFILE_STATE_DEPS,
     MAKEFILE_STATE_CMDS,
     MAKEFILE_STATE_CMD_WRITE
@@ -29,8 +31,14 @@ void makefile_add_target(struct makefile *mf, const char *tar);
 /* Adds a new dependency to the curret target of a makefile */
 void makefile_add_dep(struct makefile *mf, const char *dep);
 
-/* Ends the list of dependencies of the current file */
+/* Ends (or starts) the list of dependencies of the current file */
+void makefile_start_deps(struct makefile *mf);
 void makefile_end_deps(struct makefile *mf);
+
+/* Returns an FD that can be used to write to a deplist to the file.  There is
+   no need to close the FD, just make sure not to use it after you call
+   end_deps. */
+FILE *makefile_dep_fd(struct makefile *mf);
 
 /* Starts (or ends) writing a command */
 void makefile_start_cmd(struct makefile *mf);

@@ -63,13 +63,13 @@ int main(int argc, char **argv)
     }
 
     err = parse_file(DEFAULT_INFILE);
-    if (err != 0)
-        makefile_clear(&mf);
 
     if (err == 2)
         printf("Unable to read %s\n", DEFAULT_INFILE);
-    if (err == 1)
+    else if (err == 1)
         printf("pconfigure failed on file %s\n", DEFAULT_INFILE);
+
+    makefile_clear(&mf);
 
     return err;
 }
@@ -114,6 +114,39 @@ int parse_file(const char *file_name)
     }
 
     fclose(file);
+
+    /* Attempts to keep flushing until we're done */
+    {
+        struct context *c;
+
+        c = context_stack_peek(&cstack);
+        assert(c != NULL);
+
+        while (c->target != NULL)
+        {
+            struct target *t;
+            int err;
+
+            c = context_stack_peek(&cstack);
+            assert(c != NULL);
+
+            t = c->target;
+            err = target_flush(t, &mf, c);
+            if (err != 0)
+            {
+                printf("Error flushing last target: %d\n", err);
+                return err;
+            }
+
+            err = target_clear(t);
+            if (err != 0)
+            {
+                printf("Error clearing last target: %d\n", err);
+                return err;
+            }
+            free(t);
+        }
+    }
     return 0;
 }
 
@@ -282,7 +315,7 @@ int parsefunc_targets(char *op, char *right)
     if (err != 0)
         return err;
 
-    err = target_set_bin(c->target, right);
+    err = target_set_bin(c->target, right, c);
     if (err != 0)
         return err;
 
@@ -292,7 +325,7 @@ int parsefunc_targets(char *op, char *right)
 int parsefunc_sources(char *op, char *right)
 {
     struct context *c;
-    struct target t;
+    struct target *t;
     int err;
 
     assert(op != NULL);
@@ -306,21 +339,33 @@ int parsefunc_sources(char *op, char *right)
     c = context_stack_peek(&cstack);
     assert(c != NULL);
 
-    err = target_init(&t);
+    if (c->target->type == TARGET_TYPE_SRC)
+    {
+        t = c->target;
+
+        err = target_flush(t, &mf, c);
+        if (err != 0)
+            return err;
+
+        err = target_clear(t);
+        if (err != 0)
+            return err;
+
+        free(t);
+    }
+
+    t = malloc(sizeof(*t));
+    assert(t != NULL);
+
+    err = target_init(t);
     if (err != 0)
         return err;
 
-    err = target_set_src(&t, right, c->target, c);
+    err = target_set_src(t, right, c->target, c);
     if (err != 0)
         return err;
 
-    err = target_flush(&t, &mf, c);
-    if (err != 0)
-        return err;
-
-    err = target_clear(&t);
-    if (err != 0)
-        return err;
+    c->target = t;
 
     return 0;
 }

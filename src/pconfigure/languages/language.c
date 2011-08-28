@@ -11,7 +11,8 @@ int language_init(struct language *lang)
     lang->name = NULL;
 
     lang->match = NULL;
-    lang->adddeps = NULL;
+    lang->builddeps = NULL;
+    lang->linkdeps = NULL;
 
     return 0;
 }
@@ -25,12 +26,22 @@ int language_match(struct language *lang, const char *filename)
     return lang->match(lang, filename);
 }
 
-int language_adddeps(struct language *lang, struct target *src,
-                     struct makefile *mf, struct context *c)
+int language_builddeps(struct language *lang, struct target *src,
+                       struct makefile *mf, struct context *c)
 {
     assert(lang != NULL);
 
-    /* All valid languages must have an adddeps function */
-    assert(lang->adddeps != NULL);
-    return lang->adddeps(lang, src, mf, c);
+    /* All valid languages must have an builddeps function */
+    assert(lang->builddeps != NULL);
+    return lang->builddeps(lang, src, mf, c);
+}
+
+int language_linkdeps(struct language *lang, struct target *src,
+                      struct makefile *mf, struct context *c)
+{
+    assert(lang != NULL);
+
+    /* All valid languages must have a linkdeps function */
+    assert(lang->linkdeps != NULL);
+    return lang->linkdeps(lang, src, mf, c);
 }
