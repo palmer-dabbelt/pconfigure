@@ -25,7 +25,6 @@ void context_stack_clear(struct context_stack *stack)
     {
         struct context_stack_frame *parent;
 
-        printf("context_stack freeing\n");
         parent = stack->top->parent;
         context_clear(frame_to_context(stack->top));
         free(stack->top);
