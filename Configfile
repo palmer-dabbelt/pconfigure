@@ -1,5 +1,4 @@
-LANGUAGES += gcc
-
+LANGUAGES += c
 COMPILEOPTS += -Wall
 COMPILEOPTS += -Werror
 COMPILEOPTS += -pedantic
@@ -14,3 +13,5 @@ LINKOPTS += -Wl,-R`llvm-config --libdir`
 SOURCES += pconfigure/main.c
 COMPILEOPTS += -I`llvm-config --includedir`
 
+TARGETS += pbashc
+SOURCES += pbashc/main.c
