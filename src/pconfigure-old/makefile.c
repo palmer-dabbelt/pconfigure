@@ -58,8 +58,9 @@ void makefile_clear(struct makefile *mf)
 
     /* Writes out the list of clean-targets */
     fprintf(mf->file, "clean:\n\t@rm -r ");
-    string_list_fserialize(mf->cleans, mf->file, " || true\n\t@rm -r ");
-    fprintf(mf->file, " || true");
+    string_list_fserialize(mf->cleans, mf->file,
+                           " &> /dev/null || true\n\t@rm -r ");
+    fprintf(mf->file, " &> /dev/null || true");
 
     fclose(mf->file);
     mf->file = NULL;

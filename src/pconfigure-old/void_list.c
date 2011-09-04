@@ -16,8 +16,9 @@ int void_list_init(struct void_list *list)
 int void_list_copy(struct void_list *target,
                    voidlist_copy_func_t copy, const struct void_list *source);
 
-int void_list_add(struct void_list *list,
-                  voidlist_alloc_func_t alloc, const void *toadd)
+int
+void_list_add(struct void_list *list,
+              voidlist_alloc_func_t alloc, const void *toadd)
 {
     if (list->tail == NULL)
     {
@@ -41,9 +42,10 @@ int void_list_add(struct void_list *list,
     return 0;
 }
 
-int void_list_remove(struct void_list *list,
-                     voidlist_match_func_t match,
-                     voidlist_free_func_t tofree, const void *tofind)
+int
+void_list_remove(struct void_list *list,
+                 voidlist_match_func_t match,
+                 voidlist_free_func_t tofree, const void *tofind)
 {
     struct void_list_node *cur, *prev;
 
@@ -127,8 +129,9 @@ int void_list_clear(struct void_list *list, voidlist_free_func_t tofree)
 
 /* This searches the list for a given string.  It returns -1 if no found, and
    otherwise it returns the index of the string in the list. */
-int void_list_search(struct void_list *list,
-                     voidlist_match_func_t match, const void *tofind)
+int
+void_list_search(struct void_list *list,
+                 voidlist_match_func_t match, const void *tofind)
 {
     int i;
     struct void_list_node *cur;
@@ -151,9 +154,10 @@ int void_list_search(struct void_list *list,
 
 /* This adds a string to the list if and only if it does not already exist.  It
    returns 1 on success and 0 on failure. */
-int void_list_addifnew(struct void_list *list,
-                       voidlist_match_func_t match,
-                       voidlist_alloc_func_t alloc, const void *toadd)
+int
+void_list_addifnew(struct void_list *list,
+                   voidlist_match_func_t match,
+                   voidlist_alloc_func_t alloc, const void *toadd)
 {
     assert(list != NULL);
 

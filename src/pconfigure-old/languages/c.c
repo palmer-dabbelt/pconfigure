@@ -81,10 +81,10 @@ struct builddeps_help_iv_mfputs_cd
 {
     struct makefile *mf;
 };
-static void lf_builddeps_help_iv_mfputs(CXFile included_file,
-                                        CXSourceLocation * inclusion_stack,
-                                        unsigned include_len,
-                                        CXClientData client_data)
+static void
+lf_builddeps_help_iv_mfputs(CXFile included_file,
+                            CXSourceLocation * inclusion_stack,
+                            unsigned include_len, CXClientData client_data)
 {
     CXString filename;
     const char *filename_cstr;
@@ -110,10 +110,10 @@ struct builddeps_help_iv_recurse_cd
     struct makefile *mf;
     struct context *c;
 };
-static void lf_builddeps_help_iv_recurse(CXFile included_file,
-                                         CXSourceLocation * inclusion_stack,
-                                         unsigned include_len,
-                                         CXClientData client_data)
+static void
+lf_builddeps_help_iv_recurse(CXFile included_file,
+                             CXSourceLocation * inclusion_stack,
+                             unsigned include_len, CXClientData client_data)
 {
     CXString filename;
     const char *filename_cstr;
@@ -169,8 +169,9 @@ static void lf_builddeps_help_iv_recurse(CXFile included_file,
     filename_cstr = NULL;
 }
 
-static int lf_builddeps(struct language *lang, struct target *src,
-                        struct makefile *mf, struct context *c)
+static int
+lf_builddeps(struct language *lang, struct target *src,
+             struct makefile *mf, struct context *c)
 {
     int clang_argc;
     char **clang_argv;
@@ -261,8 +262,9 @@ static int lf_builddeps(struct language *lang, struct target *src,
     return 0;
 }
 
-static int lf_linkdeps(struct language *lang, struct target *bin,
-                       struct makefile *mf, struct context *c)
+static int
+lf_linkdeps(struct language *lang, struct target *bin,
+            struct makefile *mf, struct context *c)
 {
     assert(lang != NULL);
     assert(bin != NULL);

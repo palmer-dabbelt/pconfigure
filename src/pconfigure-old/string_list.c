@@ -58,8 +58,9 @@ unsigned int string_list_serialize(struct string_list *list,
                                    char *buffer, unsigned int size,
                                    const char *seperator);
 
-int string_list_fserialize(struct string_list *list,
-                           FILE * outfile, const char *seperator)
+int
+string_list_fserialize(struct string_list *list,
+                       FILE * outfile, const char *seperator)
 {
     struct string_list_node *cur;
 

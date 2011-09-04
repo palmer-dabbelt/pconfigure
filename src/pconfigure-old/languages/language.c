@@ -32,16 +32,18 @@ int language_match(struct language *lang, const char *filename)
     return lang->match(lang, filename);
 }
 
-int language_builddeps(struct language *lang, struct target *src,
-                       struct makefile *mf, struct context *c)
+int
+language_builddeps(struct language *lang, struct target *src,
+                   struct makefile *mf, struct context *c)
 {
     assert(lang != NULL);
     assert(lang->builddeps != NULL);
     return lang->builddeps(lang, src, mf, c);
 }
 
-int language_linkdeps(struct language *lang, struct target *src,
-                      struct makefile *mf, struct context *c)
+int
+language_linkdeps(struct language *lang, struct target *src,
+                  struct makefile *mf, struct context *c)
 {
     assert(lang != NULL);
     assert(lang->linkdeps != NULL);

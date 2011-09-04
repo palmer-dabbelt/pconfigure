@@ -19,6 +19,8 @@ int target_init(struct target *t)
 
 int target_clear(struct target *t)
 {
+    assert(t != NULL);
+
     switch (t->type)
     {
     case TARGET_TYPE_NONE:
@@ -77,14 +79,10 @@ int target_flush(struct target *t, struct makefile *mf, struct context *c)
     {
         int err;
 
-        c->target = t->parent;
-
         assert(t->lang != NULL);
         err = language_linkdeps(t->lang, t, mf, c);
         if (err != 0)
             return err;
-
-        c->target = t->parent;
 
         return 0;
     }
@@ -106,8 +104,6 @@ int target_flush(struct target *t, struct makefile *mf, struct context *c)
         err = language_builddeps(t->lang, t, mf, c);
         if (err != 0)
             return err;
-
-        c->target = t->parent;
 
         return 0;
     }
@@ -138,8 +134,9 @@ int target_set_bin(struct target *t, const char *target, struct context *c)
     return 0;
 }
 
-int target_set_src(struct target *t, const char *source,
-                   struct target *parent, struct context *c)
+int
+target_set_src(struct target *t, const char *source,
+               struct target *parent, struct context *c)
 {
     assert(t->type == TARGET_TYPE_NONE);
 
@@ -166,8 +163,9 @@ int target_set_src(struct target *t, const char *source,
     return 0;
 }
 
-int target_set_src_fullname(struct target *t, const char *source,
-                            struct target *parent, struct context *c)
+int
+target_set_src_fullname(struct target *t, const char *source,
+                        struct target *parent, struct context *c)
 {
     assert(t->type == TARGET_TYPE_NONE);
 

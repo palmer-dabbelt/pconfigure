@@ -312,6 +312,25 @@ int parsefunc_targets(char *op, char *right)
     c = context_stack_peek(&cstack);
     assert(c != NULL);
 
+    if (c->target->type == TARGET_TYPE_SRC)
+    {
+        struct target *t;
+
+        printf("Clearing Source\n");
+
+        t = c->target;
+
+        err = target_flush(t, &mf, c);
+        if (err != 0)
+            return err;
+
+        err = target_clear(t);
+        if (err != 0)
+            return err;
+
+        free(t);
+    }
+
     err = target_flush(c->target, &mf, c);
     if (err != 0)
         return err;
