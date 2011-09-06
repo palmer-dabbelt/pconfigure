@@ -5,17 +5,27 @@
 #include <assert.h>
 
 #include "defaults.h"
-#include "errors.h"
+#include "error.h"
+#include "languages.h"
+#include "target_stack.h"
+#include "string_list.h"
+#include "makefile.h"
+
+/* Our targets live in a stack */
+static struct target_stack target_stack;
+
+/* This is the actual output */
+static struct makefile makefile;
 
 /* Functions for parsing the different types of options availiable in pconfigure
-   files.  These all return 1 on failure. */
-typedef int (*parsefunc) (char *, char *);
+   files. */
+typedef enum error (*parsefunc) (char *, char *);
 
 static enum error parsefunc_languages(char *, char *);
 static enum error parsefunc_prefix(char *, char *);
 static enum error parsefunc_compileopts(char *, char *);
 static enum error parsefunc_linkopts(char *, char *);
-static enum error parsefunc_targets(char *, char *);
+static enum error parsefunc_binaries(char *, char *);
 static enum error parsefunc_sources(char *, char *);
 
 /* Selects the correct parsing function to use, calls it, and gets returns
@@ -36,22 +46,66 @@ int main(int argc, char **argv)
     if (argc != 1)
     {
         fprintf(stderr, "%s: Palmer's Makefile Generator\n", argv[0]);
+        fprintf(stderr, "\tThis should be called with a Configfile this dir");
         return 1;
+    }
+
+    /* Starts all the sub-modules required by this code */
+    string_list_boot();
+    languages_boot();
+    target_boot();
+    target_stack_boot();
+    makefile_boot();
+
+    /* Initializes an empty makefile */
+    err = makefile_init(&makefile);
+    if (err != ERROR_NONE)
+    {
+	fprintf(stderr, "pconfigure initialization failed\n"
+		"%d: %s\n", err, error_to_string(err));
+	return err;
+    }
+
+    /* Initializes an empty target stack */
+    err = target_stack_init(&target_stack);
+    if (err != ERROR_NONE)
+    {
+        fprintf(stderr, "pconfigure initialization failed\n"
+                "%d: %s\n", err, error_to_string(err));
+        return err;
     }
 
     /* Parses the two given files */
     err = parse_file(DEFAULT_INFILE_LOCAL);
     if (err != ERROR_FILE_NOT_FOUND)
     {
-        printf("pconfigure failed on file %s\n", DEFAULT_INFILE_LOCAL);
-        return 1;
+        fprintf(stderr, "pconfigure failed on file %s\n",
+                DEFAULT_INFILE_LOCAL);
+        return err;
     }
 
     err = parse_file(DEFAULT_INFILE);
     if (err != ERROR_NONE)
     {
-        printf("pconfigure failed on file %s\n"
-               "error %d: %s\n", DEFAULT_INFILE, err, error_to_string(err));
+        fprintf(stderr, "pconfigure failed on file %s\n"
+                "error %d: %s\n", DEFAULT_INFILE, err, error_to_string(err));
+	return err;
+    }
+
+    /* Cleans up the mess we made */
+    err = target_stack_clear(&target_stack);
+    if (err != ERROR_NONE)
+    {
+	fprintf(stderr, "target_stack_clear failed\n"
+		"error %d: %s\n", err, error_to_string(err));
+	return err;
+    }
+    err = makefile_clear(&makefile);
+    if (err != ERROR_NONE)
+    {
+	fprintf(stderr, "makefile_clear failed\n"
+		"error %d: %s\n", err, error_to_string(err));
+	return err;
     }
 
     return err;
@@ -75,7 +129,7 @@ enum error parse_file(const char *file_name)
     line_num = 1;
     while (fgets(line, MAX_LINE_SIZE, file) != NULL)
     {
-        int err;
+        enum error err;
 
         err = parse_line(line, left, op, right);
         if (err != 0)
@@ -88,8 +142,8 @@ enum error parse_file(const char *file_name)
         err = select_parsefunc(left, op, right);
         if (err != 0)
         {
-            fprintf(stderr, "Parse error %d on line %d of %s:\n\t%s",
-                    err, line_num, file_name, line);
+            fprintf(stderr, "Parse erro on line %d of %s:\n\t%s",
+                    line_num, file_name, line);
             return err;
         }
 
@@ -158,9 +212,7 @@ enum error parse_line(const char *line, char *left, char *op, char *right)
     return 0;
 }
 
-/*
- *	Function for parsing specific commands
- */
+/* Function for parsing specific commands */
 enum error select_parsefunc(char *left, char *op, char *right)
 {
     if (strlen(left) == 0)
@@ -173,40 +225,167 @@ enum error select_parsefunc(char *left, char *op, char *right)
         return parsefunc_compileopts(op, right);
     if (strcmp(left, "LINKOPTS") == 0)
         return parsefunc_linkopts(op, right);
-    if (strcmp(left, "TARGETS") == 0)
-        return parsefunc_targets(op, right);
+    if (strcmp(left, "BINARIES") == 0)
+        return parsefunc_binaries(op, right);
     if (strcmp(left, "SOURCES") == 0)
         return parsefunc_sources(op, right);
 
-    return ERROR_UNIMPLEMENTED;
+    RETURN_UNIMPLEMENTED;
 }
 
 enum error parsefunc_languages(char *op, char *right)
 {
-    return ERROR_UNIMPLEMENTED;
+    if (strcmp(op, "+=") == 0)
+    {
+	enum error err;
+
+        err = languages_add(right);
+	if (err != ERROR_NONE)
+	    return err;
+
+	return ERROR_NONE;
+    }
+
+    fprintf(stderr, "Only += is supported for LANGUAGES, tried '%s'\n", op);
+    return ERROR_ILLEGAL_OP;
 }
 
 enum error parsefunc_prefix(char *op, char *right)
 {
-    return ERROR_UNIMPLEMENTED;
+    RETURN_UNIMPLEMENTED;
 }
 
 enum error parsefunc_compileopts(char *op, char *right)
 {
-    return ERROR_UNIMPLEMENTED;
+    struct language * last_lang;
+
+    /* Tries to find the last added language */
+    last_lang = languages_last_added();
+    if (last_lang == NULL)
+    {
+	fprintf(stderr, "Called COMPILEOPTS before LANGUAGES or TARGETS\n");
+	return ERROR_NULL_POINTER;
+    }
+
+    /* Adds the compile option to the last found language */
+    if (strcmp(op, "+=") == 0)
+	return string_list_add(last_lang->compile_opts, right);
+    if (strcmp(op, "-=") == 0)
+	return string_list_del(last_lang->compile_opts, right);
+
+    /* All ops but += and -= are illegal */
+    fprintf(stderr, "Unrecognized operation '%s' on COMPILEOPTS\n", op);
+    return ERROR_ILLEGAL_OP;
 }
 
 enum error parsefunc_linkopts(char *op, char *right)
 {
-    return ERROR_UNIMPLEMENTED;
+    struct language * last_lang;
+
+    /* Tries to find the last added language */
+    last_lang = languages_last_added();
+    if (last_lang == NULL)
+    {
+	fprintf(stderr, "Called LINKOPTS before LANGUAGES or TARGETS\n");
+	return ERROR_NULL_POINTER;
+    }
+
+    /* Adds the compile option to the last found language */
+    if (strcmp(op, "+=") == 0)
+	return string_list_add(last_lang->link_opts, right);
+    if (strcmp(op, "-=") == 0)
+	return string_list_del(last_lang->link_opts, right);
+
+    /* All ops but += and -= are illegal */
+    fprintf(stderr, "Unrecognized operation '%s' on COMPILEOPTS\n", op);
+    return ERROR_ILLEGAL_OP;
 }
 
-enum error parsefunc_targets(char *op, char *right)
+enum error parsefunc_binaries(char *op, char *right)
 {
-    return ERROR_UNIMPLEMENTED;
+    enum error err;
+    struct target * t;
+    
+    /* The list of binaries can only be added to, not subtracted from */
+    if (strcmp(op, "+=") != 0)
+    {
+	fprintf(stderr, "BINARIES only supports +=, not '%s'\n", op);
+	return ERROR_ILLEGAL_OP;
+    }
+
+    /* Pops of a source and a binary */
+    t = target_stack_peek(&target_stack);
+    if (t != NULL && t->type != TARGET_TYPE_SOURCE)
+    {
+	fprintf(stderr, "Passed a target without a source\n");
+	return ERROR_ILLEGAL_OP;
+    }
+    if (t != NULL)
+	target_stack_pop(&target_stack);
+
+    t = target_stack_peek(&target_stack);
+    if (t != NULL && t->type != TARGET_TYPE_BINARY)
+    {
+	fprintf(stderr, "Multiple sources for a single target\n");
+	return ERROR_INTERNAL_STACK;
+    }
+    if (t != NULL)
+	target_stack_pop(&target_stack);
+
+    /* Makes a new target, which will end up representing this binary */
+    err = target_stack_push(&target_stack);
+    if (err != ERROR_NONE)
+	return err;
+
+    /* Fills out the current target */
+    t = target_stack_peek(&target_stack);
+    ASSERT_RETURN(t != NULL, ERROR_NULL_POINTER); /* No way to recover here */
+    
+    t->type = TARGET_TYPE_BINARY;
+    t->passed_path = strdup(right);
+
+    return ERROR_NONE;
 }
 
 enum error parsefunc_sources(char *op, char *right)
 {
-    return ERROR_UNIMPLEMENTED;
+    enum error err;
+    struct target * t;
+    
+    /* The list of sources can only be added to, not subtracted from */
+    if (strcmp(op, "+=") != 0)
+    {
+	fprintf(stderr, "SOURCES only supports +=, not '%s'\n", op);
+	return ERROR_ILLEGAL_OP;
+    }
+
+    /* If we just grabbed a source, then drop it */
+    t = target_stack_peek(&target_stack);
+    ASSERT_RETURN(t != NULL, ERROR_NULL_POINTER);
+
+    if (t->type == TARGET_TYPE_SOURCE)
+    {
+	err = target_stack_pop(&target_stack);
+	if (err != ERROR_NONE)
+	    return err;
+    }
+
+    /* Ensures that the stack is proper */
+    t = target_stack_peek(&target_stack);
+    ASSERT_RETURN(t != NULL, ERROR_NULL_POINTER);
+    ASSERT_RETURN(t->type == TARGET_TYPE_BINARY, ERROR_INTERNAL_STACK);
+
+    /* Makes a new target, which will end up representing this binary */
+    err = target_stack_push(&target_stack);
+    if (err != ERROR_NONE)
+	return err;
+
+    /* Fills out the current target */
+    t = target_stack_peek(&target_stack);
+    ASSERT_RETURN(t != NULL, ERROR_NULL_POINTER); /* No way to recover here */
+    
+    t->type = TARGET_TYPE_SOURCE;
+    t->passed_path = strdup(right);
+
+    return ERROR_NONE;
 }

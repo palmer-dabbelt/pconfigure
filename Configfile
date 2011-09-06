@@ -5,7 +5,7 @@ COMPILEOPTS += -pedantic
 COMPILEOPTS += -g
 COMPILEOPTS += -DDEBUG
 
-TARGETS += pconfigure
+BINARIES += pconfigure
 LINKOPTS += -lclang
 LINKOPTS += -lLLVM-2.8
 LINKOPTS += -L`llvm-config --libdir`
@@ -13,5 +13,5 @@ LINKOPTS += -Wl,-R`llvm-config --libdir`
 SOURCES += pconfigure/main.c
 COMPILEOPTS += -I`llvm-config --includedir`
 
-TARGETS += pbashc
+BINARIES += pbashc
 SOURCES += pbashc/main.c
