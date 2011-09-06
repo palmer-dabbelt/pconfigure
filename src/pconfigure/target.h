@@ -3,6 +3,7 @@
 
 #include "error.h"
 #include "string_list.h"
+#include "makefile.h"
 
 enum target_type
 {
@@ -21,6 +22,10 @@ struct target
     /* Targets all have a type */
     enum target_type type;
 
+    /* Paths that can be set with options */
+    char * bin_dir;
+    char * src_dir;
+
     /* The path passed when this target was created */
     char * passed_path;
 
@@ -31,6 +36,9 @@ struct target
     /* Targets can have their own options */
     struct string_list * compile_opts;
     struct string_list * link_opts;
+
+    /* Every target needs to be written to a makefile */
+    struct makefile * makefile;
 };
 
 /* Initializes the target module */

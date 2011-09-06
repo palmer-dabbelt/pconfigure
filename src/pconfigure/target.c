@@ -1,6 +1,7 @@
 #include "target.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 enum error target_boot(void)
 {
@@ -15,6 +16,11 @@ enum error target_init(struct target * t)
     t->type = TARGET_TYPE_NONE;
     t->passed_path = NULL;
     t->full_path = NULL;
+
+    t->bin_dir = NULL;
+    t->src_dir = NULL;
+
+    t->makefile = NULL;
     
     t->compile_opts = malloc(sizeof(*(t->compile_opts)));
     if (t->compile_opts == NULL)
@@ -38,7 +44,39 @@ enum error target_clear(struct target * t)
 {
     enum error err;
     
-    /* 
+    /* This is the full path to the target (ie, including "bin/" or "src/") */
+    if (t->full_path == NULL)
+    {
+	switch (t->type)
+	{
+	case TARGET_TYPE_NONE:
+	    t->full_path = NULL;
+	    break;
+	case TARGET_TYPE_BINARY:
+	    ASSERT_RETURN(t->passed_path != NULL, ERROR_NULL_POINTER);
+	    ASSERT_RETURN(t->bin_dir != NULL, ERROR_NULL_POINTER);
+	    t->full_path = malloc(strlen(t->passed_path)+strlen(t->bin_dir)+3);
+	    t->full_path[0] = '\0';
+	    strcat(t->full_path, t->passed_path);
+	    strcat(t->full_path, "/");
+	    strcat(t->full_path, t->bin_dir);
+	    break;
+	case TARGET_TYPE_SOURCE:
+	    ASSERT_RETURN(t->passed_path != NULL, ERROR_NULL_POINTER);
+	    ASSERT_RETURN(t->src_dir != NULL, ERROR_NULL_POINTER);
+	    t->full_path = malloc(strlen(t->passed_path)+strlen(t->src_dir)+3);
+	    t->full_path[0] = '\0';
+	    strcat(t->full_path, t->passed_path);
+	    strcat(t->full_path, "/");
+	    strcat(t->full_path, t->src_dir);
+	    break;
+	}
+    }
+
+    
+
+    /* Writes the target out to the makefile */
+    
 
     /* Cleans up this target */
     t->type = TARGET_TYPE_NONE;

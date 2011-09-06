@@ -6,3 +6,4 @@ Configfile.local
 obj/
 Configfile-c
 Configfile-c.local
+pconfigure
