@@ -21,9 +21,11 @@ enum error target_init(struct target * t)
     t->full_path = NULL;
 
     t->bin_dir = strdup(DEFAULT_CONTEXT_BINDIR);
+    t->obj_dir = strdup(DEFAULT_CONTEXT_OBJDIR);
     t->src_dir = strdup(DEFAULT_CONTEXT_SRCDIR);
 
     t->makefile = NULL;
+    t->language = NULL;
     
     t->compile_opts = malloc(sizeof(*(t->compile_opts)));
     if (t->compile_opts == NULL)
@@ -79,12 +81,13 @@ enum error target_clear(struct target * t)
     ASSERT_RETURN(t->full_path != NULL, ERROR_NULL_POINTER);
 
     /* Writes the target out to the makefile */
-    fprintf(stderr, "t->full_path = '%s'\n", t->full_path);
+
 
     /* Cleans up this target */
     t->type = TARGET_TYPE_NONE;
 
     FREE(t->bin_dir);
+    FREE(t->obj_dir);
     FREE(t->src_dir);
 
     if (t->passed_path != NULL)
@@ -117,7 +120,11 @@ enum error target_copy(struct target *dest, struct target *source)
     dest->full_path = NULL;
 
     dest->bin_dir = strdup(source->bin_dir);
+    dest->obj_dir = strdup(source->obj_dir);
     dest->src_dir = strdup(source->src_dir);
+
+    dest->makefile = NULL;
+    dest->language = NULL;
 
     dest->compile_opts = malloc(sizeof(*(dest->compile_opts)));
     if (dest->compile_opts == NULL)

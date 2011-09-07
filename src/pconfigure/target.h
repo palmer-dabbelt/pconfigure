@@ -4,6 +4,7 @@
 #include "error.h"
 #include "string_list.h"
 #include "makefile.h"
+#include "languages/language.h"
 
 enum target_type
 {
@@ -24,6 +25,7 @@ struct target
 
     /* Paths that can be set with options */
     char * bin_dir;
+    char * obj_dir;
     char * src_dir;
 
     /* The path passed when this target was created */
@@ -39,6 +41,9 @@ struct target
 
     /* Every target needs to be written to a makefile */
     struct makefile * makefile;
+
+    /* Every target has one language associated with it */
+    struct language * language;
 };
 
 /* Initializes the target module */
