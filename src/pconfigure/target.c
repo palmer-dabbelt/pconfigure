@@ -80,6 +80,8 @@ enum error target_clear(struct target * t)
 
     ASSERT_RETURN(t->full_path != NULL, ERROR_NULL_POINTER);
 
+    /* 
+
     /* Writes the target out to the makefile */
 
 
