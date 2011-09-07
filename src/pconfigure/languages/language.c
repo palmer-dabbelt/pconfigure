@@ -7,6 +7,8 @@
 
 enum error language_init(struct language * l)
 {
+    ASSERT_RETURN(l != NULL, ERROR_NULL_POINTER);
+
     l->name = NULL;
     
     l->compile_opts = malloc(sizeof(*(l->compile_opts)));
@@ -21,6 +23,26 @@ enum error language_init(struct language * l)
 	free(l->compile_opts);
 	return ERROR_MALLOC_NULL;
     }
+    string_list_init(l->link_opts);
 
+    return ERROR_NONE;
+}
+
+enum error language_clear(struct language * l)
+{
+    enum error err;
+    
+    ASSERT_RETURN(l != NULL, ERROR_NULL_POINTER);
+
+    err = string_list_clear(l->compile_opts);
+    if (err != ERROR_NONE)
+	return err;
+    free(l->compile_opts);
+
+    err = string_list_clear(l->link_opts);
+    if (err != ERROR_NONE)
+	return err;
+    free(l->link_opts);
+    
     return ERROR_NONE;
 }

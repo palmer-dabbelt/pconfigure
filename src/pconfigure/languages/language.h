@@ -15,5 +15,6 @@ struct language
 
 /* Initializes an empty language */
 enum error language_init(struct language * l);
+enum error language_clear(struct language * l);
 
 #endif

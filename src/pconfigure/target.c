@@ -1,7 +1,10 @@
 #include "target.h"
 
+#include "defaults.h"
 #include <stdlib.h>
 #include <string.h>
+
+#define FREE(x) {free(x) ; x = NULL;}
 
 enum error target_boot(void)
 {
@@ -17,8 +20,8 @@ enum error target_init(struct target * t)
     t->passed_path = NULL;
     t->full_path = NULL;
 
-    t->bin_dir = NULL;
-    t->src_dir = NULL;
+    t->bin_dir = strdup(DEFAULT_CONTEXT_BINDIR);
+    t->src_dir = strdup(DEFAULT_CONTEXT_SRCDIR);
 
     t->makefile = NULL;
     
@@ -31,7 +34,7 @@ enum error target_init(struct target * t)
     if (t->link_opts == NULL)
     {
 	string_list_clear(t->compile_opts);
-	free(t->compile_opts);
+	FREE(t->compile_opts);
 	t->compile_opts = NULL;
 	return ERROR_MALLOC_NULL;
     }
@@ -57,46 +60,45 @@ enum error target_clear(struct target * t)
 	    ASSERT_RETURN(t->bin_dir != NULL, ERROR_NULL_POINTER);
 	    t->full_path = malloc(strlen(t->passed_path)+strlen(t->bin_dir)+3);
 	    t->full_path[0] = '\0';
-	    strcat(t->full_path, t->passed_path);
-	    strcat(t->full_path, "/");
 	    strcat(t->full_path, t->bin_dir);
+	    strcat(t->full_path, "/");
+	    strcat(t->full_path, t->passed_path);
 	    break;
 	case TARGET_TYPE_SOURCE:
 	    ASSERT_RETURN(t->passed_path != NULL, ERROR_NULL_POINTER);
 	    ASSERT_RETURN(t->src_dir != NULL, ERROR_NULL_POINTER);
 	    t->full_path = malloc(strlen(t->passed_path)+strlen(t->src_dir)+3);
 	    t->full_path[0] = '\0';
-	    strcat(t->full_path, t->passed_path);
-	    strcat(t->full_path, "/");
 	    strcat(t->full_path, t->src_dir);
+	    strcat(t->full_path, "/");
+	    strcat(t->full_path, t->passed_path);
 	    break;
 	}
     }
 
-    
+    ASSERT_RETURN(t->full_path != NULL, ERROR_NULL_POINTER);
 
     /* Writes the target out to the makefile */
-    
+    fprintf(stderr, "t->full_path = '%s'\n", t->full_path);
 
     /* Cleans up this target */
     t->type = TARGET_TYPE_NONE;
 
+    FREE(t->bin_dir);
+    FREE(t->src_dir);
+
     if (t->passed_path != NULL)
-    {
-	free(t->passed_path);
-	t->passed_path = NULL;
-    }
+	FREE(t->passed_path);
     if (t->full_path != NULL)
-    {
-	free(t->full_path);
-	t->full_path = NULL;
-    }
+	FREE(t->full_path);
 
     err = string_list_clear(t->compile_opts);
+    FREE(t->compile_opts);
     if (err != ERROR_NONE)
 	return err;
 
     err = string_list_clear(t->link_opts);
+    FREE(t->link_opts);
     if (err != ERROR_NONE)
 	return err;
     
@@ -114,13 +116,16 @@ enum error target_copy(struct target *dest, struct target *source)
     dest->passed_path = NULL;
     dest->full_path = NULL;
 
+    dest->bin_dir = strdup(source->bin_dir);
+    dest->src_dir = strdup(source->src_dir);
+
     dest->compile_opts = malloc(sizeof(*(dest->compile_opts)));
     if (dest->compile_opts == NULL)
 	return ERROR_MALLOC_NULL;
     err = string_list_copy(dest->compile_opts, source->compile_opts);
     if (err != ERROR_NONE)
     {
-	free(dest->compile_opts);
+	FREE(dest->compile_opts);
 	return err;
     }
 
@@ -128,7 +133,7 @@ enum error target_copy(struct target *dest, struct target *source)
     if (dest->link_opts == NULL)
     {
 	string_list_clear(dest->compile_opts);
-	free(dest->compile_opts);
+	FREE(dest->compile_opts);
 	dest->compile_opts = NULL;
 	return ERROR_MALLOC_NULL;
     }
@@ -136,9 +141,9 @@ enum error target_copy(struct target *dest, struct target *source)
     if (err != ERROR_NONE)
     {
 	string_list_clear(dest->compile_opts);
-	free(dest->compile_opts);
+	FREE(dest->compile_opts);
 	dest->compile_opts = NULL;
-	free(dest->link_opts);
+	FREE(dest->link_opts);
 	dest->link_opts = NULL;
 	return err;
     }

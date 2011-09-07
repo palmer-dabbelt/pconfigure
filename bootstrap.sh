@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Builds every file into pconfigure
-gcc -Wall -Werror -pedantic -DDEBUG_RETURNS -g `find src/pconfigure/ -iname "*.c"` -lclang -lLLVM-2.8 -L`llvm-config --libdir` -Wl,-R`llvm-config --libdir` -o "pconfigure" || exit $?
+gcc -Wall -Werror -pedantic -DDEBUG_RETURNS -g `find src/pconfigure/ -iname "*.c"` -o "pconfigure" || exit $?
 
 # Runs pconfigure in order to build itself
-./pconfigure
+valgrind --leak-check=full --show-reachable=yes ./pconfigure
 err="$?"
 if [[ "$err" != "0" ]]
 then

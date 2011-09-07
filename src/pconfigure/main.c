@@ -108,6 +108,9 @@ int main(int argc, char **argv)
 	return err;
     }
 
+    /* Halts what was booted */
+    languages_halt();
+
     return err;
 }
 

@@ -5,6 +5,8 @@
 
 #include "error.h"
 
+#define FREE(x) {free(x); x = NULL;}
+
 enum error string_list_boot(void)
 {
     return ERROR_NONE;
@@ -31,8 +33,8 @@ enum error string_list_clear(struct string_list * l)
 	struct string_list_node * next;
 
 	next = cur->next;
-	free(cur->data);
-	free(cur);
+	FREE(cur->data);
+	FREE(cur);
 	
 	cur = next;
     }

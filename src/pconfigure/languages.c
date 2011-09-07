@@ -5,6 +5,8 @@
 
 #include "languages/c.h"
 
+#define FREE(x) {free(x); x = NULL;}
+
 /* The last language to be added, used for COMPILEOPTS */
 static struct language * last_added;
 
@@ -27,6 +29,28 @@ enum error languages_boot(void)
 
     last_added = NULL;
     list = NULL;
+
+    return ERROR_NONE;
+}
+
+enum error languages_halt(void)
+{
+    enum error err;
+    struct language_list * cur;
+
+    cur = list;
+    while (cur != NULL)
+    {
+	struct language_list * next;
+
+	next = cur->next;
+	FREE(cur);
+	cur = next;
+    }
+
+    err = language_c_halt();
+    if (err != ERROR_NONE)
+	return err;
 
     return ERROR_NONE;
 }

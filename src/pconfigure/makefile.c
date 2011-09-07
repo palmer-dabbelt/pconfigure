@@ -3,6 +3,8 @@
 #include "defaults.h"
 #include <stdlib.h>
 
+#define FREE(x) {free(x); x = NULL;}
+
 enum error makefile_boot(void)
 {
     return ERROR_NONE;
@@ -30,7 +32,7 @@ enum error makefile_init(struct makefile * m)
     if (err != ERROR_NONE)
     {
 	fclose(m->file);
-	free(m->targets_all);
+	FREE(m->targets_all);
 	return err;
     }
 
@@ -42,9 +44,16 @@ enum error makefile_init(struct makefile * m)
 
 enum error makefile_clear(struct makefile * m)
 {
+    enum error err;
+    
     fprintf(m->file, "__pconfigure_all:\n\n");
     fclose(m->file);
     m->file = NULL;
+
+    err = string_list_clear(m->targets_all);
+    if (err != ERROR_NONE)
+	return err;
+    FREE(m->targets_all);
 
     return ERROR_NONE;
 }

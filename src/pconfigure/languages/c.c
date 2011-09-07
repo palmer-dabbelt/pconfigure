@@ -24,6 +24,23 @@ enum error language_c_boot(void)
     return ERROR_NONE;
 }
 
+enum error language_c_halt(void)
+{
+    enum error err;
+
+    free(lang->l.name);
+    lang->l.name = NULL;
+
+    err = language_clear(&(lang->l));
+    if (err != ERROR_NONE)
+	return err;
+
+    free(lang);
+    lang = NULL;
+
+    return ERROR_NONE;
+}
+
 struct language * language_c_add(const char * name)
 {
     if (strcmp(name, lang->l.name) == 0)

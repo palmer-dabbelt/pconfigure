@@ -3,6 +3,8 @@
 #include "error.h"
 #include <stdlib.h>
 
+#define FREE(x) {free(x); x = NULL;}
+
 enum error target_stack_boot(void)
 {
     return ERROR_NONE;
@@ -51,7 +53,7 @@ enum error target_stack_push(struct target_stack *s)
 
     if (err != ERROR_NONE)
     {
-	free(t);
+	FREE(t);
 	return err;
     }
 
@@ -84,7 +86,7 @@ enum error target_stack_pop(struct target_stack *s)
 	return err;
 
     s->head = new_head;
-    free(t);
+    FREE(t);
     
     return ERROR_NONE;
 }

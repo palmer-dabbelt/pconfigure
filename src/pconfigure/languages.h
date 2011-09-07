@@ -6,6 +6,7 @@
 
 /* Initializes the languages module */
 enum error languages_boot(void);
+enum error languages_halt(void);
 
 /* Adds a single language to the list of currently availiable languages */
 enum error languages_add(const char *name);
