@@ -89,3 +89,22 @@ struct language * languages_last_added(void)
 {
     return last_added;
 }
+
+struct language * languages_search(struct target * t)
+{
+    struct language_list * cur;
+
+    cur = list;
+    while (cur != NULL)
+    {
+	struct language * ret;
+
+	ret = cur->lang->search(cur->lang, t);
+	if (ret != NULL)
+	    return ret;
+
+	cur = cur->next;
+    }
+
+    return NULL;
+}

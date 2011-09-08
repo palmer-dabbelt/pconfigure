@@ -1,6 +1,7 @@
 #include "target.h"
 
 #include "defaults.h"
+#include "languages.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -80,10 +81,19 @@ enum error target_clear(struct target * t)
 
     ASSERT_RETURN(t->full_path != NULL, ERROR_NULL_POINTER);
 
-    /* 
+    /* Attempts to find a language that works for this file */
+    if (t->language == NULL)
+	t->language = languages_search(t);
+
+    if (t->language == NULL)
+    {
+	/* FIXME: there is a memory leak here */
+	fprintf(stderr, "Could not find a language for '%s'\n", t->full_path);
+	return ERROR_ILLEGAL_OP;
+    }
 
     /* Writes the target out to the makefile */
-
+    t->language->write(t->language, t);
 
     /* Cleans up this target */
     t->type = TARGET_TYPE_NONE;

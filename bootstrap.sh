@@ -4,7 +4,8 @@
 gcc -Wall -Werror -pedantic -DDEBUG_RETURNS -g `find src/pconfigure/ -iname "*.c"` -o "pconfigure" || exit $?
 
 # Runs pconfigure in order to build itself
-valgrind --leak-check=full --show-reachable=yes ./pconfigure
+#valgrind --leak-check=full --show-reachable=yes ./pconfigure
+./pconfigure
 err="$?"
 if [[ "$err" != "0" ]]
 then

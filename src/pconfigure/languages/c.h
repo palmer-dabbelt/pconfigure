@@ -2,6 +2,7 @@
 #define LANGUAGES_C_H
 
 #include "language.h"
+#include "../target.h"
 
 struct language_c
 {
@@ -16,7 +17,7 @@ struct language_c
 enum error language_c_boot(void);
 enum error language_c_halt(void);
 
-/* Returns NULL if the given language is C, otherwise returns the C language */
+/* Returns a pointer to the (static) C language, if the name matches */
 struct language * language_c_add(const char * name);
 
 #endif
