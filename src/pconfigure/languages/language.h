@@ -7,20 +7,22 @@
 struct language;
 struct target;
 
-typedef struct language * (*language_func_search)(struct language * l, struct target * t);
-typedef enum error (*language_func_write)(struct language * l, struct target * t);
+typedef struct language *(*language_func_search) (struct language * l,
+                                                  struct target * t);
+typedef enum error (*language_func_write) (struct language * l,
+                                           struct target * t);
 
 struct language
 {
     /* The name of the language */
-    char * name;
+    char *name;
 
     /* The extension of source files of this language */
-    char * extension;
+    char *extension;
 
     /* Lists of language-specific options */
-    struct string_list * compile_opts;
-    struct string_list * link_opts;
+    struct string_list *compile_opts;
+    struct string_list *link_opts;
 
     /* A bunch of function pointers */
     language_func_search search;
@@ -28,7 +30,7 @@ struct language
 };
 
 /* Initializes an empty language */
-enum error language_init(struct language * l);
-enum error language_clear(struct language * l);
+enum error language_init(struct language *l);
+enum error language_clear(struct language *l);
 
 #endif

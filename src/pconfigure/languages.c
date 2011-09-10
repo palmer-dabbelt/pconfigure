@@ -8,16 +8,16 @@
 #define FREE(x) {free(x); x = NULL;}
 
 /* The last language to be added, used for COMPILEOPTS */
-static struct language * last_added;
+static struct language *last_added;
 
 /* A list of all the languages in the system, used to search for which ones
    should be used to compile */
 struct language_list
 {
-    struct language_list * next;
-    struct language * lang;
+    struct language_list *next;
+    struct language *lang;
 };
-static struct language_list * list;
+static struct language_list *list;
 
 enum error languages_boot(void)
 {
@@ -25,7 +25,7 @@ enum error languages_boot(void)
 
     err = language_c_boot();
     if (err != ERROR_NONE)
-	return err;
+        return err;
 
     last_added = NULL;
     list = NULL;
@@ -36,74 +36,75 @@ enum error languages_boot(void)
 enum error languages_halt(void)
 {
     enum error err;
-    struct language_list * cur;
+    struct language_list *cur;
 
     cur = list;
     while (cur != NULL)
     {
-	struct language_list * next;
+        struct language_list *next;
 
-	next = cur->next;
-	FREE(cur);
-	cur = next;
+        next = cur->next;
+        FREE(cur);
+        cur = next;
     }
 
     err = language_c_halt();
     if (err != ERROR_NONE)
-	return err;
+        return err;
 
     return ERROR_NONE;
 }
 
-enum error languages_add(const char * name)
+enum error languages_add(const char *name)
 {
-    struct language * ret, * ret_good;
+    struct language *ret, *ret_good;
 
     /* Searches for a language that can match this languages' name */
     ret_good = NULL;
 
     ret = language_c_add(name);
     if (ret != NULL)
-	ret_good = ret;
+        ret_good = ret;
 
     /* If a language was found, add it to the list */
     if (ret_good != NULL)
     {
-	struct language_list * new;
-	last_added = ret_good;
-	
-	new = malloc(sizeof(*new));
-	ASSERT_RETURN(new != NULL, ERROR_MALLOC_NULL);
-	new->next = list;
-	new->lang = last_added;
-	list = new;
+        struct language_list *new;
 
-	return ERROR_NONE;
+        last_added = ret_good;
+
+        new = malloc(sizeof(*new));
+        ASSERT_RETURN(new != NULL, ERROR_MALLOC_NULL);
+        new->next = list;
+        new->lang = last_added;
+        list = new;
+
+        return ERROR_NONE;
     }
 
     fprintf(stderr, "Language '%s' does not exist\n", name);
     return ERROR_FILE_NOT_FOUND;
 }
 
-struct language * languages_last_added(void)
+struct language *languages_last_added(void)
 {
     return last_added;
 }
 
-struct language * languages_search(struct target * t)
+struct language *languages_search(struct target *t)
 {
-    struct language_list * cur;
+    struct language_list *cur;
 
     cur = list;
     while (cur != NULL)
     {
-	struct language * ret;
+        struct language *ret;
 
-	ret = cur->lang->search(cur->lang, t);
-	if (ret != NULL)
-	    return ret;
+        ret = cur->lang->search(cur->lang, t);
+        if (ret != NULL)
+            return ret;
 
-	cur = cur->next;
+        cur = cur->next;
     }
 
     return NULL;

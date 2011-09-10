@@ -49,11 +49,11 @@ static inline char *error_to_string(enum error error)
         return
             "ERROR_FILE_READ: an unexpected error was detected while trying to read from a file";
     case ERROR_ALREADY_BOOT:
-	return "ERROR_ALREADY_BOOT: this module was already booted";
+        return "ERROR_ALREADY_BOOT: this module was already booted";
     case ERROR_MALLOC_NULL:
-	return "ERROR_MALLOC_NULL: malloc returned NULL";
+        return "ERROR_MALLOC_NULL: malloc returned NULL";
     case ERROR_INTERNAL_STACK:
-	return "ERROR_INTERNAL_STACK: internal error related to the stack";
+        return "ERROR_INTERNAL_STACK: internal error related to the stack";
     default:
         return "unhandled error code in error_to_string";
     }

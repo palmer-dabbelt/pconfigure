@@ -23,7 +23,7 @@ enum error target_stack_clear(struct target_stack *s);
 enum error target_stack_push(struct target_stack *s);
 
 /* Looks at the current top of the target stack */
-struct target * target_stack_peek(struct target_stack *s);
+struct target *target_stack_peek(struct target_stack *s);
 
 /* Removes (and frees) an entry from the top of the target stack */
 enum error target_stack_pop(struct target_stack *s);
