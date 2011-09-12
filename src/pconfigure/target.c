@@ -122,6 +122,11 @@ enum error target_clear(struct target *t)
     return ERROR_NONE;
 }
 
+enum error target_clear_nowrite(struct target *t)
+{
+    RETURN_UNIMPLEMENTED;
+}
+
 enum error target_copy(struct target *dest, struct target *source)
 {
     enum error err;

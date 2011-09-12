@@ -24,7 +24,9 @@ enum error
     ERROR_FILE_READ,
     ERROR_ALREADY_BOOT,
     ERROR_MALLOC_NULL,
-    ERROR_INTERNAL_STACK
+    ERROR_INTERNAL_STACK,
+    ERROR_ALREADY_EXISTS,
+    ERROR_INTERNAL_STATE
 };
 
 static inline char *error_to_string(enum error error)
@@ -54,9 +56,13 @@ static inline char *error_to_string(enum error error)
         return "ERROR_MALLOC_NULL: malloc returned NULL";
     case ERROR_INTERNAL_STACK:
         return "ERROR_INTERNAL_STACK: internal error related to the stack";
-    default:
-        return "unhandled error code in error_to_string";
+    case ERROR_ALREADY_EXISTS:
+        return "ERROR_ALREADY_EXISTS: a unique identifier already exists";
+    case ERROR_INTERNAL_STATE:
+        return "ERROR_INTERNAL_STATE: improper state for this operation";
     }
+
+    return "error in error_string()";
 }
 
 #endif

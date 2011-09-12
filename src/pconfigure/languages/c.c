@@ -4,13 +4,26 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <clang-c/Index.h>
+
 #define FREE(x) {free(x); x = NULL;}
+
+#define HASH_CODE_SIZE (strlen("__HASH_CODE__"))
 
 static struct language_c *lang = NULL;
 
 /* Functions that fill out the lang structure */
 static struct language *l_search(struct language_c *l, struct target *t);
 static enum error l_write(struct language_c *l, struct target *t);
+
+/* Appends a hash string to the given string, like strcat */
+static void hash_cat(char *out, struct target *t);
+
+/* Adds all the dependencies of a given source file (by full path) to the given
+   makefile. */
+static void write_deps(CXFile included_file,
+                       CXSourceLocation * inclusion_stack,
+                       unsigned include_len, struct target *t);
 
 enum error language_c_boot(void)
 {
@@ -28,6 +41,11 @@ enum error language_c_boot(void)
     lang->l.name = strdup("c");
     lang->l.extension = strdup(".c");
 
+    lang->l.compile_str = strdup("CC");
+    lang->l.link_str = strdup("LD");
+    lang->l.compile_cmd = strdup("gcc");
+    lang->l.link_cmd = strdup("gcc");
+
     lang->l.search = (language_func_search) & l_search;
     lang->l.write = (language_func_write) & l_write;
 
@@ -40,6 +58,10 @@ enum error language_c_halt(void)
 
     FREE(lang->l.name);
     FREE(lang->l.extension);
+    FREE(lang->l.compile_str);
+    FREE(lang->l.link_str);
+    FREE(lang->l.compile_cmd);
+    FREE(lang->l.link_cmd);
 
     err = language_clear(&(lang->l));
     if (err != ERROR_NONE)
@@ -80,5 +102,126 @@ struct language *l_search(struct language_c *l, struct target *t)
 
 enum error l_write(struct language_c *l, struct target *t)
 {
-    RETURN_UNIMPLEMENTED;
+    enum error err;
+
+    err = ERROR_NONE;
+
+    ASSERT_RETURN(l != NULL, ERROR_NULL_POINTER);
+    ASSERT_RETURN(t != NULL, ERROR_NULL_POINTER);
+
+    /* Writes the source target out to the makefile */
+    ASSERT_RETURN(t->makefile != NULL, ERROR_NULL_POINTER);
+
+    switch (t->type)
+    {
+    case TARGET_TYPE_NONE:
+        break;
+    case TARGET_TYPE_BINARY:
+        RETURN_UNIMPLEMENTED;
+        break;
+    case TARGET_TYPE_SOURCE:
+    {
+        char *object_file, *object_dir;
+        int object_file_size;
+        enum error err;
+        int clang_argc;
+        char **clang_argv;
+        CXIndex index;
+        CXTranslationUnit tu;
+        FILE *mff;
+
+        /* Generates the object file name */
+        object_file_size = 0;
+        object_file_size += strlen(t->obj_dir);
+        object_file_size += strlen("/");
+        object_file_size += strlen(t->passed_path);
+        object_file_size += strlen("/");
+        object_file_size += HASH_CODE_SIZE;
+        object_file_size += 2;
+
+        object_file = malloc(object_file_size);
+        object_file[0] = '\0';
+        strcat(object_file, t->obj_dir);
+        strcat(object_file, "/");
+        strcat(object_file, t->passed_path);
+        strcat(object_file, "/");
+
+        object_dir = strdup(object_file);
+
+        hash_cat(object_file, t);
+        strcat(object_file, ".o");
+
+        /* Creates a target for this makefile */
+        err = makefile_create_target(t->makefile, object_file);
+        if (err == ERROR_ALREADY_EXISTS)
+        {
+            FREE(object_file);
+            FREE(object_dir);
+            return err;
+        }
+
+        /* Starts the list of dependencies */
+        err = makefile_start_deps(t->makefile);
+
+        /* FIXME: Pass all the compile-time arguments */
+        clang_argc = 1;
+        clang_argv = malloc(sizeof(*clang_argv) * (clang_argc + 1));
+        clang_argv[0] = strdup(t->full_path);
+
+        /* libclang initialization */
+        index = clang_createIndex(0, 0);
+        tu = clang_parseTranslationUnit(index, 0,
+                                        (const char *const *)clang_argv,
+                                        clang_argc, 0, 0,
+                                        CXTranslationUnit_None);
+
+        /* Writes every dependency out to the makefile */
+        clang_getInclusions(tu, (CXInclusionVisitor) & write_deps, t);
+
+        /* We're finished writing the list of dependencies */
+        err = makefile_end_deps(t->makefile);
+
+        /* Writes the list of commands used to build this project */
+        makefile_start_cmds(t->makefile);
+        mff = t->makefile->file;
+
+        fprintf(mff, "\t@echo \"C%s\t%s\"\n", l->l.compile_str,
+                t->passed_path);
+        fprintf(mff, "\t@mkdir -p \"%s\"\n", object_dir);
+        fprintf(mff, "\t@%s -c \"%s\" -o \"%s\"\n",
+                l->l.compile_cmd, t->full_path, object_file);
+
+        makefile_end_cmds(t->makefile);
+
+        /* Cleans up all the allocated memory */
+        FREE(object_file);
+        FREE(object_dir);
+
+        break;
+    }
+    }
+
+    return ERROR_NONE;
+}
+
+static void hash_cat(char *out, struct target *t)
+{
+    strcat(out, "__HASH_CODE__");
+}
+
+static void write_deps(CXFile included_file,
+                       CXSourceLocation * inclusion_stack,
+                       unsigned include_len, struct target *t)
+{
+    CXString filename;
+    const char *filename_cstr;
+
+    filename = clang_getFileName(included_file);
+    filename_cstr = clang_getCString(filename);
+
+    /* Only write relative paths */
+    if (filename_cstr[0] != '/')
+        makefile_add_dep(t->makefile, filename_cstr);
+
+    clang_disposeString(filename);
 }

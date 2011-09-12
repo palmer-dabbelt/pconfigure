@@ -20,6 +20,14 @@ struct language
     /* The extension of source files of this language */
     char *extension;
 
+    /* These are printed when operating */
+    char *compile_str;
+    char *link_str;
+
+    /* These are used as commands when operating */
+    char *compile_cmd;
+    char *link_cmd;
+
     /* Lists of language-specific options */
     struct string_list *compile_opts;
     struct string_list *link_opts;

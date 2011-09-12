@@ -53,8 +53,11 @@ enum error target_boot(void);
 enum error target_init(struct target *t);
 
 /* Clears out a target, writing the required bits to the makefile in order
-   to actually build the target. */
+   to actually build the target.
+   _nowrite does not call language->write, so needs to be used from within
+   the implementation of l_write. */
 enum error target_clear(struct target *t);
+enum error target_clear_nowrite(struct target *t);
 
 /* Copies target "source" into target "dest" */
 enum error target_copy(struct target *dest, struct target *source);

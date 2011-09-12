@@ -7,7 +7,11 @@
 
 enum makefile_state
 {
-    MAKEFILE_STATE_NONE = 0
+    MAKEFILE_STATE_NONE = 0,
+    MAKEFILE_STATE_TARGET,
+    MAKEFILE_STATE_DEPS,
+    MAKEFILE_STATE_DEPS_DONE,
+    MAKEFILE_STATE_CMDS
 };
 
 struct makefile
@@ -21,6 +25,9 @@ struct makefile
 
     /* The list of targets to be build when one types "make all" */
     struct string_list *targets_all;
+
+    /* The list of all things that get built, ever */
+    struct string_list *build_list;
 
 };
 
@@ -38,9 +45,11 @@ enum error makefile_create_target(struct makefile *m, const char *name);
    raw fd writes) */
 enum error makefile_start_deps(struct makefile *m);
 enum error makefile_add_dep(struct makefile *m, const char *dep);
+enum error makefile_end_deps(struct makefile *m);
 
 /* Adds a new comand for building a target (_start as above) */
 enum error makefile_start_cmds(struct makefile *m);
 enum error makefile_add_cmd(struct makefile *m, const char *cmd);
+enum error makefile_end_cmds(struct makefile *m);
 
 #endif

@@ -12,6 +12,11 @@ enum error language_init(struct language *l)
     l->name = NULL;
     l->extension = NULL;
 
+    l->compile_str = NULL;
+    l->link_str = NULL;
+    l->compile_cmd = NULL;
+    l->link_cmd = NULL;
+
     l->compile_opts = malloc(sizeof(*(l->compile_opts)));
     if (l->compile_opts == NULL)
         return ERROR_MALLOC_NULL;

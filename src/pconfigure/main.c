@@ -385,10 +385,11 @@ enum error parsefunc_sources(char *op, char *right)
 
     /* Fills out the current target */
     t = target_stack_peek(&target_stack);
-    ASSERT_RETURN(t != NULL, ERROR_NULL_POINTER);       /* No way to recover here */
+    ASSERT_RETURN(t != NULL, ERROR_NULL_POINTER);       /* No way to recover */
 
     t->type = TARGET_TYPE_SOURCE;
     t->passed_path = strdup(right);
+    t->makefile = &makefile;
 
     return ERROR_NONE;
 }

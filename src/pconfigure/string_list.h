@@ -2,6 +2,7 @@
 #define STRING_LIST_H
 
 #include "error.h"
+#include <stdio.h>
 
 struct string_list_node
 {
@@ -28,5 +29,9 @@ enum error string_list_add(struct string_list *l, const char *to_add);
 
 /* Removes a string from the given list */
 enum error string_list_del(struct string_list *l, const char *to_del);
+
+/* Writes the given string_list out to the given file, seperated by sep */
+enum error string_list_fserialize(struct string_list *l, FILE * f,
+                                  const char *sep);
 
 #endif
