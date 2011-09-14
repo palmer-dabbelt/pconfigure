@@ -38,10 +38,20 @@ enum error target_init(struct target *t)
     {
         string_list_clear(t->compile_opts);
         FREE(t->compile_opts);
-        t->compile_opts = NULL;
         return ERROR_MALLOC_NULL;
     }
     string_list_init(t->link_opts);
+
+    t->deps = malloc(sizeof(*(t->deps)));
+    if (t->deps == NULL)
+    {
+        string_list_clear(t->compile_opts);
+        FREE(t->compile_opts);
+	string_list_clear(t->link_opts);
+	FREE(t->link_opts);
+        return ERROR_MALLOC_NULL;
+    }
+    string_list_init(t->deps);
 
     return ERROR_NONE;
 }

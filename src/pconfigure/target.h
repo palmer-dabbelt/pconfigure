@@ -39,6 +39,9 @@ struct target
     struct string_list *compile_opts;
     struct string_list *link_opts;
 
+    /* Each target can have a list of dependencies */
+    struct string_list *deps;
+
     /* Every target needs to be written to a makefile */
     struct makefile *makefile;
 

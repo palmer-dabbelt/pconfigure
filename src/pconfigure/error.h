@@ -14,6 +14,8 @@
 #define ASSERT_RETURN(s, e) if (!(s)) return e;
 #endif
 
+#define CHECK_ERROR(err) ASSERT_RETURN(err == ERROR_NONE, err)
+
 enum error
 {
     ERROR_NONE = 0,

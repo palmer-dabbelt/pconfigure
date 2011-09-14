@@ -117,8 +117,66 @@ enum error l_write(struct language_c *l, struct target *t)
     case TARGET_TYPE_NONE:
         break;
     case TARGET_TYPE_BINARY:
-        RETURN_UNIMPLEMENTED;
+    {
+        FILE *mff;
+        char *object_file;
+        int object_file_size;
+	struct string_list_node * cur;
+
+	/* Discovers the actual target name, and the actual target binary dir */
+        object_file_size = 0;
+        object_file_size += strlen(t->bin_dir);
+        object_file_size += strlen("/");
+        object_file_size += strlen(t->passed_path);
+
+        object_file = malloc(object_file_size);
+        object_file[0] = '\0';
+        strcat(object_file, t->bin_dir);
+        strcat(object_file, "/");
+        strcat(object_file, t->passed_path);
+
+	/* Writes the list of dependencies of this target */
+        err = makefile_create_target(t->makefile, object_file);
+        if (err == ERROR_ALREADY_EXISTS)
+        {
+            FREE(object_file);
+            return err;
+        }
+
+	/* Writes all the deps out */
+	makefile_start_deps(t->makefile);
+	cur = t->deps->head;
+	while (cur != NULL)
+	{
+	    makefile_add_dep(t->makefile, cur->data);
+	    cur = cur->next;
+	}
+	makefile_end_deps(t->makefile);
+
+        /* Writes the list of commands used to build this binary */
+        makefile_start_cmds(t->makefile);
+        mff = t->makefile->file;
+
+        fprintf(mff, "\t@echo \"C%s\t%s\"\n", l->l.link_str,
+                t->passed_path);
+        fprintf(mff, "\t@mkdir -p \"%s\"\n", t->bin_dir);
+        fprintf(mff, "\t@%s -o \"%s\"", l->l.link_cmd, t->full_path);
+	
+	cur = t->deps->head;
+	while (cur != NULL)
+	{
+	    fprintf(mff, " \"%s\"", cur->data);
+	    cur = cur->next;
+	}
+	fprintf(mff, "\n");
+
+        makefile_end_cmds(t->makefile);
+
+	/* Adds this to the list of all */
+	string_list_add(t->makefile->targets_all, t->full_path);
+
         break;
+    }
     case TARGET_TYPE_SOURCE:
     {
         char *object_file, *object_dir;
@@ -129,6 +187,10 @@ enum error l_write(struct language_c *l, struct target *t)
         CXIndex index;
         CXTranslationUnit tu;
         FILE *mff;
+
+	/* All sources must have a parent */
+	ASSERT_RETURN(t->parent != NULL, ERROR_NULL_POINTER);
+	ASSERT_RETURN(t->parent->deps != NULL, ERROR_NULL_POINTER);
 
         /* Generates the object file name */
         object_file_size = 0;
@@ -192,6 +254,9 @@ enum error l_write(struct language_c *l, struct target *t)
                 l->l.compile_cmd, t->full_path, object_file);
 
         makefile_end_cmds(t->makefile);
+
+	/* The parent (a binary) has another dependency */
+	string_list_add(t->parent->deps, object_file);
 
         /* Cleans up all the allocated memory */
         FREE(object_file);

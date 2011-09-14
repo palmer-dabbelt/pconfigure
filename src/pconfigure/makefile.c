@@ -64,8 +64,17 @@ enum error makefile_init(struct makefile *m)
 enum error makefile_clear(struct makefile *m)
 {
     enum error err;
+    struct string_list_node * cur;
 
-    fprintf(m->file, "__pconfigure_all:\n\n");
+    fprintf(m->file, "__pconfigure_all:");
+    cur = m->targets_all->head;
+    while (cur != NULL)
+    {
+	fprintf(m->file, " %s", cur->data);
+	cur = cur->next;
+    }
+    fprintf(m->file, "\n\n");
+
     fclose(m->file);
     m->file = NULL;
 

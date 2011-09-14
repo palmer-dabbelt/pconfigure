@@ -346,6 +346,7 @@ enum error parsefunc_binaries(char *op, char *right)
 
     t->type = TARGET_TYPE_BINARY;
     t->passed_path = strdup(right);
+    t->makefile = &makefile;
 
     return ERROR_NONE;
 }
