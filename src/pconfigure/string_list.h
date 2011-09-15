@@ -34,4 +34,7 @@ enum error string_list_del(struct string_list *l, const char *to_del);
 enum error string_list_fserialize(struct string_list *l, FILE * f,
                                   const char *sep);
 
+/* Checks if the given string is in the given string list */
+enum error string_list_include(struct string_list *l, const char *s);
+
 #endif

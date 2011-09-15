@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <assert.h>
 
 #include <clang-c/Index.h>
 
@@ -24,6 +26,12 @@ static void hash_cat(char *out, struct target *t);
 static void write_deps(CXFile included_file,
                        CXSourceLocation * inclusion_stack,
                        unsigned include_len, struct target *t);
+
+/* Adds all the dependencies of a given source file (by full path) to the given
+   makefile. */
+static void add_deps(CXFile included_file,
+                     CXSourceLocation * inclusion_stack,
+                     unsigned include_len, struct target *t);
 
 enum error language_c_boot(void)
 {
@@ -121,9 +129,9 @@ enum error l_write(struct language_c *l, struct target *t)
         FILE *mff;
         char *object_file;
         int object_file_size;
-	struct string_list_node * cur;
+        struct string_list_node *cur;
 
-	/* Discovers the actual target name, and the actual target binary dir */
+        /* Discovers the actual target name, and the actual target binary dir */
         object_file_size = 0;
         object_file_size += strlen(t->bin_dir);
         object_file_size += strlen("/");
@@ -135,45 +143,60 @@ enum error l_write(struct language_c *l, struct target *t)
         strcat(object_file, "/");
         strcat(object_file, t->passed_path);
 
-	/* Writes the list of dependencies of this target */
+        /* Writes the list of dependencies of this target */
         err = makefile_create_target(t->makefile, object_file);
-        if (err == ERROR_ALREADY_EXISTS)
+        if (err != ERROR_NONE)
         {
             FREE(object_file);
             return err;
         }
 
-	/* Writes all the deps out */
-	makefile_start_deps(t->makefile);
-	cur = t->deps->head;
-	while (cur != NULL)
-	{
-	    makefile_add_dep(t->makefile, cur->data);
-	    cur = cur->next;
-	}
-	makefile_end_deps(t->makefile);
+        /* Writes all the deps out */
+        makefile_start_deps(t->makefile);
+        cur = t->deps->head;
+        while (cur != NULL)
+        {
+            makefile_add_dep(t->makefile, cur->data);
+            cur = cur->next;
+        }
+        makefile_end_deps(t->makefile);
 
         /* Writes the list of commands used to build this binary */
         makefile_start_cmds(t->makefile);
         mff = t->makefile->file;
 
-        fprintf(mff, "\t@echo \"C%s\t%s\"\n", l->l.link_str,
-                t->passed_path);
+        fprintf(mff, "\t@echo \"%s\t%s\"\n", l->l.link_str, t->passed_path);
         fprintf(mff, "\t@mkdir -p \"%s\"\n", t->bin_dir);
         fprintf(mff, "\t@%s -o \"%s\"", l->l.link_cmd, t->full_path);
-	
-	cur = t->deps->head;
-	while (cur != NULL)
-	{
-	    fprintf(mff, " \"%s\"", cur->data);
-	    cur = cur->next;
-	}
-	fprintf(mff, "\n");
+
+        cur = t->deps->head;
+        while (cur != NULL)
+        {
+            fprintf(mff, " \"%s\"", cur->data);
+            cur = cur->next;
+        }
+
+        cur = t->language->link_opts->head;
+        while (cur != NULL)
+        {
+            fprintf(mff, " %s", cur->data);
+            cur = cur->next;
+        }
+        cur = t->link_opts->head;
+        while (cur != NULL)
+        {
+            fprintf(mff, " %s", cur->data);
+            cur = cur->next;
+        }
+
+        fprintf(mff, "\n");
 
         makefile_end_cmds(t->makefile);
 
-	/* Adds this to the list of all */
-	string_list_add(t->makefile->targets_all, t->full_path);
+        /* Adds this to the list of all */
+        string_list_add(t->makefile->targets_all, t->full_path);
+
+        FREE(object_file);
 
         break;
     }
@@ -187,10 +210,12 @@ enum error l_write(struct language_c *l, struct target *t)
         CXIndex index;
         CXTranslationUnit tu;
         FILE *mff;
+        int i;
+        struct string_list_node *cur;
 
-	/* All sources must have a parent */
-	ASSERT_RETURN(t->parent != NULL, ERROR_NULL_POINTER);
-	ASSERT_RETURN(t->parent->deps != NULL, ERROR_NULL_POINTER);
+        /* All sources must have a parent */
+        ASSERT_RETURN(t->parent != NULL, ERROR_NULL_POINTER);
+        ASSERT_RETURN(t->parent->deps != NULL, ERROR_NULL_POINTER);
 
         /* Generates the object file name */
         object_file_size = 0;
@@ -227,8 +252,42 @@ enum error l_write(struct language_c *l, struct target *t)
 
         /* FIXME: Pass all the compile-time arguments */
         clang_argc = 1;
+        cur = t->compile_opts->head;
+        while (cur != NULL)
+        {
+            clang_argc++;
+            cur = cur->next;
+        }
+        cur = t->language->compile_opts->head;
+        while (cur != NULL)
+        {
+            clang_argc++;
+            cur = cur->next;
+        }
+
         clang_argv = malloc(sizeof(*clang_argv) * (clang_argc + 1));
+        ASSERT_RETURN(clang_argv != NULL, ERROR_MALLOC_NULL);
+        for (i = 0; i <= clang_argc; i++)
+            clang_argv[i] = NULL;
         clang_argv[0] = strdup(t->full_path);
+
+        i = 1;
+        cur = t->language->compile_opts->head;
+        while (cur != NULL)
+        {
+            clang_argv[i] = strdup(cur->data);
+
+            i++;
+            cur = cur->next;
+        }
+        cur = t->compile_opts->head;
+        while (cur != NULL)
+        {
+            clang_argv[i] = strdup(cur->data);
+
+            i++;
+            cur = cur->next;
+        }
 
         /* libclang initialization */
         index = clang_createIndex(0, 0);
@@ -247,20 +306,44 @@ enum error l_write(struct language_c *l, struct target *t)
         makefile_start_cmds(t->makefile);
         mff = t->makefile->file;
 
-        fprintf(mff, "\t@echo \"C%s\t%s\"\n", l->l.compile_str,
+        fprintf(mff, "\t@echo \"%s\t%s\"\n", l->l.compile_str,
                 t->passed_path);
         fprintf(mff, "\t@mkdir -p \"%s\"\n", object_dir);
-        fprintf(mff, "\t@%s -c \"%s\" -o \"%s\"\n",
-                l->l.compile_cmd, t->full_path, object_file);
+        fprintf(mff, "\t@%s", l->l.compile_cmd);
+
+        cur = t->language->compile_opts->head;
+        while (cur != NULL)
+        {
+            fprintf(mff, " %s", cur->data);
+            cur = cur->next;
+        }
+        cur = t->compile_opts->head;
+        while (cur != NULL)
+        {
+            fprintf(mff, " %s", cur->data);
+            cur = cur->next;
+        }
+
+        fprintf(mff, " -c \"%s\" -o \"%s\"\n", t->full_path, object_file);
 
         makefile_end_cmds(t->makefile);
 
-	/* The parent (a binary) has another dependency */
-	string_list_add(t->parent->deps, object_file);
+        /* Adds all the linked sources to this one */
+        clang_getInclusions(tu, (CXInclusionVisitor) & add_deps, t);
+
+        /* Cleanup code for libclang */
+        clang_disposeTranslationUnit(tu);
+        clang_disposeIndex(index);
+
+        /* The parent (a binary) has another dependency */
+        string_list_add(t->parent->deps, object_file);
 
         /* Cleans up all the allocated memory */
         FREE(object_file);
         FREE(object_dir);
+
+        for (i = 0; i <= clang_argc; i++)
+            FREE(clang_argv[i]);
 
         break;
     }
@@ -287,6 +370,80 @@ static void write_deps(CXFile included_file,
     /* Only write relative paths */
     if (filename_cstr[0] != '/')
         makefile_add_dep(t->makefile, filename_cstr);
+
+    clang_disposeString(filename);
+}
+
+static void add_deps(CXFile included_file,
+                     CXSourceLocation * inclusion_stack,
+                     unsigned include_len, struct target *t)
+{
+    CXString filename;
+    const char *filename_cstr;
+    struct target s;
+
+    target_copy(&s, t);
+    s.makefile = t->makefile;
+    s.language = t->language;
+    s.type = TARGET_TYPE_SOURCE;
+    s.parent = t->parent;
+
+    filename = clang_getFileName(included_file);
+    filename_cstr = clang_getCString(filename);
+
+    /* Only write relative paths */
+    if (filename_cstr[0] != '/')
+    {
+        char *source_name;
+
+        source_name = malloc(strlen(filename_cstr) + 1);
+
+        /* Strips out all ..'s from the source file */
+        {
+            int last_dir, i, o;
+
+            last_dir = -1;
+            i = 0;
+            o = 0;
+            while (i < strlen(filename_cstr))
+            {
+                source_name[o] = filename_cstr[i];
+
+                if (filename_cstr[i] == '/')
+                    last_dir = o;
+
+                if (filename_cstr[i] == '.' && filename_cstr[i - 1] == '.')
+                {
+                    if (last_dir != -1)
+                    {
+                        o = last_dir;
+                        last_dir = -1;
+                    }
+                }
+
+                source_name[o] = filename_cstr[i];
+
+                i++;
+                o++;
+            }
+            source_name[o] = '\0';
+        }
+
+        source_name[strlen(source_name) - 1] = 'c';
+        if (access(source_name, R_OK) == 0)
+        {
+            assert(t != NULL);
+            assert(source_name != NULL);
+            assert(t->src_dir != NULL);
+            assert(strlen(source_name) > strlen(t->src_dir) + 2);
+
+            s.passed_path = strdup(source_name + strlen(t->src_dir) + 1);
+
+            target_clear(&s);
+        }
+
+        FREE(source_name);
+    }
 
     clang_disposeString(filename);
 }

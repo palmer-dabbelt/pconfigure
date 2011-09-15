@@ -102,3 +102,24 @@ enum error string_list_copy(struct string_list *dst, struct string_list *src)
 
     return ERROR_NONE;
 }
+
+enum error string_list_include(struct string_list *l, const char *s)
+{
+    struct string_list_node *cur;
+
+    ASSERT_RETURN(l != NULL, ERROR_NULL_POINTER);
+    ASSERT_RETURN(s != NULL, ERROR_NULL_POINTER);
+
+    cur = l->head;
+    while (cur != NULL)
+    {
+        ASSERT_RETURN(cur->data != NULL, ERROR_NULL_POINTER);
+
+        if (strcmp(cur->data, s) == 0)
+            return ERROR_ALREADY_EXISTS;
+
+        cur = cur->next;
+    }
+
+    return ERROR_NONE;
+}

@@ -43,19 +43,14 @@ enum error target_stack_push(struct target_stack *s)
     ASSERT_RETURN(s != NULL, ERROR_NULL_POINTER);
 
     t = malloc(sizeof(*t));
-    if (t == NULL)
-        return ERROR_MALLOC_NULL;
+    ASSERT_RETURN(t != NULL, ERROR_MALLOC_NULL);
 
     if (s->head == NULL)
         err = target_init(t);
     else
         err = target_copy(t, s->head);
 
-    if (err != ERROR_NONE)
-    {
-        FREE(t);
-        return err;
-    }
+    CHECK_ERROR(err);
 
     t->parent = s->head;
     s->head = t;
@@ -82,8 +77,7 @@ enum error target_stack_pop(struct target_stack *s)
     new_head = t->parent;
 
     err = target_clear(t);
-    if (err != ERROR_NONE)
-        return err;
+    CHECK_ERROR(err);
 
     s->head = new_head;
     FREE(t);

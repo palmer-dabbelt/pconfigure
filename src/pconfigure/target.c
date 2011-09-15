@@ -14,6 +14,8 @@ enum error target_boot(void)
 
 enum error target_init(struct target *t)
 {
+    enum error err;
+
     ASSERT_RETURN(t != NULL, ERROR_NULL_POINTER);
 
     t->parent = NULL;
@@ -29,29 +31,19 @@ enum error target_init(struct target *t)
     t->language = NULL;
 
     t->compile_opts = malloc(sizeof(*(t->compile_opts)));
-    if (t->compile_opts == NULL)
-        return ERROR_MALLOC_NULL;
-    string_list_init(t->compile_opts);
+    ASSERT_RETURN(t->compile_opts != NULL, ERROR_MALLOC_NULL);
+    err = string_list_init(t->compile_opts);
+    CHECK_ERROR(err);
 
     t->link_opts = malloc(sizeof(*(t->link_opts)));
-    if (t->link_opts == NULL)
-    {
-        string_list_clear(t->compile_opts);
-        FREE(t->compile_opts);
-        return ERROR_MALLOC_NULL;
-    }
-    string_list_init(t->link_opts);
+    ASSERT_RETURN(t->link_opts != NULL, ERROR_MALLOC_NULL);
+    err = string_list_init(t->link_opts);
+    CHECK_ERROR(err);
 
     t->deps = malloc(sizeof(*(t->deps)));
-    if (t->deps == NULL)
-    {
-        string_list_clear(t->compile_opts);
-        FREE(t->compile_opts);
-	string_list_clear(t->link_opts);
-	FREE(t->link_opts);
-        return ERROR_MALLOC_NULL;
-    }
-    string_list_init(t->deps);
+    ASSERT_RETURN(t->deps != NULL, ERROR_MALLOC_NULL);
+    err = string_list_init(t->deps);
+    CHECK_ERROR(err);
 
     return ERROR_NONE;
 }
@@ -121,13 +113,11 @@ enum error target_clear(struct target *t)
 
     err = string_list_clear(t->compile_opts);
     FREE(t->compile_opts);
-    if (err != ERROR_NONE)
-        return err;
+    CHECK_ERROR(err);
 
     err = string_list_clear(t->link_opts);
     FREE(t->link_opts);
-    if (err != ERROR_NONE)
-        return err;
+    CHECK_ERROR(err);
 
     return ERROR_NONE;
 }
@@ -147,6 +137,7 @@ enum error target_copy(struct target *dest, struct target *source)
     dest->type = TARGET_TYPE_NONE;
     dest->passed_path = NULL;
     dest->full_path = NULL;
+    dest->parent = NULL;
 
     dest->bin_dir = strdup(source->bin_dir);
     dest->obj_dir = strdup(source->obj_dir);
@@ -156,33 +147,14 @@ enum error target_copy(struct target *dest, struct target *source)
     dest->language = NULL;
 
     dest->compile_opts = malloc(sizeof(*(dest->compile_opts)));
-    if (dest->compile_opts == NULL)
-        return ERROR_MALLOC_NULL;
+    ASSERT_RETURN(dest->compile_opts != NULL, ERROR_MALLOC_NULL);
     err = string_list_copy(dest->compile_opts, source->compile_opts);
-    if (err != ERROR_NONE)
-    {
-        FREE(dest->compile_opts);
-        return err;
-    }
+    CHECK_ERROR(err);
 
     dest->link_opts = malloc(sizeof(*(dest->link_opts)));
-    if (dest->link_opts == NULL)
-    {
-        string_list_clear(dest->compile_opts);
-        FREE(dest->compile_opts);
-        dest->compile_opts = NULL;
-        return ERROR_MALLOC_NULL;
-    }
+    ASSERT_RETURN(dest->link_opts != NULL, ERROR_MALLOC_NULL);
     err = string_list_copy(dest->link_opts, source->link_opts);
-    if (err != ERROR_NONE)
-    {
-        string_list_clear(dest->compile_opts);
-        FREE(dest->compile_opts);
-        dest->compile_opts = NULL;
-        FREE(dest->link_opts);
-        dest->link_opts = NULL;
-        return err;
-    }
+    CHECK_ERROR(err);
 
     return ERROR_NONE;
 }

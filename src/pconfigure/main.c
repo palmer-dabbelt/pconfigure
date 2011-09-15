@@ -261,6 +261,17 @@ enum error parsefunc_prefix(char *op, char *right)
 enum error parsefunc_compileopts(char *op, char *right)
 {
     struct language *last_lang;
+    struct target *t;
+
+    /* If a target has been added, add to that specifically */
+    t = target_stack_peek(&target_stack);
+    if (t != NULL)
+    {
+        if (strcmp(op, "+=") == 0)
+            return string_list_add(t->compile_opts, right);
+        if (strcmp(op, "-=") == 0)
+            return string_list_del(t->compile_opts, right);
+    }
 
     /* Tries to find the last added language */
     last_lang = languages_last_added();
@@ -284,6 +295,17 @@ enum error parsefunc_compileopts(char *op, char *right)
 enum error parsefunc_linkopts(char *op, char *right)
 {
     struct language *last_lang;
+    struct target *t;
+
+    /* If a target has been added, add to that specifically */
+    t = target_stack_peek(&target_stack);
+    if (t != NULL)
+    {
+        if (strcmp(op, "+=") == 0)
+            return string_list_add(t->link_opts, right);
+        if (strcmp(op, "-=") == 0)
+            return string_list_del(t->link_opts, right);
+    }
 
     /* Tries to find the last added language */
     last_lang = languages_last_added();
