@@ -10,6 +10,7 @@ LINKOPTS += -lclang
 LINKOPTS += -lLLVM-2.8
 LINKOPTS += -L`llvm-config --libdir`
 LINKOPTS += -Wl,-R`llvm-config --libdir`
-SOURCES += pconfigure/main.c
 COMPILEOPTS += -I`llvm-config --includedir`
+SOURCES += pconfigure/main.c
+
 
