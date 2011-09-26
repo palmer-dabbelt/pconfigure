@@ -13,5 +13,3 @@ LINKOPTS += -Wl,-R`llvm-config --libdir`
 SOURCES += pconfigure/main.c
 COMPILEOPTS += -I`llvm-config --includedir`
 
-BINARIES += pbashc
-SOURCES += pbashc/main.c
