@@ -93,7 +93,7 @@ enum error makefile_create_target(struct makefile *m, const char *name)
     err = string_list_add(m->build_list, name);
     CHECK_ERROR(err);
 
-    fprintf(m->file, "%s:", name);
+    fprintf(m->file, "%s: %s", name, DEFAULT_OUTFILE);
     m->state = MAKEFILE_STATE_TARGET;
 
     return ERROR_NONE;
