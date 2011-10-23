@@ -132,7 +132,7 @@ enum error l_write(struct language_c *l, struct target *t)
         struct string_list_node *cur;
 
         /* Discovers the actual target name, and the actual target binary dir */
-        object_file_size = 0;
+        object_file_size = 1;
         object_file_size += strlen(t->bin_dir);
         object_file_size += strlen("/");
         object_file_size += strlen(t->passed_path);
@@ -212,14 +212,13 @@ enum error l_write(struct language_c *l, struct target *t)
         FILE *mff;
         int i;
         struct string_list_node *cur;
-	char *print_path;
 
         /* All sources must have a parent */
         ASSERT_RETURN(t->parent != NULL, ERROR_NULL_POINTER);
         ASSERT_RETURN(t->parent->deps != NULL, ERROR_NULL_POINTER);
 
         /* Generates the object file name */
-        object_file_size = 0;
+        object_file_size = 1;
         object_file_size += strlen(t->obj_dir);
         object_file_size += strlen("/");
         object_file_size += strlen(t->passed_path);
@@ -266,9 +265,9 @@ enum error l_write(struct language_c *l, struct target *t)
             cur = cur->next;
         }
 
-        clang_argv = malloc(sizeof(*clang_argv) * (clang_argc + 1));
+        clang_argv = malloc(sizeof(*clang_argv) * (clang_argc + 2));
         ASSERT_RETURN(clang_argv != NULL, ERROR_MALLOC_NULL);
-        for (i = 0; i <= clang_argc; i++)
+        for (i = 0; i < clang_argc+1; i++)
             clang_argv[i] = NULL;
         clang_argv[0] = strdup(t->full_path);
 
@@ -290,11 +289,6 @@ enum error l_write(struct language_c *l, struct target *t)
             cur = cur->next;
         }
 
-	/* Skips leading / in the print path (bug workaround) */
-	print_path = t->passed_path;
-	while (*print_path == '/')
-	    print_path++;
-
         /* libclang initialization */
         index = clang_createIndex(0, 0);
         tu = clang_parseTranslationUnit(index, 0,
@@ -312,7 +306,7 @@ enum error l_write(struct language_c *l, struct target *t)
         makefile_start_cmds(t->makefile);
         mff = t->makefile->file;
 
-        fprintf(mff, "\t@echo \"%s\t%s\"\n", l->l.compile_str, print_path);
+        fprintf(mff, "\t@echo \"%s\t%s\"\n", l->l.compile_str, t->passed_path);
         fprintf(mff, "\t@mkdir -p \"%s\"\n", object_dir);
         fprintf(mff, "\t@%s", l->l.compile_cmd);
 
@@ -405,8 +399,9 @@ static void add_deps(CXFile included_file,
 
         /* Strips out all ..'s from the source file */
         {
-            int last_dir, prev_dir, i, o;
+            int last_dir, pprev_dir, prev_dir, i, o;
 
+	    pprev_dir = -1;
 	    prev_dir = -1;
             last_dir = -1;
             i = 0;
@@ -417,19 +412,23 @@ static void add_deps(CXFile included_file,
 
                 if ((o > 0) && (filename_cstr[i] == '/'))
 		{
+		    pprev_dir = prev_dir;
 		    prev_dir = last_dir;
                     last_dir = o;
 		}
 
-		if (filename_cstr[i] == '.' && filename_cstr[i - 1] == '.')
+		if (filename_cstr[i-1] == '.' && filename_cstr[i-2] == '.')
 		{
-		    if (prev_dir > 0)
+		    if (pprev_dir > 0)
 		    {
-			o = prev_dir;
+			o = pprev_dir;
+			pprev_dir = -1;
 			prev_dir = -1;
 			last_dir = -1;
 		    }
 		}
+
+		source_name[o] = filename_cstr[i];
 
                 i++;
                 o++;
