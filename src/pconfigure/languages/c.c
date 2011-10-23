@@ -212,6 +212,7 @@ enum error l_write(struct language_c *l, struct target *t)
         FILE *mff;
         int i;
         struct string_list_node *cur;
+	char *print_path;
 
         /* All sources must have a parent */
         ASSERT_RETURN(t->parent != NULL, ERROR_NULL_POINTER);
@@ -289,6 +290,11 @@ enum error l_write(struct language_c *l, struct target *t)
             cur = cur->next;
         }
 
+	/* Skips leading / in the print path (bug workaround) */
+	print_path = t->passed_path;
+	while (*print_path == '/')
+	    print_path++;
+
         /* libclang initialization */
         index = clang_createIndex(0, 0);
         tu = clang_parseTranslationUnit(index, 0,
@@ -306,8 +312,7 @@ enum error l_write(struct language_c *l, struct target *t)
         makefile_start_cmds(t->makefile);
         mff = t->makefile->file;
 
-        fprintf(mff, "\t@echo \"%s\t%s\"\n", l->l.compile_str,
-                t->passed_path);
+        fprintf(mff, "\t@echo \"%s\t%s\"\n", l->l.compile_str, print_path);
         fprintf(mff, "\t@mkdir -p \"%s\"\n", object_dir);
         fprintf(mff, "\t@%s", l->l.compile_cmd);
 
@@ -400,28 +405,31 @@ static void add_deps(CXFile included_file,
 
         /* Strips out all ..'s from the source file */
         {
-            int last_dir, i, o;
+            int last_dir, prev_dir, i, o;
 
+	    prev_dir = -1;
             last_dir = -1;
             i = 0;
             o = 0;
             while (i < strlen(filename_cstr))
             {
-                source_name[o] = filename_cstr[i];
+		source_name[o] = filename_cstr[i];
 
-                if (filename_cstr[i] == '/')
+                if ((o > 0) && (filename_cstr[i] == '/'))
+		{
+		    prev_dir = last_dir;
                     last_dir = o;
+		}
 
-                if (filename_cstr[i] == '.' && filename_cstr[i - 1] == '.')
-                {
-                    if (last_dir != -1)
-                    {
-                        o = last_dir;
-                        last_dir = -1;
-                    }
-                }
-
-                source_name[o] = filename_cstr[i];
+		if (filename_cstr[i] == '.' && filename_cstr[i - 1] == '.')
+		{
+		    if (prev_dir > 0)
+		    {
+			o = prev_dir;
+			prev_dir = -1;
+			last_dir = -1;
+		    }
+		}
 
                 i++;
                 o++;
