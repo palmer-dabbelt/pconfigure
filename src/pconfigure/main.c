@@ -77,10 +77,10 @@ int main(int argc, char **argv)
 
     /* Parses the two given files */
     err = parse_file(DEFAULT_INFILE_LOCAL);
-    if (err != ERROR_FILE_NOT_FOUND)
+    if ((err != ERROR_FILE_NOT_FOUND) && (err != ERROR_NONE))
     {
-        fprintf(stderr, "pconfigure failed on file %s\n",
-                DEFAULT_INFILE_LOCAL);
+        fprintf(stderr, "pconfigure failed on file %s\n", DEFAULT_INFILE_LOCAL);
+        fprintf(stderr, "error %d: %s\n", err, error_to_string(err));
         return err;
     }
 
