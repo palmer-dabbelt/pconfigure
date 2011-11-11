@@ -238,7 +238,8 @@ enum error select_parsefunc(char *left, char *op, char *right)
 	strcat(exec, right);
 	strcat(exec, " >& ");
 	strcat(exec, tmpfile);
-	system(exec);
+	if (system(exec) != 0)
+	    fprintf(stderr, "'%s' failed, which is probably bad\n", right);
 
 	tmpf = fopen(tmpfile, "r");
 	unlink(tmpfile);
