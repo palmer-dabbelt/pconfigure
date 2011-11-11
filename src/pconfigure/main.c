@@ -12,6 +12,8 @@
 #include "string_list.h"
 #include "makefile.h"
 
+#define FREE(x) {free(x); x = NULL;}
+
 /* Our targets live in a stack */
 static struct target_stack target_stack;
 
@@ -52,6 +54,7 @@ int main(int argc, char **argv)
     }
 
     /* Starts all the sub-modules required by this code */
+    defaults_boot();
     string_list_boot();
     languages_boot();
     target_boot();
@@ -291,7 +294,27 @@ enum error parsefunc_languages(char *op, char *right)
 
 enum error parsefunc_prefix(char *op, char *right)
 {
-    RETURN_UNIMPLEMENTED;
+    struct target *t;
+
+    if (strcmp(op, "=") != 0)
+    {
+	fprintf(stderr, "Only = is supported for PREFIX, tried '%s'\n", op);
+	return ERROR_ILLEGAL_OP;
+    }
+
+    t = target_stack_peek(&target_stack);
+    if (t != NULL)
+    {
+	FREE(t->prefix);
+	t->prefix = strdup(right);
+	return ERROR_NONE;
+    }
+    else
+    {
+	FREE(default_context_prefix);
+	default_context_prefix = strdup(right);
+	return ERROR_NONE;
+    }
 }
 
 enum error parsefunc_compileopts(char *op, char *right)

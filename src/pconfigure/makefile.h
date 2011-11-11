@@ -29,6 +29,8 @@ struct makefile
     /* The list of all things that get built, ever */
     struct string_list *build_list;
 
+    /* The list of targets to install */
+    struct string_list *install;
 };
 
 /* Call this (only once) before calling any other methods that use makefile */

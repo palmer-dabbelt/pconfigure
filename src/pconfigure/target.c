@@ -26,6 +26,7 @@ enum error target_init(struct target *t)
     t->bin_dir = strdup(DEFAULT_CONTEXT_BINDIR);
     t->obj_dir = strdup(DEFAULT_CONTEXT_OBJDIR);
     t->src_dir = strdup(DEFAULT_CONTEXT_SRCDIR);
+    t->prefix  = strdup(default_context_prefix);
 
     t->makefile = NULL;
     t->language = NULL;
@@ -61,6 +62,9 @@ enum error target_clear(struct target *t)
             t->full_path = NULL;
             break;
         case TARGET_TYPE_BINARY:
+	{
+	    char *install;
+	    
             ASSERT_RETURN(t->passed_path != NULL, ERROR_NULL_POINTER);
             ASSERT_RETURN(t->bin_dir != NULL, ERROR_NULL_POINTER);
             t->full_path =
@@ -69,7 +73,23 @@ enum error target_clear(struct target *t)
             strcat(t->full_path, t->bin_dir);
             strcat(t->full_path, "/");
             strcat(t->full_path, t->passed_path);
+
+
+	    install = malloc(strlen(t->full_path) + strlen(t->prefix) + strlen(t->bin_dir) + 10);
+	    install[0] = '\0';
+	    strcat(install, "\"");
+            strcat(install, t->full_path);
+            strcat(install, "\" ");
+	    strcat(install, "\"");
+	    strcat(install, t->prefix);
+	    strcat(install, "/");
+	    strcat(install, t->bin_dir);
+	    strcat(install, "\"");
+	    ASSERT_RETURN(t->makefile != NULL, ERROR_NULL_POINTER);
+	    string_list_add(t->makefile->install, install);
+	    free(install);
             break;
+	}
         case TARGET_TYPE_SOURCE:
             ASSERT_RETURN(t->passed_path != NULL, ERROR_NULL_POINTER);
             ASSERT_RETURN(t->src_dir != NULL, ERROR_NULL_POINTER);
@@ -105,6 +125,7 @@ enum error target_clear(struct target *t)
     FREE(t->bin_dir);
     FREE(t->obj_dir);
     FREE(t->src_dir);
+    FREE(t->prefix);
 
     if (t->passed_path != NULL)
         FREE(t->passed_path);
@@ -142,6 +163,7 @@ enum error target_copy(struct target *dest, struct target *source)
     dest->bin_dir = strdup(source->bin_dir);
     dest->obj_dir = strdup(source->obj_dir);
     dest->src_dir = strdup(source->src_dir);
+    dest->prefix  = strdup(source->prefix);
 
     dest->makefile = NULL;
     dest->language = NULL;

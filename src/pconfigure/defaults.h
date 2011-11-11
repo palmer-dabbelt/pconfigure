@@ -19,4 +19,12 @@
 #define DEFAULT_CONTEXT_SRCDIR	"src"
 #define DEFAULT_CONTEXT_OBJDIR	"obj"
 
+#ifdef PCONFIGURE_DEFAULTS_C
+char *default_context_prefix;
+#else
+extern char *default_context_prefix;
+#endif
+
+extern void defaults_boot(void);
+
 #endif

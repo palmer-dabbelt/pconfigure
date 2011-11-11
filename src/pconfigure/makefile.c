@@ -32,11 +32,16 @@ enum error makefile_init(struct makefile *m)
     err = string_list_init(m->build_list);
     CHECK_ERROR(err);
 
+    m->install = malloc(sizeof(*(m->install)));
+    ASSERT_RETURN(m->install != NULL, ERROR_MALLOC_NULL);
+    err = string_list_init(m->install);
+    CHECK_ERROR(err);
+
     /* Makefiles require a prelude */
     fprintf(m->file, "SHELL=/bin/bash\n\nall: __pconfigure_all\n\n");
 
     /* These targets are phony */
-    fprintf(m->file, ".PHONY: clean all __pconfigure_all\n\n");
+    fprintf(m->file, ".PHONY: clean all install __pconfigure_all\n\n");
 
     return ERROR_NONE;
 }
@@ -63,6 +68,15 @@ enum error makefile_clear(struct makefile *m)
         cur = cur->next;
     }
     fprintf(m->file, "\n");
+
+    fprintf(m->file, "install: all\n");
+    cur = m->install->head;
+    while (cur != NULL)
+    {
+	fprintf(m->file, "\t@echo \"INS\t\"%s\n", cur->data);
+	fprintf(m->file, "\t@install %s\n", cur->data);
+	cur = cur->next;
+    }
 
     fclose(m->file);
     m->file = NULL;

@@ -27,6 +27,7 @@ struct target
     char *bin_dir;
     char *obj_dir;
     char *src_dir;
+    char *prefix;
 
     /* The path passed when this target was created */
     char *passed_path;
