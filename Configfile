@@ -12,3 +12,6 @@ LINKOPTS    += -L`llvm-config --libdir`
 LINKOPTS    += -Wl,-R`llvm-config --libdir`
 COMPILEOPTS += -I`llvm-config --includedir`
 SOURCES     += pconfigure/main.c
+
+BINARIES    += pclean
+SOURCES	    += pclean/main.c
