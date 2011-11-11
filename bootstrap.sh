@@ -20,3 +20,10 @@ make || exit $?
 prefix=`cat src/pconfigure/defaults.h  | grep PREFIX | cut -d ' ' -f 2 | cut -d '"' -f 2`
 echo "run 'make install' to install this to the system"
 echo -e "\tby default it is installed into $prefix"
+
+prefix=`cat Configfile* | grep PREFIX | head | cut -d '=' -f 2`
+prefix=`echo $prefix`
+if [[ "$prefix" != "" ]]
+then
+    echo -e "\t(you have it set to install to $prefix, because you're tricky)"
+fi
