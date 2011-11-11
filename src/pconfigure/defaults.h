@@ -1,7 +1,7 @@
 #ifndef PCONFIGURE_DEFAULTS_H
 #define PCONFIGURE_DEFAULTS_H
 
-#define MAX_LINE_SIZE						1024
+#define MAX_LINE_SIZE		1024
 
 #define DEFAULT_INFILE          "Configfile"
 #define DEFAULT_INFILE_LOCAL    "Configfile.local"

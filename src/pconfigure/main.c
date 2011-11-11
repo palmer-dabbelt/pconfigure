@@ -246,7 +246,8 @@ enum error select_parsefunc(char *left, char *op, char *right)
 	fgets(right, MAX_LINE_SIZE-4, tmpf);
 	fclose(tmpf);
 
-	right[strlen(right)-2] = '\0';
+	while ((strlen(right) > 0) && (isspace(right[strlen(right)-1])))
+	    right[strlen(right)-1] = '\0';
 
 	free(exec);
 	free(tmpfile);

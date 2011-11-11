@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Builds every file into pconfigure
-gcc -Wall -DDEBUG_RETURNS -g `find src/pconfigure/ -iname "*.c"` -L`llvm-config --libdir` -Wl,-R`llvm-config --libdir` -I`llvm-config --includedir` `llvm-config --libs core` -lclang -o "pconfigure" || exit $?
+gcc --std=gnu99 -Wall -DDEBUG_RETURNS -g `find src/pconfigure/ -iname "*.c"` -L`llvm-config --libdir` -Wl,-R`llvm-config --libdir` -I`llvm-config --includedir` `llvm-config --libs core` -lclang -o "pconfigure" || exit $?
 
 # Runs pconfigure in order to build itself
 #valgrind --leak-check=full --show-reachable=yes ./pconfigure
