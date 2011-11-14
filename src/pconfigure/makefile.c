@@ -41,7 +41,9 @@ enum error makefile_init(struct makefile *m)
     fprintf(m->file, "SHELL=/bin/bash\n\nall: __pconfigure_all\n\n");
 
     /* These targets are phony */
-    fprintf(m->file, ".PHONY: clean all install __pconfigure_all\n\n");
+    fprintf(m->file,
+	    ".PHONY: distclean clean all install __pconfigure_all"
+	    "\n\n");
 
     return ERROR_NONE;
 }
@@ -68,6 +70,9 @@ enum error makefile_clear(struct makefile *m)
         cur = cur->next;
     }
     fprintf(m->file, "\n");
+
+    fprintf(m->file, "distclean: clean\n\t@rm \"%s\"\n\t@pclean\n\n",
+	    DEFAULT_OUTFILE);
 
     fprintf(m->file, "install: all\n");
     cur = m->install->head;
