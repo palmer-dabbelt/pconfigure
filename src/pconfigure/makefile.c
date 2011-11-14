@@ -71,8 +71,13 @@ enum error makefile_clear(struct makefile *m)
     }
     fprintf(m->file, "\n");
 
-    fprintf(m->file, "distclean: clean\n\t@rm \"%s\"\n\t@pclean\n\n",
-	    DEFAULT_OUTFILE);
+    /* FIXME: This assumes that bin and obj and the bindir and objdir */
+    fprintf(m->file,
+	    "distclean: clean\n"
+	    "\t@rm \"%s\"\n"
+	    "\t@pclean\n"
+	    "\t@rm -rf bin obj >& /dev/null || true\n"
+	    "\n", DEFAULT_OUTFILE);
 
     fprintf(m->file, "install: all\n");
     cur = m->install->head;
