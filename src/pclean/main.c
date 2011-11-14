@@ -27,13 +27,14 @@ static void helper(const char *name)
 	strcat(longname, "/");
 	strcat(longname, dit->d_name);
 
+	stat(longname, &statbuf);
+
 	if (longname[strlen(longname)-1] == '~')
 	{
 	    printf("Cleaning '%s'\n", longname);
 	    unlink(longname);
 	}
 
-	stat(longname, &statbuf);
 	if (S_ISDIR(statbuf.st_mode))
 	    helper(longname);
 
