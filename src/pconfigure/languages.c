@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "languages/c.h"
+#include "languages/bash.h"
 
 #define FREE(x) {free(x); x = NULL;}
 
@@ -24,6 +25,10 @@ enum error languages_boot(void)
     enum error err;
 
     err = language_c_boot();
+    if (err != ERROR_NONE)
+        return err;
+
+    err = language_bash_boot();
     if (err != ERROR_NONE)
         return err;
 
@@ -49,6 +54,10 @@ enum error languages_halt(void)
     }
 
     err = language_c_halt();
+    if (err != ERROR_NONE)
+        return err;
+
+    err = language_bash_halt();
     if (err != ERROR_NONE)
         return err;
 
