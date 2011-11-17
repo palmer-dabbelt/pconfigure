@@ -15,30 +15,30 @@ static void helper(const char *name)
 
     while ((dit = readdir(dip)) != NULL)
     {
-	struct stat statbuf;
-	char *longname;
+        struct stat statbuf;
+        char *longname;
 
-	if (dit->d_name[0] == '.')
-	    continue;
+        if (dit->d_name[0] == '.')
+            continue;
 
-	longname = malloc(strlen(name) + strlen(dit->d_name) + 3);
-	longname[0] = '\0';
-	strcat(longname, name);
-	strcat(longname, "/");
-	strcat(longname, dit->d_name);
+        longname = malloc(strlen(name) + strlen(dit->d_name) + 3);
+        longname[0] = '\0';
+        strcat(longname, name);
+        strcat(longname, "/");
+        strcat(longname, dit->d_name);
 
-	stat(longname, &statbuf);
+        stat(longname, &statbuf);
 
-	if (longname[strlen(longname)-1] == '~')
-	{
-	    printf("Cleaning '%s'\n", longname);
-	    unlink(longname);
-	}
+        if (longname[strlen(longname) - 1] == '~')
+        {
+            printf("Cleaning '%s'\n", longname);
+            unlink(longname);
+        }
 
-	if (S_ISDIR(statbuf.st_mode))
-	    helper(longname);
+        if (S_ISDIR(statbuf.st_mode))
+            helper(longname);
 
-	free(longname);
+        free(longname);
     }
 
     closedir(dip);
@@ -47,6 +47,6 @@ static void helper(const char *name)
 int main(int argc, char **argv)
 {
     helper(".");
-    
+
     return 0;
 }

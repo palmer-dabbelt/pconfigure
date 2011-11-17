@@ -267,7 +267,7 @@ enum error l_write(struct language_c *l, struct target *t)
 
         clang_argv = malloc(sizeof(*clang_argv) * (clang_argc + 2));
         ASSERT_RETURN(clang_argv != NULL, ERROR_MALLOC_NULL);
-        for (i = 0; i < clang_argc+1; i++)
+        for (i = 0; i < clang_argc + 1; i++)
             clang_argv[i] = NULL;
         clang_argv[0] = strdup(t->full_path);
 
@@ -306,7 +306,8 @@ enum error l_write(struct language_c *l, struct target *t)
         makefile_start_cmds(t->makefile);
         mff = t->makefile->file;
 
-        fprintf(mff, "\t@echo \"%s\t%s\"\n", l->l.compile_str, t->passed_path);
+        fprintf(mff, "\t@echo \"%s\t%s\"\n", l->l.compile_str,
+                t->passed_path);
         fprintf(mff, "\t@mkdir -p \"%s\"\n", object_dir);
         fprintf(mff, "\t@%s", l->l.compile_cmd);
 
@@ -401,34 +402,35 @@ static void add_deps(CXFile included_file,
         {
             int last_dir, pprev_dir, prev_dir, i, o;
 
-	    pprev_dir = -1;
-	    prev_dir = -1;
+            pprev_dir = -1;
+            prev_dir = -1;
             last_dir = -1;
             i = 0;
             o = 0;
             while (i < strlen(filename_cstr))
             {
-		source_name[o] = filename_cstr[i];
+                source_name[o] = filename_cstr[i];
 
                 if ((o > 0) && (filename_cstr[i] == '/'))
-		{
-		    pprev_dir = prev_dir;
-		    prev_dir = last_dir;
+                {
+                    pprev_dir = prev_dir;
+                    prev_dir = last_dir;
                     last_dir = o;
-		}
+                }
 
-		if (filename_cstr[i-1] == '.' && filename_cstr[i-2] == '.')
-		{
-		    if (pprev_dir > 0)
-		    {
-			o = pprev_dir;
-			pprev_dir = -1;
-			prev_dir = -1;
-			last_dir = -1;
-		    }
-		}
+                if (filename_cstr[i - 1] == '.'
+                    && filename_cstr[i - 2] == '.')
+                {
+                    if (pprev_dir > 0)
+                    {
+                        o = pprev_dir;
+                        pprev_dir = -1;
+                        prev_dir = -1;
+                        last_dir = -1;
+                    }
+                }
 
-		source_name[o] = filename_cstr[i];
+                source_name[o] = filename_cstr[i];
 
                 i++;
                 o++;

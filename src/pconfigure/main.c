@@ -83,7 +83,8 @@ int main(int argc, char **argv)
     err = parse_file(DEFAULT_INFILE_LOCAL);
     if ((err != ERROR_FILE_NOT_FOUND) && (err != ERROR_NONE))
     {
-        fprintf(stderr, "pconfigure failed on file %s\n", DEFAULT_INFILE_LOCAL);
+        fprintf(stderr, "pconfigure failed on file %s\n",
+                DEFAULT_INFILE_LOCAL);
         fprintf(stderr, "error %d: %s\n", err, error_to_string(err));
         return err;
     }
@@ -222,41 +223,41 @@ enum error parse_line(const char *line, char *left, char *op, char *right)
 /* Function for parsing specific commands */
 enum error select_parsefunc(char *left, char *op, char *right)
 {
-    if ((right[0] == '`') && (right[strlen(right)-1] == '`'))
+    if ((right[0] == '`') && (right[strlen(right) - 1] == '`'))
     {
-	int tmpfd;
-	char *tmpfile;
-	char *exec;
-	FILE *tmpf;
-	
-	right++;
-	right[strlen(right)-1] = '\0';
+        int tmpfd;
+        char *tmpfile;
+        char *exec;
+        FILE *tmpf;
 
-	tmpfile = strdup("/tmp/pconfXXXXXX");
-	tmpfd = mkstemp(tmpfile);
-	close(tmpfd);
+        right++;
+        right[strlen(right) - 1] = '\0';
 
-	exec = malloc(strlen(right) + strlen(" >& ") + strlen(tmpfile) + 2);
-	exec[0] = '\0';
-	strcat(exec, right);
-	strcat(exec, " >& ");
-	strcat(exec, tmpfile);
-	if (system(exec) != 0)
-	    fprintf(stderr, "'%s' failed, which is probably bad\n", right);
+        tmpfile = strdup("/tmp/pconfXXXXXX");
+        tmpfd = mkstemp(tmpfile);
+        close(tmpfd);
 
-	tmpf = fopen(tmpfile, "r");
-	unlink(tmpfile);
-	assert(tmpf != NULL);
-	fgets(right, MAX_LINE_SIZE-4, tmpf);
-	fclose(tmpf);
+        exec = malloc(strlen(right) + strlen(" >& ") + strlen(tmpfile) + 2);
+        exec[0] = '\0';
+        strcat(exec, right);
+        strcat(exec, " >& ");
+        strcat(exec, tmpfile);
+        if (system(exec) != 0)
+            fprintf(stderr, "'%s' failed, which is probably bad\n", right);
 
-	while ((strlen(right) > 0) && (isspace(right[strlen(right)-1])))
-	    right[strlen(right)-1] = '\0';
+        tmpf = fopen(tmpfile, "r");
+        unlink(tmpfile);
+        assert(tmpf != NULL);
+        fgets(right, MAX_LINE_SIZE - 4, tmpf);
+        fclose(tmpf);
 
-	free(exec);
-	free(tmpfile);
+        while ((strlen(right) > 0) && (isspace(right[strlen(right) - 1])))
+            right[strlen(right) - 1] = '\0';
+
+        free(exec);
+        free(tmpfile);
     }
-    
+
     if (strlen(left) == 0)
         return 0;
     if (strcmp(left, "LANGUAGES") == 0)
@@ -298,22 +299,22 @@ enum error parsefunc_prefix(char *op, char *right)
 
     if (strcmp(op, "=") != 0)
     {
-	fprintf(stderr, "Only = is supported for PREFIX, tried '%s'\n", op);
-	return ERROR_ILLEGAL_OP;
+        fprintf(stderr, "Only = is supported for PREFIX, tried '%s'\n", op);
+        return ERROR_ILLEGAL_OP;
     }
 
     t = target_stack_peek(&target_stack);
     if (t != NULL)
     {
-	FREE(t->prefix);
-	t->prefix = strdup(right);
-	return ERROR_NONE;
+        FREE(t->prefix);
+        t->prefix = strdup(right);
+        return ERROR_NONE;
     }
     else
     {
-	FREE(default_context_prefix);
-	default_context_prefix = strdup(right);
-	return ERROR_NONE;
+        FREE(default_context_prefix);
+        default_context_prefix = strdup(right);
+        return ERROR_NONE;
     }
 }
 

@@ -75,6 +75,10 @@ enum error languages_add(const char *name)
     if (ret != NULL)
         ret_good = ret;
 
+    ret = language_bash_add(name);
+    if (ret != NULL)
+        ret_good = ret;
+
     /* If a language was found, add it to the list */
     if (ret_good != NULL)
     {

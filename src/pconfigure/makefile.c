@@ -42,8 +42,7 @@ enum error makefile_init(struct makefile *m)
 
     /* These targets are phony */
     fprintf(m->file,
-	    ".PHONY: distclean clean all install __pconfigure_all"
-	    "\n\n");
+            ".PHONY: distclean clean all install __pconfigure_all" "\n\n");
 
     return ERROR_NONE;
 }
@@ -73,19 +72,18 @@ enum error makefile_clear(struct makefile *m)
 
     /* FIXME: This assumes that bin and obj and the bindir and objdir */
     fprintf(m->file,
-	    "distclean: clean\n"
-	    "\t@rm \"%s\"\n"
-	    "\t@pclean\n"
-	    "\t@rm -rf bin obj >& /dev/null || true\n"
-	    "\n", DEFAULT_OUTFILE);
+            "distclean: clean\n"
+            "\t@rm \"%s\"\n"
+            "\t@pclean\n"
+            "\t@rm -rf bin obj >& /dev/null || true\n" "\n", DEFAULT_OUTFILE);
 
     fprintf(m->file, "install: all\n");
     cur = m->install->head;
     while (cur != NULL)
     {
-	fprintf(m->file, "\t@echo \"INS\t\"%s\n", cur->data);
-	fprintf(m->file, "\t@install %s\n", cur->data);
-	cur = cur->next;
+        fprintf(m->file, "\t@echo \"INS\t\"%s\n", cur->data);
+        fprintf(m->file, "\t@install %s\n", cur->data);
+        cur = cur->next;
     }
 
     fclose(m->file);
