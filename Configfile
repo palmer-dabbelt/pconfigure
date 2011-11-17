@@ -2,8 +2,6 @@ LANGUAGES   += c
 COMPILEOPTS += -Wall
 COMPILEOPTS += -Werror
 COMPILEOPTS += -std=gnu99
-COMPILEOPTS += -g
-COMPILEOPTS += -DDEBUG
 
 BINARIES    += pconfigure
 LINKOPTS    += `llvm-config --libs core`
