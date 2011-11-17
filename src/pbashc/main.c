@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-int main(int argc, char ** argv)
+int main(int argc, char **argv)
 {
     char *input;
     char *output;
@@ -21,22 +21,22 @@ int main(int argc, char ** argv)
 
     for (i = 1; i < argc; i++)
     {
-	if (strcmp(argv[i], "-o") == 0)
-	    last = argv[i];
-	else if (last == NULL)
-	    input = argv[i];
-	else if (strcmp(last, "-o") == 0)
-	{
-	    output = argv[i];
-	    last = NULL;
-	}
+        if (strcmp(argv[i], "-o") == 0)
+            last = argv[i];
+        else if (last == NULL)
+            input = argv[i];
+        else if (strcmp(last, "-o") == 0)
+        {
+            output = argv[i];
+            last = NULL;
+        }
     }
 
     if ((input == NULL) || (output == NULL))
     {
-	fprintf(stderr, "needs 2 arguments\ninput '%s'\noutput '%s'\n",
-		input, output);
-	exit(1);
+        fprintf(stderr, "needs 2 arguments\ninput '%s'\noutput '%s'\n",
+                input, output);
+        exit(1);
     }
 
     infile = fopen(input, "r");
@@ -45,7 +45,7 @@ int main(int argc, char ** argv)
     fprintf(outfile, "#!/bin/bash\n");
 
     while ((read = fread(buffer, 1, 1024, infile)) != 0)
-	fwrite(buffer, 1, read, outfile);
+        fwrite(buffer, 1, read, outfile);
 
     fclose(infile);
     fclose(outfile);
