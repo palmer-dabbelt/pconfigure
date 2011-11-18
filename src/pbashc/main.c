@@ -45,7 +45,8 @@ int main(int argc, char **argv)
     fprintf(outfile, "#!/bin/bash\n");
 
     while ((read = fread(buffer, 1, 1024, infile)) != 0)
-        fwrite(buffer, 1, read, outfile);
+        if (fwrite(buffer, 1, read, outfile) != read)
+	    exit(1);
 
     fclose(infile);
     fclose(outfile);
