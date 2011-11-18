@@ -32,9 +32,14 @@ enum error makefile_init(struct makefile *m)
     err = string_list_init(m->build_list);
     CHECK_ERROR(err);
 
-    m->install = malloc(sizeof(*(m->install)));
-    ASSERT_RETURN(m->install != NULL, ERROR_MALLOC_NULL);
-    err = string_list_init(m->install);
+    m->install_bin = malloc(sizeof(*(m->install_bin)));
+    ASSERT_RETURN(m->install_bin != NULL, ERROR_MALLOC_NULL);
+    err = string_list_init(m->install_bin);
+    CHECK_ERROR(err);
+
+    m->install_dir = malloc(sizeof(*(m->install_dir)));
+    ASSERT_RETURN(m->install_dir != NULL, ERROR_MALLOC_NULL);
+    err = string_list_init(m->install_dir);
     CHECK_ERROR(err);
 
     /* Makefiles require a prelude */
@@ -42,7 +47,8 @@ enum error makefile_init(struct makefile *m)
 
     /* These targets are phony */
     fprintf(m->file,
-            ".PHONY: distclean clean all install __pconfigure_all" "\n\n");
+            ".PHONY: distclean clean all __pconfigure_all "
+            "install uninstall" "\n\n");
 
     return ERROR_NONE;
 }
@@ -50,7 +56,7 @@ enum error makefile_init(struct makefile *m)
 enum error makefile_clear(struct makefile *m)
 {
     enum error err;
-    struct string_list_node *cur;
+    struct string_list_node *cur, *cur1, *cur2;
 
     fprintf(m->file, "__pconfigure_all:");
     cur = m->targets_all->head;
@@ -78,12 +84,27 @@ enum error makefile_clear(struct makefile *m)
             "\t@rm -rf bin obj >& /dev/null || true\n" "\n", DEFAULT_OUTFILE);
 
     fprintf(m->file, "install: all\n");
-    cur = m->install->head;
-    while (cur != NULL)
+    cur1 = m->install_bin->head;
+    cur2 = m->install_dir->head;
+    while ((cur1 != NULL) || (cur2 != NULL))
     {
-        fprintf(m->file, "\t@echo \"INS\t\"%s\n", cur->data);
-        fprintf(m->file, "\t@install %s\n", cur->data);
-        cur = cur->next;
+        fprintf(m->file, "\t@echo \"INS\t\"%s\n", cur1->data);
+        fprintf(m->file, "\t@install -D \"%s\" \"%s/%s\"\n",
+                cur1->data, cur2->data, cur1->data);
+        cur1 = cur1->next;
+        cur2 = cur2->next;
+    }
+
+    fprintf(m->file, "uninstall: all\n");
+    cur1 = m->install_bin->head;
+    cur2 = m->install_dir->head;
+    while ((cur1 != NULL) || (cur2 != NULL))
+    {
+        fprintf(m->file, "\t@echo \"UNINS\t\"%s\n", cur1->data);
+        fprintf(m->file, "\t@rm \"%s/%s\" >& /dev/null || true\n",
+                cur2->data, cur1->data);
+        cur1 = cur1->next;
+        cur2 = cur2->next;
     }
 
     fclose(m->file);

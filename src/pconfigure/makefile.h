@@ -30,7 +30,8 @@ struct makefile
     struct string_list *build_list;
 
     /* The list of targets to install */
-    struct string_list *install;
+    struct string_list *install_bin;
+    struct string_list *install_dir;
 };
 
 /* Call this (only once) before calling any other methods that use makefile */

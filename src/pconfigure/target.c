@@ -63,8 +63,6 @@ enum error target_clear(struct target *t)
             break;
         case TARGET_TYPE_BINARY:
         {
-            char *install;
-
             ASSERT_RETURN(t->passed_path != NULL, ERROR_NULL_POINTER);
             ASSERT_RETURN(t->bin_dir != NULL, ERROR_NULL_POINTER);
             t->full_path =
@@ -74,21 +72,9 @@ enum error target_clear(struct target *t)
             strcat(t->full_path, "/");
             strcat(t->full_path, t->passed_path);
 
-            install =
-                malloc(strlen(t->full_path) + strlen(t->prefix) +
-                       strlen(t->bin_dir) + 10);
-            install[0] = '\0';
-            strcat(install, "\"");
-            strcat(install, t->full_path);
-            strcat(install, "\" ");
-            strcat(install, "\"");
-            strcat(install, t->prefix);
-            strcat(install, "/");
-            strcat(install, t->bin_dir);
-            strcat(install, "\"");
             ASSERT_RETURN(t->makefile != NULL, ERROR_NULL_POINTER);
-            string_list_add(t->makefile->install, install);
-            free(install);
+            string_list_add(t->makefile->install_dir, t->prefix);
+            string_list_add(t->makefile->install_bin, t->full_path);
             break;
         }
         case TARGET_TYPE_SOURCE:
