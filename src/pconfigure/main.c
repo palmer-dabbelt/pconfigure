@@ -249,7 +249,7 @@ enum error select_parsefunc(char *left, char *op, char *right)
         unlink(tmpfile);
         assert(tmpf != NULL);
         if (fgets(right, MAX_LINE_SIZE - 4, tmpf) == NULL)
-	    return ERROR_NULL_POINTER;
+            return ERROR_NULL_POINTER;
         fclose(tmpf);
 
         while ((strlen(right) > 0) && (isspace(right[strlen(right) - 1])))

@@ -46,7 +46,7 @@ int main(int argc, char **argv)
 
     while ((read = fread(buffer, 1, 1024, infile)) != 0)
         if (fwrite(buffer, 1, read, outfile) != read)
-	    exit(1);
+            exit(1);
 
     fclose(infile);
     fclose(outfile);

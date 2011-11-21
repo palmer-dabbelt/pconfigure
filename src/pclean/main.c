@@ -5,6 +5,10 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <stdbool.h>
+
+/* Commandline Options */
+static bool recurse;
 
 static void helper(const char *name)
 {
@@ -36,7 +40,8 @@ static void helper(const char *name)
         }
 
         if (S_ISDIR(statbuf.st_mode))
-            helper(longname);
+            if (recurse == true)
+                helper(longname);
 
         free(longname);
     }
@@ -46,6 +51,11 @@ static void helper(const char *name)
 
 int main(int argc, char **argv)
 {
+    recurse = true;
+
+    if ((argc >= 2) && (strcmp(argv[1], "-r") == 0))
+        recurse = false;
+
     helper(".");
 
     return 0;
