@@ -43,12 +43,15 @@ enum error makefile_init(struct makefile *m)
     CHECK_ERROR(err);
 
     /* Makefiles require a prelude */
-    fprintf(m->file, "SHELL=/bin/bash\n\nall: __pconfigure_all\n\n");
-
-    /* These targets are phony */
+    fprintf(m->file, "SHELL=/bin/bash\n");
+    fprintf(m->file, ".SUFFIXES:\n");
     fprintf(m->file,
             ".PHONY: distclean clean all __pconfigure_all "
-            "install uninstall" "\n\n");
+            "install uninstall" "\n");
+    fprintf(m->file, "\n");
+
+    /* Sets the default target */
+    fprintf(m->file, "all: __pconfigure_all\n");
 
     return ERROR_NONE;
 }
