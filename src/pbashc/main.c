@@ -23,6 +23,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef PBASHC_SHEBANG
+#define PBASHC_SHEBANG "#!/bin/bash\n"
+#endif
+
 int main(int argc, char **argv)
 {
     char *input;
@@ -63,7 +67,7 @@ int main(int argc, char **argv)
     infile = fopen(input, "r");
     outfile = fopen(output, "w");
 
-    fprintf(outfile, "#!/bin/bash\n");
+    fprintf(outfile, PBASHC_SHEBANG "\n");
 
     while ((read = fread(buffer, 1, 1024, infile)) != 0)
         if (fwrite(buffer, 1, read, outfile) != read)
