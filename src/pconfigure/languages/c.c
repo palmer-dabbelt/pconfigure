@@ -72,8 +72,8 @@ enum error language_c_boot(void)
 
     lang->l.compile_str = strdup("CC");
     lang->l.link_str = strdup("LD");
-    lang->l.compile_cmd = strdup("gcc");
-    lang->l.link_cmd = strdup("gcc");
+    lang->l.compile_cmd = strdup("cc");
+    lang->l.link_cmd = strdup("cc");
 
     lang->l.search = (language_func_search) & l_search;
     lang->l.write = (language_func_write) & l_write;

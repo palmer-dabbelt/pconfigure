@@ -51,6 +51,8 @@ static enum error parsefunc_compileopts(char *, char *);
 static enum error parsefunc_linkopts(char *, char *);
 static enum error parsefunc_binaries(char *, char *);
 static enum error parsefunc_sources(char *, char *);
+static enum error parsefunc_compiler(char *, char *);
+static enum error parsefunc_linker(char *, char *);
 
 /* Selects the correct parsing function to use, calls it, and gets returns
    what it returns */
@@ -294,6 +296,10 @@ enum error select_parsefunc(char *left, char *op, char *right)
         return parsefunc_binaries(op, right);
     if (strcmp(left, "SOURCES") == 0)
         return parsefunc_sources(op, right);
+    if (strcmp(left, "COMPILER") == 0)
+        return parsefunc_compiler(op, right);
+    if (strcmp(left, "LINKER") == 0)
+        return parsefunc_linker(op, right);
 
     RETURN_UNIMPLEMENTED;
 }
@@ -498,3 +504,52 @@ enum error parsefunc_sources(char *op, char *right)
 
     return ERROR_NONE;
 }
+
+enum error parsefunc_compiler(char *op, char *right)
+{
+    struct language *last_lang;
+
+    /* Tries to find the last added language */
+    last_lang = languages_last_added();
+    if (last_lang == NULL)
+    {
+        fprintf(stderr, "Called COMPILEOPTS before COMPILER\n");
+        return ERROR_NULL_POINTER;
+    }
+
+    if (strcmp(op, "=") == 0)
+    {
+	free(last_lang->compile_cmd);
+	last_lang->compile_cmd = strdup(right);
+
+        return ERROR_NONE;
+    }
+
+    fprintf(stderr, "Only = is supported for COMPILER, tried '%s'\n", op);
+    return ERROR_ILLEGAL_OP;
+}
+
+enum error parsefunc_linker(char *op, char *right)
+{
+    struct language *last_lang;
+
+    /* Tries to find the last added language */
+    last_lang = languages_last_added();
+    if (last_lang == NULL)
+    {
+        fprintf(stderr, "Called COMPILEOPTS before LINKER\n");
+        return ERROR_NULL_POINTER;
+    }
+
+    if (strcmp(op, "=") == 0)
+    {
+	free(last_lang->link_cmd);
+	last_lang->link_cmd = strdup(right);
+
+        return ERROR_NONE;
+    }
+
+    fprintf(stderr, "Only = is supported for LINKER, tried '%s'\n", op);
+    return ERROR_ILLEGAL_OP;
+}
+
