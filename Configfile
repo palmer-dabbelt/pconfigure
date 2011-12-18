@@ -8,6 +8,7 @@ LINKOPTS    += `llvm-config --libs core`
 LINKOPTS    += -lclang
 LINKOPTS    += -L`llvm-config --libdir`
 LINKOPTS    += -Wl,-R`llvm-config --libdir`
+LINKOPTS    += `pkg-config talloc --libs`
 COMPILEOPTS += -I`llvm-config --includedir`
 SOURCES     += pconfigure/main.c
 
