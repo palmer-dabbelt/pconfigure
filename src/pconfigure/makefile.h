@@ -23,7 +23,7 @@
 #define MAKEFILE_H
 
 #include <stdio.h>
-
+#include <stdarg.h>
 #include "clopts.h"
 #include "stringlist.h"
 
