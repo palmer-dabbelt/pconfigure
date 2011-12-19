@@ -35,5 +35,6 @@ struct language
 extern int language_init(struct language *l);
 
 extern int language_add_compileopt(struct language *l, const char *opt);
+extern int language_add_linkopt(struct language *l, const char *opt);
 
 #endif

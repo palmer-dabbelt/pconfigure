@@ -44,3 +44,15 @@ int language_add_compileopt(struct language *l, const char *opt)
 
     return stringlist_add(l->compileopts, opt);
 }
+
+int language_add_linkopt(struct language *l, const char *opt)
+{
+    if (l == NULL)
+        return -1;
+    if (opt == NULL)
+        return -1;
+    if (l->linkopts == NULL)
+        return -1;
+
+    return stringlist_add(l->linkopts, opt);
+}

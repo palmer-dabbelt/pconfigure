@@ -123,3 +123,31 @@ void contextstack_push_binary(struct contextstack *s, const char *called_path)
     cur->next = s->head;
     s->head = cur;
 }
+
+void contextstack_push_source(struct contextstack *s, const char *called_path)
+{
+    struct contextstack_node *cur;
+    struct context *c;
+
+    if (s == NULL)
+        return;
+    if (called_path == NULL)
+        return;
+
+    cur = talloc(s, struct contextstack_node);
+    if (cur == NULL)
+        abort();
+
+    /* Creates a new context, based on the current context */
+    c = context_new_source(s->head->data, cur, called_path);
+    if (c == NULL)
+    {
+        TALLOC_FREE(cur);
+        abort();
+    }
+
+    /* This context is the new head. */
+    cur->data = c;
+    cur->next = s->head;
+    s->head = cur;
+}

@@ -37,11 +37,18 @@ struct context
 {
     enum context_type type;
 
+    /* When a source is used, this in the context it will check in order to
+     * ensure that dependencies are not added twice. */
+    struct context *parent;
+
+    /* This is the full path (include the bin/ or src/) of this context */
+    const char *full_path;
+
     /* These paths can be changed on a per context basis */
-    char *bin_dir;
-    char *obj_dir;
-    char *src_dir;
-    char *prefix;
+    const char *bin_dir;
+    const char *obj_dir;
+    const char *src_dir;
+    const char *prefix;
 
     /* Options specific to this context */
     struct stringlist *compile_opts;
@@ -53,7 +60,11 @@ extern struct context *context_new_defaults(struct clopts *o, void *context);
 extern struct context *context_new_binary(struct context *parent,
                                           void *context,
                                           const char *called_path);
+extern struct context *context_new_source(struct context *parent,
+                                          void *context,
+                                          const char *called_path);
 
 extern int context_add_compileopt(struct context *c, const char *opt);
+extern int context_add_linkopt(struct context *c, const char *opt);
 
 #endif

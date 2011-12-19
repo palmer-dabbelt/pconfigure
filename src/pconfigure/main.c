@@ -40,7 +40,9 @@ static int parse_select(const char *left, const char *op, const char *right);
 
 static int parsefunc_languages(const char *op, const char *right);
 static int parsefunc_compileopts(const char *op, const char *right);
+static int parsefunc_linkopts(const char *op, const char *right);
 static int parsefunc_binaries(const char *op, const char *right);
+static int parsefunc_sources(const char *op, const char *right);
 
 /* This is global data to avoid having really long parsefunc_* function calls */
 static struct clopts *o;
@@ -62,6 +64,7 @@ int main(int argc, char **argv)
 #ifdef DEBUG
         fprintf(stderr, "Internal error allocating clopts\n");
 #endif
+        TALLOC_FREE(o);
         return 1;
     }
 
@@ -71,6 +74,7 @@ int main(int argc, char **argv)
 #ifndef DEBUG
         fprintf(stderr, "Internal error allocating targetlist\n");
 #endif
+        TALLOC_FREE(o);
         return 2;
     }
 
@@ -80,6 +84,7 @@ int main(int argc, char **argv)
 #ifndef DEBUG
         fprintf(stderr, "Internal error allocating contextstack\n");
 #endif
+        TALLOC_FREE(o);
         return 3;
     }
 
@@ -89,6 +94,7 @@ int main(int argc, char **argv)
 #ifndef DEBUG
         fprintf(stderr, "Internal error allocating languagelist\n");
 #endif
+        TALLOC_FREE(o);
         return 3;
     }
 
@@ -126,6 +132,7 @@ int main(int argc, char **argv)
             {
                 fprintf(stderr, "Error parsing line %d:\n", line_num);
                 fprintf(stderr, "%s\n", line);
+                TALLOC_FREE(o);
                 return -1;
             }
 
@@ -135,6 +142,7 @@ int main(int argc, char **argv)
         fclose(file);
     }
 
+    TALLOC_FREE(o);
     return 0;
 }
 
@@ -204,8 +212,12 @@ int parse_select(const char *left, const char *op, const char *right)
         return parsefunc_languages(op, right);
     if (strcmp(left, "COMPILEOPTS") == 0)
         return parsefunc_compileopts(op, right);
+    if (strcmp(left, "LINKOPTS") == 0)
+        return parsefunc_linkopts(op, right);
     if (strcmp(left, "BINARIES") == 0)
         return parsefunc_binaries(op, right);
+    if (strcmp(left, "SOURCES") == 0)
+        return parsefunc_sources(op, right);
 
     return -2;
 }
@@ -278,6 +290,54 @@ int parsefunc_compileopts(const char *op, const char *right)
     return err;
 }
 
+int parsefunc_linkopts(const char *op, const char *right)
+{
+    struct context *c;
+    void *context;
+    const char *duped;
+    int err;
+
+    if (strcmp(op, "+=") != 0)
+    {
+        fprintf(stderr, "We only support += for LINKOPTS\n");
+        return -1;
+    }
+
+    /* If the stack is empty, then add this to the language-specific global
+     * list of options. */
+    if (contextstack_isempty(s))
+    {
+        struct language *l;
+        char *duped;
+        void *context;
+
+        context = talloc_new(NULL);
+
+        l = languagelist_get(ll, context);
+        if (l == NULL)
+        {
+            fprintf(stderr, "No last language\n");
+            TALLOC_FREE(context);
+            return -1;
+        }
+
+        duped = talloc_strdup(context, right);
+        language_add_linkopt(l, duped);
+        TALLOC_FREE(context);
+
+        return 0;
+    }
+
+    /* The context stack isn't empty, so instead change the options of the 
+     * current top-of-stack. */
+    context = talloc_new(NULL);
+    c = contextstack_peek(s, context);
+    duped = talloc_strdup(context, right);
+    err = context_add_linkopt(c, duped);
+    TALLOC_FREE(context);
+    return err;
+}
+
 int parsefunc_binaries(const char *op, const char *right)
 {
     void *context;
@@ -308,5 +368,19 @@ int parsefunc_binaries(const char *op, const char *right)
     /* Adds a binary to the stack, using the default compile options.  There is
      * no need for this to  */
     contextstack_push_binary(s, right);
+    return 0;
+}
+
+int parsefunc_sources(const char *op, const char *right)
+{
+    if (strcmp(op, "+=") != 0)
+    {
+        fprintf(stderr, "We only support += for BINARIES\n");
+        return -1;
+    }
+
+    /* Adds a binary to the stack, using the default compile options.  There is
+     * no need for this to  */
+    contextstack_push_source(s, right);
     return 0;
 }
