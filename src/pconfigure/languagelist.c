@@ -21,6 +21,7 @@
 
 #include "languagelist.h"
 #include "lang/c.h"
+#include "lang/bash.h"
 #include <talloc.h>
 #include <string.h>
 #include <assert.h>
@@ -60,6 +61,8 @@ int languagelist_select(struct languagelist *ll, const char *name)
             ll->selected = cur->data;
             break;
         }
+
+        cur = cur->next;
     }
     if (cur != NULL)
         return 0;
@@ -67,6 +70,8 @@ int languagelist_select(struct languagelist *ll, const char *name)
     /* The language wasn't already added, so search for it. */
     l_nonull = NULL;
     if ((l = language_c_new(o, name)) != NULL)
+        l_nonull = l;
+    if ((l = language_bash_new(o, name)) != NULL)
         l_nonull = l;
 
     /* If no language was found then we have to give up entirely */

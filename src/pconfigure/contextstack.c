@@ -40,7 +40,7 @@ struct contextstack *contextstack_new(struct clopts *o,
         return NULL;
     }
 
-    s->head->data = context_new_defaults(o, s->head, mf, ll);
+    s->head->data = context_new_defaults(o, s->head, mf, ll, s);
     if (s->head->data == NULL)
     {
         TALLOC_FREE(s);
@@ -144,7 +144,10 @@ void contextstack_push_source(struct contextstack *s, const char *called_path)
     struct context *c;
 
     if (s == NULL)
+    {
+        abort();
         return;
+    }
     if (called_path == NULL)
         return;
 

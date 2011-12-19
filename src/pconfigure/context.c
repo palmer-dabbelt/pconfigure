@@ -31,7 +31,8 @@ static int context_source_destructor(struct context *c);
 
 struct context *context_new_defaults(struct clopts *o, void *context,
                                      struct makefile *mf,
-                                     struct languagelist *ll)
+                                     struct languagelist *ll,
+                                     struct contextstack *s)
 {
     struct context *c;
 
@@ -45,6 +46,7 @@ struct context *context_new_defaults(struct clopts *o, void *context,
     c->link_opts = stringlist_new(c);
     c->mf = talloc_reference(c, mf);
     c->ll = talloc_reference(c, ll);
+    c->s = s;
     c->language = NULL;
 
     return c;
@@ -66,7 +68,9 @@ struct context *context_new_binary(struct context *parent, void *context,
     c->link_opts = stringlist_copy(parent->link_opts, c);
     c->mf = talloc_reference(c, parent->mf);
     c->ll = talloc_reference(c, parent->ll);
+    c->s = parent->s;
     c->language = NULL;
+    c->objects = stringlist_new(c);
 
     c->full_path = talloc_asprintf(c, "%s/%s", c->bin_dir, called_path);
 
@@ -77,9 +81,78 @@ struct context *context_new_binary(struct context *parent, void *context,
 
 int context_binary_destructor(struct context *c)
 {
-    assert(c->type == CONTEXT_TYPE_BINARY);
-    fprintf(stderr, "context_binary_destructor('%s')\n", c->full_path);
+    struct language *l;
+    char *tmp;
+    void *context;
 
+    assert(c->type == CONTEXT_TYPE_BINARY);
+#ifdef DEBUG
+    fprintf(stderr, "context_binary_destructor('%s')\n", c->full_path);
+#endif
+
+    l = c->language;
+    assert(l != NULL);
+
+    context = talloc_new(NULL);
+
+    /* *INDENT-OFF* */
+#ifdef DEBUG
+    stringlist_each(c->objects,
+		    lambda(int, (const char *obj),
+			   {
+			       fprintf(stderr, "obj: %s\n", obj);
+			       return 0;
+			   }
+			));
+#endif
+    /* *INDENT-ON* */
+
+    makefile_add_targets(c->mf, c->full_path);
+    makefile_add_all(c->mf, c->full_path);
+
+    makefile_create_target(c->mf, c->full_path);
+
+    makefile_start_deps(c->mf);
+    /* *INDENT-OFF* */
+    stringlist_each(c->objects, lambda(int, (const char *obj),
+			       {
+				   makefile_add_dep(c->mf, "%s", obj);
+				   return 0;
+			       }
+		      ));
+    /* *INDENT-ON* */
+    makefile_end_deps(c->mf);
+
+    makefile_start_cmds(c->mf);
+    /* *INDENT-OFF* */
+    language_link(l, c, lambda(void, (bool nam,
+				      const char *format, ...),
+			       {
+				   va_list args;
+				   va_start(args, NULL);
+				   if (nam == true)
+				       makefile_vnam_cmd(c->mf, format, args);
+				   else
+				       makefile_vadd_cmd(c->mf, format, args);
+				   va_end(args);
+			       }
+		      ));
+    /* *INDENT-ON* */
+    makefile_end_cmds(c->mf);
+
+    /* There is an install/uninstall target */
+    tmp = talloc_asprintf(context, "echo -e \"INS\\t%s\"", c->full_path);
+    makefile_add_install(c->mf, tmp);
+    tmp = talloc_asprintf(context, "install -D %s `dirname \"%s/%s\"`",
+                          c->full_path, c->prefix, c->full_path);
+    makefile_add_install(c->mf, tmp);
+
+    tmp = talloc_asprintf(context, "%s/%s", c->prefix, c->full_path);
+    makefile_add_uninstall(c->mf, tmp);
+
+    makefile_add_distclean(c->mf, c->bin_dir);
+
+    TALLOC_FREE(context);
     return 0;
 }
 
@@ -99,7 +172,9 @@ struct context *context_new_source(struct context *parent, void *context,
     c->link_opts = stringlist_copy(parent->link_opts, c);
     c->mf = talloc_reference(c, parent->mf);
     c->ll = talloc_reference(c, parent->ll);
+    c->s = parent->s;
     c->language = NULL;
+    c->objects = stringlist_new(c);
 
     c->full_path = talloc_asprintf(c, "%s/%s", c->src_dir, called_path);
 
@@ -112,10 +187,13 @@ int context_source_destructor(struct context *c)
 {
     struct language *l;
     void *context;
+    const char *obj_name;
 
     assert(c->type == CONTEXT_TYPE_SOURCE);
+#ifdef DEBUG
     fprintf(stderr, "context_source_destructor('%s', '%s')\n",
             c->full_path, c->parent->full_path);
+#endif
 
     /* Try to find a language that's compatible with the language already used
      * in this binary, and is compatible with this current source file. */
@@ -131,6 +209,7 @@ int context_source_destructor(struct context *c)
                 c->parent->language->name, c->parent->full_path);
         abort();
     }
+    c->parent->language = l;
 
     /* We need to allocate some temporary memory */
     context = talloc_new(NULL);
@@ -139,15 +218,13 @@ int context_source_destructor(struct context *c)
      * entire compiling phase. */
     if (language_needs_compile(l, c) == true)
     {
-        const char *obj_name;
-
         /* This is the name that our code will be compiled into.  This must
          * succeed, as we just checked that it's necessary. */
         obj_name = language_objname(l, context, c);
         assert(obj_name != NULL);
 
         /* If we've already built this dependency, then it's not necessary to
-         * add it to the build list. */
+         * add it to the build list again, so skip it. */
         if (!stringlist_include(c->mf->targets, obj_name))
         {
             makefile_add_targets(c->mf, obj_name);
@@ -169,23 +246,50 @@ int context_source_destructor(struct context *c)
 
 	    /* *INDENT-OFF* */
             makefile_start_cmds(c->mf);
-            language_cmds(l, c, lambda(void, (bool nam,
-                                              const char *format, ...),
-                                       {
-					   va_list args;
-					   va_start(args, NULL);
-					   if (nam == true)
-					       makefile_vnam_cmd(c->mf, format,
+            language_build(l, c, lambda(void, (bool nam,
+					       const char *format, ...),
+					{
+					    va_list args;
+					    va_start(args, NULL);
+					    if (nam == true)
+						makefile_vnam_cmd(c->mf, format,
 								 args);
-					   else
-					       makefile_vadd_cmd(c->mf, format,
-								 args);
-					   va_end(args);
-				       }
+					    else
+						makefile_vadd_cmd(c->mf, format,
+								  args);
+					    va_end(args);
+					}
                           ));
             makefile_end_cmds(c->mf);
 	    /* *INDENT-ON* */
+
+            makefile_add_targets(c->mf, obj_name);
+            makefile_add_clean(c->mf, obj_name);
+            makefile_add_cleancache(c->mf, c->obj_dir);
         }
+    }
+    else
+    {
+        /* The "objects" for languages that aren't compiled are really just the
+         * included sources. */
+        obj_name = talloc_reference(context, c->full_path);
+    }
+
+    /* Adds every "extra" (which is defined as any other sources that should be 
+     * linked in as a result of this SOURCES += line) to the stack. */
+    if (stringlist_include(c->parent->objects, obj_name) == false)
+    {
+	/* *INDENT-OFF* */
+	language_extras(l, c, context,
+			lambda(void, (const char * extra),
+			       {
+				   extra += strlen(c->src_dir) + 1;
+				   contextstack_push_source(c->s, extra);
+			       }
+			    ));
+	/* *INDENT-ON* */
+
+        stringlist_add(c->parent->objects, obj_name);
     }
 
     /* Everything succeeded! */

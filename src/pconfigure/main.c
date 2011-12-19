@@ -117,7 +117,9 @@ int main(int argc, char **argv)
         {
             int err;
 
+#ifdef DEBUG
             fprintf(stderr, "%s", line);
+#endif
 
             /* Splits the line into bits */
             err = parse_line(line, left, op, right);
@@ -141,6 +143,24 @@ int main(int argc, char **argv)
         }
 
         fclose(file);
+    }
+
+    /* If there's anything left on the stack, then clear everything out */
+    while (!contextstack_isempty(s))
+    {
+        struct context *c;
+        void *context;
+
+        context = talloc_new(NULL);
+
+        /* We already know that there is an element on the stack, so there
+         * is no need to check for errors. */
+        c = contextstack_pop(s, context);
+        assert(c != NULL);
+
+        /* That's all we need to do, as free()ing the context will cause it to
+         * be cleaned up and pushed over to  */
+        TALLOC_FREE(context);
     }
 
     TALLOC_FREE(o);

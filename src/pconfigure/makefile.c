@@ -29,6 +29,7 @@ static int mf_destructor(struct makefile *m);
 struct makefile *makefile_new(struct clopts *o)
 {
     struct makefile *m;
+    char *mfstr;
 
     m = talloc(o, struct makefile);
     talloc_set_destructor(m, &mf_destructor);
@@ -38,13 +39,21 @@ struct makefile *makefile_new(struct clopts *o)
     m->targets_cleancache = stringlist_new(m);
     m->targets_distclean = stringlist_new(m);
     m->targets = stringlist_new(m);
+    m->install = stringlist_new(m);
+    m->uninstall = stringlist_new(m);
     m->state = MAKEFILE_STATE_NONE;
 
     fprintf(m->file, "SHELL=/bin/bash\n");
-    fprintf(m->file, ".PHONY: all tek__all clean cleancache distclean\n");
+    fprintf(m->file,
+            ".PHONY: all pconfigure__all clean cleancache distclean "
+            "install uninstall" "\n");
     fprintf(m->file, ".SUFFIXES:\n");
-    fprintf(m->file, "all: tek__all\n");
+    fprintf(m->file, "all: pconfigure__all\n");
     fprintf(m->file, "\n");
+
+    mfstr = talloc_strdup(NULL, "Makefile");
+    stringlist_add(m->targets_distclean, mfstr);
+    talloc_unlink(NULL, mfstr);
 
     return m;
 }
@@ -59,27 +68,44 @@ void makefile_create_target(struct makefile *m, const char *name)
 
 void makefile_add_all(struct makefile *m, const char *name)
 {
-    stringlist_add(m->targets_all, name);
+    if (stringlist_include(m->targets_all, name) == false)
+        stringlist_add(m->targets_all, name);
 }
 
 void makefile_add_clean(struct makefile *m, const char *name)
 {
-    stringlist_add(m->targets_clean, name);
+    if (stringlist_include(m->targets_clean, name) == false)
+        stringlist_add(m->targets_clean, name);
 }
 
 void makefile_add_cleancache(struct makefile *m, const char *name)
 {
-    stringlist_add(m->targets_cleancache, name);
+    if (stringlist_include(m->targets_cleancache, name) == false)
+        stringlist_add(m->targets_cleancache, name);
 }
 
 void makefile_add_distclean(struct makefile *m, const char *name)
 {
-    stringlist_add(m->targets_distclean, name);
+    if (stringlist_include(m->targets_distclean, name) == false)
+        stringlist_add(m->targets_distclean, name);
 }
 
 void makefile_add_targets(struct makefile *m, const char *name)
 {
-    stringlist_add(m->targets, name);
+    if (stringlist_include(m->targets, name) == false)
+        stringlist_add(m->targets, name);
+}
+
+void makefile_add_install(struct makefile *m, const char *name)
+{
+    if (stringlist_include(m->install, name) == false)
+        stringlist_add(m->install, name);
+}
+
+void makefile_add_uninstall(struct makefile *m, const char *name)
+{
+    if (stringlist_include(m->uninstall, name) == false)
+        stringlist_add(m->uninstall, name);
 }
 
 void makefile_start_deps(struct makefile *m)
@@ -220,7 +246,7 @@ int mf_destructor(struct makefile *m)
     struct stringlist_node *cur;
 
     /* Creates the fake all target. */
-    makefile_create_target(m, "tek__all");
+    makefile_create_target(m, "pconfigure__all");
     makefile_start_deps(m);
     cur = stringlist_start(m->targets_all);
     while (stringlist_notend(cur))
@@ -272,7 +298,34 @@ int mf_destructor(struct makefile *m)
     cur = stringlist_start(m->targets_distclean);
     while (stringlist_notend(cur))
     {
-        makefile_add_cmd(m, "rm \"%s\" >& /dev/null || true",
+        makefile_add_cmd(m, "rm -rf \"%s\" >& /dev/null || true",
+                         stringlist_data(cur));
+        cur = stringlist_next(cur);
+    }
+    makefile_end_cmds(m);
+
+    /* Install and uninstall are really just a list of commands */
+    makefile_create_target(m, "install");
+    makefile_start_deps(m);
+    makefile_add_dep(m, "all");
+    makefile_end_deps(m);
+    makefile_start_cmds(m);
+    cur = stringlist_start(m->install);
+    while (stringlist_notend(cur))
+    {
+        makefile_add_cmd(m, "%s", stringlist_data(cur));
+        cur = stringlist_next(cur);
+    }
+    makefile_end_cmds(m);
+
+    makefile_create_target(m, "uninstall");
+    makefile_start_deps(m);
+    makefile_end_deps(m);
+    makefile_start_cmds(m);
+    cur = stringlist_start(m->uninstall);
+    while (stringlist_notend(cur))
+    {
+        makefile_add_cmd(m, "rm %s >& /dev/null || true",
                          stringlist_data(cur));
         cur = stringlist_next(cur);
     }

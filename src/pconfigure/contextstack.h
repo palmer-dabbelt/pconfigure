@@ -22,6 +22,8 @@
 #ifndef PCONFIGURE_CONTEXTSTACK_H
 #define PCONFIGURE_CONTEXTSTACK_H
 
+struct contextstack;
+
 #include "context.h"
 #include "clopts.h"
 #include "makefile.h"

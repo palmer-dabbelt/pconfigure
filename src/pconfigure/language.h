@@ -25,6 +25,7 @@
 #include "stringlist.h"
 #include "context.h"
 #include <assert.h>
+#include <stdbool.h>
 
 struct language
 {
@@ -38,13 +39,19 @@ struct language
     struct stringlist *compile_opts;
     struct stringlist *link_opts;
 
+    bool compiled;
+
     struct language *(*search) (struct language *, struct language *,
                                 const char *);
     const char *(*objname) (struct language *, void *, struct context *);
     void (*deps) (struct language *, struct context *,
                   void (*)(const char *, ...));
-    void (*cmds) (struct language *, struct context *,
+    void (*build) (struct language *, struct context *,
+                   void (*)(bool, const char *, ...));
+    void (*link) (struct language *, struct context *,
                   void (*)(bool, const char *, ...));
+    void (*extras) (struct language *, struct context *, void *,
+                    void (*)(const char *));
 };
 
 extern int language_init(struct language *l);
@@ -58,16 +65,15 @@ extern struct language *language_search(struct language *l,
 extern const char *language_objname(struct language *l, void *context,
                                     struct context *c);
 
-/* FIXME: Some languages don't need to be compiled, but I don't have any yet. */
-static inline bool language_needs_compile(struct language *l,
-                                          struct context *c)
-{
-    return true;
-}
+extern bool language_needs_compile(struct language *l, struct context *c);
 
 extern void language_deps(struct language *l, struct context *c,
                           void (*func) (const char *, ...));
-extern void language_cmds(struct language *l, struct context *c,
+extern void language_build(struct language *l, struct context *c,
+                           void (*func) (bool, const char *, ...));
+extern void language_link(struct language *l, struct context *c,
                           void (*func) (bool, const char *, ...));
+extern void language_extras(struct language *l, struct context *c, void *cxt,
+                            void (*func) (const char *));
 
 #endif

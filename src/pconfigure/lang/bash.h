@@ -19,35 +19,17 @@
  * along with pconfigure.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PCONFIGURE_LANGUAGELIST_H
-#define PCONFIGURE_LANGUAGELIST_H
+#ifndef PCONFIGURE_LANG_BASH_H
+#define PCONFIGURE_LANG_BASH_H
 
-struct languagelist;
+#include "../language.h"
+#include "../clopts.h"
 
-#include "language.h"
-#include "clopts.h"
-
-struct languagelist_node
+struct language_bash
 {
-    struct language *data;
-    struct languagelist_node *next;
+    struct language l;
 };
 
-struct languagelist
-{
-    struct languagelist_node *head;
-    struct language *selected;
-};
-
-extern struct languagelist *languagelist_new(struct clopts *o);
-
-extern int languagelist_select(struct languagelist *ll, const char *name);
-
-extern struct language *languagelist_search(struct languagelist *ll,
-                                            struct language *parent,
-                                            const char *path);
-
-extern struct language *languagelist_get(struct languagelist *ll,
-                                         void *context);
+extern struct language *language_bash_new(struct clopts *o, const char *name);
 
 #endif

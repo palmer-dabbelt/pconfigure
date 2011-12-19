@@ -61,6 +61,10 @@ struct makefile
     /* This is every target in the entire makefile (to ensure that we don't
      * double any targets). */
     struct stringlist *targets;
+
+    /* These are the commands that will be run on an install */
+    struct stringlist *install;
+    struct stringlist *uninstall;
 };
 
 /* Creates a new makefile, allocating it as a child of "o" */
@@ -75,6 +79,8 @@ extern void makefile_add_clean(struct makefile *m, const char *name);
 extern void makefile_add_cleancache(struct makefile *m, const char *name);
 extern void makefile_add_distclean(struct makefile *m, const char *name);
 extern void makefile_add_targets(struct makefile *m, const char *name);
+extern void makefile_add_install(struct makefile *m, const char *name);
+extern void makefile_add_uninstall(struct makefile *m, const char *name);
 
 /* Adds a new dependency to a target (_start just changes state, for use with
    raw fd writes) */

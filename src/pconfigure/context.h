@@ -28,6 +28,7 @@ struct context;
 #include "language.h"
 #include "languagelist.h"
 #include "makefile.h"
+#include "contextstack.h"
 
 /* Contexts can have multiple types */
 enum context_type
@@ -41,6 +42,7 @@ enum context_type
 struct context
 {
     enum context_type type;
+    struct contextstack *s;
 
     /* When a source is used, this in the context it will check in order to
      * ensure that dependencies are not added twice. */
@@ -66,11 +68,16 @@ struct context
     /* Options specific to this context */
     struct stringlist *compile_opts;
     struct stringlist *link_opts;
+
+    /* The objects to be linked into this file (on sources, in the case of a
+     * non-compiled language. */
+    struct stringlist *objects;
 };
 
 extern struct context *context_new_defaults(struct clopts *o, void *context,
                                             struct makefile *mf,
-                                            struct languagelist *ll);
+                                            struct languagelist *ll,
+                                            struct contextstack *s);
 
 extern struct context *context_new_binary(struct context *parent,
                                           void *context,

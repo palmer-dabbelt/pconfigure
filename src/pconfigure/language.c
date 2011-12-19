@@ -27,12 +27,15 @@ int language_init(struct language *l)
         return -1;
 
     l->name = NULL;
+    l->compiled = false;
     l->compile_opts = stringlist_new(l);
     l->link_opts = stringlist_new(l);
     l->search = NULL;
     l->objname = NULL;
     l->deps = NULL;
-    l->cmds = NULL;
+    l->build = NULL;
+    l->link = NULL;
+    l->extras = NULL;
 
     return 0;
 }
@@ -77,6 +80,12 @@ const char *language_objname(struct language *l, void *context,
     return l->objname(l, context, c);
 }
 
+bool language_needs_compile(struct language * l, struct context * c)
+{
+    assert(l != NULL);
+    return l->compiled;
+}
+
 void language_deps(struct language *l, struct context *c,
                    void (*func) (const char *, ...))
 {
@@ -85,10 +94,26 @@ void language_deps(struct language *l, struct context *c,
     l->deps(l, c, func);
 }
 
-void language_cmds(struct language *l, struct context *c,
+void language_build(struct language *l, struct context *c,
+                    void (*func) (bool, const char *, ...))
+{
+    assert(l != NULL);
+    assert(l->build != NULL);
+    l->build(l, c, func);
+}
+
+void language_link(struct language *l, struct context *c,
                    void (*func) (bool, const char *, ...))
 {
     assert(l != NULL);
-    assert(l->cmds != NULL);
-    l->cmds(l, c, func);
+    assert(l->link != NULL);
+    l->link(l, c, func);
+}
+
+void language_extras(struct language *l, struct context *c, void *context,
+                     void (*func) (const char *))
+{
+    assert(l != NULL);
+    assert(l->extras != NULL);
+    l->extras(l, c, context, func);
 }
