@@ -145,7 +145,7 @@ int context_binary_destructor(struct context *c)
     makefile_add_install(c->mf, tmp);
     tmp = talloc_asprintf(context,
 			  "mkdir -p `dirname \"%s/%s\"` >& /dev/null || true",
-			  c->full_path, c->prefix);
+			  c->prefix, c->full_path);
     makefile_add_install(c->mf, tmp);
     tmp = talloc_asprintf(context, "install -D %s `dirname \"%s/%s\"`",
                           c->full_path, c->prefix, c->full_path);
