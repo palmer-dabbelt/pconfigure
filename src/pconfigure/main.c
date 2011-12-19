@@ -29,6 +29,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <talloc.h>
+#include <unistd.h>
 
 static const unsigned int MAX_LINE_SIZE = 1024;
 
@@ -36,7 +37,7 @@ static const unsigned int MAX_LINE_SIZE = 1024;
 static int parse_line(const char *line, char *left, char *op, char *right);
 
 /* Calls the correct language for a function */
-static int parse_select(const char *left, const char *op, const char *right);
+static int parse_select(const char *left, const char *op, char *right);
 
 static int parsefunc_prefix(const char *op, const char *right);
 static int parsefunc_languages(const char *op, const char *right);
@@ -224,8 +225,92 @@ int parse_line(const char *line, char *left, char *op, char *right)
     return 0;
 }
 
-int parse_select(const char *left, const char *op, const char *right)
+int parse_select(const char *left, const char *op, char *right)
 {
+    char newright[MAX_LINE_SIZE];
+    char command[MAX_LINE_SIZE * 2];
+    void *context;
+    int newi, i, cmdi;
+
+    context = talloc_new(NULL);
+
+    memset(newright, '\0', MAX_LINE_SIZE);
+    newi = i = cmdi = 0;
+    while (i < strlen(right))
+    {
+        if (right[i] == '`')
+        {
+            char *tmpname;
+            int fd;
+            int err;
+            char line[MAX_LINE_SIZE];
+            FILE *file;
+
+            i++;
+            cmdi = 0;
+            while (right[i] != '`')
+            {
+                command[cmdi] = right[i];
+                cmdi++;
+                i++;
+            }
+            command[cmdi] = '\0';
+            i++;
+
+            tmpname = talloc_strdup(context, "/tmp/pconfigure.XXXXXX");
+            fd = mkstemp(tmpname);
+            strcat(command, " > ");
+            strcat(command, tmpname);
+
+            err = system(command);
+            if (err != 0)
+            {
+                int index;
+                char old;
+
+                index = strlen(command) - strlen(tmpname) - 3;
+                old = command[index];
+                command[index] = '\0';
+                fprintf(stderr,
+                        "Command '%s' failed, which is probably bad\n",
+                        command);
+                command[index] = old;
+            }
+
+            file = fopen(tmpname, "r");
+            while (fgets(line, MAX_LINE_SIZE, file) != NULL)
+            {
+                i++;
+                i += strlen(line);
+                if (i >= MAX_LINE_SIZE)
+                    abort();
+
+                while (isspace(line[strlen(line) - 1]))
+                {
+                    line[strlen(line) - 1] = '\0';
+                    i--;
+                }
+
+                strcat(newright, line);
+                strcat(newright, " ");
+            }
+            newright[strlen(newright) - 1] = '\0';
+
+            close(fd);
+            unlink(tmpname);
+        }
+        else
+        {
+            newright[newi] = right[i];
+            newi++;
+            i++;
+        }
+    }
+
+    strcpy(right, newright);
+
+    TALLOC_FREE(context);
+
     /* Calls the correct function to parse this input line */
     if (strlen(left) == 0)
         return 0;
@@ -295,11 +380,49 @@ int parsefunc_compileopts(const char *op, const char *right)
     void *context;
     const char *duped;
     int err;
+    char newright[MAX_LINE_SIZE];
+    int start, end;
+    int quotes;
 
     if (strcmp(op, "+=") != 0)
     {
         fprintf(stderr, "We only support += for COMPILEOPTS\n");
         return -1;
+    }
+
+    /* Splits into spaces. */
+    start = 0;
+    quotes = 0;
+    end = 0;
+    while ((start < strlen(right)) && (end <= strlen(right)))
+    {
+        if (right[end] == '\"')
+            quotes++;
+
+        if ((isspace(right[end])) && (quotes % 2) == 0)
+        {
+            int err;
+
+            memset(newright, '\0', MAX_LINE_SIZE);
+            strncpy(newright, right + start, end - start);
+
+            err = parsefunc_compileopts(op, newright);
+            if (err != 0)
+                return err;
+
+            while (isspace(right[end]))
+                end++;
+
+            start = end;
+        }
+
+        end++;
+    }
+    if (start != 0)
+    {
+        memset(newright, '\0', MAX_LINE_SIZE);
+        strcpy(newright, right + start);
+        return parsefunc_compileopts(op, newright);
     }
 
     /* If the stack is empty, then add this to the language-specific global
@@ -343,11 +466,49 @@ int parsefunc_linkopts(const char *op, const char *right)
     void *context;
     const char *duped;
     int err;
+    char newright[MAX_LINE_SIZE];
+    int start, end;
+    int quotes;
 
     if (strcmp(op, "+=") != 0)
     {
         fprintf(stderr, "We only support += for LINKOPTS\n");
         return -1;
+    }
+
+    /* Splits into spaces. */
+    start = 0;
+    quotes = 0;
+    end = 0;
+    while ((start < strlen(right)) && (end <= strlen(right)))
+    {
+        if (right[end] == '\"')
+            quotes++;
+
+        if ((isspace(right[end])) && (quotes % 2) == 0)
+        {
+            int err;
+
+            memset(newright, '\0', MAX_LINE_SIZE);
+            strncpy(newright, right + start, end - start);
+
+            err = parsefunc_linkopts(op, newright);
+            if (err != 0)
+                return err;
+
+            while (isspace(right[end]))
+                end++;
+
+            start = end;
+        }
+
+        end++;
+    }
+    if (start != 0)
+    {
+        memset(newright, '\0', MAX_LINE_SIZE);
+        strcpy(newright, right + start);
+        return parsefunc_linkopts(op, newright);
     }
 
     /* If the stack is empty, then add this to the language-specific global

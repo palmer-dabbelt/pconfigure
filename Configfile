@@ -10,7 +10,7 @@ LINKOPTS    += -lclang
 LINKOPTS    += -L`llvm-config --libdir`
 LINKOPTS    += -Wl,-R`llvm-config --libdir`
 LINKOPTS    += `pkg-config talloc --libs`
-COMPILEOPTS += -I`llvm-config --includedir`
+COMPILEOPTS += `llvm-config --cflags`
 SOURCES     += pconfigure/main.c
 
 BINARIES    += pclean
