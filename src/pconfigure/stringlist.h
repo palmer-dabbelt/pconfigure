@@ -55,6 +55,15 @@ extern int stringlist_del(struct stringlist *l, const char *to_del);
 /* Checks if the given string is in the given string list */
 extern bool stringlist_include(struct stringlist *l, const char *s);
 
+/* Returns a hash code for a given string list */
+extern const char *stringlist_hashcode(struct stringlist *l, void *context);
+
+/* Returns the number of elements in this list */
+extern int stringlist_size(struct stringlist *l);
+
+/* Calls the given function for every element in the list */
+extern int stringlist_each(struct stringlist *l, int (*func) (const char *));
+
 static inline struct stringlist_node *stringlist_start(struct stringlist *l)
 {
     return l->head;

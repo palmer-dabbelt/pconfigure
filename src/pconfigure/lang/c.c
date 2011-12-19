@@ -20,8 +20,20 @@
  */
 
 #include "c.h"
+#include "../lambda.h"
 #include <talloc.h>
 #include <string.h>
+#include <clang-c/Index.h>
+
+static struct language *language_c_search(struct language *l_uncast,
+                                          struct language *parent,
+                                          const char *path);
+static const char *language_c_objname(struct language *l_uncast,
+                                      void *context, struct context *c);
+static void language_c_deps(struct language *l_uncast, struct context *c,
+                            void (*func) (const char *, ...));
+static void language_c_cmds(struct language *l_uncast, struct context *c,
+                            void (*func) (bool, const char *, ...));
 
 struct language *language_c_new(struct clopts *o, const char *name)
 {
@@ -36,6 +48,170 @@ struct language *language_c_new(struct clopts *o, const char *name)
 
     language_init(&(l->l));
     l->l.name = talloc_strdup(l, "c");
+    l->l.compile_str = talloc_strdup(l, "CC");
+    l->l.compile_cmd = talloc_strdup(l, "gcc");
+    l->l.link_str = talloc_strdup(l, "LD");
+    l->l.link_cmd = talloc_strdup(l, "gcc");
+    l->l.search = &language_c_search;
+    l->l.objname = &language_c_objname;
+    l->l.deps = &language_c_deps;
+    l->l.cmds = &language_c_cmds;
 
     return &(l->l);
+}
+
+struct language *language_c_search(struct language *l_uncast,
+                                   struct language *parent, const char *path)
+{
+    struct language_c *l;
+
+    l = talloc_get_type(l_uncast, struct language_c);
+    if (l == NULL)
+        return NULL;
+
+    /* FIXME: Ensure that we can actually support the source file before
+     * just accepting it. */
+    return l_uncast;
+}
+
+const char *language_c_objname(struct language *l_uncast, void *context,
+                               struct context *c)
+{
+    char *o;
+    const char *compileopts_hash, *langopts_hash;
+    struct language_c *l;
+    void *subcontext;
+
+    l = talloc_get_type(l_uncast, struct language_c);
+    if (l == NULL)
+        return NULL;
+
+    subcontext = talloc_new(NULL);
+    compileopts_hash = stringlist_hashcode(c->compile_opts, subcontext);
+    langopts_hash = stringlist_hashcode(l->l.compile_opts, subcontext);
+
+    /* This should be checked higher up in the stack, but just make sure */
+    assert(c->full_path[strlen(c->src_dir)] == '/');
+    o = talloc_asprintf(context, "%s/%s/%s-%s.o",
+                        c->obj_dir,
+                        c->full_path + strlen(c->src_dir) + 1,
+                        compileopts_hash, langopts_hash);
+
+    TALLOC_FREE(subcontext);
+    return o;
+}
+
+void language_c_deps(struct language *l_uncast, struct context *c,
+                     void (*func) (const char *, ...))
+{
+    void *context;
+    struct language_c *l;
+    int clang_argc;
+    char **clang_argv;
+    int i;
+    CXIndex index;
+    CXTranslationUnit tu;
+
+    l = talloc_get_type(l_uncast, struct language_c);
+    if (l == NULL)
+        return;
+
+    context = talloc_new(NULL);
+
+    /* Creates the argc/argv for a call to clang that will determine which
+     * includes are used by the file in question. */
+    clang_argc = stringlist_size(l->l.compile_opts)
+        + stringlist_size(c->compile_opts);
+    clang_argv = talloc_array(context, char *, clang_argc + 1);
+    for (i = 0; i <= clang_argc; i++)
+        clang_argv[i] = NULL;
+
+    clang_argv[0] = talloc_strdup(clang_argv, c->full_path);
+    i = 1;
+    /* *INDENT-OFF* */
+    stringlist_each(l->l.compile_opts,
+		    lambda(int, (const char *str),
+			   {
+			       clang_argv[i] = talloc_strdup(clang_argv, str);
+			       i++;
+			       return 0;
+			   }
+                    ));
+    stringlist_each(c->compile_opts,
+		    lambda(int, (const char *str),
+			   {
+			       clang_argv[i] = talloc_strdup(clang_argv, str);
+			       i++;
+			       return 0;
+			   }
+                    ));
+    /* *INDENT-ON* */
+
+    /* Asks libclang for the list of includes */
+    index = clang_createIndex(0, 0);
+    /* *INDENT-OFF* */
+    tu = clang_parseTranslationUnit(index, 0,
+                                    (const char *const *)clang_argv,
+                                    clang_argc, 0, 0, CXTranslationUnit_None);
+    clang_getInclusions(tu,
+			lambda(void,
+			       (CXFile included_file,
+				CXSourceLocation * inclusion_stack,
+				unsigned include_len, void *unused),
+			       {
+                                   CXString fn;
+                                   const char *fn_cstr;
+                                   fn = clang_getFileName(included_file);
+                                   fn_cstr = clang_getCString(fn);
+                                   if (fn_cstr[0] != '/')
+				       func("%s", fn_cstr);
+                                   clang_disposeString(fn);
+			       }
+			    ), NULL);
+    /* *INDENT-ON* */
+    clang_disposeTranslationUnit(tu);
+    clang_disposeIndex(index);
+
+    TALLOC_FREE(context);
+}
+
+void language_c_cmds(struct language *l_uncast, struct context *c,
+                     void (*func) (bool, const char *, ...))
+{
+    struct language_c *l;
+    void *context;
+    const char *obj_path;
+
+    l = talloc_get_type(l_uncast, struct language_c);
+    if (l == NULL)
+        return;
+
+    context = talloc_new(NULL);
+    obj_path = language_objname(l_uncast, context, c);
+
+    func(true, "%s\t%s",
+         l->l.compile_str, c->full_path + strlen(c->src_dir) + 1);
+
+    func(false, "mkdir -p `dirname %s` >& /dev/null || true", obj_path);
+
+    func(false, "\\\t%s", l->l.compile_cmd);
+    /* *INDENT-OFF* */
+    stringlist_each(l->l.compile_opts,
+		    lambda(int, (const char *opt),
+			   {
+			       func(false, "\\ %s", opt);
+			       return 0;
+			   }
+                    ));
+    stringlist_each(c->compile_opts,
+		    lambda(int, (const char *opt),
+			   {
+			       func(false, "\\ %s", opt);
+			       return 0;
+			   }
+                    ));
+    /* *INDENT-ON* */
+    func(false, "\\ -c %s -o %s\n", c->full_path, obj_path);
+
+    TALLOC_FREE(context);
 }

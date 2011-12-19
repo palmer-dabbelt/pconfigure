@@ -1,6 +1,7 @@
 LANGUAGES   += c
 COMPILEOPTS += -Wall
 COMPILEOPTS += -Werror
+COMPILEOPTS += -Wno-trampolines
 COMPILEOPTS += -std=gnu99
 
 BINARIES    += pconfigure

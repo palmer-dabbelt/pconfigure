@@ -24,6 +24,8 @@
 
 #include "context.h"
 #include "clopts.h"
+#include "makefile.h"
+#include "languagelist.h"
 #include <stdbool.h>
 
 struct contextstack_node
@@ -37,12 +39,18 @@ struct contextstack
     struct contextstack_node *head;
 };
 
-extern struct contextstack *contextstack_new(struct clopts *o);
+extern struct contextstack *contextstack_new(struct clopts *o,
+                                             struct makefile *mf,
+                                             struct languagelist *ll);
 
 extern bool contextstack_isempty(struct contextstack *s);
 
+/* Looks at the top of the stack, ..._default() returns the default context if
+ * there is no other context to return. */
 extern struct context *contextstack_peek(struct contextstack *s,
                                          void *context);
+extern struct context *contextstack_peek_default(struct contextstack *s,
+                                                 void *context);
 
 extern struct context *contextstack_pop(struct contextstack *s,
                                         void *context);

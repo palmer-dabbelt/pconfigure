@@ -30,9 +30,10 @@ struct clopts *clopts_new(int argc, char **argv)
     if (o == NULL)
         return NULL;
 
-    o->infile_count = 1;
+    o->infile_count = 2;
     o->infiles = talloc_array(o, const char *, o->infile_count);
-    o->infiles[0] = talloc_strdup(o, "Configfile");
+    o->infiles[0] = talloc_strdup(o, "Configfile.local");
+    o->infiles[1] = talloc_strdup(o, "Configfile");
 
     o->outfile = talloc_strdup(o, "Makefile");
 

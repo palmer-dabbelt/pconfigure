@@ -131,3 +131,61 @@ bool stringlist_include(struct stringlist * l, const char *s)
 
     return false;
 }
+
+int stringlist_size(struct stringlist *l)
+{
+    struct stringlist_node *cur;
+    int count;
+
+    cur = l->head;
+    count = 0;
+    while (cur != NULL)
+    {
+        count++;
+        cur = cur->next;
+    }
+
+    return count;
+}
+
+int stringlist_each(struct stringlist *l, int (*func) (const char *))
+{
+    struct stringlist_node *cur;
+
+    cur = l->head;
+    while (cur != NULL)
+    {
+        int out;
+        out = func(cur->data);
+        if (out != 0)
+            return out;
+
+        cur = cur->next;
+    }
+
+    return 0;
+}
+
+const char *stringlist_hashcode(struct stringlist *l, void *context)
+{
+    unsigned int hash;
+    struct stringlist_node *cur;
+
+    hash = 5381;
+    cur = l->head;
+    while (cur != NULL)
+    {
+        const char *str;
+        char c;
+
+        str = cur->data;
+        /* FIXME: http://www.cse.yorku.ca/~oz/hash.html */
+        while ((c = *str++) != '\0')
+            hash = hash * 33 ^ c;
+        hash = hash * 33 ^ ' ';
+
+        cur = cur->next;
+    }
+
+    return talloc_asprintf(context, "%u", hash);
+}

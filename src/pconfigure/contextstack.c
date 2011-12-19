@@ -23,7 +23,9 @@
 #include <talloc.h>
 #include <assert.h>
 
-struct contextstack *contextstack_new(struct clopts *o)
+struct contextstack *contextstack_new(struct clopts *o,
+                                      struct makefile *mf,
+                                      struct languagelist *ll)
 {
     struct contextstack *s;
 
@@ -38,7 +40,7 @@ struct contextstack *contextstack_new(struct clopts *o)
         return NULL;
     }
 
-    s->head->data = context_new_defaults(o, s->head);
+    s->head->data = context_new_defaults(o, s->head, mf, ll);
     if (s->head->data == NULL)
     {
         TALLOC_FREE(s);
@@ -90,6 +92,18 @@ struct context *contextstack_peek(struct contextstack *s, void *context)
         return NULL;
 
     if (contextstack_isempty(s))
+        return NULL;
+
+    assert(s->head->data != NULL);
+    return talloc_reference(context, s->head->data);
+}
+
+struct context *contextstack_peek_default(struct contextstack *s,
+                                          void *context)
+{
+    if (s == NULL)
+        return NULL;
+    if (context == NULL)
         return NULL;
 
     assert(s->head->data != NULL);

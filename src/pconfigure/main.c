@@ -20,9 +20,9 @@
  */
 
 #include "clopts.h"
-#include "targetlist.h"
 #include "contextstack.h"
 #include "languagelist.h"
+#include "makefile.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
@@ -38,6 +38,7 @@ static int parse_line(const char *line, char *left, char *op, char *right);
 /* Calls the correct language for a function */
 static int parse_select(const char *left, const char *op, const char *right);
 
+static int parsefunc_prefix(const char *op, const char *right);
 static int parsefunc_languages(const char *op, const char *right);
 static int parsefunc_compileopts(const char *op, const char *right);
 static int parsefunc_linkopts(const char *op, const char *right);
@@ -46,7 +47,7 @@ static int parsefunc_sources(const char *op, const char *right);
 
 /* This is global data to avoid having really long parsefunc_* function calls */
 static struct clopts *o;
-static struct targetlist *tl;
+static struct makefile *mf;
 static struct contextstack *s;
 static struct languagelist *ll;
 
@@ -68,24 +69,14 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    tl = targetlist_new(o);
-    if (tl == NULL)
+    mf = makefile_new(o);
+    if (mf == NULL)
     {
 #ifndef DEBUG
-        fprintf(stderr, "Internal error allocating targetlist\n");
+        fprintf(stderr, "Internal error allocating makefile\n");
 #endif
         TALLOC_FREE(o);
         return 2;
-    }
-
-    s = contextstack_new(o);
-    if (s == NULL)
-    {
-#ifndef DEBUG
-        fprintf(stderr, "Internal error allocating contextstack\n");
-#endif
-        TALLOC_FREE(o);
-        return 3;
     }
 
     ll = languagelist_new(o);
@@ -93,6 +84,16 @@ int main(int argc, char **argv)
     {
 #ifndef DEBUG
         fprintf(stderr, "Internal error allocating languagelist\n");
+#endif
+        TALLOC_FREE(o);
+        return 3;
+    }
+
+    s = contextstack_new(o, mf, ll);
+    if (s == NULL)
+    {
+#ifndef DEBUG
+        fprintf(stderr, "Internal error allocating contextstack\n");
 #endif
         TALLOC_FREE(o);
         return 3;
@@ -208,6 +209,8 @@ int parse_select(const char *left, const char *op, const char *right)
     /* Calls the correct function to parse this input line */
     if (strlen(left) == 0)
         return 0;
+    if (strcmp(left, "PREFIX") == 0)
+        return parsefunc_prefix(op, right);
     if (strcmp(left, "LANGUAGES") == 0)
         return parsefunc_languages(op, right);
     if (strcmp(left, "COMPILEOPTS") == 0)
@@ -220,6 +223,30 @@ int parse_select(const char *left, const char *op, const char *right)
         return parsefunc_sources(op, right);
 
     return -2;
+}
+
+int parsefunc_prefix(const char *op, const char *right)
+{
+    void *context;
+    struct context *c;
+    const char *duped;
+    int err;
+
+    if (strcmp(op, "=") != 0)
+    {
+        fprintf(stderr, "We only support = for PREFIX\n");
+        return -1;
+    }
+
+    /* This gets added to the current context stack, even if it's just the
+     * default context. */
+    context = talloc_new(NULL);
+    c = contextstack_peek_default(s, context);
+    duped = talloc_strdup(context, right);
+    err = context_set_prefix(c, duped);
+    TALLOC_FREE(context);
+
+    return err;
 }
 
 int parsefunc_languages(const char *op, const char *right)

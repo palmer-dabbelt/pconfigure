@@ -57,6 +57,10 @@ struct makefile
 
     /* These targets will only be removed on a distclean */
     struct stringlist *targets_distclean;
+
+    /* This is every target in the entire makefile (to ensure that we don't
+     * double any targets). */
+    struct stringlist *targets;
 };
 
 /* Creates a new makefile, allocating it as a child of "o" */
@@ -70,17 +74,24 @@ extern void makefile_add_all(struct makefile *m, const char *name);
 extern void makefile_add_clean(struct makefile *m, const char *name);
 extern void makefile_add_cleancache(struct makefile *m, const char *name);
 extern void makefile_add_distclean(struct makefile *m, const char *name);
+extern void makefile_add_targets(struct makefile *m, const char *name);
 
 /* Adds a new dependency to a target (_start just changes state, for use with
    raw fd writes) */
 extern void makefile_start_deps(struct makefile *m);
 extern void makefile_add_dep(struct makefile *m, const char *format, ...);
+extern void makefile_vadd_dep(struct makefile *m,
+                              const char *format, va_list ap);
 extern void makefile_end_deps(struct makefile *m);
 
 /* Adds a new comand for building a target (_start as above) */
 extern void makefile_start_cmds(struct makefile *m);
 extern void makefile_nam_cmd(struct makefile *m, const char *format, ...);
+extern void makefile_vnam_cmd(struct makefile *m,
+                              const char *format, va_list ap);
 extern void makefile_add_cmd(struct makefile *m, const char *format, ...);
+extern void makefile_vadd_cmd(struct makefile *m,
+                              const char *format, va_list ap);
 extern void makefile_end_cmds(struct makefile *m);
 
 #endif

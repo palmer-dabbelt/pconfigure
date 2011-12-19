@@ -23,18 +23,51 @@
 #define PCONFIGURE_LANGUAGE_H
 
 #include "stringlist.h"
+#include "context.h"
+#include <assert.h>
 
 struct language
 {
     const char *name;
 
-    struct stringlist *compileopts;
-    struct stringlist *linkopts;
+    const char *compile_str;
+    const char *compile_cmd;
+    const char *link_str;
+    const char *link_cmd;
+
+    struct stringlist *compile_opts;
+    struct stringlist *link_opts;
+
+    struct language *(*search) (struct language *, struct language *,
+                                const char *);
+    const char *(*objname) (struct language *, void *, struct context *);
+    void (*deps) (struct language *, struct context *,
+                  void (*)(const char *, ...));
+    void (*cmds) (struct language *, struct context *,
+                  void (*)(bool, const char *, ...));
 };
 
 extern int language_init(struct language *l);
 
 extern int language_add_compileopt(struct language *l, const char *opt);
 extern int language_add_linkopt(struct language *l, const char *opt);
+
+extern struct language *language_search(struct language *l,
+                                        struct language *parent,
+                                        const char *path);
+extern const char *language_objname(struct language *l, void *context,
+                                    struct context *c);
+
+/* FIXME: Some languages don't need to be compiled, but I don't have any yet. */
+static inline bool language_needs_compile(struct language *l,
+                                          struct context *c)
+{
+    return true;
+}
+
+extern void language_deps(struct language *l, struct context *c,
+                          void (*func) (const char *, ...));
+extern void language_cmds(struct language *l, struct context *c,
+                          void (*func) (bool, const char *, ...));
 
 #endif

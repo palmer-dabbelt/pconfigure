@@ -22,7 +22,12 @@
 #ifndef PCONFIGURE_CONTEXT_H
 #define PCONFIGURE_CONTEXT_H
 
+struct context;
+
 #include "clopts.h"
+#include "language.h"
+#include "languagelist.h"
+#include "makefile.h"
 
 /* Contexts can have multiple types */
 enum context_type
@@ -41,6 +46,14 @@ struct context
      * ensure that dependencies are not added twice. */
     struct context *parent;
 
+    /* These should be the same globally */
+    struct makefile *mf;
+    struct languagelist *ll;
+
+    /* Each context has a language associated with it, the reason for this is
+     * to assure that all sources are compatible with one another. */
+    struct language *language;
+
     /* This is the full path (include the bin/ or src/) of this context */
     const char *full_path;
 
@@ -55,7 +68,9 @@ struct context
     struct stringlist *link_opts;
 };
 
-extern struct context *context_new_defaults(struct clopts *o, void *context);
+extern struct context *context_new_defaults(struct clopts *o, void *context,
+                                            struct makefile *mf,
+                                            struct languagelist *ll);
 
 extern struct context *context_new_binary(struct context *parent,
                                           void *context,
@@ -63,6 +78,8 @@ extern struct context *context_new_binary(struct context *parent,
 extern struct context *context_new_source(struct context *parent,
                                           void *context,
                                           const char *called_path);
+
+extern int context_set_prefix(struct context *c, const char *opt);
 
 extern int context_add_compileopt(struct context *c, const char *opt);
 extern int context_add_linkopt(struct context *c, const char *opt);

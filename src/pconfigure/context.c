@@ -21,6 +21,7 @@
 
 #include "context.h"
 #include "stringlist.h"
+#include "lambda.h"
 #include <talloc.h>
 #include <assert.h>
 #include <string.h>
@@ -28,7 +29,9 @@
 static int context_binary_destructor(struct context *c);
 static int context_source_destructor(struct context *c);
 
-struct context *context_new_defaults(struct clopts *o, void *context)
+struct context *context_new_defaults(struct clopts *o, void *context,
+                                     struct makefile *mf,
+                                     struct languagelist *ll)
 {
     struct context *c;
 
@@ -40,6 +43,9 @@ struct context *context_new_defaults(struct clopts *o, void *context)
     c->prefix = talloc_strdup(c, "/usr/local");
     c->compile_opts = stringlist_new(c);
     c->link_opts = stringlist_new(c);
+    c->mf = talloc_reference(c, mf);
+    c->ll = talloc_reference(c, ll);
+    c->language = NULL;
 
     return c;
 }
@@ -48,8 +54,6 @@ struct context *context_new_binary(struct context *parent, void *context,
                                    const char *called_path)
 {
     struct context *c;
-    char *fullpath;
-    int fullpath_size;
 
     c = talloc(context, struct context);
     c->type = CONTEXT_TYPE_BINARY;
@@ -60,14 +64,11 @@ struct context *context_new_binary(struct context *parent, void *context,
     c->prefix = talloc_reference(c, parent->prefix);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
+    c->mf = talloc_reference(c, parent->mf);
+    c->ll = talloc_reference(c, parent->ll);
+    c->language = NULL;
 
-    fullpath_size = strlen(c->bin_dir) + strlen(called_path) + 3;
-    fullpath = talloc_array(c, char, fullpath_size);
-    fullpath[0] = '\0';
-    strcat(fullpath, c->bin_dir);
-    strcat(fullpath, "/");
-    strcat(fullpath, called_path);
-    c->full_path = fullpath;
+    c->full_path = talloc_asprintf(c, "%s/%s", c->bin_dir, called_path);
 
     talloc_set_destructor(c, &context_binary_destructor);
 
@@ -86,8 +87,6 @@ struct context *context_new_source(struct context *parent, void *context,
                                    const char *called_path)
 {
     struct context *c;
-    char *fullpath;
-    int fullpath_size;
 
     c = talloc(context, struct context);
     c->type = CONTEXT_TYPE_SOURCE;
@@ -98,14 +97,11 @@ struct context *context_new_source(struct context *parent, void *context,
     c->prefix = talloc_reference(c, parent->prefix);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
+    c->mf = talloc_reference(c, parent->mf);
+    c->ll = talloc_reference(c, parent->ll);
+    c->language = NULL;
 
-    fullpath_size = strlen(c->bin_dir) + strlen(called_path) + 3;
-    fullpath = talloc_array(c, char, fullpath_size);
-    fullpath[0] = '\0';
-    strcat(fullpath, c->bin_dir);
-    strcat(fullpath, "/");
-    strcat(fullpath, called_path);
-    c->full_path = fullpath;
+    c->full_path = talloc_asprintf(c, "%s/%s", c->src_dir, called_path);
 
     talloc_set_destructor(c, &context_source_destructor);
 
@@ -114,9 +110,103 @@ struct context *context_new_source(struct context *parent, void *context,
 
 int context_source_destructor(struct context *c)
 {
+    struct language *l;
+    void *context;
+
     assert(c->type == CONTEXT_TYPE_SOURCE);
     fprintf(stderr, "context_source_destructor('%s', '%s')\n",
             c->full_path, c->parent->full_path);
+
+    /* Try to find a language that's compatible with the language already used
+     * in this binary, and is compatible with this current source file. */
+    l = languagelist_search(c->ll, c->parent->language, c->full_path);
+    if (l == NULL)
+    {
+        fprintf(stderr, "No language found for '%s'\n", c->full_path);
+
+        if ((c->parent == NULL) || (c->parent->language == NULL))
+            abort();
+
+        fprintf(stderr, "Parent language is '%s', from '%s'\n",
+                c->parent->language->name, c->parent->full_path);
+        abort();
+    }
+
+    /* We need to allocate some temporary memory */
+    context = talloc_new(NULL);
+
+    /* Some languages don't need to be compiled (just linked) so we skip the
+     * entire compiling phase. */
+    if (language_needs_compile(l, c) == true)
+    {
+        const char *obj_name;
+
+        /* This is the name that our code will be compiled into.  This must
+         * succeed, as we just checked that it's necessary. */
+        obj_name = language_objname(l, context, c);
+        assert(obj_name != NULL);
+
+        /* If we've already built this dependency, then it's not necessary to
+         * add it to the build list. */
+        if (!stringlist_include(c->mf->targets, obj_name))
+        {
+            makefile_add_targets(c->mf, obj_name);
+            makefile_create_target(c->mf, obj_name);
+
+	    /* *INDENT-OFF* */
+            makefile_start_deps(c->mf);
+            language_deps(l, c, lambda(void, (const char *format, ...),
+                                       {
+					   va_list args;
+					   va_start(args, NULL);
+					   makefile_vadd_dep(c->mf,
+							     format, args);
+					   va_end(args);
+                                       }
+			      ));
+            makefile_end_deps(c->mf);
+	    /* *INDENT-ON* */
+
+	    /* *INDENT-OFF* */
+            makefile_start_cmds(c->mf);
+            language_cmds(l, c, lambda(void, (bool nam,
+                                              const char *format, ...),
+                                       {
+					   va_list args;
+					   va_start(args, NULL);
+					   if (nam == true)
+					       makefile_vnam_cmd(c->mf, format,
+								 args);
+					   else
+					       makefile_vadd_cmd(c->mf, format,
+								 args);
+					   va_end(args);
+				       }
+                          ));
+            makefile_end_cmds(c->mf);
+	    /* *INDENT-ON* */
+        }
+    }
+
+    /* Everything succeeded! */
+    TALLOC_FREE(context);
+    return 0;
+}
+
+int context_set_prefix(struct context *c, const char *opt)
+{
+    if (c == NULL)
+        return -1;
+    if (opt == NULL)
+        return -1;
+
+    assert(c->prefix != NULL);
+    /* FIXME: This cast is probably bad, is the talloc API broken? */
+    talloc_unlink(c, (char *)c->prefix);
+    c->prefix = talloc_reference(c, opt);
+
+    if (c->prefix == NULL)
+        return -1;
 
     return 0;
 }

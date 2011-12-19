@@ -23,6 +23,7 @@
 #include "lang/c.h"
 #include <talloc.h>
 #include <string.h>
+#include <assert.h>
 
 static struct clopts *o;
 
@@ -79,6 +80,32 @@ int languagelist_select(struct languagelist *ll, const char *name)
     ll->head = cur;
     ll->selected = l_nonull;
     return 0;
+}
+
+struct language *languagelist_search(struct languagelist *ll,
+                                     struct language *parent,
+                                     const char *path)
+{
+    struct languagelist_node *cur;
+
+    if (ll == NULL)
+        return NULL;
+    if (path == NULL)
+        return NULL;
+
+    cur = ll->head;
+    while (cur != NULL)
+    {
+        struct language *found;
+
+        found = language_search(cur->data, parent, path);
+        if (found != NULL)
+            return found;
+
+        cur = cur->next;
+    }
+
+    return NULL;
 }
 
 struct language *languagelist_get(struct languagelist *ll, void *context)
