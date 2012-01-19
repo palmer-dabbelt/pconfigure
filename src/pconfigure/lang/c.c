@@ -55,6 +55,7 @@ struct language *language_c_new(struct clopts *o, const char *name)
 
     language_init(&(l->l));
     l->l.name = talloc_strdup(l, "c");
+    l->l.link_name = talloc_strdup(l, "c");
     l->l.compiled = true;
     l->l.compile_str = talloc_strdup(l, "CC");
     l->l.compile_cmd = talloc_strdup(l, "gcc");
@@ -85,7 +86,7 @@ struct language *language_c_search(struct language *l_uncast,
     if (parent == NULL)
         return l_uncast;
 
-    if (strcmp(parent->name, l_uncast->name) != 0)
+    if (strcmp(parent->link_name, l_uncast->link_name) != 0)
         return NULL;
 
     return l_uncast;

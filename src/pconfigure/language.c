@@ -27,6 +27,7 @@ int language_init(struct language *l)
         return -1;
 
     l->name = NULL;
+    l->link_name = NULL;
     l->compiled = false;
     l->compile_opts = stringlist_new(l);
     l->link_opts = stringlist_new(l);

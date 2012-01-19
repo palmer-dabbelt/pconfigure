@@ -30,6 +30,7 @@
 struct language
 {
     const char *name;
+    const char *link_name;
 
     const char *compile_str;
     const char *compile_cmd;
