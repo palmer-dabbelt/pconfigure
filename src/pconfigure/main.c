@@ -110,7 +110,7 @@ int main(int argc, char **argv)
 
         file = fopen(o->infiles[i], "r");
         if (file == NULL)
-            return -1;
+            continue;
 
         /* Reads the entire file */
         line_num = 1;
