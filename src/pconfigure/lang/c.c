@@ -139,7 +139,7 @@ void language_c_deps(struct language *l_uncast, struct context *c,
     /* Creates the argc/argv for a call to clang that will determine which
      * includes are used by the file in question. */
     clang_argc = stringlist_size(l->l.compile_opts)
-        + stringlist_size(c->compile_opts);
+        + stringlist_size(c->compile_opts) + 1;
     clang_argv = talloc_array(context, char *, clang_argc + 1);
     for (i = 0; i <= clang_argc; i++)
         clang_argv[i] = NULL;
