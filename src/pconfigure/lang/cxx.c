@@ -65,8 +65,8 @@ struct language *language_cxx_search(struct language *l_uncast,
         return NULL;
 
     if ((strcmp(path + strlen(path) - 4, ".c++") != 0) &&
-	(strcmp(path + strlen(path) - 4, ".cxx") != 0) &&
-	(strcmp(path + strlen(path) - 4, ".cpp") != 0))
+        (strcmp(path + strlen(path) - 4, ".cxx") != 0) &&
+        (strcmp(path + strlen(path) - 4, ".cpp") != 0))
         return NULL;
 
     if (parent == NULL)
