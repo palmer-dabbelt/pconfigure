@@ -64,7 +64,9 @@ struct language *language_cxx_search(struct language *l_uncast,
     if (l == NULL)
         return NULL;
 
-    if (strcmp(path + strlen(path) - 4, ".c++") != 0)
+    if ((strcmp(path + strlen(path) - 4, ".c++") != 0) &&
+	(strcmp(path + strlen(path) - 4, ".cxx") != 0) &&
+	(strcmp(path + strlen(path) - 4, ".cpp") != 0))
         return NULL;
 
     if (parent == NULL)
@@ -85,16 +87,40 @@ void language_cxx_extras(struct language *l_uncast, struct context *c,
 			 {
 			     va_list args;
 			     char *cfile;
+			     char *cxxfile;
 
 			     va_start(args, NULL);
 
 			     cfile = talloc_vasprintf(context, format, args);
+			     cxxfile = talloc_array(context, char,
+						    strlen(cfile) + 10);
+
+			     memset(cxxfile, 0, strlen(cfile) + 10);
+			     strncpy(cxxfile, cfile, strlen(cfile) - 2);
+			     strcat(cxxfile, ".c++");
+			     if (access(cxxfile, R_OK) == 0)
+				 func(cxxfile);
+
+			     memset(cxxfile, 0, strlen(cfile) + 10);
+			     strncpy(cxxfile, cfile, strlen(cfile) - 2);
+			     strcat(cxxfile, ".cxx");
+			     if (access(cxxfile, R_OK) == 0)
+				 func(cxxfile);
+
+			     memset(cxxfile, 0, strlen(cfile) + 10);
+			     strncpy(cxxfile, cfile, strlen(cfile) - 2);
+			     strcat(cxxfile, ".cpp");
+			     if (access(cxxfile, R_OK) == 0)
+				 func(cxxfile);
 
 			     if (strcmp(cfile + strlen(cfile) - 2, ".h") == 0)
 				 cfile[strlen(cfile)-1] = 'c';
 			     if (strcmp(cfile + strlen(cfile) - 4, ".h++") == 0)
 				 cfile[strlen(cfile)-3] = 'c';
-
+			     if (strcmp(cfile + strlen(cfile) - 4, ".hxx") == 0)
+				 cfile[strlen(cfile)-3] = 'c';
+			     if (strcmp(cfile + strlen(cfile) - 4, ".hpp") == 0)
+				 cfile[strlen(cfile)-3] = 'c';
 			     if (access(cfile, R_OK) == 0)
 				 func(cfile);
 			     
