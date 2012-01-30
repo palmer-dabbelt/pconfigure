@@ -3,6 +3,7 @@ COMPILEOPTS += -Wall
 COMPILEOPTS += -Werror
 COMPILEOPTS += -Wno-trampolines
 COMPILEOPTS += -std=gnu99
+LANGUAGES   += bash
 
 BINARIES    += pconfigure
 LINKOPTS    += `llvm-config --libs core`
@@ -14,7 +15,7 @@ COMPILEOPTS += `llvm-config --cflags`
 SOURCES     += pconfigure/main.c
 
 BINARIES    += pclean
-SOURCES	    += pclean/main.c
+SOURCES	    += pclean/main.bash
 
 BINARIES    += pbashc
 SOURCES	    += pbashc/main.c
