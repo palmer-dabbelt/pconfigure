@@ -45,9 +45,9 @@ struct language *language_cxx_new(struct clopts *o, const char *name)
     l->name = talloc_strdup(l, "c++");
     l->compiled = true;
     l->compile_str = talloc_strdup(l, "C++");
-    l->compile_cmd = talloc_strdup(l, "g++");
+    l->compile_cmd = talloc_strdup(l, "${CXX}");
     l->link_str = talloc_strdup(l, "LD++");
-    l->link_cmd = talloc_strdup(l, "g++");
+    l->link_cmd = talloc_strdup(l, "${CXX}");
     l->search = &language_cxx_search;
     l->extras = &language_cxx_extras;
 

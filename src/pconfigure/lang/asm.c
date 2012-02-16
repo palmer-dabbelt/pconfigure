@@ -45,9 +45,9 @@ struct language *language_asm_new(struct clopts *o, const char *name)
     l->name = talloc_strdup(l, "asm");
     l->compiled = true;
     l->compile_str = talloc_strdup(l, "ASM");
-    l->compile_cmd = talloc_strdup(l, "gcc -xassembler");
+    l->compile_cmd = talloc_strdup(l, "${CC} -xassembler");
     l->link_str = talloc_strdup(l, "LD");
-    l->link_cmd = talloc_strdup(l, "gcc");
+    l->link_cmd = talloc_strdup(l, "${CC}");
     l->search = &language_asm_search;
     l->deps = &language_asm_deps;
 
