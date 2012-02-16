@@ -23,6 +23,7 @@
 #include "lang/c.h"
 #include "lang/bash.h"
 #include "lang/cxx.h"
+#include "lang/asm.h"
 #include <talloc.h>
 #include <string.h>
 #include <assert.h>
@@ -73,6 +74,8 @@ int languagelist_select(struct languagelist *ll, const char *name)
     if ((l = language_c_new(o, name)) != NULL)
         l_nonull = l;
     if ((l = language_cxx_new(o, name)) != NULL)
+        l_nonull = l;
+    if ((l = language_asm_new(o, name)) != NULL)
         l_nonull = l;
     if ((l = language_bash_new(o, name)) != NULL)
         l_nonull = l;
