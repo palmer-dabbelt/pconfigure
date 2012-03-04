@@ -14,6 +14,8 @@ fi
 rm pconfigure
 
 # Actually builds itself
+make bin/pbashc
+export PATH="./bin:$PATH"
 make || exit $?
 
 # Informational messages to the user
