@@ -73,6 +73,7 @@ struct context *context_new_binary(struct context *parent, void *context,
     c->objects = stringlist_new(c);
 
     c->full_path = talloc_asprintf(c, "%s/%s", c->bin_dir, called_path);
+    c->link_path = talloc_strdup(c, "");
 
     talloc_set_destructor(c, &context_binary_destructor);
 
@@ -84,6 +85,7 @@ int context_binary_destructor(struct context *c)
     struct language *l;
     char *tmp;
     void *context;
+    const char *hash_langlinkopts, *hash_linkopts, *hash_objs;
 
     assert(c->type == CONTEXT_TYPE_BINARY);
 #ifdef DEBUG
@@ -107,10 +109,32 @@ int context_binary_destructor(struct context *c)
 #endif
     /* *INDENT-ON* */
 
+    hash_langlinkopts = stringlist_hashcode(c->language->link_opts, context);
+    hash_linkopts = stringlist_hashcode(c->link_opts, context);
+    hash_objs = stringlist_hashcode(c->objects, context);
+    talloc_unlink(c, (char *)c->link_path);
+    c->link_path = talloc_asprintf(c, "%s/%s/%s-%s-%s.bin",
+                                   c->obj_dir, c->full_path,
+                                   hash_langlinkopts, hash_linkopts,
+                                   hash_objs);
+
     makefile_add_targets(c->mf, c->full_path);
     makefile_add_all(c->mf, c->full_path);
 
+    /* Creates a "dummy" target that just copies over the actual binary */
     makefile_create_target(c->mf, c->full_path);
+    makefile_start_deps(c->mf);
+    makefile_add_dep(c->mf, "%s", c->link_path);
+    makefile_end_deps(c->mf);
+    makefile_start_cmds(c->mf);
+    makefile_nam_cmd(c->mf, "echo \"CP\t%s\"",
+                     c->full_path + strlen(c->bin_dir) + 1);
+    makefile_add_cmd(c->mf, "mkdir -p `dirname %s`", c->full_path);
+    makefile_add_cmd(c->mf, "cp %s %s", c->link_path, c->full_path);
+    makefile_end_cmds(c->mf);
+
+    /* Does the actual linking with hashes of the arguments */
+    makefile_create_target(c->mf, c->link_path);
 
     makefile_start_deps(c->mf);
     /* *INDENT-OFF* */
@@ -181,6 +205,7 @@ struct context *context_new_source(struct context *parent, void *context,
     c->objects = stringlist_new(c);
 
     c->full_path = talloc_asprintf(c, "%s/%s", c->src_dir, called_path);
+    c->link_path = talloc_strdup(c, "");
 
     talloc_set_destructor(c, &context_source_destructor);
 

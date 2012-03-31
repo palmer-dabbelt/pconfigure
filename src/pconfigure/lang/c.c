@@ -112,8 +112,7 @@ const char *language_c_objname(struct language *l_uncast, void *context,
     assert(c->full_path[strlen(c->src_dir)] == '/');
     o = talloc_asprintf(context, "%s/%s/%s-%s.o",
                         c->obj_dir,
-                        c->full_path + strlen(c->src_dir) + 1,
-                        compileopts_hash, langopts_hash);
+                        c->full_path, compileopts_hash, langopts_hash);
 
     TALLOC_FREE(subcontext);
     return o;
@@ -250,7 +249,7 @@ void language_c_link(struct language *l_uncast, struct context *c,
     func(true, "echo -e \"%s\\t%s\"",
          l->l.link_str, c->full_path + strlen(c->bin_dir) + 1);
 
-    func(false, "mkdir -p `dirname %s` >& /dev/null || true", c->full_path);
+    func(false, "mkdir -p `dirname %s` >& /dev/null || true", c->link_path);
 
     func(false, "\\\t@%s", l->l.link_cmd);
     /* *INDENT-OFF* */
@@ -276,7 +275,7 @@ void language_c_link(struct language *l_uncast, struct context *c,
 			   }
                     ));
     /* *INDENT-ON* */
-    func(false, "\\ -o %s\n", c->full_path);
+    func(false, "\\ -o %s\n", c->link_path);
 
     TALLOC_FREE(context);
 }

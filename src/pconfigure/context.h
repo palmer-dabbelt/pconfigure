@@ -59,6 +59,9 @@ struct context
     /* This is the full path (include the bin/ or src/) of this context */
     const char *full_path;
 
+    /* This is the target we want to try and link into */
+    const char *link_path;
+
     /* These paths can be changed on a per context basis */
     const char *bin_dir;
     const char *obj_dir;

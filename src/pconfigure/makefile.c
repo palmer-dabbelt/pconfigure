@@ -63,7 +63,7 @@ void makefile_create_target(struct makefile *m, const char *name)
     assert(m->state == MAKEFILE_STATE_NONE);
     m->state = MAKEFILE_STATE_TARGET;
 
-    fprintf(m->file, "%s: Makefile", name);
+    fprintf(m->file, "%s:", name);
 }
 
 void makefile_add_all(struct makefile *m, const char *name)
