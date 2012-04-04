@@ -149,6 +149,12 @@ void language_c_deps(struct language *l_uncast, struct context *c,
     stringlist_each(l->l.compile_opts,
 		    lambda(int, (const char *str),
 			   {
+			       if (strcmp(str, "-fopenmp") == 0)
+			       {
+				   clang_argc--;
+				   return 0;
+			       }
+
 			       clang_argv[i] = talloc_strdup(clang_argv, str);
 			       i++;
 			       return 0;
@@ -157,6 +163,12 @@ void language_c_deps(struct language *l_uncast, struct context *c,
     stringlist_each(c->compile_opts,
 		    lambda(int, (const char *str),
 			   {
+			       if (strcmp(str, "-fopenmp") == 0)
+			       {
+				   clang_argc--;
+				   return 0;
+			       }
+
 			       clang_argv[i] = talloc_strdup(clang_argv, str);
 			       i++;
 			       return 0;
