@@ -36,7 +36,7 @@ int main(int argc, char **argv)
     FILE *infile;
     FILE *outfile;
     char buffer[1024];
-    int read;
+    size_t read;
     char *chmod;
     int chmod_size;
 

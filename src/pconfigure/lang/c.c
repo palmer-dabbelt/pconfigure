@@ -321,7 +321,8 @@ char *string_strip(const char *filename_cstr, void *context)
     source_name = talloc_strdup(context, filename_cstr);
 
     {
-        int last_dir, pprev_dir, prev_dir, i, o;
+        int last_dir, pprev_dir, prev_dir, o;
+        size_t i;
 
         pprev_dir = -1;
         prev_dir = -1;

@@ -1,7 +1,9 @@
 LANGUAGES   += c
 COMPILEOPTS += -Wall
+COMPILEOPTS += -Wextra
 COMPILEOPTS += -Werror
 COMPILEOPTS += -Wno-trampolines
+COMPILEOPTS += -Wno-unused-parameter
 COMPILEOPTS += -std=gnu99
 LANGUAGES   += bash
 

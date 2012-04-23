@@ -230,7 +230,7 @@ int parse_select(const char *left, const char *op, char *right)
     char newright[MAX_LINE_SIZE];
     char command[MAX_LINE_SIZE * 2];
     void *context;
-    int newi, i, cmdi;
+    size_t newi, i, cmdi;
 
     context = talloc_new(NULL);
 
@@ -381,7 +381,7 @@ int parsefunc_compileopts(const char *op, const char *right)
     const char *duped;
     int err;
     char newright[MAX_LINE_SIZE];
-    int start, end;
+    size_t start, end;
     int quotes;
 
     if (strcmp(op, "+=") != 0)
@@ -467,7 +467,7 @@ int parsefunc_linkopts(const char *op, const char *right)
     const char *duped;
     int err;
     char newright[MAX_LINE_SIZE];
-    int start, end;
+    size_t start, end;
     int quotes;
 
     if (strcmp(op, "+=") != 0)
