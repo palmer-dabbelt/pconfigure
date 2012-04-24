@@ -1,22 +1,40 @@
 #!/bin/bash
 
-# Builds every file into pconfigure
-gcc --std=gnu99 -Wall -Werror -Wno-trampolines -g `find src/pconfigure/ -iname "*.c"` -L`llvm-config --libdir` -Wl,-R`llvm-config --libdir` -I`llvm-config --includedir` `llvm-config --libs core` -lclang `pkg-config talloc --libs` -o "pconfigure" || exit $?
+BOOTSTRAP_DIR="./bootstrap_bin"
+
+make distclean >& /dev/null || true
+mkdir -p $BOOTSTRAP_DIR
+
+# Manually builds some of the utilities
+gcc --std=gnu99 -Wall -Werror -Wno-trampolines -g \
+    `find src/pconfigure/ -iname "*.c"` \
+    -L`llvm-config --libdir` \
+    -Wl,-R`llvm-config --libdir` \
+    -I`llvm-config --includedir` \
+    `llvm-config --libs core` \
+    -lclang \
+    `pkg-config talloc --libs` \
+    -o "$BOOTSTRAP_DIR/pconfigure" || exit $?
+
+gcc --std=gnu99 `find src/pbashc/ -iname "*.c"` -o "$BOOTSTRAP_DIR/pbashc"
+
+$BOOTSTRAP_DIR/pbashc src/pclean/main.bash -o $BOOTSTRAP_DIR/pclean
+
+$BOOTSTRAP_DIR/pbashc src/ppkg-config/main.bash -o $BOOTSTRAP_DIR/ppkg-config
 
 # Runs pconfigure in order to build itself
-#valgrind --leak-check=full --show-reachable=yes ./pconfigure
-./pconfigure
+env PATH="$BOOTSTRAP_DIR:$PATH" $BOOTSTRAP_DIR/pconfigure
 err="$?"
 if [[ "$err" != "0" ]]
 then
     exit $err
 fi
-rm pconfigure
 
 # Actually builds itself
-make bin/pbashc
-export PATH="./bin:$PATH"
-make || exit $?
+env PATH="$BOOTSTRAP_DIR:$PATH" make || exit $?
+
+# Cleans up from the bootstrap process
+rm -rf $BOOTSTRAP_DIR
 
 # Informational messages to the user
 prefix=`cat src/pconfigure/context.c | grep prefix | head -1 | cut -d \" -f 2`

@@ -12,7 +12,7 @@ LINKOPTS    += `llvm-config --libs core`
 LINKOPTS    += -lclang
 LINKOPTS    += -L`llvm-config --libdir`
 LINKOPTS    += -Wl,-R`llvm-config --libdir`
-LINKOPTS    += `pkg-config talloc --libs`
+LINKOPTS    += `ppkg-config --have TALLOC talloc --libs`
 COMPILEOPTS += `llvm-config --cflags`
 SOURCES     += pconfigure/main.c
 
@@ -21,3 +21,6 @@ SOURCES	    += pclean/main.bash
 
 BINARIES    += pbashc
 SOURCES	    += pbashc/main.c
+
+BINARIES    += ppkg-config
+SOURCES	    += ppkg-config/main.bash
