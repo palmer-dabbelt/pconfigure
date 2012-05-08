@@ -149,15 +149,13 @@ int main(int argc, char **argv)
     /* If there's anything left on the stack, then clear everything out */
     while (!contextstack_isempty(s))
     {
-        struct context *c;
         void *context;
 
         context = talloc_new(NULL);
 
         /* We already know that there is an element on the stack, so there
          * is no need to check for errors. */
-        c = contextstack_pop(s, context);
-        assert(c != NULL);
+        contextstack_pop(s, context);
 
         /* That's all we need to do, as free()ing the context will cause it to
          * be cleaned up and pushed over to  */
@@ -559,14 +557,11 @@ int parsefunc_binaries(const char *op, const char *right)
     /* If there's anything left on the stack, then clear everything out */
     while (!contextstack_isempty(s))
     {
-        struct context *c;
-
         context = talloc_new(NULL);
 
         /* We already know that there is an element on the stack, so there
          * is no need to check for errors. */
-        c = contextstack_pop(s, context);
-        assert(c != NULL);
+        contextstack_pop(s, context);
 
         /* That's all we need to do, as free()ing the context will cause it to
          * be cleaned up and pushed over to  */
