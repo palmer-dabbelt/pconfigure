@@ -125,6 +125,7 @@ int context_binary_destructor(struct context *c)
     makefile_create_target(c->mf, c->full_path);
     makefile_start_deps(c->mf);
     makefile_add_dep(c->mf, "%s", c->link_path);
+    makefile_add_dep(c->mf, "Makefile");
     makefile_end_deps(c->mf);
     makefile_start_cmds(c->mf);
     makefile_nam_cmd(c->mf, "echo \"CP\t%s\"",
