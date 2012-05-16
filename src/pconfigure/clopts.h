@@ -22,12 +22,16 @@
 #ifndef PCONFIGURE_CLOPTS_H
 #define PCONFIGURE_CLOPTS_H
 
+#include <stdbool.h>
+
 struct clopts
 {
     int infile_count;
     const char **infiles;
 
     const char *outfile;
+
+    bool verbose;
 };
 
 /* Parses the command-line options and creates a new (NULL-parented) list of

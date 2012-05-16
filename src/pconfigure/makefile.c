@@ -23,6 +23,7 @@
 #include <talloc.h>
 #include <assert.h>
 #include <stdarg.h>
+#include <string.h>
 
 static int mf_destructor(struct makefile *m);
 
@@ -33,6 +34,7 @@ struct makefile *makefile_new(struct clopts *o)
 
     m = talloc(o, struct makefile);
     talloc_set_destructor(m, &mf_destructor);
+    m->opts = o;
     m->file = fopen("Makefile", "w");
     m->targets_all = stringlist_new(m);
     m->targets_clean = stringlist_new(m);
@@ -154,34 +156,36 @@ void makefile_start_cmds(struct makefile *m)
 
 void makefile_nam_cmd(struct makefile *m, const char *format, ...)
 {
-#ifndef DEBUG
-    va_list args;
+    if (m->opts->verbose == false)
+    {
+        va_list args;
 
-    assert(m->state == MAKEFILE_STATE_CMDS);
-    m->state = MAKEFILE_STATE_CMDS;
+        assert(m->state == MAKEFILE_STATE_CMDS);
+        m->state = MAKEFILE_STATE_CMDS;
 
-    fprintf(m->file, "\t@");
+        fprintf(m->file, "\t@");
 
-    va_start(args, NULL);
-    vfprintf(m->file, format, args);
-    va_end(args);
+        va_start(args, NULL);
+        vfprintf(m->file, format, args);
+        va_end(args);
 
-    fprintf(m->file, "\n");
-#endif
+        fprintf(m->file, "\n");
+    }
 }
 
 void makefile_vnam_cmd(struct makefile *m, const char *format, va_list args)
 {
-#ifndef DEBUG
-    assert(m->state == MAKEFILE_STATE_CMDS);
-    m->state = MAKEFILE_STATE_CMDS;
+    if (m->opts->verbose == false)
+    {
+        assert(m->state == MAKEFILE_STATE_CMDS);
+        m->state = MAKEFILE_STATE_CMDS;
 
-    fprintf(m->file, "\t@");
+        fprintf(m->file, "\t@");
 
-    vfprintf(m->file, format, args);
+        vfprintf(m->file, format, args);
 
-    fprintf(m->file, "\n");
-#endif
+        fprintf(m->file, "\n");
+    }
 }
 
 void makefile_add_cmd(struct makefile *m, const char *format, ...)
@@ -191,13 +195,13 @@ void makefile_add_cmd(struct makefile *m, const char *format, ...)
     assert(m->state == MAKEFILE_STATE_CMDS);
     m->state = MAKEFILE_STATE_CMDS;
 
-#ifdef DEBUG
     if (format[0] != '\\')
-        fprintf(m->file, "\t");
-#else
-    if (format[0] != '\\')
-        fprintf(m->file, "\t@");
-#endif
+    {
+        if (m->opts->verbose == true)
+            fprintf(m->file, "\t");
+        else
+            fprintf(m->file, "\t@");
+    }
 
     va_start(args, NULL);
     if (format[0] == '\\')
@@ -206,7 +210,11 @@ void makefile_add_cmd(struct makefile *m, const char *format, ...)
         vfprintf(m->file, format, args);
     va_end(args);
 
-    if (format[0] != '\\')
+    if (format[strlen(format) - 1] == '\\')
+        if (fseek(m->file, -1, SEEK_CUR) != 0)
+            abort();
+
+    if ((format[strlen(format) - 1] != '\\') && (format[0] != '\\'))
         fprintf(m->file, "\n");
 }
 
@@ -215,22 +223,25 @@ void makefile_vadd_cmd(struct makefile *m, const char *format, va_list args)
     assert(m->state == MAKEFILE_STATE_CMDS);
     m->state = MAKEFILE_STATE_CMDS;
 
-#ifdef DEBUG
     if (format[0] != '\\')
-        fprintf(m->file, "\t");
-#else
-    if (format[0] != '\\')
-        fprintf(m->file, "\t@");
-#endif
+    {
+        if (m->opts->verbose == true)
+            fprintf(m->file, "\t");
+        else
+            fprintf(m->file, "\t@");
+    }
 
     if (format[0] == '\\')
         vfprintf(m->file, format + 1, args);
     else
         vfprintf(m->file, format, args);
 
-    if (format[0] != '\\')
-        fprintf(m->file, "\n");
+    if (format[strlen(format) - 1] == '\\')
+        if (fseek(m->file, -1, SEEK_CUR) != 0)
+            abort();
 
+    if ((format[strlen(format) - 1] != '\\') && (format[0] != '\\'))
+        fprintf(m->file, "\n");
 }
 
 void makefile_end_cmds(struct makefile *m)

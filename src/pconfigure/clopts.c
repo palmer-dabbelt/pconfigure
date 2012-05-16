@@ -21,10 +21,12 @@
 
 #include "clopts.h"
 #include <talloc.h>
+#include <string.h>
 
 struct clopts *clopts_new(int argc, char **argv)
 {
     struct clopts *o;
+    int i;
 
     o = talloc(NULL, struct clopts);
     if (o == NULL)
@@ -36,6 +38,19 @@ struct clopts *clopts_new(int argc, char **argv)
     o->infiles[1] = talloc_strdup(o, "Configfile");
 
     o->outfile = talloc_strdup(o, "Makefile");
+
+    o->verbose = false;
+
+    for (i = 1; i < argc; i++)
+    {
+        if (strcmp(argv[i], "--verbose") == 0)
+            o->verbose = true;
+        else
+        {
+            fprintf(stderr, "Unknown argument: '%s'\n", argv[i]);
+            abort();
+        }
+    }
 
     return o;
 }

@@ -38,6 +38,9 @@ enum makefile_state
 
 struct makefile
 {
+    /* The global arguments */
+    struct clopts *opts;
+
     /* The current state of the makefile */
     enum makefile_state state;
 
