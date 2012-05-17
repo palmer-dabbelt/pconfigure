@@ -33,6 +33,9 @@
 
 static const unsigned int MAX_LINE_SIZE = 1024;
 
+/* Parses an entire file */
+static int parse_file(const char *filename);
+
 /* Splits a line into three parts */
 static int parse_line(const char *line, char *left, char *op, char *right);
 
@@ -45,6 +48,7 @@ static int parsefunc_compileopts(const char *op, const char *right);
 static int parsefunc_linkopts(const char *op, const char *right);
 static int parsefunc_binaries(const char *op, const char *right);
 static int parsefunc_sources(const char *op, const char *right);
+static int parsefunc_config(const char *op, const char *right);
 
 /* This is global data to avoid having really long parsefunc_* function calls */
 static struct clopts *o;
@@ -103,47 +107,11 @@ int main(int argc, char **argv)
     /* Reads every input file in order */
     for (i = 0; i < o->infile_count; i++)
     {
-        FILE *file;
-        char line[MAX_LINE_SIZE];
-        char left[MAX_LINE_SIZE], op[MAX_LINE_SIZE], right[MAX_LINE_SIZE];
-        unsigned int line_num;
-
-        file = fopen(o->infiles[i], "r");
-        if (file == NULL)
-            continue;
-
-        /* Reads the entire file */
-        line_num = 1;
-        while (fgets(line, MAX_LINE_SIZE, file) != NULL)
+        if (parse_file(o->infiles[i]) != 0)
         {
-            int err;
-
-#ifdef DEBUG
-            fprintf(stderr, "%s", line);
-#endif
-
-            /* Splits the line into bits */
-            err = parse_line(line, left, op, right);
-            if (err != 0)
-            {
-                fprintf(stderr, "Read error %d on line %d of %s:\n\t%s",
-                        err, line_num, o->infiles[i], line);
-                return err;
-            }
-
-            /* Calls the correct function to parse this input line */
-            if (parse_select(left, op, right) != 0)
-            {
-                fprintf(stderr, "Error parsing line %d:\n", line_num);
-                fprintf(stderr, "%s\n", line);
-                TALLOC_FREE(o);
-                return -1;
-            }
-
-            line_num++;
+            TALLOC_FREE(o);
+            break;
         }
-
-        fclose(file);
     }
 
     /* If there's anything left on the stack, then clear everything out */
@@ -163,6 +131,52 @@ int main(int argc, char **argv)
     }
 
     TALLOC_FREE(o);
+    return 0;
+}
+
+int parse_file(const char *filename)
+{
+    FILE *file;
+    char line[MAX_LINE_SIZE];
+    char left[MAX_LINE_SIZE], op[MAX_LINE_SIZE], right[MAX_LINE_SIZE];
+    unsigned int line_num;
+
+    file = fopen(filename, "r");
+    if (file == NULL)
+        return 0;
+
+    /* Reads the entire file */
+    line_num = 1;
+    while (fgets(line, MAX_LINE_SIZE, file) != NULL)
+    {
+        int err;
+
+#ifdef DEBUG
+        fprintf(stderr, "%s", line);
+#endif
+
+        /* Splits the line into bits */
+        err = parse_line(line, left, op, right);
+        if (err != 0)
+        {
+            fprintf(stderr, "Read error %d on line %d of %s:\n\t%s",
+                    err, line_num, filename, line);
+            return err;
+        }
+
+        /* Calls the correct function to parse this input line */
+        if (parse_select(left, op, right) != 0)
+        {
+            fprintf(stderr, "Error parsing line %d:\n", line_num);
+            fprintf(stderr, "%s\n", line);
+            return -1;
+        }
+
+        line_num++;
+    }
+
+    fclose(file);
+
     return 0;
 }
 
@@ -324,6 +338,8 @@ int parse_select(const char *left, const char *op, char *right)
         return parsefunc_binaries(op, right);
     if (strcmp(left, "SOURCES") == 0)
         return parsefunc_sources(op, right);
+    if (strcmp(left, "CONFIG") == 0)
+        return parsefunc_config(op, right);
 
     return -2;
 }
@@ -586,4 +602,21 @@ int parsefunc_sources(const char *op, const char *right)
      * no need for this to  */
     contextstack_push_source(s, right);
     return 0;
+}
+
+int parsefunc_config(const char *op, const char *right)
+{
+    char *filename;
+    int out;
+
+    if (strcmp(op, "+=") != 0)
+    {
+        fprintf(stderr, "We only support += for CONFIG\n");
+        return -1;
+    }
+
+    filename = talloc_asprintf(s, "Configfiles/%s", right);
+    out = parse_file(filename);
+    TALLOC_FREE(filename);
+    return out;
 }
