@@ -37,6 +37,8 @@ static void language_c_build(struct language *l_uncast, struct context *c,
                              void (*func) (bool, const char *, ...));
 static void language_c_link(struct language *l_uncast, struct context *c,
                             void (*func) (bool, const char *, ...));
+static void language_c_slib(struct language *l_uncast, struct context *c,
+                            void (*func) (bool, const char *, ...));
 static void language_c_extras(struct language *l_uncast, struct context *c,
                               void *context, void (*func) (const char *));
 
@@ -66,6 +68,7 @@ struct language *language_c_new(struct clopts *o, const char *name)
     l->l.deps = &language_c_deps;
     l->l.build = &language_c_build;
     l->l.link = &language_c_link;
+    l->l.slib = &language_c_slib;
     l->l.extras = &language_c_extras;
 
     return &(l->l);
@@ -262,6 +265,52 @@ void language_c_link(struct language *l_uncast, struct context *c,
     func(false, "mkdir -p `dirname %s` >& /dev/null || true", c->link_path);
 
     func(false, "\\\t@%s", l->l.link_cmd);
+    /* *INDENT-OFF* */
+    stringlist_each(l->l.link_opts,
+		    lambda(int, (const char *opt),
+			   {
+			       func(false, "\\ %s", opt);
+			       return 0;
+			   }
+                    ));
+    stringlist_each(c->link_opts,
+		    lambda(int, (const char *opt),
+			   {
+			       func(false, "\\ %s", opt);
+			       return 0;
+			   }
+                    ));
+    stringlist_each(c->objects,
+		    lambda(int, (const char *opt),
+			   {
+			       func(false, "\\ %s", opt);
+			       return 0;
+			   }
+                    ));
+    /* *INDENT-ON* */
+    func(false, "\\ -o %s\n", c->link_path);
+
+    TALLOC_FREE(context);
+}
+
+void language_c_slib(struct language *l_uncast, struct context *c,
+                     void (*func) (bool, const char *, ...))
+{
+    struct language_c *l;
+    void *context;
+
+    l = talloc_get_type(l_uncast, struct language_c);
+    if (l == NULL)
+        return;
+
+    context = talloc_new(NULL);
+
+    func(true, "echo -e \"%s\\t%s\"",
+         l->l.link_str, c->full_path + strlen(c->bin_dir) + 1);
+
+    func(false, "mkdir -p `dirname %s` >& /dev/null || true", c->link_path);
+
+    func(false, "\\\t@%s -shared", l->l.link_cmd);
     /* *INDENT-OFF* */
     stringlist_each(l->l.link_opts,
 		    lambda(int, (const char *opt),

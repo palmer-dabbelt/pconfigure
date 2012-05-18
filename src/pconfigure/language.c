@@ -36,6 +36,7 @@ int language_init(struct language *l)
     l->deps = NULL;
     l->build = NULL;
     l->link = NULL;
+    l->slib = NULL;
     l->extras = NULL;
 
     return 0;
@@ -109,6 +110,14 @@ void language_link(struct language *l, struct context *c,
     assert(l != NULL);
     assert(l->link != NULL);
     l->link(l, c, func);
+}
+
+void language_slib(struct language *l, struct context *c,
+                   void (*func) (bool, const char *, ...))
+{
+    assert(l != NULL);
+    assert(l->link != NULL);
+    l->slib(l, c, func);
 }
 
 void language_extras(struct language *l, struct context *c, void *context,

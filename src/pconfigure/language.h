@@ -51,6 +51,8 @@ struct language
                    void (*)(bool, const char *, ...));
     void (*link) (struct language *, struct context *,
                   void (*)(bool, const char *, ...));
+    void (*slib) (struct language *, struct context *,
+                  void (*)(bool, const char *, ...));
     void (*extras) (struct language *, struct context *, void *,
                     void (*)(const char *));
 };
@@ -73,6 +75,8 @@ extern void language_deps(struct language *l, struct context *c,
 extern void language_build(struct language *l, struct context *c,
                            void (*func) (bool, const char *, ...));
 extern void language_link(struct language *l, struct context *c,
+                          void (*func) (bool, const char *, ...));
+extern void language_slib(struct language *l, struct context *c,
                           void (*func) (bool, const char *, ...));
 extern void language_extras(struct language *l, struct context *c, void *cxt,
                             void (*func) (const char *));

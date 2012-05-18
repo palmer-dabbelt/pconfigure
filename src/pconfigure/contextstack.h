@@ -59,6 +59,8 @@ extern struct context *contextstack_pop(struct contextstack *s,
 
 extern void contextstack_push_binary(struct contextstack *s,
                                      const char *called_path);
+extern void contextstack_push_library(struct contextstack *s,
+                                      const char *called_path);
 extern void contextstack_push_source(struct contextstack *s,
                                      const char *called_path);
 
