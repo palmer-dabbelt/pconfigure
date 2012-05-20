@@ -273,21 +273,21 @@ void language_c_link(struct language *l_uncast, struct context *c,
 			       func(false, "\\ %s", opt);
 			       return 0;
 			   }
-                    ));
+			));
     stringlist_each(c->link_opts,
 		    lambda(int, (const char *opt),
 			   {
 			       func(false, "\\ %s", opt);
 			       return 0;
 			   }
-                    ));
+			));
     stringlist_each(c->objects,
 		    lambda(int, (const char *opt),
 			   {
 			       func(false, "\\ %s", opt);
 			       return 0;
 			   }
-                    ));
+			));
     stringlist_each(c->libraries,
 		    lambda(int, (const char *lib),
 			   {

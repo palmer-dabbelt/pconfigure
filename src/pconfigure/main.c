@@ -42,15 +42,15 @@ static int parse_line(const char *line, char *left, char *op, char *right);
 /* Calls the correct language for a function */
 static int parse_select(const char *left, const char *op, char *right);
 
-static int parsefunc_prefix(const char *op, const char *right);
+static int parsefunc_config(const char *op, const char *right);
 static int parsefunc_languages(const char *op, const char *right);
+static int parsefunc_prefix(const char *op, const char *right);
 static int parsefunc_compileopts(const char *op, const char *right);
 static int parsefunc_linkopts(const char *op, const char *right);
 static int parsefunc_deplibs(const char *op, const char *right);
 static int parsefunc_binaries(const char *op, const char *right);
 static int parsefunc_libraries(const char *op, const char *right);
 static int parsefunc_sources(const char *op, const char *right);
-static int parsefunc_config(const char *op, const char *right);
 
 /* This is global data to avoid having really long parsefunc_* function calls */
 static struct clopts *o;
@@ -328,10 +328,12 @@ int parse_select(const char *left, const char *op, char *right)
     /* Calls the correct function to parse this input line */
     if (strlen(left) == 0)
         return 0;
-    if (strcmp(left, "PREFIX") == 0)
-        return parsefunc_prefix(op, right);
+    if (strcmp(left, "CONFIG") == 0)
+        return parsefunc_config(op, right);
     if (strcmp(left, "LANGUAGES") == 0)
         return parsefunc_languages(op, right);
+    if (strcmp(left, "PREFIX") == 0)
+        return parsefunc_prefix(op, right);
     if (strcmp(left, "COMPILEOPTS") == 0)
         return parsefunc_compileopts(op, right);
     if (strcmp(left, "LINKOPTS") == 0)
@@ -344,8 +346,6 @@ int parse_select(const char *left, const char *op, char *right)
         return parsefunc_libraries(op, right);
     if (strcmp(left, "SOURCES") == 0)
         return parsefunc_sources(op, right);
-    if (strcmp(left, "CONFIG") == 0)
-        return parsefunc_config(op, right);
 
     return -2;
 }
