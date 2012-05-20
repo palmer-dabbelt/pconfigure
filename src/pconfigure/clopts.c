@@ -36,10 +36,12 @@ struct clopts *clopts_new(int argc, char **argv)
     o->verbose = false;
     o->outfile = talloc_strdup(o, "Makefile");
 
-    o->infile_count = 2;
+    o->infile_count = 4;
     o->infiles = talloc_array(o, const char *, o->infile_count);
     o->infiles[0] = talloc_strdup(o->infiles, "Configfiles/local");
-    o->infiles[1] = talloc_strdup(o->infiles, "Configfile");
+    o->infiles[1] = talloc_strdup(o->infiles, "Configfile.local");
+    o->infiles[2] = talloc_strdup(o->infiles, "Configfiles/main");
+    o->infiles[3] = talloc_strdup(o->infiles, "Configfile");
 
     for (i = 1; i < argc; i++)
     {
@@ -57,12 +59,14 @@ struct clopts *clopts_new(int argc, char **argv)
             o->infile_count++;
 
             infiles = talloc_array(o, const char *, o->infile_count);
-            for (j = 0; j < o->infile_count - 2; j++)
+            for (j = 0; j < o->infile_count - 4; j++)
                 infiles[j] = talloc_reference(infiles, o->infiles[j]);
 
             infiles[j] = talloc_asprintf(infiles, "Configfiles/%s", config);
-            j++;
-            infiles[j] = talloc_reference(infiles, o->infiles[j - 1]);
+	    j++;
+
+	    for (j = j; j < o->infile_count; j++)
+		infiles[j] = talloc_reference(infiles, o->infiles[j - 4]);
 
             talloc_unlink(o, o->infiles);
             o->infiles = infiles;

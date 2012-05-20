@@ -42,7 +42,7 @@ prefix=`cat src/pconfigure/context.c | grep prefix | head -1 | cut -d \" -f 2`
 echo "run 'make install' to install this to the system"
 echo -e "\tby default it is installed into $prefix"
 
-prefix=`cat Configfile* | grep PREFIX | head | cut -d '=' -f 2`
+prefix=`cat Configfiles/{local,main} | grep PREFIX | head | cut -d '=' -f 2`
 prefix=`echo $prefix`
 if [[ "$prefix" != "" ]]
 then
