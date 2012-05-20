@@ -77,6 +77,10 @@ struct context
     /* The objects to be linked into this file (on sources, in the case of a
      * non-compiled language. */
     struct stringlist *objects;
+
+    /* The libraries that will be linked into this object.  This is only
+     * necessary for libraries that are internal to the project. */
+    struct stringlist *libraries;
 };
 
 extern struct context *context_new_defaults(struct clopts *o, void *context,
@@ -98,5 +102,6 @@ extern int context_set_prefix(struct context *c, const char *opt);
 
 extern int context_add_compileopt(struct context *c, const char *opt);
 extern int context_add_linkopt(struct context *c, const char *opt);
+extern int context_add_library(struct context *c, const char *opt);
 
 #endif

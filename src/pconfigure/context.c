@@ -74,6 +74,7 @@ struct context *context_new_binary(struct context *parent, void *context,
     c->s = parent->s;
     c->language = NULL;
     c->objects = stringlist_new(c);
+    c->libraries = stringlist_new(c);
 
     c->full_path = talloc_asprintf(c, "%s/%s", c->bin_dir, called_path);
     c->link_path = talloc_strdup(c, "");
@@ -208,6 +209,7 @@ struct context *context_new_library(struct context *parent, void *context,
     c->s = parent->s;
     c->language = NULL;
     c->objects = stringlist_new(c);
+    c->libraries = stringlist_new(c);
 
     c->full_path = talloc_asprintf(c, "%s/%s", c->lib_dir, called_path);
     c->link_path = talloc_strdup(c, "");
@@ -342,6 +344,7 @@ struct context *context_new_source(struct context *parent, void *context,
     c->s = parent->s;
     c->language = NULL;
     c->objects = stringlist_new(c);
+    c->libraries = stringlist_new(c);
 
     c->full_path = talloc_asprintf(c, "%s/%s", c->src_dir, called_path);
     c->link_path = talloc_strdup(c, "");
@@ -501,4 +504,14 @@ int context_add_linkopt(struct context *c, const char *opt)
         return -1;
 
     return stringlist_add(c->link_opts, opt);
+}
+
+int context_add_library(struct context *c, const char *opt)
+{
+    if (c == NULL)
+        return -1;
+    if (opt == NULL)
+        return -1;
+
+    return stringlist_add(c->libraries, opt);
 }

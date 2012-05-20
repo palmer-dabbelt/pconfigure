@@ -46,6 +46,7 @@ static int parsefunc_prefix(const char *op, const char *right);
 static int parsefunc_languages(const char *op, const char *right);
 static int parsefunc_compileopts(const char *op, const char *right);
 static int parsefunc_linkopts(const char *op, const char *right);
+static int parsefunc_deplibs(const char *op, const char *right);
 static int parsefunc_binaries(const char *op, const char *right);
 static int parsefunc_libraries(const char *op, const char *right);
 static int parsefunc_sources(const char *op, const char *right);
@@ -335,6 +336,8 @@ int parse_select(const char *left, const char *op, char *right)
         return parsefunc_compileopts(op, right);
     if (strcmp(left, "LINKOPTS") == 0)
         return parsefunc_linkopts(op, right);
+    if (strcmp(left, "DEPLIBS") == 0)
+        return parsefunc_deplibs(op, right);
     if (strcmp(left, "BINARIES") == 0)
         return parsefunc_binaries(op, right);
     if (strcmp(left, "LIBRARIES") == 0)
@@ -652,4 +655,35 @@ int parsefunc_config(const char *op, const char *right)
     out = parse_file(filename);
     TALLOC_FREE(filename);
     return out;
+}
+
+int parsefunc_deplibs(const char *op, const char *right)
+{
+    struct context *c;
+    void *context;
+    char *duped;
+    int err;
+
+    if (strcmp(op, "+=") != 0)
+    {
+        fprintf(stderr, "We only support += for DEPLIBS\n");
+        return -1;
+    }
+
+    /* If the stack is empty, then add this to the language-specific global
+     * list of options. */
+    if (contextstack_isempty(s))
+    {
+        fprintf(stderr, "LIBS += called with an empty context\n");
+        return -1;
+    }
+
+    /* The context stack isn't empty, so instead change the options of the
+     * current top-of-stack. */
+    context = talloc_new(NULL);
+    c = contextstack_peek(s, context);
+    duped = talloc_strdup(context, right);
+    err = context_add_library(c, duped);
+    TALLOC_FREE(context);
+    return err;
 }

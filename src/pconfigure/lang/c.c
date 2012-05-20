@@ -264,7 +264,8 @@ void language_c_link(struct language *l_uncast, struct context *c,
 
     func(false, "mkdir -p `dirname %s` >& /dev/null || true", c->link_path);
 
-    func(false, "\\\t@%s", l->l.link_cmd);
+    func(false, "\\\t@%s ", l->l.link_cmd);
+    func(false, "\\ -L%s -Wl,-rpath,%s", c->lib_dir, c->lib_dir);
     /* *INDENT-OFF* */
     stringlist_each(l->l.link_opts,
 		    lambda(int, (const char *opt),
@@ -287,6 +288,13 @@ void language_c_link(struct language *l_uncast, struct context *c,
 			       return 0;
 			   }
                     ));
+    stringlist_each(c->libraries,
+		    lambda(int, (const char *lib),
+			   {
+			       func(false, "\\ -l%s", lib);
+			       return 0;
+			   }
+			));
     /* *INDENT-ON* */
     func(false, "\\ -o %s\n", c->link_path);
 
