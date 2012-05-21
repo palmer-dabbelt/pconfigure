@@ -149,6 +149,13 @@ int context_binary_destructor(struct context *c)
 				   return 0;
 			       }
 		      ));
+    stringlist_each(c->libraries, lambda(int, (const char *lib),
+			       {
+				   makefile_add_dep(c->mf, "%s/lib%s.so",
+						    c->lib_dir, lib);
+				   return 0;
+			       }
+		      ));
     /* *INDENT-ON* */
     makefile_end_deps(c->mf);
 
