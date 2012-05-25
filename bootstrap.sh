@@ -23,8 +23,7 @@ $BOOTSTRAP_DIR/pbashc src/pclean/main.bash -o $BOOTSTRAP_DIR/pclean
 $BOOTSTRAP_DIR/pbashc src/ppkg-config/main.bash -o $BOOTSTRAP_DIR/ppkg-config
 
 # Runs pconfigure in order to build itself
-env PATH="$BOOTSTRAP_DIR:$PATH" $BOOTSTRAP_DIR/pconfigure \
-    --config distrib
+env PATH="$BOOTSTRAP_DIR:$PATH" $BOOTSTRAP_DIR/pconfigure
 err="$?"
 if [[ "$err" != "0" ]]
 then
