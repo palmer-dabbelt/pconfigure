@@ -63,6 +63,9 @@ struct context
     /* This is the target we want to try and link into */
     const char *link_path;
 
+    /* This is the path we're linking into when we want to install it */
+    const char *link_path_install;
+
     /* These paths can be changed on a per context basis */
     const char *bin_dir;
     const char *lib_dir;

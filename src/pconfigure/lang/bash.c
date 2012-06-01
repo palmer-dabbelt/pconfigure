@@ -36,7 +36,8 @@ static void language_bash_deps(struct language *l_uncast, struct context *c,
 static void language_bash_build(struct language *l_uncast, struct context *c,
                                 void (*func) (bool, const char *, ...));
 static void language_bash_link(struct language *l_uncast, struct context *c,
-                               void (*func) (bool, const char *, ...));
+                               void (*func) (bool, const char *, ...),
+                               bool should_install);
 static void language_bash_extras(struct language *l_uncast, struct context *c,
                                  void *context, void (*func) (const char *));
 
@@ -110,21 +111,28 @@ void language_bash_build(struct language *l_uncast, struct context *c,
 }
 
 void language_bash_link(struct language *l_uncast, struct context *c,
-                        void (*func) (bool, const char *, ...))
+                        void (*func) (bool, const char *, ...),
+                        bool should_install)
 {
     struct language_bash *l;
     void *context;
+    const char *link_path;
 
     l = talloc_get_type(l_uncast, struct language_bash);
     if (l == NULL)
         return;
+
+    if (should_install == false)
+        link_path = c->link_path;
+    else
+        link_path = c->link_path_install;
 
     context = talloc_new(NULL);
 
     func(true, "echo -e \"%s\\t%s\"",
          l->l.link_str, c->full_path + strlen(c->bin_dir) + 1);
 
-    func(false, "mkdir -p `dirname %s` >& /dev/null || true", c->link_path);
+    func(false, "mkdir -p `dirname %s` >& /dev/null || true", link_path);
 
     func(false, "%s \\", l->l.link_cmd);
     /* *INDENT-OFF* */
@@ -150,7 +158,7 @@ void language_bash_link(struct language *l_uncast, struct context *c,
 			   }
                     ));
     /* *INDENT-ON* */
-    func(false, "\\ -o %s\n", c->link_path);
+    func(false, "\\ -o %s\n", link_path);
 
     TALLOC_FREE(context);
 }

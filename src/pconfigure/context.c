@@ -78,6 +78,7 @@ struct context *context_new_binary(struct context *parent, void *context,
 
     c->full_path = talloc_asprintf(c, "%s/%s", c->bin_dir, called_path);
     c->link_path = talloc_strdup(c, "");
+    c->link_path_install = talloc_strdup(c, "");
 
     talloc_set_destructor(c, &context_binary_destructor);
 
@@ -121,9 +122,14 @@ int context_binary_destructor(struct context *c)
                                    c->obj_dir, c->full_path,
                                    hash_langlinkopts, hash_linkopts,
                                    hash_objs);
+    c->link_path_install = talloc_asprintf(c, "%s/%s/%s-%s-%s.ins/%s",
+                                           c->obj_dir, c->full_path,
+                                           hash_langlinkopts, hash_linkopts,
+                                           hash_objs, c->full_path);
 
     makefile_add_targets(c->mf, c->full_path);
     makefile_add_all(c->mf, c->full_path);
+    makefile_add_all_install(c->mf, c->link_path_install);
 
     /* Creates a "dummy" target that just copies over the actual binary */
     makefile_create_target(c->mf, c->full_path);
@@ -172,7 +178,45 @@ int context_binary_destructor(struct context *c)
 				       makefile_vadd_cmd(c->mf, format, args);
 				   va_end(args);
 			       }
+		      ), false);
+    /* *INDENT-ON* */
+    makefile_end_cmds(c->mf);
+
+    /* Link a second time, but with the install path now */
+    makefile_create_target(c->mf, c->link_path_install);
+
+    makefile_start_deps(c->mf);
+    /* *INDENT-OFF* */
+    stringlist_each(c->objects, lambda(int, (const char *obj),
+			       {
+				   makefile_add_dep(c->mf, "%s", obj);
+				   return 0;
+			       }
 		      ));
+    stringlist_each(c->libraries, lambda(int, (const char *lib),
+			       {
+				   makefile_add_dep(c->mf, "%s/lib%s.so",
+						    c->lib_dir, lib);
+				   return 0;
+			       }
+		      ));
+    /* *INDENT-ON* */
+    makefile_end_deps(c->mf);
+
+    makefile_start_cmds(c->mf);
+    /* *INDENT-OFF* */
+    language_link(l, c, lambda(void, (bool nam,
+				      const char *format, ...),
+			       {
+				   va_list args;
+				   va_start(args, NULL);
+				   if (nam == true)
+				       makefile_vnam_cmd(c->mf, format, args);
+				   else
+				       makefile_vadd_cmd(c->mf, format, args);
+				   va_end(args);
+			       }
+		      ), true);
     /* *INDENT-ON* */
     makefile_end_cmds(c->mf);
 
@@ -184,7 +228,7 @@ int context_binary_destructor(struct context *c)
                           c->prefix, c->full_path);
     makefile_add_install(c->mf, tmp);
     tmp = talloc_asprintf(context, "install -D %s `dirname \"%s/%s\"`",
-                          c->full_path, c->prefix, c->full_path);
+                          c->link_path_install, c->prefix, c->full_path);
     makefile_add_install(c->mf, tmp);
 
     tmp = talloc_asprintf(context, "%s/%s", c->prefix, c->full_path);
@@ -220,6 +264,7 @@ struct context *context_new_library(struct context *parent, void *context,
 
     c->full_path = talloc_asprintf(c, "%s/%s", c->lib_dir, called_path);
     c->link_path = talloc_strdup(c, "");
+    c->link_path_install = talloc_strdup(c, "");
 
     talloc_set_destructor(c, &context_library_destructor);
 
@@ -355,6 +400,7 @@ struct context *context_new_source(struct context *parent, void *context,
 
     c->full_path = talloc_asprintf(c, "%s/%s", c->src_dir, called_path);
     c->link_path = talloc_strdup(c, "");
+    c->link_path_install = talloc_strdup(c, "");
 
     talloc_set_destructor(c, &context_source_destructor);
 

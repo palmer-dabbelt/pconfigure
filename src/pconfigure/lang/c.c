@@ -36,7 +36,8 @@ static void language_c_deps(struct language *l_uncast, struct context *c,
 static void language_c_build(struct language *l_uncast, struct context *c,
                              void (*func) (bool, const char *, ...));
 static void language_c_link(struct language *l_uncast, struct context *c,
-                            void (*func) (bool, const char *, ...));
+                            void (*func) (bool, const char *, ...),
+                            bool should_install);
 static void language_c_slib(struct language *l_uncast, struct context *c,
                             void (*func) (bool, const char *, ...));
 static void language_c_extras(struct language *l_uncast, struct context *c,
@@ -248,24 +249,32 @@ void language_c_build(struct language *l_uncast, struct context *c,
 }
 
 void language_c_link(struct language *l_uncast, struct context *c,
-                     void (*func) (bool, const char *, ...))
+                     void (*func) (bool, const char *, ...),
+                     bool should_install)
 {
     struct language_c *l;
     void *context;
+    const char *link_path;
 
     l = talloc_get_type(l_uncast, struct language_c);
     if (l == NULL)
         return;
+
+    if (should_install == false)
+        link_path = c->link_path;
+    else
+        link_path = c->link_path_install;
 
     context = talloc_new(NULL);
 
     func(true, "echo -e \"%s\\t%s\"",
          l->l.link_str, c->full_path + strlen(c->bin_dir) + 1);
 
-    func(false, "mkdir -p `dirname %s` >& /dev/null || true", c->link_path);
+    func(false, "mkdir -p `dirname %s` >& /dev/null || true", link_path);
 
     func(false, "\\\t@%s ", l->l.link_cmd);
-    func(false, "\\ -L%s -Wl,-rpath,%s", c->lib_dir, c->lib_dir);
+    if (should_install == false)
+        func(false, "\\ -L%s -Wl,-rpath,%s", c->lib_dir, c->lib_dir);
     /* *INDENT-OFF* */
     stringlist_each(l->l.link_opts,
 		    lambda(int, (const char *opt),
@@ -296,7 +305,7 @@ void language_c_link(struct language *l_uncast, struct context *c,
 			   }
 			));
     /* *INDENT-ON* */
-    func(false, "\\ -o %s\n", c->link_path);
+    func(false, "\\ -o %s\n", link_path);
 
     TALLOC_FREE(context);
 }

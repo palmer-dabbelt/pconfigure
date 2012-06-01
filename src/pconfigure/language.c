@@ -105,11 +105,11 @@ void language_build(struct language *l, struct context *c,
 }
 
 void language_link(struct language *l, struct context *c,
-                   void (*func) (bool, const char *, ...))
+                   void (*func) (bool, const char *, ...), bool for_install)
 {
     assert(l != NULL);
     assert(l->link != NULL);
-    l->link(l, c, func);
+    l->link(l, c, func, for_install);
 }
 
 void language_slib(struct language *l, struct context *c,

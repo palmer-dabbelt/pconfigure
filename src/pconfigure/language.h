@@ -50,7 +50,7 @@ struct language
     void (*build) (struct language *, struct context *,
                    void (*)(bool, const char *, ...));
     void (*link) (struct language *, struct context *,
-                  void (*)(bool, const char *, ...));
+                  void (*)(bool, const char *, ...), bool);
     void (*slib) (struct language *, struct context *,
                   void (*)(bool, const char *, ...));
     void (*extras) (struct language *, struct context *, void *,
@@ -75,7 +75,8 @@ extern void language_deps(struct language *l, struct context *c,
 extern void language_build(struct language *l, struct context *c,
                            void (*func) (bool, const char *, ...));
 extern void language_link(struct language *l, struct context *c,
-                          void (*func) (bool, const char *, ...));
+                          void (*func) (bool, const char *, ...),
+                          bool for_install);
 extern void language_slib(struct language *l, struct context *c,
                           void (*func) (bool, const char *, ...));
 extern void language_extras(struct language *l, struct context *c, void *cxt,
