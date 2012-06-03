@@ -273,8 +273,9 @@ void language_c_link(struct language *l_uncast, struct context *c,
     func(false, "mkdir -p `dirname %s` >& /dev/null || true", link_path);
 
     func(false, "\\\t@%s ", l->l.link_cmd);
+    func(false, "\\ -L%s", c->lib_dir);
     if (should_install == false)
-        func(false, "\\ -L%s -Wl,-rpath,%s", c->lib_dir, c->lib_dir);
+        func(false, "\\ -Wl,-rpath,%s", c->lib_dir);
     /* *INDENT-OFF* */
     stringlist_each(l->l.link_opts,
 		    lambda(int, (const char *opt),
