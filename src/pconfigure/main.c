@@ -377,6 +377,7 @@ int parsefunc_prefix(const char *op, const char *right)
 int parsefunc_languages(const char *op, const char *right)
 {
     int err;
+    void *context;
 
     if (strcmp(op, "+=") != 0)
     {
@@ -389,6 +390,20 @@ int parsefunc_languages(const char *op, const char *right)
     {
         fprintf(stderr, "Unable to select language '%s'\n", right);
         return -1;
+    }
+
+    /* If there's anything left on the stack, then clear everything out */
+    while (!contextstack_isempty(s))
+    {
+        context = talloc_new(NULL);
+
+        /* We already know that there is an element on the stack, so there
+         * is no need to check for errors. */
+        contextstack_pop(s, context);
+
+        /* That's all we need to do, as free()ing the context will cause it to
+         * be cleaned up and pushed over to  */
+        TALLOC_FREE(context);
     }
 
     return 0;
