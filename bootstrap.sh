@@ -32,6 +32,7 @@ fi
 
 # Actually builds itself
 env PATH="$BOOTSTRAP_DIR:$PATH" make || exit $?
+env PATH="$BOOTSTRAP_DIR:$PATH" make all_install || exit $?
 
 # Cleans up from the bootstrap process
 rm -rf $BOOTSTRAP_DIR
