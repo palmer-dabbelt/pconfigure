@@ -2,6 +2,7 @@
 /obj/
 
 /Configfiles/local
+/Configfile.local
 Makefile*
 
 *~
