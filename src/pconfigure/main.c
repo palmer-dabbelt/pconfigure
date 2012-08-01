@@ -50,6 +50,7 @@ static int parsefunc_linkopts(const char *op, const char *right);
 static int parsefunc_deplibs(const char *op, const char *right);
 static int parsefunc_binaries(const char *op, const char *right);
 static int parsefunc_libraries(const char *op, const char *right);
+static int parsefunc_headers(const char *op, const char *right);
 static int parsefunc_sources(const char *op, const char *right);
 
 /* This is global data to avoid having really long parsefunc_* function calls */
@@ -344,6 +345,8 @@ int parse_select(const char *left, const char *op, char *right)
         return parsefunc_binaries(op, right);
     if (strcmp(left, "LIBRARIES") == 0)
         return parsefunc_libraries(op, right);
+    if (strcmp(left, "HEADERS") == 0)
+        return parsefunc_headers(op, right);
     if (strcmp(left, "SOURCES") == 0)
         return parsefunc_sources(op, right);
 
@@ -638,6 +641,36 @@ int parsefunc_libraries(const char *op, const char *right)
     /* Adds a binary to the stack, using the default compile options.  There is
      * no need for this to  */
     contextstack_push_library(s, right);
+    return 0;
+}
+
+int parsefunc_headers(const char *op, const char *right)
+{
+    void *context;
+
+    if (strcmp(op, "+=") != 0)
+    {
+        fprintf(stderr, "We only support += for HEADERS\n");
+        return -1;
+    }
+
+    /* If there's anything left on the stack, then clear everything out */
+    while (!contextstack_isempty(s))
+    {
+        context = talloc_new(NULL);
+
+        /* We already know that there is an element on the stack, so there
+         * is no need to check for errors. */
+        contextstack_pop(s, context);
+
+        /* That's all we need to do, as free()ing the context will cause it to
+         * be cleaned up and pushed over to  */
+        TALLOC_FREE(context);
+    }
+
+    /* Adds a binary to the stack, using the default compile options.  There is
+     * no need for this to  */
+    contextstack_push_header(s, right);
     return 0;
 }
 

@@ -37,6 +37,7 @@ enum context_type
     CONTEXT_TYPE_DEFAULTS,
     CONTEXT_TYPE_BINARY,
     CONTEXT_TYPE_LIBRARY,
+    CONTEXT_TYPE_HEADER,
     CONTEXT_TYPE_SOURCE
 };
 
@@ -69,6 +70,7 @@ struct context
     /* These paths can be changed on a per context basis */
     const char *bin_dir;
     const char *lib_dir;
+    const char *hdr_dir;
     const char *obj_dir;
     const char *src_dir;
     const char *prefix;
@@ -97,6 +99,9 @@ extern struct context *context_new_binary(struct context *parent,
 extern struct context *context_new_library(struct context *parent,
                                            void *context,
                                            const char *called_path);
+extern struct context *context_new_header(struct context *parent,
+                                          void *context,
+                                          const char *called_path);
 extern struct context *context_new_source(struct context *parent,
                                           void *context,
                                           const char *called_path);

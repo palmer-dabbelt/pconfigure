@@ -243,6 +243,7 @@ void language_c_build(struct language *l_uncast, struct context *c,
 			   }
                     ));
     /* *INDENT-ON* */
+    func(false, "\\ -I%s", c->hdr_dir);
     func(false, "\\ -c %s -o %s\n", c->full_path, obj_path);
 
     TALLOC_FREE(context);

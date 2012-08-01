@@ -28,6 +28,7 @@
 
 static int context_binary_destructor(struct context *c);
 static int context_library_destructor(struct context *c);
+static int context_header_destructor(struct context *c);
 static int context_source_destructor(struct context *c);
 
 struct context *context_new_defaults(struct clopts *o, void *context,
@@ -41,6 +42,7 @@ struct context *context_new_defaults(struct clopts *o, void *context,
     c->type = CONTEXT_TYPE_DEFAULTS;
     c->bin_dir = talloc_strdup(c, "bin");
     c->lib_dir = talloc_strdup(c, "lib");
+    c->hdr_dir = talloc_strdup(c, "include");
     c->obj_dir = talloc_strdup(c, "obj");
     c->src_dir = talloc_strdup(c, "src");
     c->prefix = talloc_strdup(c, "/usr/local");
@@ -64,6 +66,7 @@ struct context *context_new_binary(struct context *parent, void *context,
     c->parent = c;
     c->bin_dir = talloc_reference(c, parent->bin_dir);
     c->lib_dir = talloc_reference(c, parent->lib_dir);
+    c->hdr_dir = talloc_reference(c, parent->hdr_dir);
     c->obj_dir = talloc_reference(c, parent->obj_dir);
     c->src_dir = talloc_reference(c, parent->src_dir);
     c->prefix = talloc_reference(c, parent->prefix);
@@ -227,8 +230,9 @@ int context_binary_destructor(struct context *c)
                           "mkdir -p `dirname \"%s/%s\"` >& /dev/null || true",
                           c->prefix, c->full_path);
     makefile_add_install(c->mf, tmp);
-    tmp = talloc_asprintf(context, "install -D %s `dirname \"%s/%s\"`",
-                          c->link_path_install, c->prefix, c->full_path);
+    tmp =
+        talloc_asprintf(context, "install -m a=rx -D %s `dirname \"%s/%s\"`",
+                        c->link_path_install, c->prefix, c->full_path);
     makefile_add_install(c->mf, tmp);
 
     tmp = talloc_asprintf(context, "%s/%s", c->prefix, c->full_path);
@@ -250,6 +254,7 @@ struct context *context_new_library(struct context *parent, void *context,
     c->parent = c;
     c->bin_dir = talloc_reference(c, parent->bin_dir);
     c->lib_dir = talloc_reference(c, parent->lib_dir);
+    c->hdr_dir = talloc_reference(c, parent->hdr_dir);
     c->obj_dir = talloc_reference(c, parent->obj_dir);
     c->src_dir = talloc_reference(c, parent->src_dir);
     c->prefix = talloc_reference(c, parent->prefix);
@@ -363,7 +368,7 @@ int context_library_destructor(struct context *c)
                           "mkdir -p `dirname \"%s/%s\"` >& /dev/null || true",
                           c->prefix, c->full_path);
     makefile_add_install(c->mf, tmp);
-    tmp = talloc_asprintf(context, "install -D %s `dirname \"%s/%s\"`",
+    tmp = talloc_asprintf(context, "install -m a=r -D %s `dirname \"%s/%s\"`",
                           c->full_path, c->prefix, c->full_path);
     makefile_add_install(c->mf, tmp);
 
@@ -373,6 +378,64 @@ int context_library_destructor(struct context *c)
     makefile_add_distclean(c->mf, c->lib_dir);
 
     TALLOC_FREE(context);
+    return 0;
+}
+
+struct context *context_new_header(struct context *parent, void *context,
+                                   const char *called_path)
+{
+    struct context *c;
+
+    c = talloc(context, struct context);
+    c->type = CONTEXT_TYPE_LIBRARY;
+    c->parent = c;
+    c->bin_dir = talloc_reference(c, parent->bin_dir);
+    c->lib_dir = talloc_reference(c, parent->lib_dir);
+    c->hdr_dir = talloc_reference(c, parent->hdr_dir);
+    c->obj_dir = talloc_reference(c, parent->obj_dir);
+    c->src_dir = talloc_reference(c, parent->src_dir);
+    c->prefix = talloc_reference(c, parent->prefix);
+    c->compile_opts = stringlist_copy(parent->compile_opts, c);
+    c->link_opts = stringlist_copy(parent->link_opts, c);
+    c->mf = talloc_reference(c, parent->mf);
+    c->ll = talloc_reference(c, parent->ll);
+    c->s = parent->s;
+    c->language = NULL;
+    c->objects = stringlist_new(c);
+    c->libraries = stringlist_new(c);
+
+    c->full_path = talloc_asprintf(c, "%s/%s", c->hdr_dir, called_path);
+    c->link_path = talloc_strdup(c, "");
+    c->link_path_install = talloc_strdup(c, "");
+
+    talloc_set_destructor(c, &context_header_destructor);
+
+    return c;
+}
+
+int context_header_destructor(struct context *c)
+{
+    char *tmp;
+    void *context;
+
+    context = talloc_new(c);
+
+    /* There is an install/uninstall target */
+    tmp = talloc_asprintf(context, "echo -e \"INS\\t%s\"", c->full_path);
+    makefile_add_install(c->mf, tmp);
+    tmp = talloc_asprintf(context,
+                          "mkdir -p `dirname \"%s/%s\"` >& /dev/null || true",
+                          c->prefix, c->full_path);
+    makefile_add_install(c->mf, tmp);
+    tmp = talloc_asprintf(context, "install -m a=r -D %s `dirname \"%s/%s\"`",
+                          c->full_path, c->prefix, c->full_path);
+    makefile_add_install(c->mf, tmp);
+
+    tmp = talloc_asprintf(context, "%s/%s", c->prefix, c->full_path);
+    makefile_add_uninstall(c->mf, tmp);
+
+    TALLOC_FREE(c);
+
     return 0;
 }
 
@@ -386,6 +449,7 @@ struct context *context_new_source(struct context *parent, void *context,
     c->parent = parent->parent;
     c->bin_dir = talloc_reference(c, parent->bin_dir);
     c->lib_dir = talloc_reference(c, parent->lib_dir);
+    c->hdr_dir = talloc_reference(c, parent->hdr_dir);
     c->obj_dir = talloc_reference(c, parent->obj_dir);
     c->src_dir = talloc_reference(c, parent->src_dir);
     c->prefix = talloc_reference(c, parent->prefix);
