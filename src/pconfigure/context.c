@@ -231,7 +231,8 @@ int context_binary_destructor(struct context *c)
                           c->prefix, c->full_path);
     makefile_add_install(c->mf, tmp);
     tmp =
-        talloc_asprintf(context, "install -m a=rx -D %s `dirname \"%s/%s\"`",
+        talloc_asprintf(context,
+                        "install -m a=rx -D %s $D/`dirname \"%s/%s\"`",
                         c->link_path_install, c->prefix, c->full_path);
     makefile_add_install(c->mf, tmp);
 
@@ -368,8 +369,10 @@ int context_library_destructor(struct context *c)
                           "mkdir -p `dirname \"%s/%s\"` >& /dev/null || true",
                           c->prefix, c->full_path);
     makefile_add_install(c->mf, tmp);
-    tmp = talloc_asprintf(context, "install -m a=r -D %s `dirname \"%s/%s\"`",
-                          c->full_path, c->prefix, c->full_path);
+    tmp =
+        talloc_asprintf(context,
+                        "install -m a=r -D %s $D/`dirname \"%s/%s\"`",
+                        c->full_path, c->prefix, c->full_path);
     makefile_add_install(c->mf, tmp);
 
     tmp = talloc_asprintf(context, "%s/%s", c->prefix, c->full_path);
@@ -427,8 +430,10 @@ int context_header_destructor(struct context *c)
                           "mkdir -p `dirname \"%s/%s\"` >& /dev/null || true",
                           c->prefix, c->full_path);
     makefile_add_install(c->mf, tmp);
-    tmp = talloc_asprintf(context, "install -m a=r -D %s `dirname \"%s/%s\"`",
-                          c->full_path, c->prefix, c->full_path);
+    tmp =
+        talloc_asprintf(context,
+                        "install -m a=r -D %s $D/`dirname \"%s/%s\"`",
+                        c->full_path, c->prefix, c->full_path);
     makefile_add_install(c->mf, tmp);
 
     tmp = talloc_asprintf(context, "%s/%s", c->prefix, c->full_path);
