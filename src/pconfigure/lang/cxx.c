@@ -93,7 +93,7 @@ void language_cxx_extras(struct language *l_uncast, struct context *c,
 
 			     cfile = talloc_vasprintf(context, format, args);
 			     cxxfile = talloc_array(context, char,
-						    strlen(cfile) + 10);
+						    strlen(cfile) + 20);
 
 			     memset(cxxfile, 0, strlen(cfile) + 10);
 			     strncpy(cxxfile, cfile, strlen(cfile) - 2);
@@ -122,7 +122,8 @@ void language_cxx_extras(struct language *l_uncast, struct context *c,
 			     if (strcmp(cfile + strlen(cfile) - 4, ".hpp") == 0)
 				 cfile[strlen(cfile)-3] = 'c';
 			     if (access(cfile, R_OK) == 0)
-				 func(cfile);
+				 if (strcmp(cfile + strlen(cfile) - 2, ".c") == 0)
+				     func(cfile);
 			     
 			     va_end(args);
 			 }
