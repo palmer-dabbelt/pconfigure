@@ -84,7 +84,8 @@ struct language *language_c_search(struct language *l_uncast,
     if (l == NULL)
         return NULL;
 
-    if (strcmp(path + strlen(path) - 2, ".c") != 0)
+    if (strcmp(path + strlen(path) - 2, ".c") != 0
+        && strcmp(path + strlen(path) - 3, ".ld") != 0)
         return NULL;
 
     if (parent == NULL)
@@ -103,6 +104,7 @@ const char *language_c_objname(struct language *l_uncast, void *context,
     const char *compileopts_hash, *langopts_hash;
     struct language_c *l;
     void *subcontext;
+    const char *suffix;
 
     l = talloc_get_type(l_uncast, struct language_c);
     if (l == NULL)
@@ -114,9 +116,17 @@ const char *language_c_objname(struct language *l_uncast, void *context,
 
     /* This should be checked higher up in the stack, but just make sure */
     assert(c->full_path[strlen(c->src_dir)] == '/');
-    o = talloc_asprintf(context, "%s/%s/%s-%s.o",
+
+    /* Linker scripts have no dependencies. */
+    if (strcmp(c->full_path + strlen(c->full_path) - 3, ".ld") == 0)
+        suffix = "ld";
+    else
+        suffix = "o";
+
+    o = talloc_asprintf(context, "%s/%s/%s-%s.%s",
                         c->obj_dir,
-                        c->full_path, compileopts_hash, langopts_hash);
+                        c->full_path, compileopts_hash, langopts_hash,
+                        suffix);
 
     TALLOC_FREE(subcontext);
     return o;
@@ -132,6 +142,13 @@ void language_c_deps(struct language *l_uncast, struct context *c,
     int i;
     CXIndex index;
     CXTranslationUnit tu;
+
+    /* Linker scripts have no dependencies. */
+    if (strcmp(c->full_path + strlen(c->full_path) - 3, ".ld") == 0)
+    {
+        func(c->full_path);
+        return;
+    }
 
     l = talloc_get_type(l_uncast, struct language_c);
     if (l == NULL)
@@ -213,6 +230,7 @@ void language_c_build(struct language *l_uncast, struct context *c,
     struct language_c *l;
     void *context;
     const char *obj_path;
+    const char *compile_str;
 
     l = talloc_get_type(l_uncast, struct language_c);
     if (l == NULL)
@@ -221,10 +239,24 @@ void language_c_build(struct language *l_uncast, struct context *c,
     context = talloc_new(NULL);
     obj_path = language_objname(l_uncast, context, c);
 
+    /* Linker scripts have a different compile string. */
+    if (strcmp(c->full_path + strlen(c->full_path) - 3, ".ld") == 0)
+        compile_str = "LDS";
+    else
+        compile_str = l->l.compile_str;
+
     func(true, "echo -e \"%s\\t%s\"",
-         l->l.compile_str, c->full_path + strlen(c->src_dir) + 1);
+         compile_str, c->full_path + strlen(c->src_dir) + 1);
 
     func(false, "mkdir -p `dirname %s` >& /dev/null || true", obj_path);
+
+    /* Linker scripts don't really need to be compiled, at least for now. */
+    if (strcmp(c->full_path + strlen(c->full_path) - 3, ".ld") == 0)
+    {
+        func(false, "cp %s %s", c->full_path, obj_path);
+        TALLOC_FREE(context);
+        return;
+    }
 
     func(false, "%s\\", l->l.compile_cmd);
     /* *INDENT-OFF* */
