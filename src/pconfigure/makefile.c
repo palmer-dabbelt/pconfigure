@@ -314,7 +314,7 @@ int mf_destructor(struct makefile *m)
     cur = stringlist_start(m->targets_clean);
     while (stringlist_notend(cur))
     {
-        makefile_add_cmd(m, "rm \"%s\" >& /dev/null || true",
+        makefile_add_cmd(m, "rm -f \"%s\" >& /dev/null || true",
                          stringlist_data(cur));
         cur = stringlist_next(cur);
     }
