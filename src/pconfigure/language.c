@@ -20,6 +20,7 @@
  */
 
 #include "language.h"
+#include <talloc.h>
 
 int language_init(struct language *l)
 {
@@ -39,6 +40,30 @@ int language_init(struct language *l)
     l->slib = NULL;
     l->extras = NULL;
 
+    return 0;
+}
+
+int language_set_compiler(struct language *l, char *cmd)
+{
+    if (l->compile_cmd != NULL)
+    {
+        talloc_unlink(l, l->compile_cmd);
+        l->compile_cmd = NULL;
+    }
+
+    l->compile_cmd = talloc_reference(l, cmd);
+    return 0;
+}
+
+int language_set_linker(struct language *l, char *cmd)
+{
+    if (l->link_cmd != NULL)
+    {
+        talloc_unlink(l, l->link_cmd);
+        l->link_cmd = NULL;
+    }
+
+    l->link_cmd = talloc_reference(l, cmd);
     return 0;
 }
 

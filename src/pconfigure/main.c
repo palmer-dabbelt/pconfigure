@@ -52,6 +52,8 @@ static int parsefunc_binaries(const char *op, const char *right);
 static int parsefunc_libraries(const char *op, const char *right);
 static int parsefunc_headers(const char *op, const char *right);
 static int parsefunc_sources(const char *op, const char *right);
+static int parsefunc_compiler(const char *op, const char *right);
+static int parsefunc_linker(const char *op, const char *right);
 
 /* This is global data to avoid having really long parsefunc_* function calls */
 static struct clopts *o;
@@ -349,6 +351,10 @@ int parse_select(const char *left, const char *op, char *right)
         return parsefunc_headers(op, right);
     if (strcmp(left, "SOURCES") == 0)
         return parsefunc_sources(op, right);
+    if (strcmp(left, "COMPILER") == 0)
+        return parsefunc_compiler(op, right);
+    if (strcmp(left, "LINKER") == 0)
+        return parsefunc_linker(op, right);
 
     return -2;
 }
@@ -734,4 +740,66 @@ int parsefunc_deplibs(const char *op, const char *right)
     err = context_add_library(c, duped);
     TALLOC_FREE(context);
     return err;
+}
+
+int parsefunc_compiler(const char *op, const char *right)
+{
+    int err;
+
+    if (contextstack_isempty(s))
+    {
+        struct language *l;
+        char *duped;
+        void *context;
+
+        context = talloc_new(NULL);
+
+        l = languagelist_get(ll, context);
+        if (l == NULL)
+        {
+            fprintf(stderr, "No last language\n");
+            TALLOC_FREE(context);
+            return -1;
+        }
+
+        duped = talloc_strdup(context, right);
+        err = language_set_compiler(l, duped);
+        TALLOC_FREE(context);
+
+        return err;
+    }
+
+    fprintf(stderr, "COMPILER must be passed to a language\n");
+    return 1;
+}
+
+int parsefunc_linker(const char *op, const char *right)
+{
+    int err;
+
+    if (contextstack_isempty(s))
+    {
+        struct language *l;
+        char *duped;
+        void *context;
+
+        context = talloc_new(NULL);
+
+        l = languagelist_get(ll, context);
+        if (l == NULL)
+        {
+            fprintf(stderr, "No last language\n");
+            TALLOC_FREE(context);
+            return -1;
+        }
+
+        duped = talloc_strdup(context, right);
+        err = language_set_linker(l, duped);
+        TALLOC_FREE(context);
+
+        return err;
+    }
+
+    fprintf(stderr, "LINKER must be passed to a language\n");
+    return 1;
 }

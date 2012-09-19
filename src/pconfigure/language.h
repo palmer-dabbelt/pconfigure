@@ -29,13 +29,13 @@
 
 struct language
 {
-    const char *name;
-    const char *link_name;
+    char *name;
+    char *link_name;
 
-    const char *compile_str;
-    const char *compile_cmd;
-    const char *link_str;
-    const char *link_cmd;
+    char *compile_str;
+    char *compile_cmd;
+    char *link_str;
+    char *link_cmd;
 
     struct stringlist *compile_opts;
     struct stringlist *link_opts;
@@ -58,6 +58,9 @@ struct language
 };
 
 extern int language_init(struct language *l);
+
+extern int language_set_compiler(struct language *l, char *cmd);
+extern int language_set_linker(struct language *l, char *cmd);
 
 extern int language_add_compileopt(struct language *l, const char *opt);
 extern int language_add_linkopt(struct language *l, const char *opt);
