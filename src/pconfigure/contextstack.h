@@ -39,6 +39,7 @@ struct contextstack_node
 struct contextstack
 {
     struct contextstack_node *head;
+    struct context *def;
 };
 
 extern struct contextstack *contextstack_new(struct clopts *o,
@@ -65,5 +66,9 @@ extern void contextstack_push_header(struct contextstack *s,
                                      const char *called_path);
 extern void contextstack_push_source(struct contextstack *s,
                                      const char *called_path);
+
+/* Sets some default options. */
+extern void contextstack_set_default_lib_dir(struct contextstack *s,
+                                             const char *path);
 
 #endif

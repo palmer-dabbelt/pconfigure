@@ -59,21 +59,21 @@ struct context
     struct language *language;
 
     /* This is the full path (include the bin/ or src/) of this context */
-    const char *full_path;
+    char *full_path;
 
     /* This is the target we want to try and link into */
-    const char *link_path;
+    char *link_path;
 
     /* This is the path we're linking into when we want to install it */
-    const char *link_path_install;
+    char *link_path_install;
 
     /* These paths can be changed on a per context basis */
-    const char *bin_dir;
-    const char *lib_dir;
-    const char *hdr_dir;
-    const char *obj_dir;
-    const char *src_dir;
-    const char *prefix;
+    char *bin_dir;
+    char *lib_dir;
+    char *hdr_dir;
+    char *obj_dir;
+    char *src_dir;
+    char *prefix;
 
     /* Options specific to this context */
     struct stringlist *compile_opts;
@@ -106,7 +106,7 @@ extern struct context *context_new_source(struct context *parent,
                                           void *context,
                                           const char *called_path);
 
-extern int context_set_prefix(struct context *c, const char *opt);
+extern int context_set_prefix(struct context *c, char *opt);
 
 extern int context_add_compileopt(struct context *c, const char *opt);
 extern int context_add_linkopt(struct context *c, const char *opt);

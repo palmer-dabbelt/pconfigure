@@ -48,6 +48,8 @@ struct contextstack *contextstack_new(struct clopts *o,
     }
     s->head->next = NULL;
 
+    s->def = s->head->data;
+
     return s;
 }
 
@@ -224,4 +226,11 @@ void contextstack_push_source(struct contextstack *s, const char *called_path)
     cur->data = c;
     cur->next = s->head;
     s->head = cur;
+}
+
+void contextstack_set_default_lib_dir(struct contextstack *s,
+                                      const char *path)
+{
+    talloc_unlink(s->def, s->def->lib_dir);
+    s->def->lib_dir = talloc_strdup(s->def, path);
 }

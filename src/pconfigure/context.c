@@ -590,7 +590,7 @@ int context_source_destructor(struct context *c)
     return 0;
 }
 
-int context_set_prefix(struct context *c, const char *opt)
+int context_set_prefix(struct context *c, char *opt)
 {
     if (c == NULL)
         return -1;

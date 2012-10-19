@@ -54,6 +54,7 @@ static int parsefunc_headers(const char *op, const char *right);
 static int parsefunc_sources(const char *op, const char *right);
 static int parsefunc_compiler(const char *op, const char *right);
 static int parsefunc_linker(const char *op, const char *right);
+static int parsefunc_libdir(const char *op, const char *right);
 
 /* This is global data to avoid having really long parsefunc_* function calls */
 static struct clopts *o;
@@ -355,6 +356,8 @@ int parse_select(const char *left, const char *op, char *right)
         return parsefunc_compiler(op, right);
     if (strcmp(left, "LINKER") == 0)
         return parsefunc_linker(op, right);
+    if (strcmp(left, "LIBDIR") == 0)
+        return parsefunc_libdir(op, right);
 
     return -2;
 }
@@ -363,7 +366,7 @@ int parsefunc_prefix(const char *op, const char *right)
 {
     void *context;
     struct context *c;
-    const char *duped;
+    char *duped;
     int err;
 
     if (strcmp(op, "=") != 0)
@@ -802,4 +805,16 @@ int parsefunc_linker(const char *op, const char *right)
 
     fprintf(stderr, "LINKER must be passed to a language\n");
     return 1;
+}
+
+int parsefunc_libdir(const char *op, const char *right)
+{
+    if (!contextstack_isempty(s))
+    {
+        fprintf(stderr, "LIBDIR must be passed at the start\n");
+        return 1;
+    }
+
+    contextstack_set_default_lib_dir(s, right);
+    return 0;
 }
