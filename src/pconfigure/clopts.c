@@ -71,6 +71,12 @@ struct clopts *clopts_new(int argc, char **argv)
             talloc_unlink(o, o->infiles);
             o->infiles = infiles;
         }
+        else if (strcmp(argv[i], "--version") == 0)
+        {
+            printf("pconfigure %s\n", PCONFIGURE_VERSION);
+            TALLOC_FREE(o);
+            exit(0);
+        }
         else
         {
             fprintf(stderr, "Unknown argument: '%s'\n", argv[i]);

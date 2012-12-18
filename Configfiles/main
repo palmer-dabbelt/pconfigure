@@ -5,6 +5,7 @@ COMPILEOPTS += -Werror
 COMPILEOPTS += -Wno-trampolines
 COMPILEOPTS += -Wno-unused-parameter
 COMPILEOPTS += -std=gnu99
+COMPILEOPTS += -DPCONFIGURE_VERSION=\"0.1.0git\"
 LANGUAGES   += bash
 
 BINARIES    += pconfigure
