@@ -368,6 +368,7 @@ int parsefunc_prefix(const char *op, const char *right)
     struct context *c;
     char *duped;
     int err;
+    char *cmd;
 
     if (strcmp(op, "=") != 0)
     {
@@ -381,6 +382,15 @@ int parsefunc_prefix(const char *op, const char *right)
     c = contextstack_peek_default(s, context);
     duped = talloc_strdup(context, right);
     err = context_set_prefix(c, duped);
+
+    /* Make the necessary directories. */
+    cmd = talloc_asprintf(context, "mkdir -p $D%s/%s", c->prefix, c->bin_dir);
+    makefile_add_install(mf, cmd);
+    cmd = talloc_asprintf(context, "mkdir -p $D%s/%s", c->prefix, c->lib_dir);
+    makefile_add_install(mf, cmd);
+    cmd = talloc_asprintf(context, "mkdir -p $D%s/%s", c->prefix, c->hdr_dir);
+    makefile_add_install(mf, cmd);
+
     TALLOC_FREE(context);
 
     return err;
