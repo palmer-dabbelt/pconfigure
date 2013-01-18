@@ -107,17 +107,35 @@ struct clopts *clopts_new(int argc, char **argv)
 
 void setup_infiles(struct clopts *o)
 {
+    int i;
+
     if (o->infiles != NULL)
         talloc_free(o->infiles);
 
     o->infile_count = 4;
+
+    if (strlen(o->source_path) > 0)
+        o->infile_count += 2;
+
     o->infiles = talloc_array(o, const char *, o->infile_count);
-    o->infiles[0] = talloc_asprintf(o->infiles, "%sConfigfiles/local",
-                                    o->source_path);
-    o->infiles[1] = talloc_asprintf(o->infiles, "%sConfigfile.local",
-                                    o->source_path);
-    o->infiles[2] = talloc_asprintf(o->infiles, "%sConfigfiles/main",
-                                    o->source_path);
-    o->infiles[3] = talloc_asprintf(o->infiles, "%sConfigfile",
-                                    o->source_path);
+    i = 0;
+
+    /* If we're sourceing from another directory then still allow some
+     * flags to be set in this current working directory -- otherwise
+     * we'll just end up with _exactly_ the same build every time,
+     * which probably isn't the most useful. */
+    if (strlen(o->source_path) > 0)
+    {
+        o->infiles[i++] = talloc_strdup(o->infiles, "Configfiles/local");
+        o->infiles[i++] = talloc_strdup(o->infiles, "Configfile.local");
+    }
+
+    o->infiles[i++] = talloc_asprintf(o->infiles, "%sConfigfiles/local",
+                                      o->source_path);
+    o->infiles[i++] = talloc_asprintf(o->infiles, "%sConfigfile.local",
+                                      o->source_path);
+    o->infiles[i++] = talloc_asprintf(o->infiles, "%sConfigfiles/main",
+                                      o->source_path);
+    o->infiles[i++] = talloc_asprintf(o->infiles, "%sConfigfile",
+                                      o->source_path);
 }
