@@ -23,6 +23,8 @@
 #include <talloc.h>
 #include <string.h>
 
+static void setup_infiles(struct clopts *o);
+
 struct clopts *clopts_new(int argc, char **argv)
 {
     struct clopts *o;
@@ -36,12 +38,10 @@ struct clopts *clopts_new(int argc, char **argv)
     o->verbose = false;
     o->outfile = talloc_strdup(o, "Makefile");
 
-    o->infile_count = 4;
-    o->infiles = talloc_array(o, const char *, o->infile_count);
-    o->infiles[0] = talloc_strdup(o->infiles, "Configfiles/local");
-    o->infiles[1] = talloc_strdup(o->infiles, "Configfile.local");
-    o->infiles[2] = talloc_strdup(o->infiles, "Configfiles/main");
-    o->infiles[3] = talloc_strdup(o->infiles, "Configfile");
+    o->source_path = talloc_strdup(o, "");
+
+    o->infiles = NULL;
+    setup_infiles(o);
 
     for (i = 1; i < argc; i++)
     {
@@ -62,7 +62,8 @@ struct clopts *clopts_new(int argc, char **argv)
             for (j = 0; j < o->infile_count - 4; j++)
                 infiles[j] = talloc_reference(infiles, o->infiles[j]);
 
-            infiles[j] = talloc_asprintf(infiles, "Configfiles/%s", config);
+            infiles[j] = talloc_asprintf(infiles, "%sConfigfiles/%s",
+                                         o->source_path, config);
             j++;
 
             for (j = j; j < o->infile_count; j++)
@@ -77,6 +78,19 @@ struct clopts *clopts_new(int argc, char **argv)
             TALLOC_FREE(o);
             exit(0);
         }
+        else if (strcmp(argv[i], "--sourcepath") == 0)
+        {
+            talloc_free((char *)o->source_path);
+
+            if (argv[i + 1][strlen(argv[i + 1]) - 1] != '/')
+                o->source_path = talloc_asprintf(o, "%s/", argv[i + 1]);
+            else
+                o->source_path = talloc_strdup(o, argv[i + 1]);
+
+            setup_infiles(o);
+
+            i++;
+        }
         else
         {
             fprintf(stderr, "Unknown argument: '%s'\n", argv[i]);
@@ -89,4 +103,21 @@ struct clopts *clopts_new(int argc, char **argv)
             printf("Reading '%s'\n", o->infiles[i]);
 
     return o;
+}
+
+void setup_infiles(struct clopts *o)
+{
+    if (o->infiles != NULL)
+        talloc_free(o->infiles);
+
+    o->infile_count = 4;
+    o->infiles = talloc_array(o, const char *, o->infile_count);
+    o->infiles[0] = talloc_asprintf(o->infiles, "%sConfigfiles/local",
+                                    o->source_path);
+    o->infiles[1] = talloc_asprintf(o->infiles, "%sConfigfile.local",
+                                    o->source_path);
+    o->infiles[2] = talloc_asprintf(o->infiles, "%sConfigfiles/main",
+                                    o->source_path);
+    o->infiles[3] = talloc_asprintf(o->infiles, "%sConfigfile",
+                                    o->source_path);
 }

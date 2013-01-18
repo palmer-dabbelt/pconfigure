@@ -32,6 +32,9 @@ struct clopts
     const char *outfile;
 
     bool verbose;
+
+    /* This is the directory in which the sources live */
+    const char *source_path;
 };
 
 /* Parses the command-line options and creates a new (NULL-parented) list of

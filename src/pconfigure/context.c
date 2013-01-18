@@ -42,9 +42,9 @@ struct context *context_new_defaults(struct clopts *o, void *context,
     c->type = CONTEXT_TYPE_DEFAULTS;
     c->bin_dir = talloc_strdup(c, "bin");
     c->lib_dir = talloc_strdup(c, "lib");
-    c->hdr_dir = talloc_strdup(c, "include");
+    c->hdr_dir = talloc_asprintf(c, "%sinclude", o->source_path);
     c->obj_dir = talloc_strdup(c, "obj");
-    c->src_dir = talloc_strdup(c, "src");
+    c->src_dir = talloc_asprintf(c, "%ssrc", o->source_path);
     c->prefix = talloc_strdup(c, "/usr/local");
     c->compile_opts = stringlist_new(c);
     c->link_opts = stringlist_new(c);
