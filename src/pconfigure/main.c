@@ -202,7 +202,7 @@ int parse_line(const char *line, char *left, char *op, char *right)
     /* Splits into 3 parts */
     while ((line[line_cur] != '\0') && !isspace(line[line_cur]))
     {
-        assert(left_cur < MAX_LINE_SIZE);
+        assert(left_cur < (int)MAX_LINE_SIZE);
         left[left_cur] = line[line_cur];
         left_cur++;
         line_cur++;
@@ -213,7 +213,7 @@ int parse_line(const char *line, char *left, char *op, char *right)
 
     while ((line[line_cur] != '\0') && !isspace(line[line_cur]))
     {
-        assert(op_cur < MAX_LINE_SIZE);
+        assert(op_cur < (int)MAX_LINE_SIZE);
         op[op_cur] = line[line_cur];
         op_cur++;
         line_cur++;
@@ -224,7 +224,7 @@ int parse_line(const char *line, char *left, char *op, char *right)
 
     while (line[line_cur] != '\0')
     {
-        assert(right_cur < MAX_LINE_SIZE);
+        assert(right_cur < (int)MAX_LINE_SIZE);
         right[right_cur] = line[line_cur];
         right_cur++;
         line_cur++;
