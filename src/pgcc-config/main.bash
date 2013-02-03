@@ -7,7 +7,7 @@ fi
 program="$1"
 version="$2"
 
-for x in $(seq 9 0)
+for x in $(seq 9 -1 0)
 do
     if [[ "$(which "$program"-"$version"."$x" 2>/dev/null)" != "" ]]
     then
