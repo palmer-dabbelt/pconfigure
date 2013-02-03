@@ -26,3 +26,6 @@ SOURCES	    += pbashc/main.c
 
 BINARIES    += ppkg-config
 SOURCES	    += ppkg-config/main.bash
+
+BINARIES    += pgcc-config
+SOURCES     += pgcc-config/main.bash
