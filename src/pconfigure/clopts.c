@@ -59,15 +59,11 @@ struct clopts *clopts_new(int argc, char **argv)
             o->infile_count++;
 
             infiles = talloc_array(o, const char *, o->infile_count);
-            for (j = 0; j < o->infile_count - 4; j++)
-                infiles[j] = talloc_reference(infiles, o->infiles[j]);
+            for (j = 1; j < o->infile_count; j++)
+                infiles[j - 1] = talloc_reference(infiles, o->infiles[j]);
 
-            infiles[j] = talloc_asprintf(infiles, "%sConfigfiles/%s",
+            infiles[0] = talloc_asprintf(infiles, "%sConfigfiles/%s",
                                          o->source_path, config);
-            j++;
-
-            for (j = j; j < o->infile_count; j++)
-                infiles[j] = talloc_reference(infiles, o->infiles[j - 4]);
 
             talloc_unlink(o, o->infiles);
             o->infiles = infiles;
