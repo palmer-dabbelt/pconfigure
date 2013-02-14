@@ -1,13 +1,23 @@
 set -e
 
-# FIXME: Handle the "-o" flag correctly
-if [[ "$1" == "" ]]
-then
-    echo "pscalac <INPUT.scala>"
-    exit 1
-fi
-infile="$1"
-outfile="$(basename --suffix=.scala "$infile")".jar
+while [[ "$1" != "" ]]
+do
+    if [[ "$1" == "-c" ]]
+    then
+	infile="$2"
+	outfile="$(basename --suffix=.scala "$infile")".jar
+	shift
+	shift
+    elif [[ "$1" == "-o" ]]
+    then
+	outfile="$2"
+	shift
+	shift
+    else
+	echo "Unknown argument $1"
+	exit 1
+    fi
+done
 workfile="$(basename "$infile")"
 
 # Make a temporary working directory
