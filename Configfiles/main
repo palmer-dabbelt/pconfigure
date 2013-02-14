@@ -29,3 +29,9 @@ SOURCES	    += ppkg-config/main.bash
 
 BINARIES    += pgcc-config
 SOURCES     += pgcc-config/main.bash
+
+BINARIES    += pscalac
+SOURCES	    += pscala/compiler.bash
+
+BINARIES    += pscalald
+SOURCES	    += pscala/linker.bash
