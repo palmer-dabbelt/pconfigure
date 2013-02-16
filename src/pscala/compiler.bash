@@ -29,9 +29,8 @@ workjar="$workdir"/out.jar
 # Copy the Scala file into the current working directory.  We need to
 # make sure it's at the correct path, as otherwise I think it won't
 # get loaded correctly.
-cp "$infile" "$workdir"/"$workfile"
+scalac "$infile" -d "$workdir"
 cd "$workdir"
-scalac "$workfile"
 find -iname "*.class" | xargs jar cf "$workjar"
 cd - >& /dev/null
 
