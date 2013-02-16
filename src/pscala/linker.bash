@@ -32,8 +32,25 @@ cd "$workdir"
 find -iname "*.class" | xargs jar cfe "$workjar" $mainclass
 cd - >& /dev/null
 
-# Copy the output from the temporary directory to the output
-cp "$workjar" "$outfile"
+# Generate a self-extracting BASH archive as the output file
+cat >"$outfile" <<"EOF"
+#!/bin/bash
+export TMPDIR=`mktemp -d /tmp/selfextract.XXXXXX`
+
+ARCHIVE=`awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }' $0`
+
+tail -n+$ARCHIVE $0 | tar -xJ -C $TMPDIR
+
+scala "$TMPDIR"/out.jar "$@"
+rm -rf "$TMPDIR"
+wait
+
+exit 0
+
+__ARCHIVE_BELOW__
+EOF
+tar -C "$workdir" -c out.jar | xz >> "$outfile"
+chmod +x "$outfile"
 
 # Clean up
 rm -rf "$workdir"
