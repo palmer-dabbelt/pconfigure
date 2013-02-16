@@ -21,7 +21,7 @@ trap "set +e; rm -rf $workdir; rm -f $outfile" EXIT
 workjar="$workdir"/out.jar
 
 # Extract every jar file we've been given
-for zip in "$(echo "$@")"
+for zip in $(echo "$@")
 do
     unzip -o -q "$zip" -d "$workdir"
 done
