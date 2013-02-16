@@ -1,21 +1,16 @@
 set -e
 
+sources=""
 while [[ "$1" != "" ]]
 do
-    if [[ "$1" == "-c" ]]
-    then
-	infile="$2"
-	outfile="$(basename --suffix=.scala "$infile")".jar
-	shift
-	shift
-    elif [[ "$1" == "-o" ]]
+    if [[ "$1" == "-o" ]]
     then
 	outfile="$2"
 	shift
 	shift
     else
-	echo "Unknown argument $1"
-	exit 1
+	sources="$1 $sources"
+	shift
     fi
 done
 workfile="$(basename "$infile")"
@@ -29,7 +24,7 @@ workjar="$workdir"/out.jar
 # Copy the Scala file into the current working directory.  We need to
 # make sure it's at the correct path, as otherwise I think it won't
 # get loaded correctly.
-scalac "$infile" -d "$workdir"
+scalac $sources -d "$workdir"
 cd "$workdir"
 find -iname "*.class" | xargs jar cf "$workjar"
 cd - >& /dev/null
