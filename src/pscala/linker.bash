@@ -1,25 +1,42 @@
 set -e
 
 shared="false"
-if [[ "$1" == "-shared" ]]
-then
-    shared="true"
-    shift
-fi
-
-if [[ "$1" != "-o" ]]
-then
-    echo "pscalac -o OUTPUT.jar INPUT1.jar .. INPUTn.jar"
-    exit 1
-fi
-
-# Strip off the "-o" and the output file
-shift
-outfile="$1"
-shift
-
-# Default to "Main" for the class that should be run
 mainclass="Main"
+outfile=""
+inputs=""
+jars=""
+while [[ "$1" != "" ]]
+do
+    if [[ "$1" == "-shared" ]]
+    then
+	shared="true"
+	shift
+    elif [[ "$1" == "--main" ]]
+    then
+	mainclass="$2"
+	shift
+	shift
+    elif [[ "$1" == "-o" ]]
+    then
+	outfile="$2"
+	shift
+	shift
+    elif [[ "$1" == "-l" ]]
+    then
+	jar="$(find /usr/lib $HOME/.local/lib -name "$2".jar)"
+	jars="$jar $jars"
+	shift
+	shift
+    else
+	inputs="$1 $inputs"
+	shift
+    fi
+done
+
+if [[ "$(echo $jars)" != "" ]]
+then
+    classpath="-classpath $jars"
+fi
 
 # Make a temporary working directory
 workdir=`mktemp -d -t pscalald.XXXXXX`
@@ -28,7 +45,7 @@ trap "set +e; rm -rf $workdir; rm -f $outfile" EXIT
 workjar="$workdir"/out.jar
 
 # Extract every jar file we've been given
-for zip in $(echo "$@")
+for zip in $(echo "$inputs")
 do
     unzip -o -q "$zip" -d "$workdir"
 done
@@ -40,23 +57,23 @@ find -iname "*.class" | xargs jar cfe "$workjar" $mainclass
 cd - >& /dev/null
 
 # Generate a self-extracting BASH archive as the output file
-cat >"$outfile" <<"EOF"
+cat >"$outfile" <<EOF
 #!/bin/bash
-export TMPDIR=`mktemp -d /tmp/selfextract.XXXXXX`
+export TMPDIR=\`mktemp -d /tmp/selfextract.XXXXXX\`
 
-ARCHIVE=`awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }' $0`
+ARCHIVE=\`awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }' \$0\`
 
-tail -n+$ARCHIVE $0 | tar -xJ -C $TMPDIR
+tail -n+\$ARCHIVE \$0 | base64 -d | tar -xJ -C \$TMPDIR
 
-scala "$TMPDIR"/out.jar "$@"
-rm -rf "$TMPDIR"
+scala $classpath "\$TMPDIR"/out.jar "\$@"
+rm -rf "\$TMPDIR"
 wait
 
 exit 0
 
 __ARCHIVE_BELOW__
 EOF
-tar -C "$workdir" -c out.jar | xz >> "$outfile"
+tar -C "$workdir" -c out.jar | xz | base64 >> "$outfile"
 chmod +x "$outfile"
 
 # Shared libraries are actually completely different, it's easier to
