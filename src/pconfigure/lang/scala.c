@@ -295,9 +295,59 @@ void language_scala_link(struct language *l_uncast, struct context *c,
 void language_scala_slib(struct language *l_uncast, struct context *c,
                          void (*func) (bool, const char *, ...))
 {
-    fprintf(stderr, "language_scala_slib() unimplemented\n");
-    abort();
-    return;
+    struct language_scala *l;
+    void *context;
+    const char *link_path;
+
+    l = talloc_get_type(l_uncast, struct language_scala);
+    if (l == NULL)
+        return;
+
+    link_path = c->link_path;
+
+    context = talloc_new(NULL);
+
+    func(true, "echo -e \"%s\\t%s\"",
+         l->l.link_str, c->full_path + strlen(c->bin_dir) + 1);
+
+    func(false, "mkdir -p `dirname %s` >& /dev/null || true", link_path);
+
+    func(false, "%s -shared -o %s", l->l.link_cmd, link_path);
+    func(false, "\\");
+
+    /* *INDENT-OFF* */
+    stringlist_each(l->l.link_opts,
+		    lambda(int, (const char *opt),
+			   {
+			       func(false, "\\ %s", opt);
+			       return 0;
+			   }
+			));
+    stringlist_each(c->link_opts,
+		    lambda(int, (const char *opt),
+			   {
+			       func(false, "\\ %s", opt);
+			       return 0;
+			   }
+			));
+    stringlist_each(c->objects,
+		    lambda(int, (const char *opt),
+			   {
+			       func(false, "\\ %s", opt);
+			       return 0;
+			   }
+			));
+    stringlist_each(c->libraries,
+		    lambda(int, (const char *lib),
+			   {
+			       func(false, "\\ -l%s", lib);
+			       return 0;
+			   }
+			));
+    /* *INDENT-ON* */
+    func(false, "\\\n");
+
+    TALLOC_FREE(context);
 }
 
 void language_scala_extras(struct language *l_uncast, struct context *c,

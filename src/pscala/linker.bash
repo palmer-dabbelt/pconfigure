@@ -1,5 +1,12 @@
 set -e
 
+shared="false"
+if [[ "$1" == "-shared" ]]
+then
+    shared="true"
+    shift
+fi
+
 if [[ "$1" != "-o" ]]
 then
     echo "pscalac -o OUTPUT.jar INPUT1.jar .. INPUTn.jar"
@@ -51,6 +58,14 @@ __ARCHIVE_BELOW__
 EOF
 tar -C "$workdir" -c out.jar | xz >> "$outfile"
 chmod +x "$outfile"
+
+# Shared libraries are actually completely different, it's easier to
+# just tack this onto the end, though
+if [[ "$shared" == "true" ]]
+then
+    rm -f "$outfile"
+    cp "$workjar" "$outfile"
+fi
 
 # Clean up
 rm -rf "$workdir"
