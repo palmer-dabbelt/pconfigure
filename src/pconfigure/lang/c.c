@@ -402,14 +402,23 @@ void language_c_extras(struct language *l_uncast, struct context *c,
 			 {
 			     va_list args;
 			     char *cfile;
+			     char *hfile;
 
 			     va_start(args, NULL);
+
+			     hfile = talloc_vasprintf(context, format, args);
+
 			     cfile = talloc_vasprintf(context, format, args);
 			     cfile[strlen(cfile)-1] = 'c';
-			     if (access(cfile, R_OK) == 0)
-				 func(cfile);
+
+			     if (strcmp(cfile, hfile) != 0)
+				 if (access(cfile, R_OK) == 0)
+				     func(cfile);
 			     
 			     va_end(args);
+
+			     talloc_unlink(context, cfile);
+			     talloc_unlink(context, hfile);
 			 }
 		      ));
     /* *INDENT-ON* */
