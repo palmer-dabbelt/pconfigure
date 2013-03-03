@@ -80,5 +80,11 @@ struct language *language_asm_search(struct language *l_uncast,
 void language_asm_deps(struct language *l_uncast, struct context *c,
                        void (*func) (const char *, ...))
 {
-    return;
+    struct language_c *l;
+
+    l = talloc_get_type(l_uncast, struct language_c);
+    if (l == NULL)
+        abort();
+
+    func("%s", c->full_path);
 }
