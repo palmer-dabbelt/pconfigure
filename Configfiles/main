@@ -35,3 +35,6 @@ SOURCES	    += pscala/compiler.bash
 
 BINARIES    += pscalald
 SOURCES	    += pscala/linker.bash
+
+BINARIES    += pnasm
+SOURCES	    += pnasm.bash
