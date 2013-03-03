@@ -407,6 +407,7 @@ void language_c_extras(struct language *l_uncast, struct context *c,
 			 {
 			     va_list args;
 			     char *cfile;
+			     char *sfile;
 			     char *hfile;
 
 			     va_start(args, NULL);
@@ -416,9 +417,16 @@ void language_c_extras(struct language *l_uncast, struct context *c,
 			     cfile = talloc_vasprintf(context, format, args);
 			     cfile[strlen(cfile)-1] = 'c';
 
+			     sfile = talloc_vasprintf(context, format, args);
+			     sfile[strlen(sfile)-1] = 'S';
+
 			     if (strcmp(cfile, hfile) != 0)
 				 if (access(cfile, R_OK) == 0)
 				     func(cfile);
+
+			     if (strcmp(sfile, hfile) != 0)
+				 if (access(sfile, R_OK) == 0)
+				     func(sfile);
 			     
 			     va_end(args);
 

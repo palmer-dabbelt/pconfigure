@@ -64,7 +64,8 @@ struct language *language_asm_search(struct language *l_uncast,
     if (l == NULL)
         return NULL;
 
-    if (strcmp(path + strlen(path) - 2, ".s") != 0)
+    if ((strcmp(path + strlen(path) - 2, ".s") != 0)
+	&& (strcmp(path + strlen(path) - 2, ".S") != 0))
         return NULL;
 
     if (parent == NULL)
