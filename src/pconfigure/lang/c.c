@@ -64,7 +64,7 @@ struct language *language_c_new(struct clopts *o, const char *name)
     l->l.compile_str = talloc_strdup(l, "CC");
     l->l.compile_cmd = talloc_strdup(l, "${CC}");
     l->l.link_str = talloc_strdup(l, "LD");
-    l->l.link_cmd = talloc_strdup(l, "${LD}");
+    l->l.link_cmd = talloc_strdup(l, "${CC}");
     l->l.search = &language_c_search;
     l->l.objname = &language_c_objname;
     l->l.deps = &language_c_deps;
@@ -309,9 +309,9 @@ void language_c_link(struct language *l_uncast, struct context *c,
     func(false, "\\\t@%s ", l->l.link_cmd);
     func(false, "\\ -L%s", c->lib_dir);
     if (should_install == false)
-        func(false, "\\ -rpath %s", c->lib_dir);
+        func(false, "\\ -Wl,-rpath,%s", c->lib_dir);
     else
-        func(false, "\\ -rpath %s/%s", c->prefix, c->lib_dir);
+        func(false, "\\ -Wl,-rpath,%s/%s", c->prefix, c->lib_dir);
 
     /* *INDENT-OFF* */
     stringlist_each(l->l.link_opts,
