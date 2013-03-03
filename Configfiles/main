@@ -19,16 +19,16 @@ COMPILEOPTS += `ppkg-config --have TALLOC talloc --cflags`
 SOURCES     += pconfigure/main.c
 
 BINARIES    += pclean
-SOURCES	    += pclean/main.bash
+SOURCES	    += pclean.bash
 
 BINARIES    += pbashc
-SOURCES	    += pbashc/main.c
+SOURCES	    += pbashc.c
 
 BINARIES    += ppkg-config
-SOURCES	    += ppkg-config/main.bash
+SOURCES	    += ppkg-config.bash
 
 BINARIES    += pgcc-config
-SOURCES     += pgcc-config/main.bash
+SOURCES     += pgcc-config.bash
 
 BINARIES    += pscalac
 SOURCES	    += pscala/compiler.bash
