@@ -44,6 +44,7 @@ static void language_c_extras(struct language *l_uncast, struct context *c,
                               void *context, void (*func) (const char *));
 
 static char *string_strip(const char *in, void *context);
+static bool str_ends(const char *haystack, const char *needle);
 
 struct language *language_c_new(struct clopts *o, const char *name)
 {
@@ -330,7 +331,11 @@ void language_c_link(struct language *l_uncast, struct context *c,
     stringlist_each(c->objects,
 		    lambda(int, (const char *opt),
 			   {
-			       func(false, "\\ %s", opt);
+			       if (str_ends(opt, ".ld"))
+				   func(false, "\\ -T%s", opt);
+			       else
+				   func(false, "\\ %s", opt);
+
 			       return 0;
 			   }
 			));
@@ -470,4 +475,12 @@ char *string_strip(const char *filename_cstr, void *context)
     }
 
     return source_name;
+}
+
+bool str_ends(const char *haystack, const char *needle)
+{
+    if (strlen(haystack) < strlen(needle))
+	return false;
+
+    return strcmp(haystack + strlen(haystack) - strlen(needle), needle) == 0;
 }
