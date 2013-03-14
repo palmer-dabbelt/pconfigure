@@ -1,6 +1,6 @@
 
 /*
- * Copyright (C) 2011 Palmer Dabbelt
+ * Copyright (C) 2011,2013 Palmer Dabbelt
  *   <palmer@dabbelt.com>
  *
  * This file is part of pconfigure.
@@ -161,6 +161,10 @@ int parse_file(const char *filename)
         fprintf(stderr, "%s", line);
 #endif
 
+        /* Skip comments, which are denoted by a '#' on the first line. */
+        if ((strlen(line) > 1) && (line[0] == '#'))
+            goto cleanup;
+
         /* Splits the line into bits */
         err = parse_line(line, left, op, right);
         if (err != 0)
@@ -178,6 +182,7 @@ int parse_file(const char *filename)
             return -1;
         }
 
+      cleanup:
         line_num++;
     }
 
