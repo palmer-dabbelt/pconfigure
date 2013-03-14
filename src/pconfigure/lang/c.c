@@ -488,7 +488,7 @@ char *string_strip(const char *filename_cstr, void *context)
 bool str_ends(const char *haystack, const char *needle)
 {
     if (strlen(haystack) < strlen(needle))
-	return false;
+        return false;
 
     return strcmp(haystack + strlen(haystack) - strlen(needle), needle) == 0;
 }
