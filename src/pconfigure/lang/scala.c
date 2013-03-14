@@ -59,8 +59,8 @@ struct language *language_scala_new(struct clopts *o, const char *name)
         return NULL;
 
     language_init(&(l->l));
-    l->l.name = talloc_strdup(l, "c");
-    l->l.link_name = talloc_strdup(l, "c");
+    l->l.name = talloc_strdup(l, "scala");
+    l->l.link_name = talloc_strdup(l, "scala");
     l->l.compiled = true;
     l->l.compile_str = talloc_strdup(l, "SC");
     l->l.compile_cmd = talloc_strdup(l, "pscalac");
