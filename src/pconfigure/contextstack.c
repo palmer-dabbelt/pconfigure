@@ -228,6 +228,37 @@ void contextstack_push_source(struct contextstack *s, const char *called_path)
     s->head = cur;
 }
 
+void contextstack_push_fullsrc(struct contextstack *s, const char *full_path)
+{
+    struct contextstack_node *cur;
+    struct context *c;
+
+    if (s == NULL)
+    {
+        abort();
+        return;
+    }
+    if (full_path == NULL)
+        return;
+
+    cur = talloc(s, struct contextstack_node);
+    if (cur == NULL)
+        abort();
+
+    /* Creates a new context, based on the current context */
+    c = context_new_fullsrc(s->head->data, cur, full_path);
+    if (c == NULL)
+    {
+        TALLOC_FREE(cur);
+        abort();
+    }
+
+    /* This context is the new head. */
+    cur->data = c;
+    cur->next = s->head;
+    s->head = cur;
+}
+
 void contextstack_set_default_lib_dir(struct contextstack *s,
                                       const char *path)
 {

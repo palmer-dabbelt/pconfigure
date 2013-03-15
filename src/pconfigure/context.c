@@ -476,6 +476,38 @@ struct context *context_new_source(struct context *parent, void *context,
     return c;
 }
 
+struct context *context_new_fullsrc(struct context *parent, void *context,
+                                    const char *full_path)
+{
+    struct context *c;
+
+    c = talloc(context, struct context);
+    c->type = CONTEXT_TYPE_SOURCE;
+    c->parent = parent->parent;
+    c->bin_dir = talloc_reference(c, parent->bin_dir);
+    c->lib_dir = talloc_reference(c, parent->lib_dir);
+    c->hdr_dir = talloc_reference(c, parent->hdr_dir);
+    c->obj_dir = talloc_reference(c, parent->obj_dir);
+    c->src_dir = talloc_reference(c, parent->src_dir);
+    c->prefix = talloc_reference(c, parent->prefix);
+    c->compile_opts = stringlist_copy(parent->compile_opts, c);
+    c->link_opts = stringlist_copy(parent->link_opts, c);
+    c->mf = talloc_reference(c, parent->mf);
+    c->ll = talloc_reference(c, parent->ll);
+    c->s = parent->s;
+    c->language = NULL;
+    c->objects = stringlist_new(c);
+    c->libraries = stringlist_new(c);
+
+    c->full_path = talloc_strdup(c, full_path);
+    c->link_path = talloc_strdup(c, "");
+    c->link_path_install = talloc_strdup(c, "");
+
+    talloc_set_destructor(c, &context_source_destructor);
+
+    return c;
+}
+
 int context_source_destructor(struct context *c)
 {
     struct language *l;
@@ -576,8 +608,7 @@ int context_source_destructor(struct context *c)
 	language_extras(l, c, context,
 			lambda(void, (const char * extra),
 			       {
-				   extra += strlen(c->src_dir) + 1;
-				   contextstack_push_source(c->s, extra);
+				   contextstack_push_fullsrc(c->s, extra);
 			       }
 			    ));
 	/* *INDENT-ON* */

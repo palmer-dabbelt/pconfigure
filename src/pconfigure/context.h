@@ -105,6 +105,9 @@ extern struct context *context_new_header(struct context *parent,
 extern struct context *context_new_source(struct context *parent,
                                           void *context,
                                           const char *called_path);
+extern struct context *context_new_fullsrc(struct context *parent,
+                                           void *context,
+                                           const char *full_path);
 
 extern int context_set_prefix(struct context *c, char *opt);
 

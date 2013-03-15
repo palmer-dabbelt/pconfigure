@@ -60,7 +60,9 @@ static int parsefunc_libdir(const char *op, const char *right);
 static struct clopts *o;
 static struct makefile *mf;
 static struct contextstack *s;
-static struct languagelist *ll;
+
+/* FIXME: This is needed by lang/chisel.c, which is a huge hack! */
+struct languagelist *ll;
 
 int main(int argc, char **argv)
 {
