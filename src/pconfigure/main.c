@@ -28,8 +28,13 @@
 #include <assert.h>
 #include <string.h>
 #include <ctype.h>
-#include <talloc.h>
 #include <unistd.h>
+
+#ifdef HAVE_TALLOC
+#include <talloc.h>
+#else
+#include "extern/talloc.h"
+#endif
 
 static const unsigned int MAX_LINE_SIZE = 1024;
 

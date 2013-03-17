@@ -20,7 +20,11 @@
  */
 
 #include "clopts.h"
+#ifdef HAVE_TALLOC
 #include <talloc.h>
+#else
+#include "extern/talloc.h"
+#endif
 #include <string.h>
 
 static void setup_infiles(struct clopts *o);

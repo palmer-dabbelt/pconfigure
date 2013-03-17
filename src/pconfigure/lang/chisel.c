@@ -27,8 +27,13 @@
 #include <clang-c/Index.h>
 #include <ftw.h>
 #include <string.h>
-#include <talloc.h>
 #include <unistd.h>
+
+#ifdef HAVE_TALLOC
+#include <talloc.h>
+#else
+#include "extern/talloc.h"
+#endif
 
 /* FIXME: This allows me to access the global langauge list, it's a
  * huge hack! */

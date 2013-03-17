@@ -8,7 +8,7 @@ mkdir -p $BOOTSTRAP_DIR
 
 # Manually builds some of the utilities
 gcc --std=gnu99 -Wall -Werror -Wno-trampolines -g \
-    `find "$SOURCE_PATH"src/pconfigure/ -iname "*.c"` \
+    `find "$SOURCE_PATH"src/pconfigure/ "$SOURCE_PATH"src/extern/ -iname "*.c"` \
     -L`llvm-config --libdir` \
     -Wl,-R`llvm-config --libdir` \
     -I`llvm-config --includedir` \
@@ -16,15 +16,16 @@ gcc --std=gnu99 -Wall -Werror -Wno-trampolines -g \
     -lclang \
     `pkg-config talloc --libs` \
     -DPCONFIGURE_VERSION=\"bootstrap\" \
+    -Isrc/extern/ \
     -o "$BOOTSTRAP_DIR/pconfigure" || exit $?
 
-gcc --std=gnu99 `find "$SOURCE_PATH"src/pbashc/ -iname "*.c"` \
+gcc --std=gnu99 `find "$SOURCE_PATH"src/pbashc.c -iname "*.c"` \
     -o "$BOOTSTRAP_DIR/pbashc"
 
-$BOOTSTRAP_DIR/pbashc "$SOURCE_PATH"src/pclean/main.bash \
+$BOOTSTRAP_DIR/pbashc "$SOURCE_PATH"src/pclean.bash \
     -o $BOOTSTRAP_DIR/pclean
 
-$BOOTSTRAP_DIR/pbashc "$SOURCE_PATH"src/ppkg-config/main.bash \
+$BOOTSTRAP_DIR/pbashc "$SOURCE_PATH"src/ppkg-config.bash \
     -o $BOOTSTRAP_DIR/ppkg-config
 
 # Runs pconfigure in order to build itself

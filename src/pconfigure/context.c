@@ -22,9 +22,14 @@
 #include "context.h"
 #include "stringlist.h"
 #include "lambda.h"
-#include <talloc.h>
 #include <assert.h>
 #include <string.h>
+
+#ifdef HAVE_TALLOC
+#include <talloc.h>
+#else
+#include "extern/talloc.h"
+#endif
 
 static int context_binary_destructor(struct context *c);
 static int context_library_destructor(struct context *c);

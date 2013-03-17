@@ -20,10 +20,15 @@
  */
 
 #include "makefile.h"
-#include <talloc.h>
 #include <assert.h>
 #include <stdarg.h>
 #include <string.h>
+
+#ifdef HAVE_TALLOC
+#include <talloc.h>
+#else
+#include "extern/talloc.h"
+#endif
 
 static int mf_destructor(struct makefile *m);
 

@@ -26,9 +26,14 @@
 #include "lang/asm.h"
 #include "lang/scala.h"
 #include "lang/chisel.h"
-#include <talloc.h>
 #include <string.h>
 #include <assert.h>
+
+#ifdef HAVE_TALLOC
+#include <talloc.h>
+#else
+#include "extern/talloc.h"
+#endif
 
 static struct clopts *o;
 

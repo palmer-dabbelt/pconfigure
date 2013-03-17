@@ -14,8 +14,9 @@ LINKOPTS    += -lclang
 LINKOPTS    += -L`llvm-config --libdir`
 LINKOPTS    += -Wl,-R`llvm-config --libdir`
 COMPILEOPTS += `llvm-config --cflags`
-LINKOPTS    += `ppkg-config --have TALLOC talloc --libs`
-COMPILEOPTS += `ppkg-config --have TALLOC talloc --cflags`
+LINKOPTS    += `ppkg-config --optional --have TALLOC talloc --libs`
+COMPILEOPTS += `ppkg-config --optional --have TALLOC talloc --cflags`
+COMPILEOPTS += -Isrc/extern/
 SOURCES     += pconfigure/main.c
 
 BINARIES    += pclean

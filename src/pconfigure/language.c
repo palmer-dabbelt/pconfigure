@@ -20,7 +20,12 @@
  */
 
 #include "language.h"
+
+#ifdef HAVE_TALLOC
 #include <talloc.h>
+#else
+#include "extern/talloc.h"
+#endif
 
 int language_init(struct language *l)
 {

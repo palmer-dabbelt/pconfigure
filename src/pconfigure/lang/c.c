@@ -21,10 +21,15 @@
 
 #include "c.h"
 #include "../lambda.h"
-#include <talloc.h>
 #include <string.h>
 #include <clang-c/Index.h>
 #include <unistd.h>
+
+#ifdef HAVE_TALLOC
+#include <talloc.h>
+#else
+#include "extern/talloc.h"
+#endif
 
 static struct language *language_c_search(struct language *l_uncast,
                                           struct language *parent,

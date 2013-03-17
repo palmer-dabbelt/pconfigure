@@ -26,8 +26,13 @@
 #include <clang-c/Index.h>
 #include <ftw.h>
 #include <string.h>
-#include <talloc.h>
 #include <unistd.h>
+
+#ifdef HAVE_TALLOC
+#include <talloc.h>
+#else
+#include "extern/talloc.h"
+#endif
 
 static struct language *language_scala_search(struct language *l_uncast,
                                               struct language *parent,
