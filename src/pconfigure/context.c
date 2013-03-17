@@ -616,6 +616,9 @@ int context_source_destructor(struct context *c)
         stringlist_add(c->parent->objects, obj_name);
     }
 
+    /* Run some language-specific quirks here */
+    language_quirks(l, c, c->mf);
+
     /* Everything succeeded! */
     TALLOC_FREE(context);
     return 0;

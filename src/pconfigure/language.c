@@ -152,3 +152,13 @@ void language_extras(struct language *l, struct context *c, void *context,
     assert(l->extras != NULL);
     l->extras(l, c, context, func);
 }
+
+void language_quirks(struct language *l, struct context *c,
+                     struct makefile *mf)
+{
+    assert(l != NULL);
+    if (l->quirks == NULL)
+        return;
+
+    l->quirks(l, c, mf);
+}

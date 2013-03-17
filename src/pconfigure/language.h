@@ -24,6 +24,7 @@
 
 #include "stringlist.h"
 #include "context.h"
+#include "makefile.h"
 #include <assert.h>
 #include <stdbool.h>
 
@@ -55,6 +56,7 @@ struct language
                   void (*)(bool, const char *, ...));
     void (*extras) (struct language *, struct context *, void *,
                     void (*)(const char *));
+    void (*quirks) (struct language *, struct context *, struct makefile *);
 };
 
 extern int language_init(struct language *l);
@@ -84,5 +86,7 @@ extern void language_slib(struct language *l, struct context *c,
                           void (*func) (bool, const char *, ...));
 extern void language_extras(struct language *l, struct context *c, void *cxt,
                             void (*func) (const char *));
+extern void language_quirks(struct language *l, struct context *c,
+                            struct makefile *mf);
 
 #endif

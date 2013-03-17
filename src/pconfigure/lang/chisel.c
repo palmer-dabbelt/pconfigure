@@ -53,6 +53,8 @@ static void language_chisel_slib(struct language *l_uncast, struct context *c,
 static void language_chisel_extras(struct language *l_uncast,
                                    struct context *c, void *context,
                                    void (*func) (const char *));
+static void language_chisel_quirks(struct language *l_uncast,
+                                   struct context *c, struct makefile *mf);
 
 static bool str_starts(const char *haystack, const char *needle);
 
@@ -82,6 +84,7 @@ struct language *language_chisel_new(struct clopts *o, const char *name)
     l->l.link = &language_chisel_link;
     l->l.slib = &language_chisel_slib;
     l->l.extras = &language_chisel_extras;
+    l->l.quirks = &language_chisel_quirks;
 
     l->deps = stringlist_new(l);
 
@@ -311,8 +314,8 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
         make_dummy = talloc_asprintf(context, "mkdir -p %s.d/inc/", obj_path);
         system(make_dummy);
         make_dummy = talloc_asprintf(context,
-                                     "touch -t 197101010101 %s.d/inc/%s.h",
-                                     obj_path, design);
+                                     "if test ! -e %s.d/inc/%s.h; then touch -t 197101010101 %s.d/inc/%s.h; fi",
+                                     obj_path, design, obj_path, design);
         system(make_dummy);
     }
 
@@ -336,6 +339,86 @@ void language_chisel_extras(struct language *l_uncast, struct context *c,
     /* FIXME: Scala doesn't seem to support incremental compilation,
      * so we can't really handle the whole extras thing.  I just
      * depend on every chisel file, which is probably not the best. */
+}
+
+void language_chisel_quirks(struct language *l_uncast,
+                            struct context *c, struct makefile *mf)
+{
+    struct language_chisel *l;
+    void *context;
+    const char *obj_path;
+    char *design;
+    const char *target_path;
+    const char *source_path;
+
+    l = talloc_get_type(l_uncast, struct language_chisel);
+    if (l == NULL)
+        return;
+
+    context = talloc_new(NULL);
+    obj_path = language_objname(l_uncast, context, c);
+
+    /* *INDENT-OFF* */
+    /* Search for the design name, which is necessary because we can't
+     * know this for a while. */
+    design = NULL;
+    stringlist_each(l->l.compile_opts,
+		    lambda(int, (const char *opt),
+			   {
+			       if (str_starts(opt, "-d"))
+				   design = talloc_asprintf(context,
+							    "%s", opt+2);
+
+			       return 0;
+			   }
+                    ));
+    stringlist_each(c->compile_opts,
+		    lambda(int, (const char *opt),
+			   {
+			       if (str_starts(opt, "-d"))
+				   design = talloc_asprintf(context,
+							    "%s", opt+2);
+
+			       return 0;
+			   }
+                    ));
+    /* *INDENT-ON* */
+
+    target_path = talloc_asprintf(context, "%s.d/inc/%s.h", obj_path, design);
+    source_path = talloc_asprintf(context, "%s.d/gen/%s.h", obj_path, design);
+
+    /* Copy the generated header into the directory that's availiable
+     * for C++ to use. */
+    makefile_create_target(mf, target_path);
+
+    makefile_start_deps(mf);
+    makefile_add_dep(mf, source_path);
+    makefile_end_deps(mf);
+
+    makefile_start_cmds(mf);
+    makefile_nam_cmd(mf, "echo -e \"ChQ\t%s [copy header]\"",
+                     c->full_path + strlen(c->src_dir) + 1);
+    makefile_add_cmd(mf, "cp %s %s", source_path, target_path);
+    makefile_end_cmds(mf);
+
+    /* This is just a dummy target: it tells make that building the
+     * header depends on the chise object file.  Note that this is
+     * kind of true: generating the object file generates the header,
+     * but it's also a lie in that there's no extra work to be done
+     * when generating the object to generate the header. */
+    makefile_create_target(mf, source_path);
+
+    makefile_start_deps(mf);
+    makefile_add_dep(mf, obj_path);
+    makefile_end_deps(mf);
+
+    makefile_start_cmds(mf);
+    makefile_nam_cmd(mf, "echo -e \"ChQ\t%s [gen header]\"",
+                     c->full_path + strlen(c->src_dir) + 1);
+    makefile_add_cmd(mf, "touch %s", source_path);
+    makefile_end_cmds(mf);
+
+    TALLOC_FREE(context);
 }
 
 bool str_starts(const char *haystack, const char *needle)
