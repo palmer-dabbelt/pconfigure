@@ -66,10 +66,11 @@ ARCHIVE=\`awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }' \$0\`
 tail -n+\$ARCHIVE \$0 | base64 -d | tar -xJ -C \$TMPDIR
 
 scala $classpath "\$TMPDIR"/out.jar "\$@"
+out="\$?"
 rm -rf "\$TMPDIR"
 wait
 
-exit 0
+exit \$out
 
 __ARCHIVE_BELOW__
 EOF
