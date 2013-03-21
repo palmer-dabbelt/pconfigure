@@ -265,8 +265,9 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
          obj_path, obj_path);
 
     /* Actually run the resulting Chisel binary to produce some C++ code */
-    func(false, "%s.d/obj.bin --targetDir %s.d/gen > /dev/null",
-         obj_path, obj_path);
+    func(false, "%s.d/obj.bin --targetDir %s.d/gen >& /dev/null"
+         " || %s.d/obj.bin --targetDir %s.d/gen",
+         obj_path, obj_path, obj_path, obj_path);
 
     /* We then need to copy the header file out.  This needs to be in
      * a different directory because otherwise the C++ dependency
