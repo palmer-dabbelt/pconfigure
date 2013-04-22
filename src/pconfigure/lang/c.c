@@ -166,12 +166,13 @@ void language_c_deps(struct language *l_uncast, struct context *c,
      * includes are used by the file in question. */
     clang_argc = stringlist_size(l->l.compile_opts)
         + stringlist_size(c->compile_opts) + 1;
-    clang_argv = talloc_array(context, char *, clang_argc + 1);
+    clang_argv = talloc_array(context, char *, clang_argc + 2);
     for (i = 0; i <= clang_argc; i++)
         clang_argv[i] = NULL;
 
     clang_argv[0] = talloc_strdup(clang_argv, c->full_path);
-    i = 1;
+    clang_argv[1] = talloc_asprintf(clang_argv, "-I%s", c->hdr_dir);
+    i = 2;
     /* *INDENT-OFF* */
     stringlist_each(l->l.compile_opts,
 		    lambda(int, (const char *str),
