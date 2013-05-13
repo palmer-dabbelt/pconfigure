@@ -318,11 +318,13 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
         char *make_dummy;
 
         make_dummy = talloc_asprintf(context, "mkdir -p %s.d/inc/", obj_path);
-        system(make_dummy);
+        if (system(make_dummy) != 0)
+            abort();
         make_dummy = talloc_asprintf(context,
                                      "if test ! -e %s.d/inc/%s.h; then touch -t 197101010101 %s.d/inc/%s.h; fi",
                                      obj_path, design, obj_path, design);
-        system(make_dummy);
+        if (system(make_dummy) != 0)
+            abort();
     }
 
     TALLOC_FREE(context);
