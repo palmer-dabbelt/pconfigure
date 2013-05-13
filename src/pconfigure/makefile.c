@@ -312,14 +312,7 @@ int mf_destructor(struct makefile *m)
         cur = stringlist_next(cur);
     }
     makefile_end_deps(m);
-
     makefile_start_cmds(m);
-    cur = stringlist_start(m->targets_check);
-    while (stringlist_notend(cur))
-    {
-        makefile_add_cmd(m, "@ptest --check %s", stringlist_data(cur));
-        cur = stringlist_next(cur);
-    }
     makefile_end_cmds(m);
 
     /* Cleans the cache */

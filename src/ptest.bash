@@ -1,3 +1,44 @@
+if [[ "$1" == "" ]]
+then
+    # This subshell is necessary to keep these variables after the
+    # loop terminates
+    find check -type f | {
+        run="0"
+        pass="0"
+        fail="0"
+        error="0"
+
+        while read f
+        do
+            run=$(expr $run + 1)
+            
+            # This is a special case that's used for printing the
+            # success/failure of test cases
+            ret="$(tar -xOf "$f" ptest__return)"
+            if [[ "$ret" == "0" ]]
+            then
+                echo -e "PASS\t$(echo "$f" | cut -d'/' -f2-)"
+                pass=$(expr $pass + 1)
+            elif [[ "$ret" == "1" ]]
+            then
+                echo -e "FAIL\t$(echo "$f" | cut -d'/' -f2-)"
+                fail=$(expr $fail + 1)
+            else
+                echo -e "ERROR\t$(echo "$f" | cut -d'/' -f2-)"
+                error=$(expr $error + 1)
+            fi
+        done
+
+        echo ""
+        echo -e "NRUN\t"$run
+        echo -e "NPASS\t"$pass
+        echo -e "NFAIL\t"$fail
+        echo -e "NERROR\t"$error
+    }
+
+    exit 0
+fi
+
 # Parse the commandline arguments
 test=""
 out=""
@@ -19,22 +60,6 @@ do
         bin="$2"
         shift
         shift
-    elif [[ "$1" == "--check" ]]
-    then
-        # This is a special case that's used for printing the
-        # success/failure of test cases
-        ret="$(tar -xOf "$2" ptest__return)"
-        if [[ "$ret" == "0" ]]
-        then
-            echo -e "PASS\t$(echo "$2" | cut -d'/' -f2-)"
-        elif [[ "$ret" == "1" ]]
-        then
-            echo -e "FAIL\t$(echo "$2" | cut -d'/' -f2-)"
-        else
-            echo -e "ERROR\t$(echo "$2" | cut -d'/' -f2-)"
-        fi
-
-        exit 0
     else
         echo "Unknown argument: $1"
         exit 1
