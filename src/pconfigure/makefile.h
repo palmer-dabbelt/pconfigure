@@ -55,6 +55,9 @@ struct makefile
      * install this code. */
     struct stringlist *targets_all_install;
 
+    /* The list of targets to build when we type "make check" */
+    struct stringlist *targets_check;
+
     /* The list of things that will be "rm"d on a "make clean" */
     struct stringlist *targets_clean;
 
@@ -83,6 +86,7 @@ extern void makefile_create_target(struct makefile *m, const char *name);
 /* Adds an existing target to the named command */
 extern void makefile_add_all(struct makefile *m, const char *name);
 extern void makefile_add_all_install(struct makefile *m, const char *name);
+extern void makefile_add_check(struct makefile *m, const char *name);
 extern void makefile_add_clean(struct makefile *m, const char *name);
 extern void makefile_add_cleancache(struct makefile *m, const char *name);
 extern void makefile_add_distclean(struct makefile *m, const char *name);

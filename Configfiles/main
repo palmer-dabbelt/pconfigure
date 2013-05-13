@@ -39,3 +39,6 @@ SOURCES	    += pscala/linker.bash
 
 BINARIES    += pnasm
 SOURCES	    += pnasm.bash
+
+BINARIES    += ptest
+SOURCES	    += ptest.bash

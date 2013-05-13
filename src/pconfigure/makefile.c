@@ -43,6 +43,7 @@ struct makefile *makefile_new(struct clopts *o)
     m->file = fopen("Makefile", "w");
     m->targets_all = stringlist_new(m);
     m->targets_all_install = stringlist_new(m);
+    m->targets_check = stringlist_new(m);
     m->targets_clean = stringlist_new(m);
     m->targets_cleancache = stringlist_new(m);
     m->targets_distclean = stringlist_new(m);
@@ -54,7 +55,7 @@ struct makefile *makefile_new(struct clopts *o)
     fprintf(m->file, "SHELL=/bin/bash\n");
     fprintf(m->file,
             ".PHONY: all pconfigure__all clean cleancache distclean "
-            "install uninstall all_install" "\n");
+            "install uninstall all_install " "\n");
     fprintf(m->file, ".SUFFIXES:\n");
     fprintf(m->file, "all: pconfigure__all\n");
     fprintf(m->file, "\n");
@@ -84,6 +85,12 @@ void makefile_add_all_install(struct makefile *m, const char *name)
 {
     if (stringlist_include(m->targets_all, name) == false)
         stringlist_add(m->targets_all_install, name);
+}
+
+void makefile_add_check(struct makefile *m, const char *name)
+{
+    if (stringlist_include(m->targets_check, name) == false)
+        stringlist_add(m->targets_check, name);
 }
 
 void makefile_add_clean(struct makefile *m, const char *name)
@@ -292,6 +299,27 @@ int mf_destructor(struct makefile *m)
     }
     makefile_end_deps(m);
     makefile_start_cmds(m);
+    makefile_end_cmds(m);
+
+    /* Allows us to run the tests */
+    makefile_create_target(m, "check");
+
+    makefile_start_deps(m);
+    cur = stringlist_start(m->targets_check);
+    while (stringlist_notend(cur))
+    {
+        makefile_add_dep(m, stringlist_data(cur));
+        cur = stringlist_next(cur);
+    }
+    makefile_end_deps(m);
+
+    makefile_start_cmds(m);
+    cur = stringlist_start(m->targets_check);
+    while (stringlist_notend(cur))
+    {
+        makefile_add_cmd(m, "@ptest --check %s", stringlist_data(cur));
+        cur = stringlist_next(cur);
+    }
     makefile_end_cmds(m);
 
     /* Cleans the cache */

@@ -68,6 +68,8 @@ extern void contextstack_push_source(struct contextstack *s,
                                      const char *called_path);
 extern void contextstack_push_fullsrc(struct contextstack *s,
                                       const char *full_path);
+extern void contextstack_push_test(struct contextstack *s,
+                                   const char *called_path);
 
 /* Sets some default options. */
 extern void contextstack_set_default_lib_dir(struct contextstack *s,

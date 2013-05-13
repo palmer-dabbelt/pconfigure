@@ -38,7 +38,8 @@ enum context_type
     CONTEXT_TYPE_BINARY,
     CONTEXT_TYPE_LIBRARY,
     CONTEXT_TYPE_HEADER,
-    CONTEXT_TYPE_SOURCE
+    CONTEXT_TYPE_SOURCE,
+    CONTEXT_TYPE_TEST,
 };
 
 struct context
@@ -50,6 +51,9 @@ struct context
      * ensure that dependencies are not added twice. */
     struct context *parent;
 
+    /* This is a special parent used for tests. */
+    struct context *test_parent;
+
     /* These should be the same globally */
     struct makefile *mf;
     struct languagelist *ll;
@@ -57,6 +61,9 @@ struct context
     /* Each context has a language associated with it, the reason for this is
      * to assure that all sources are compatible with one another. */
     struct language *language;
+
+    /* This is the path that this was called with */
+    char *called_path;
 
     /* This is the full path (include the bin/ or src/) of this context */
     char *full_path;
@@ -73,6 +80,8 @@ struct context
     char *hdr_dir;
     char *obj_dir;
     char *src_dir;
+    char *chk_dir;
+    char *tst_dir;
     char *prefix;
 
     /* Options specific to this context */
@@ -108,6 +117,9 @@ extern struct context *context_new_source(struct context *parent,
 extern struct context *context_new_fullsrc(struct context *parent,
                                            void *context,
                                            const char *full_path);
+extern struct context *context_new_test(struct context *parent,
+                                        void *context,
+                                        const char *called_path);
 
 extern int context_set_prefix(struct context *c, char *opt);
 

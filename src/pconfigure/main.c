@@ -60,6 +60,8 @@ static int parsefunc_sources(const char *op, const char *right);
 static int parsefunc_compiler(const char *op, const char *right);
 static int parsefunc_linker(const char *op, const char *right);
 static int parsefunc_libdir(const char *op, const char *right);
+static int parsefunc_tests(const char *op, const char *right);
+static int parsefunc_testsrc(const char *op, const char *right);
 
 /* This is global data to avoid having really long parsefunc_* function calls */
 static struct clopts *o;
@@ -370,6 +372,10 @@ int parse_select(const char *left, const char *op, char *right)
         return parsefunc_linker(op, right);
     if (strcmp(left, "LIBDIR") == 0)
         return parsefunc_libdir(op, right);
+    if (strcmp(left, "TESTS") == 0)
+        return parsefunc_tests(op, right);
+    if (strcmp(left, "TESTSRC") == 0)
+        return parsefunc_testsrc(op, right);
 
     return -2;
 }
@@ -839,4 +845,58 @@ int parsefunc_libdir(const char *op, const char *right)
 
     contextstack_set_default_lib_dir(s, right);
     return 0;
+}
+
+int parsefunc_tests(const char *op, const char *right)
+{
+    if (strcmp(op, "+=") != 0)
+    {
+        fprintf(stderr, "We only support += for TESTS\n");
+        return -1;
+    }
+
+    /* We actually want to clear _almost_ everything on the stack,
+     * just everything up to and including the binary. */
+    while (!contextstack_isempty(s))
+    {
+        void *context;
+        enum context_type type;
+
+        /* Peek at the head of the stack, grabbing its type */
+        context = talloc_new(NULL);
+        type = contextstack_peek(s, context)->type;
+        TALLOC_FREE(context);
+
+        /* We don't want to push that last binary because it's needed
+         * by the test cases in order to run against said binary. */
+        if (type == CONTEXT_TYPE_BINARY)
+            goto push_test;
+
+        /* Actually pop the stack here */
+        context = talloc_new(NULL);
+        contextstack_pop(s, context);
+        TALLOC_FREE(context);
+    }
+
+  push_test:
+    /* Adds a binary to the stack, using the default compile options.  There is
+     * no need for this to  */
+    contextstack_push_test(s, right);
+    return 0;
+}
+
+int parsefunc_testsrc(const char *op, const char *right)
+{
+    int err;
+
+    if (strcmp(op, "+=") != 0)
+    {
+        fprintf(stderr, "We only support += for TESTS and SOURCES\n");
+        return -1;
+    }
+
+    if ((err = parsefunc_tests(op, right)) != 0)
+        return err;
+
+    return parsefunc_sources(op, right);
 }

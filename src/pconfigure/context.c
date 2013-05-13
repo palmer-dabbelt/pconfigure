@@ -35,6 +35,7 @@ static int context_binary_destructor(struct context *c);
 static int context_library_destructor(struct context *c);
 static int context_header_destructor(struct context *c);
 static int context_source_destructor(struct context *c);
+static int context_test_destructor(struct context *c);
 
 struct context *context_new_defaults(struct clopts *o, void *context,
                                      struct makefile *mf,
@@ -45,11 +46,15 @@ struct context *context_new_defaults(struct clopts *o, void *context,
 
     c = talloc(context, struct context);
     c->type = CONTEXT_TYPE_DEFAULTS;
+    c->parent = NULL;
+    c->test_parent = NULL;
     c->bin_dir = talloc_strdup(c, "bin");
     c->lib_dir = talloc_strdup(c, "lib");
     c->hdr_dir = talloc_asprintf(c, "%sinclude", o->source_path);
     c->obj_dir = talloc_strdup(c, "obj");
     c->src_dir = talloc_asprintf(c, "%ssrc", o->source_path);
+    c->chk_dir = talloc_strdup(c, "check");
+    c->tst_dir = talloc_asprintf(c, "%stest", o->source_path);
     c->prefix = talloc_strdup(c, "/usr/local");
     c->compile_opts = stringlist_new(c);
     c->link_opts = stringlist_new(c);
@@ -69,11 +74,14 @@ struct context *context_new_binary(struct context *parent, void *context,
     c = talloc(context, struct context);
     c->type = CONTEXT_TYPE_BINARY;
     c->parent = c;
+    c->test_parent = NULL;
     c->bin_dir = talloc_reference(c, parent->bin_dir);
     c->lib_dir = talloc_reference(c, parent->lib_dir);
     c->hdr_dir = talloc_reference(c, parent->hdr_dir);
     c->obj_dir = talloc_reference(c, parent->obj_dir);
     c->src_dir = talloc_reference(c, parent->src_dir);
+    c->chk_dir = talloc_reference(c, parent->chk_dir);
+    c->tst_dir = talloc_reference(c, parent->tst_dir);
     c->prefix = talloc_reference(c, parent->prefix);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
@@ -84,6 +92,7 @@ struct context *context_new_binary(struct context *parent, void *context,
     c->objects = stringlist_new(c);
     c->libraries = stringlist_new(c);
 
+    c->called_path = talloc_strdup(c, called_path);
     c->full_path = talloc_asprintf(c, "%s/%s", c->bin_dir, called_path);
     c->link_path = talloc_strdup(c, "");
     c->link_path_install = talloc_strdup(c, "");
@@ -258,12 +267,15 @@ struct context *context_new_library(struct context *parent, void *context,
     c = talloc(context, struct context);
     c->type = CONTEXT_TYPE_LIBRARY;
     c->parent = c;
+    c->test_parent = NULL;
     c->bin_dir = talloc_reference(c, parent->bin_dir);
     c->lib_dir = talloc_reference(c, parent->lib_dir);
     c->hdr_dir = talloc_reference(c, parent->hdr_dir);
     c->obj_dir = talloc_reference(c, parent->obj_dir);
     c->src_dir = talloc_reference(c, parent->src_dir);
     c->prefix = talloc_reference(c, parent->prefix);
+    c->chk_dir = talloc_reference(c, parent->chk_dir);
+    c->tst_dir = talloc_reference(c, parent->tst_dir);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
     c->mf = talloc_reference(c, parent->mf);
@@ -273,6 +285,7 @@ struct context *context_new_library(struct context *parent, void *context,
     c->objects = stringlist_new(c);
     c->libraries = stringlist_new(c);
 
+    c->called_path = talloc_strdup(c, called_path);
     c->full_path = talloc_asprintf(c, "%s/%s", c->lib_dir, called_path);
     c->link_path = talloc_strdup(c, "");
     c->link_path_install = talloc_strdup(c, "");
@@ -397,11 +410,14 @@ struct context *context_new_header(struct context *parent, void *context,
     c = talloc(context, struct context);
     c->type = CONTEXT_TYPE_LIBRARY;
     c->parent = c;
+    c->test_parent = NULL;
     c->bin_dir = talloc_reference(c, parent->bin_dir);
     c->lib_dir = talloc_reference(c, parent->lib_dir);
     c->hdr_dir = talloc_reference(c, parent->hdr_dir);
     c->obj_dir = talloc_reference(c, parent->obj_dir);
     c->src_dir = talloc_reference(c, parent->src_dir);
+    c->chk_dir = talloc_reference(c, parent->chk_dir);
+    c->tst_dir = talloc_reference(c, parent->tst_dir);
     c->prefix = talloc_reference(c, parent->prefix);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
@@ -412,6 +428,7 @@ struct context *context_new_header(struct context *parent, void *context,
     c->objects = stringlist_new(c);
     c->libraries = stringlist_new(c);
 
+    c->called_path = talloc_strdup(c, called_path);
     c->full_path = talloc_asprintf(c, "%s/%s", c->hdr_dir, called_path);
     c->link_path = talloc_strdup(c, "");
     c->link_path_install = talloc_strdup(c, "");
@@ -427,6 +444,11 @@ int context_header_destructor(struct context *c)
     void *context;
 
     context = talloc_new(c);
+
+    assert(c->type == CONTEXT_TYPE_HEADER);
+#ifdef DEBUG
+    fprintf(stderr, "context_header_destructor('%s')\n", c->full_path);
+#endif
 
     /* There is an install/uninstall target */
     tmp = talloc_asprintf(context, "echo -e \"INS\\t%s\"", c->full_path);
@@ -457,11 +479,14 @@ struct context *context_new_source(struct context *parent, void *context,
     c = talloc(context, struct context);
     c->type = CONTEXT_TYPE_SOURCE;
     c->parent = parent->parent;
+    c->test_parent = NULL;
     c->bin_dir = talloc_reference(c, parent->bin_dir);
     c->lib_dir = talloc_reference(c, parent->lib_dir);
     c->hdr_dir = talloc_reference(c, parent->hdr_dir);
     c->obj_dir = talloc_reference(c, parent->obj_dir);
     c->src_dir = talloc_reference(c, parent->src_dir);
+    c->chk_dir = talloc_reference(c, parent->chk_dir);
+    c->tst_dir = talloc_reference(c, parent->tst_dir);
     c->prefix = talloc_reference(c, parent->prefix);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
@@ -472,6 +497,7 @@ struct context *context_new_source(struct context *parent, void *context,
     c->objects = stringlist_new(c);
     c->libraries = stringlist_new(c);
 
+    c->called_path = talloc_strdup(c, called_path);
     c->full_path = talloc_asprintf(c, "%s/%s", c->src_dir, called_path);
     c->link_path = talloc_strdup(c, "");
     c->link_path_install = talloc_strdup(c, "");
@@ -489,11 +515,14 @@ struct context *context_new_fullsrc(struct context *parent, void *context,
     c = talloc(context, struct context);
     c->type = CONTEXT_TYPE_SOURCE;
     c->parent = parent->parent;
+    c->test_parent = NULL;
     c->bin_dir = talloc_reference(c, parent->bin_dir);
     c->lib_dir = talloc_reference(c, parent->lib_dir);
     c->hdr_dir = talloc_reference(c, parent->hdr_dir);
     c->obj_dir = talloc_reference(c, parent->obj_dir);
     c->src_dir = talloc_reference(c, parent->src_dir);
+    c->chk_dir = talloc_reference(c, parent->chk_dir);
+    c->tst_dir = talloc_reference(c, parent->tst_dir);
     c->prefix = talloc_reference(c, parent->prefix);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
@@ -625,6 +654,146 @@ int context_source_destructor(struct context *c)
     language_quirks(l, c, c->mf);
 
     /* Everything succeeded! */
+    TALLOC_FREE(context);
+    return 0;
+}
+
+struct context *context_new_test(struct context *parent, void *context,
+                                 const char *called_path)
+{
+    struct context *c;
+
+    c = talloc(context, struct context);
+    c->type = CONTEXT_TYPE_TEST;
+    c->parent = c;
+    c->test_parent = parent;
+    c->bin_dir = talloc_reference(c, parent->chk_dir);
+    c->lib_dir = talloc_reference(c, parent->lib_dir);
+    c->hdr_dir = talloc_reference(c, parent->hdr_dir);
+    c->obj_dir = talloc_reference(c, parent->obj_dir);
+    c->src_dir = talloc_asprintf(c, "%s/%s", parent->tst_dir,
+                                 parent->called_path);
+    c->chk_dir = talloc_reference(c, parent->chk_dir);
+    c->tst_dir = talloc_reference(c, parent->tst_dir);
+    c->prefix = talloc_reference(c, parent->prefix);
+    c->compile_opts = stringlist_copy(parent->compile_opts, c);
+    c->link_opts = stringlist_copy(parent->link_opts, c);
+    c->mf = talloc_reference(c, parent->mf);
+    c->ll = talloc_reference(c, parent->ll);
+    c->s = parent->s;
+    c->language = NULL;
+    c->objects = stringlist_new(c);
+    c->libraries = stringlist_new(c);
+
+    c->called_path = talloc_strdup(c, called_path);
+    c->full_path = talloc_asprintf(c, "%s/%s/%s", c->bin_dir,
+                                   parent->called_path, called_path);
+    c->link_path = talloc_strdup(c, "");
+    c->link_path_install = talloc_strdup(c, "");
+
+    talloc_set_destructor(c, &context_test_destructor);
+
+    return c;
+}
+
+int context_test_destructor(struct context *c)
+{
+    struct language *l;
+    void *context;
+    const char *hash_langlinkopts, *hash_linkopts, *hash_objs;
+
+    assert(c->type == CONTEXT_TYPE_TEST);
+#ifdef DEBUG
+    fprintf(stderr, "context_test_destructor('%s')\n", c->full_path);
+#endif
+
+    l = c->language;
+    assert(l != NULL);
+
+    context = talloc_new(NULL);
+
+    /* *INDENT-OFF* */
+#ifdef DEBUG
+    stringlist_each(c->objects,
+		    lambda(int, (const char *obj),
+			   {
+			       fprintf(stderr, "obj: %s\n", obj);
+			       return 0;
+			   }
+			));
+#endif
+    /* *INDENT-ON* */
+
+    hash_langlinkopts = stringlist_hashcode(c->language->link_opts, context);
+    hash_linkopts = stringlist_hashcode(c->link_opts, context);
+    hash_objs = stringlist_hashcode(c->objects, context);
+    talloc_unlink(c, (char *)c->link_path);
+    c->link_path = talloc_asprintf(c, "%s/%s/%s-%s-%s.bin",
+                                   c->obj_dir, c->full_path,
+                                   hash_langlinkopts, hash_linkopts,
+                                   hash_objs);
+    c->link_path_install = talloc_asprintf(c, "%s/%s/%s-%s-%s.ins/%s",
+                                           c->obj_dir, c->full_path,
+                                           hash_langlinkopts, hash_linkopts,
+                                           hash_objs, c->full_path);
+
+    makefile_add_targets(c->mf, c->full_path);
+    makefile_add_check(c->mf, c->full_path);
+
+    /* Run the test, producing a tarball with the results. */
+    makefile_create_target(c->mf, c->full_path);
+    makefile_start_deps(c->mf);
+    makefile_add_dep(c->mf, "%s", c->test_parent->full_path);
+    makefile_add_dep(c->mf, "%s", c->link_path);
+    makefile_end_deps(c->mf);
+    makefile_start_cmds(c->mf);
+    makefile_nam_cmd(c->mf, "echo \"TEST\t%s\"",
+                     c->full_path + strlen(c->chk_dir) + 1);
+    makefile_add_cmd(c->mf, "mkdir -p `dirname %s`", c->full_path);
+    makefile_add_cmd(c->mf, "ptest --test %s --out %s --bin %s",
+                     c->link_path, c->full_path, c->test_parent->full_path);
+    makefile_end_cmds(c->mf);
+
+    /* Does the actual linking with hashes of the arguments */
+    makefile_create_target(c->mf, c->link_path);
+
+    makefile_start_deps(c->mf);
+    /* *INDENT-OFF* */
+    stringlist_each(c->objects, lambda(int, (const char *obj),
+			       {
+				   makefile_add_dep(c->mf, "%s", obj);
+				   return 0;
+			       }
+		      ));
+    stringlist_each(c->libraries, lambda(int, (const char *lib),
+			       {
+				   makefile_add_dep(c->mf, "%s/lib%s.so",
+						    c->lib_dir, lib);
+				   return 0;
+			       }
+		      ));
+    /* *INDENT-ON* */
+    makefile_end_deps(c->mf);
+
+    makefile_start_cmds(c->mf);
+    /* *INDENT-OFF* */
+    language_link(l, c, lambda(void, (bool nam,
+				      const char *format, ...),
+			       {
+				   va_list args;
+				   va_start(args, NULL);
+				   if (nam == true)
+				       makefile_vnam_cmd(c->mf, format, args);
+				   else
+				       makefile_vadd_cmd(c->mf, format, args);
+				   va_end(args);
+			       }
+		      ), false);
+    /* *INDENT-ON* */
+    makefile_end_cmds(c->mf);
+
+    makefile_add_distclean(c->mf, c->chk_dir);
+
     TALLOC_FREE(context);
     return 0;
 }
