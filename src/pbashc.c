@@ -19,6 +19,8 @@
  * along with pconfigure.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,16 +29,17 @@
 #define PBASHC_SHEBANG "#!/bin/bash\n"
 #endif
 
+/* The output file is a global file. */
+static FILE *outfile;
+
+/* This cats a single input file to the output file. */
+static void cat_to_outfile(const char *input);
+
 int main(int argc, char **argv)
 {
-    char *input;
-    char *output;
+    char *input, *output;
     char *last;
     int i;
-    FILE *infile;
-    FILE *outfile;
-    char buffer[1024];
-    size_t read;
     char *chmod;
     int chmod_size;
 
@@ -64,20 +67,64 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    infile = fopen(input, "r");
     outfile = fopen(output, "w");
 
     fprintf(outfile, PBASHC_SHEBANG "\n");
 
-    while ((read = fread(buffer, 1, 1024, infile)) != 0)
-        if (fwrite(buffer, 1, read, outfile) != read)
-            exit(1);
-
-    fclose(infile);
+    cat_to_outfile(input);
     fclose(outfile);
 
     chmod_size = strlen("chmod oug+x ") + strlen(output) + 1;
     chmod = malloc(chmod_size);
     snprintf(chmod, chmod_size, "chmod oug+x %s", output);
     return system(chmod);
+}
+
+void cat_to_outfile(const char *input)
+{
+    FILE *infile;
+    char buffer[1024];
+
+    infile = fopen(input, "r");
+
+    while (fgets(buffer, 1024, infile) != NULL)
+    {
+        if (strncmp(buffer, "#include \"", strlen("#include \"")) == 0)
+        {
+            size_t i, slash_max;
+
+            char *full_path;
+            char *dir_path;
+            char *filename;
+
+            /* dir_path = dirname(input) */
+            dir_path = strdup(input);
+            slash_max = 0;
+            for (i = 0; i < strlen(dir_path); i++)
+                if (dir_path[i] == '/')
+                    slash_max = i;
+            dir_path[slash_max] = '\0';
+
+            /* Pull FILENAME out of #include "FILENAME" */
+            filename = strdup(buffer + strlen("#include \""));
+            filename[strlen(filename) - 2] = '\0';
+
+            asprintf(&full_path, "%s/%s", dir_path, filename);
+            cat_to_outfile(full_path);
+
+            free(dir_path);
+            free(filename);
+            free(full_path);
+
+            /* We want to skip this whole line */
+            continue;
+        }
+
+        if (fputs(buffer, outfile) <= 0)
+            exit(1);
+    }
+
+    fclose(infile);
+
+    return;
 }
