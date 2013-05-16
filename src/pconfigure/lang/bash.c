@@ -1,6 +1,6 @@
 
 /*
- * Copyright (C) 2011 Palmer Dabbelt
+ * Copyright (C) 2011,2013 Palmer Dabbelt
  *   <palmer@dabbelt.com>
  *
  * This file is part of pconfigure.
