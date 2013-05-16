@@ -1,5 +1,11 @@
 #!/bin/bash
 
+if [[ "$1" == "--verbose" ]]
+then
+    shift
+    set -ex
+fi
+
 SOURCE_PATH="$1"
 BOOTSTRAP_DIR=bootstrap_bin
 
