@@ -22,8 +22,8 @@
 #include "bash.h"
 #include "../lambda.h"
 #include <string.h>
-#include <clang-c/Index.h>
 #include <unistd.h>
+#include <pinclude.h>
 
 #ifdef HAVE_TALLOC
 #include <talloc.h>
@@ -107,6 +107,15 @@ void language_bash_deps(struct language *l_uncast, struct context *c,
                         void (*func) (const char *, ...))
 {
     func("%s", c->full_path);
+
+    /* *INDENT-OFF* */
+    pinclude_list(c->full_path, lambda(int, (const char *f, void *u),
+                                       {
+                                       func("%s", f);
+                                       return 0;
+                                       }
+                  ), NULL);
+    /* *INDENT-ON* */
 }
 
 void language_bash_build(struct language *l_uncast, struct context *c,
@@ -122,6 +131,7 @@ void language_bash_link(struct language *l_uncast, struct context *c,
     struct language_bash *l;
     void *context;
     const char *link_path;
+    int obj_count;
 
     l = talloc_get_type(l_uncast, struct language_bash);
     if (l == NULL)
@@ -155,10 +165,18 @@ void language_bash_link(struct language *l_uncast, struct context *c,
 			       return 0;
 			   }
                     ));
+
+    /* FIXME: deps() doesn't get called because this isn't compiled
+     * code so we need to fake this with extras() instead.  That means
+     * every bash script gets set as an object to be linked and
+     * therefor gets cat'd to the end of the file.  In this case we
+     * want to skip those extra files and just link the first one. */
+    obj_count = 0;
     stringlist_each(c->objects,
 		    lambda(int, (const char *opt),
 			   {
-			       func(false, "\\ %s", opt);
+                               if (obj_count++ == 0)
+                                   func(false, "\\ %s", opt);
 			       return 0;
 			   }
                     ));
@@ -171,4 +189,12 @@ void language_bash_link(struct language *l_uncast, struct context *c,
 void language_bash_extras(struct language *l_uncast, struct context *c,
                           void *context, void (*func) (const char *))
 {
+    /* *INDENT-OFF* */
+    pinclude_list(c->full_path, lambda(int, (const char *f, void *u),
+                                       {
+                                       func(f);
+                                       return 0;
+                                       }
+                  ), NULL);
+    /* *INDENT-ON* */
 }

@@ -17,6 +17,7 @@ COMPILEOPTS += `llvm-config --cflags`
 LINKOPTS    += `ppkg-config --optional --have TALLOC talloc --libs`
 COMPILEOPTS += `ppkg-config --optional --have TALLOC talloc --cflags`
 COMPILEOPTS += -Isrc/extern/
+DEPLIBS     += pinclude
 SOURCES     += pconfigure/main.c
 
 BINARIES    += pclean
