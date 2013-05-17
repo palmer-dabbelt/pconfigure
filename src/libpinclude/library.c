@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #define LINE_MAX 1024
 
@@ -64,13 +65,16 @@ int pinclude_list(const char *input, pinclude_callback_t cb, void *priv)
 
             asprintf(&full_path, "%s/%s", dir_path, filename);
 
-            if ((err = cb(full_path, priv)) != 0)
+            if (access(full_path, R_OK) == 0)
             {
-                free(dir_path);
-                free(filename);
-                free(full_path);
+                if ((err = cb(full_path, priv)) != 0)
+                {
+                    free(dir_path);
+                    free(filename);
+                    free(full_path);
 
-                return err;
+                    return err;
+                }
             }
 
             err = pinclude_list(full_path, cb, priv);
