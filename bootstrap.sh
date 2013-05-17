@@ -12,27 +12,47 @@ BOOTSTRAP_DIR=bootstrap_bin
 make distclean >& /dev/null || true
 mkdir -p $BOOTSTRAP_DIR
 
-# Manually builds some of the utilities
-gcc --std=gnu99 -Wall -Werror -Wno-trampolines -g \
-    `find "$SOURCE_PATH"src/pconfigure/ "$SOURCE_PATH"src/extern/ -iname "*.c"` \
-    -L`llvm-config --libdir` \
-    -Wl,-R`llvm-config --libdir` \
-    -I`llvm-config --includedir` \
-    `llvm-config --libs core` \
-    -lclang \
-    `pkg-config talloc --libs` \
-    -DPCONFIGURE_VERSION=\"bootstrap\" \
-    -Isrc/extern/ \
-    -o "$BOOTSTRAP_DIR/pconfigure" || exit $?
-
+#############################################################################
+# Manually builds some of the utilities                                     #
+#############################################################################
 gcc --std=gnu99 `find "$SOURCE_PATH"src/pbashc.c -iname "*.c"` \
     -o "$BOOTSTRAP_DIR/pbashc"
+
+$BOOTSTRAP_DIR/pbashc "$SOURCE_PATH"src/ppkg-config.bash \
+    -o $BOOTSTRAP_DIR/ppkg-config
+
+$BOOTSTRAP_DIR/pbashc "$SOURCE_PATH"src/pllvm-config.bash \
+    -o $BOOTSTRAP_DIR/pllvm-config
 
 $BOOTSTRAP_DIR/pbashc "$SOURCE_PATH"src/pclean.bash \
     -o $BOOTSTRAP_DIR/pclean
 
-$BOOTSTRAP_DIR/pbashc "$SOURCE_PATH"src/ppkg-config.bash \
-    -o $BOOTSTRAP_DIR/ppkg-config
+export PATH="$BOOTSTRAP_DIR:$PATH"
+
+# Check for pconfigure's dependencies
+talloc="$(ppkg-config --optional --have TALLOC talloc --cflags) $(ppkg-config --optional --have TALLOC talloc --libs)"
+clang="$(pllvm-config --optional --have CLANG --cflags) $(pllvm-config --optional --have CLANG --libs)"
+
+# Manually pull in included external libraries where necessary
+extrasrc=""
+if [[ "$(echo "$talloc" | grep HAVE_TALLOC)" == "" ]]
+then
+    echo "WARN: Using internal talloc"
+    extrasrc="$extrasrc src/extern/talloc.c"
+fi
+if [[ "$(echo "$clang" | grep HAVE_CLANG)" == "" ]]
+then
+    echo "WARN: Using internal clang"
+    extrasrc="$extrasrc src/extern/clang.c"
+fi
+
+# Actually build pconfigure here, this is the simple part :)
+gcc --std=gnu99 -Wall -Werror -Wno-trampolines -g \
+    `find "$SOURCE_PATH"src/pconfigure/ -iname "*.c"` \
+    $extrasrc $talloc $clang \
+    -DPCONFIGURE_VERSION=\"bootstrap\" \
+    -Isrc/extern/ \
+    -o "$BOOTSTRAP_DIR/pconfigure" || exit $?
 
 # Runs pconfigure in order to build itself
 if [[ "$SOURCE_PATH" != "" ]]
@@ -49,8 +69,8 @@ then
 fi
 
 # Actually builds itself
-env PATH="$BOOTSTRAP_DIR:$PATH" make || exit $?
-env PATH="$BOOTSTRAP_DIR:$PATH" make all_install || exit $?
+make || exit $?
+make all_install || exit $?
 
 # Cleans up from the bootstrap process
 rm -rf $BOOTSTRAP_DIR
