@@ -9,11 +9,8 @@ COMPILEOPTS += -DPCONFIGURE_VERSION=\"0.2.0git\"
 LANGUAGES   += bash
 
 BINARIES    += pconfigure
-LINKOPTS    += `llvm-config --libs core`
-LINKOPTS    += -lclang
-LINKOPTS    += -L`llvm-config --libdir`
-LINKOPTS    += -Wl,-R`llvm-config --libdir`
-COMPILEOPTS += `llvm-config --cflags`
+LINKOPTS    += `pllvm-config --optional --have CLANG --libs`
+COMPILEOPTS += `pllvm-config --optional --have CLANG --cflags`
 LINKOPTS    += `ppkg-config --optional --have TALLOC talloc --libs`
 COMPILEOPTS += `ppkg-config --optional --have TALLOC talloc --cflags`
 COMPILEOPTS += -Isrc/extern/
@@ -53,3 +50,6 @@ SOURCES     += libpinclude/library.c
 BINARIES    += pinclude
 DEPLIBS     += pinclude
 SOURCES     += pinclude.c
+
+BINARIES    += pllvm-config
+SOURCES     += pllvm-config.bash
