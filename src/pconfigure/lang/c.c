@@ -165,8 +165,8 @@ void language_c_deps(struct language *l_uncast, struct context *c,
     /* Creates the argc/argv for a call to clang that will determine which
      * includes are used by the file in question. */
     clang_argc = stringlist_size(l->l.compile_opts)
-        + stringlist_size(c->compile_opts) + 1;
-    clang_argv = talloc_array(context, char *, clang_argc + 2);
+        + stringlist_size(c->compile_opts) + 2;
+    clang_argv = talloc_array(context, char *, clang_argc + 3);
     for (i = 0; i <= clang_argc; i++)
         clang_argv[i] = NULL;
 
@@ -416,14 +416,19 @@ void language_c_extras(struct language *l_uncast, struct context *c,
 			     char *sfile;
 			     char *hfile;
 
-			     va_start(args, NULL);
-
+			     va_start(args, format);
 			     hfile = talloc_vasprintf(context, format, args);
+			     va_end(args);
 
+			     va_start(args, format);
 			     cfile = talloc_vasprintf(context, format, args);
+			     va_end(args);
+
 			     cfile[strlen(cfile)-1] = 'c';
 
+			     va_start(args, format);
 			     sfile = talloc_vasprintf(context, format, args);
+			     va_end(args);
 			     sfile[strlen(sfile)-1] = 'S';
 
 			     if (strcmp(cfile, hfile) != 0)
@@ -434,8 +439,6 @@ void language_c_extras(struct language *l_uncast, struct context *c,
 				 if (access(sfile, R_OK) == 0)
 				     func(sfile);
 			     
-			     va_end(args);
-
 			     talloc_unlink(context, cfile);
 			     talloc_unlink(context, hfile);
 			 }
