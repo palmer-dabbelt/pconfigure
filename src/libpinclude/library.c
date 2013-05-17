@@ -19,7 +19,9 @@
  * along with pconfigure.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <pinclude.h>
 #include <stdio.h>

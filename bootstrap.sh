@@ -49,9 +49,10 @@ fi
 # Actually build pconfigure here, this is the simple part :)
 gcc --std=gnu99 -Wall -Werror -Wno-trampolines -g \
     `find "$SOURCE_PATH"src/pconfigure/ -iname "*.c"` \
+    `find "$SOURCE_PATH"src/libpinclude/ -iname "*.c"` \
     $extrasrc $talloc $clang \
     -DPCONFIGURE_VERSION=\"bootstrap\" \
-    -Isrc/extern/ \
+    -Isrc/extern/ -Iinclude/ \
     -o "$BOOTSTRAP_DIR/pconfigure" || exit $?
 
 # Runs pconfigure in order to build itself
