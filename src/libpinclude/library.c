@@ -28,12 +28,15 @@
 #include <unistd.h>
 
 #define LINE_MAX 1024
+#define FILE_MAX 1024
 
-int pinclude_list(const char *input, pinclude_callback_t cb, void *priv)
+static int _pinclude_list(const char *input, pinclude_callback_t cb,
+                          void *priv, char **include_dirs, char **included)
 {
     int err;
     FILE *infile;
     char buffer[LINE_MAX];
+    size_t i;
 
     infile = fopen(input, "r");
 
@@ -44,7 +47,7 @@ int pinclude_list(const char *input, pinclude_callback_t cb, void *priv)
     {
         if (strncmp(buffer, "#include \"", strlen("#include \"")) == 0)
         {
-            size_t i, slash_max;
+            size_t slash_max;
 
             char *full_path;
             char *dir_path;
@@ -65,8 +68,22 @@ int pinclude_list(const char *input, pinclude_callback_t cb, void *priv)
 
             asprintf(&full_path, "%s/%s", dir_path, filename);
 
+            for (i = 0; i < FILE_MAX; i++)
+                if (included[i] != NULL
+                    && strcmp(full_path, included[i]) == 0)
+                    goto skip_file;
+
             if (access(full_path, R_OK) == 0)
             {
+                for (i = 0; i < FILE_MAX; i++)
+                {
+                    if (included[i] != NULL)
+                        continue;
+
+                    included[i] = strdup(full_path);
+                    break;
+                }
+
                 if ((err = cb(full_path, priv)) != 0)
                 {
                     free(dir_path);
@@ -75,10 +92,51 @@ int pinclude_list(const char *input, pinclude_callback_t cb, void *priv)
 
                     return err;
                 }
+
+                goto skip_dirs;
             }
 
-            err = pinclude_list(full_path, cb, priv);
+            /* Check each additional include directory */
+            for (i = 0; include_dirs[i] != NULL; i++)
+            {
+                size_t fi;
 
+                free(full_path);
+                asprintf(&full_path, "%s/%s", include_dirs[i], filename);
+
+                for (fi = 0; fi < FILE_MAX; fi++)
+                    if (included[fi] != NULL
+                        && strcmp(full_path, included[fi]) == 0)
+                        goto skip_file;
+
+                if (access(full_path, R_OK) == 0)
+                {
+                    for (i = 0; i < FILE_MAX; i++)
+                    {
+                        if (included[i] != NULL)
+                            continue;
+
+                        included[i] = strdup(full_path);
+                        break;
+                    }
+
+                    if ((err = cb(full_path, priv)) != 0)
+                    {
+                        free(dir_path);
+                        free(filename);
+                        free(full_path);
+
+                        return err;
+                    }
+
+                    goto skip_dirs;
+                }
+            }
+
+          skip_dirs:
+            err = _pinclude_list(full_path, cb, priv, include_dirs, included);
+
+          skip_file:
             free(dir_path);
             free(filename);
             free(full_path);
@@ -97,4 +155,23 @@ int pinclude_list(const char *input, pinclude_callback_t cb, void *priv)
     fclose(infile);
 
     return 0;
+}
+
+int pinclude_list(const char *input, pinclude_callback_t cb,
+                  void *priv, char **include_dirs)
+{
+    int err;
+    int i;
+    char *included[LINE_MAX];
+
+    for (i = 0; i < LINE_MAX; i++)
+        included[i] = NULL;
+
+    err = _pinclude_list(input, cb, priv, include_dirs, included);
+
+    for (i = 0; i < FILE_MAX; i++)
+        if (included[i] != NULL)
+            free(included[i]);
+
+    return err;
 }

@@ -24,6 +24,7 @@
 
 /* Lists the files included by a given source file. */
 typedef int (*pinclude_callback_t) (const char *filename, void *priv);
-int pinclude_list(const char *filename, pinclude_callback_t cb, void *priv);
+int pinclude_list(const char *filename, pinclude_callback_t cb, void *priv,
+                  char **include_dirs);
 
 #endif

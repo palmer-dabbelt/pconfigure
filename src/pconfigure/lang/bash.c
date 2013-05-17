@@ -106,15 +106,18 @@ const char *language_bash_objname(struct language *l_uncast, void *context,
 void language_bash_deps(struct language *l_uncast, struct context *c,
                         void (*func) (const char *, ...))
 {
+    char *dirs[1];
+
     func("%s", c->full_path);
 
+    dirs[0] = NULL;
     /* *INDENT-OFF* */
     pinclude_list(c->full_path, lambda(int, (const char *f, void *u),
                                        {
                                        func("%s", f);
                                        return 0;
                                        }
-                  ), NULL);
+                      ), NULL, dirs);
     /* *INDENT-ON* */
 }
 
@@ -189,12 +192,15 @@ void language_bash_link(struct language *l_uncast, struct context *c,
 void language_bash_extras(struct language *l_uncast, struct context *c,
                           void *context, void (*func) (const char *))
 {
+    char *dirs[1];
+
+    dirs[0] = NULL;
     /* *INDENT-OFF* */
     pinclude_list(c->full_path, lambda(int, (const char *f, void *u),
                                        {
                                        func(f);
                                        return 0;
                                        }
-                  ), NULL);
+                      ), NULL, dirs);
     /* *INDENT-ON* */
 }

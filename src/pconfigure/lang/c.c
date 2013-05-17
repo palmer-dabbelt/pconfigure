@@ -22,13 +22,18 @@
 #include "c.h"
 #include "../lambda.h"
 #include <string.h>
-#include <clang-c/Index.h>
 #include <unistd.h>
 
 #ifdef HAVE_TALLOC
 #include <talloc.h>
 #else
 #include "extern/talloc.h"
+#endif
+
+#ifdef HAVE_CLANG
+#include <clang-c/Index.h>
+#else
+#include "extern/clang.h"
 #endif
 
 static struct language *language_c_search(struct language *l_uncast,
