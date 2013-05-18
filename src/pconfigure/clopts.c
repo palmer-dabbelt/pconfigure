@@ -47,12 +47,10 @@ struct clopts *clopts_new(int argc, char **argv)
     o->infiles = NULL;
     setup_infiles(o);
 
-    for (i = 1; i < argc; i++)
-    {
+    for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--verbose") == 0)
             o->verbose = true;
-        else if (strcmp(argv[i], "--config") == 0)
-        {
+        else if (strcmp(argv[i], "--config") == 0) {
             const char *config;
             const char **infiles;
             int j;
@@ -72,14 +70,12 @@ struct clopts *clopts_new(int argc, char **argv)
             talloc_unlink(o, o->infiles);
             o->infiles = infiles;
         }
-        else if (strcmp(argv[i], "--version") == 0)
-        {
+        else if (strcmp(argv[i], "--version") == 0) {
             printf("pconfigure %s\n", PCONFIGURE_VERSION);
             TALLOC_FREE(o);
             exit(0);
         }
-        else if (strcmp(argv[i], "--sourcepath") == 0)
-        {
+        else if (strcmp(argv[i], "--sourcepath") == 0) {
             talloc_free((char *)o->source_path);
 
             if (argv[i + 1][strlen(argv[i + 1]) - 1] != '/')
@@ -91,8 +87,7 @@ struct clopts *clopts_new(int argc, char **argv)
 
             i++;
         }
-        else
-        {
+        else {
             fprintf(stderr, "Unknown argument: '%s'\n", argv[i]);
             abort();
         }
@@ -124,8 +119,7 @@ void setup_infiles(struct clopts *o)
      * flags to be set in this current working directory -- otherwise
      * we'll just end up with _exactly_ the same build every time,
      * which probably isn't the most useful. */
-    if (strlen(o->source_path) > 0)
-    {
+    if (strlen(o->source_path) > 0) {
         o->infiles[i++] = talloc_strdup(o->infiles, "Configfiles/local");
         o->infiles[i++] = talloc_strdup(o->infiles, "Configfile.local");
     }

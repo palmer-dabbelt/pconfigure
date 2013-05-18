@@ -155,8 +155,7 @@ void language_c_deps(struct language *l_uncast, struct context *c,
     CXTranslationUnit tu;
 
     /* Linker scripts have no dependencies. */
-    if (strcmp(c->full_path + strlen(c->full_path) - 3, ".ld") == 0)
-    {
+    if (strcmp(c->full_path + strlen(c->full_path) - 3, ".ld") == 0) {
         func(c->full_path);
         return;
     }
@@ -182,8 +181,7 @@ void language_c_deps(struct language *l_uncast, struct context *c,
     stringlist_each(l->l.compile_opts,
 		    lambda(int, (const char *str),
 			   {
-			       if (strcmp(str, "-fopenmp") == 0)
-			       {
+			       if (strcmp(str, "-fopenmp") == 0) {
 				   clang_argc--;
 				   return 0;
 			       }
@@ -196,8 +194,7 @@ void language_c_deps(struct language *l_uncast, struct context *c,
     stringlist_each(c->compile_opts,
 		    lambda(int, (const char *str),
 			   {
-			       if (strcmp(str, "-fopenmp") == 0)
-			       {
+			       if (strcmp(str, "-fopenmp") == 0) {
 				   clang_argc--;
 				   return 0;
 			       }
@@ -263,8 +260,7 @@ void language_c_build(struct language *l_uncast, struct context *c,
     func(false, "mkdir -p `dirname %s` >& /dev/null || true", obj_path);
 
     /* Linker scripts don't really need to be compiled, at least for now. */
-    if (strcmp(c->full_path + strlen(c->full_path) - 3, ".ld") == 0)
-    {
+    if (strcmp(c->full_path + strlen(c->full_path) - 3, ".ld") == 0) {
         func(false, "cp %s %s", c->full_path, obj_path);
         TALLOC_FREE(context);
         return;
@@ -466,21 +462,17 @@ char *string_strip(const char *filename_cstr, void *context)
         last_dir = -1;
         i = 0;
         o = 0;
-        while (i < strlen(filename_cstr))
-        {
+        while (i < strlen(filename_cstr)) {
             source_name[o] = filename_cstr[i];
 
-            if ((o > 0) && (filename_cstr[i] == '/'))
-            {
+            if ((o > 0) && (filename_cstr[i] == '/')) {
                 pprev_dir = prev_dir;
                 prev_dir = last_dir;
                 last_dir = o;
             }
 
-            if (filename_cstr[i - 1] == '.' && filename_cstr[i - 2] == '.')
-            {
-                if (pprev_dir > 0)
-                {
+            if (filename_cstr[i - 1] == '.' && filename_cstr[i - 2] == '.') {
+                if (pprev_dir > 0) {
                     o = pprev_dir;
                     pprev_dir = -1;
                     prev_dir = -1;

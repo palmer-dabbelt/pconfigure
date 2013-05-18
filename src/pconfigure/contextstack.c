@@ -34,15 +34,13 @@ struct contextstack *contextstack_new(struct clopts *o,
         return NULL;
 
     s->head = talloc(s, struct contextstack_node);
-    if (s->head == NULL)
-    {
+    if (s->head == NULL) {
         TALLOC_FREE(s);
         return NULL;
     }
 
     s->head->data = context_new_defaults(o, s->head, mf, ll, s);
-    if (s->head->data == NULL)
-    {
+    if (s->head->data == NULL) {
         TALLOC_FREE(s);
         return NULL;
     }
@@ -128,8 +126,7 @@ void contextstack_push_binary(struct contextstack *s, const char *called_path)
 
     /* Creates a new context, based on the current context */
     c = context_new_binary(s->head->data, cur, called_path);
-    if (c == NULL)
-    {
+    if (c == NULL) {
         TALLOC_FREE(cur);
         abort();
     }
@@ -157,8 +154,7 @@ void contextstack_push_library(struct contextstack *s,
 
     /* Creates a new context, based on the current context */
     c = context_new_library(s->head->data, cur, called_path);
-    if (c == NULL)
-    {
+    if (c == NULL) {
         TALLOC_FREE(cur);
         abort();
     }
@@ -185,8 +181,7 @@ void contextstack_push_header(struct contextstack *s, const char *called_path)
 
     /* Creates a new context, based on the current context */
     c = context_new_header(s->head->data, cur, called_path);
-    if (c == NULL)
-    {
+    if (c == NULL) {
         TALLOC_FREE(cur);
         abort();
     }
@@ -202,8 +197,7 @@ void contextstack_push_source(struct contextstack *s, const char *called_path)
     struct contextstack_node *cur;
     struct context *c;
 
-    if (s == NULL)
-    {
+    if (s == NULL) {
         abort();
         return;
     }
@@ -216,8 +210,7 @@ void contextstack_push_source(struct contextstack *s, const char *called_path)
 
     /* Creates a new context, based on the current context */
     c = context_new_source(s->head->data, cur, called_path);
-    if (c == NULL)
-    {
+    if (c == NULL) {
         TALLOC_FREE(cur);
         abort();
     }
@@ -233,8 +226,7 @@ void contextstack_push_fullsrc(struct contextstack *s, const char *full_path)
     struct contextstack_node *cur;
     struct context *c;
 
-    if (s == NULL)
-    {
+    if (s == NULL) {
         abort();
         return;
     }
@@ -247,8 +239,7 @@ void contextstack_push_fullsrc(struct contextstack *s, const char *full_path)
 
     /* Creates a new context, based on the current context */
     c = context_new_fullsrc(s->head->data, cur, full_path);
-    if (c == NULL)
-    {
+    if (c == NULL) {
         TALLOC_FREE(cur);
         abort();
     }
@@ -264,8 +255,7 @@ void contextstack_push_test(struct contextstack *s, const char *called_path)
     struct contextstack_node *cur;
     struct context *c;
 
-    if (s == NULL)
-    {
+    if (s == NULL) {
         abort();
         return;
     }
@@ -278,8 +268,7 @@ void contextstack_push_test(struct contextstack *s, const char *called_path)
 
     /* Creates a new context, based on the current context */
     c = context_new_test(s->head->data, cur, called_path);
-    if (c == NULL)
-    {
+    if (c == NULL) {
         TALLOC_FREE(cur);
         abort();
     }

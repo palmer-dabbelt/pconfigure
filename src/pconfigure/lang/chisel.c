@@ -178,8 +178,7 @@ void language_chisel_deps(struct language *l_uncast, struct context *c,
 		     {
 			 char *copy;
 
-			 if (strcmp(path + strlen(path) - 6, ".scala") == 0)
-			 {
+			 if (strcmp(path + strlen(path) - 6, ".scala") == 0) {
 			     copy = talloc_strdup(ctx, path);
 			     func(copy);
 			     stringlist_add(l->deps, copy);

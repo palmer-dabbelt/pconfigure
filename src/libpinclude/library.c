@@ -45,10 +45,8 @@ static int _pinclude_list(const char *input, pinclude_callback_t cb,
     if (infile == NULL)
         return -1;
 
-    while (fgets(buffer, LINE_MAX, infile) != NULL)
-    {
-        if (strncmp(buffer, "#include \"", strlen("#include \"")) == 0)
-        {
+    while (fgets(buffer, LINE_MAX, infile) != NULL) {
+        if (strncmp(buffer, "#include \"", strlen("#include \"")) == 0) {
             size_t slash_max;
 
             char *full_path;
@@ -75,10 +73,8 @@ static int _pinclude_list(const char *input, pinclude_callback_t cb,
                     && strcmp(full_path, included[i]) == 0)
                     goto skip_file;
 
-            if (access(full_path, R_OK) == 0)
-            {
-                for (i = 0; i < FILE_MAX; i++)
-                {
+            if (access(full_path, R_OK) == 0) {
+                for (i = 0; i < FILE_MAX; i++) {
                     if (included[i] != NULL)
                         continue;
 
@@ -86,8 +82,7 @@ static int _pinclude_list(const char *input, pinclude_callback_t cb,
                     break;
                 }
 
-                if ((err = cb(full_path, priv)) != 0)
-                {
+                if ((err = cb(full_path, priv)) != 0) {
                     free(dir_path);
                     free(filename);
                     free(full_path);
@@ -99,8 +94,7 @@ static int _pinclude_list(const char *input, pinclude_callback_t cb,
             }
 
             /* Check each additional include directory */
-            for (i = 0; include_dirs[i] != NULL; i++)
-            {
+            for (i = 0; include_dirs[i] != NULL; i++) {
                 size_t fi;
 
                 free(full_path);
@@ -111,10 +105,8 @@ static int _pinclude_list(const char *input, pinclude_callback_t cb,
                         && strcmp(full_path, included[fi]) == 0)
                         goto skip_file;
 
-                if (access(full_path, R_OK) == 0)
-                {
-                    for (i = 0; i < FILE_MAX; i++)
-                    {
+                if (access(full_path, R_OK) == 0) {
+                    for (i = 0; i < FILE_MAX; i++) {
                         if (included[i] != NULL)
                             continue;
 
@@ -122,8 +114,7 @@ static int _pinclude_list(const char *input, pinclude_callback_t cb,
                         break;
                     }
 
-                    if ((err = cb(full_path, priv)) != 0)
-                    {
+                    if ((err = cb(full_path, priv)) != 0) {
                         free(dir_path);
                         free(filename);
                         free(full_path);
@@ -143,8 +134,7 @@ static int _pinclude_list(const char *input, pinclude_callback_t cb,
             free(filename);
             free(full_path);
 
-            if (err != 0)
-            {
+            if (err != 0) {
                 fclose(infile);
                 return err;
             }

@@ -175,8 +175,7 @@ void makefile_start_cmds(struct makefile *m)
 
 void makefile_nam_cmd(struct makefile *m, const char *format, ...)
 {
-    if (m->opts->verbose == false)
-    {
+    if (m->opts->verbose == false) {
         va_list args;
 
         assert(m->state == MAKEFILE_STATE_CMDS);
@@ -194,8 +193,7 @@ void makefile_nam_cmd(struct makefile *m, const char *format, ...)
 
 void makefile_vnam_cmd(struct makefile *m, const char *format, va_list args)
 {
-    if (m->opts->verbose == false)
-    {
+    if (m->opts->verbose == false) {
         assert(m->state == MAKEFILE_STATE_CMDS);
         m->state = MAKEFILE_STATE_CMDS;
 
@@ -214,8 +212,7 @@ void makefile_add_cmd(struct makefile *m, const char *format, ...)
     assert(m->state == MAKEFILE_STATE_CMDS);
     m->state = MAKEFILE_STATE_CMDS;
 
-    if (format[0] != '\\')
-    {
+    if (format[0] != '\\') {
         if (m->opts->verbose == true)
             fprintf(m->file, "\t");
         else
@@ -242,8 +239,7 @@ void makefile_vadd_cmd(struct makefile *m, const char *format, va_list args)
     assert(m->state == MAKEFILE_STATE_CMDS);
     m->state = MAKEFILE_STATE_CMDS;
 
-    if (format[0] != '\\')
-    {
+    if (format[0] != '\\') {
         if (m->opts->verbose == true)
             fprintf(m->file, "\t");
         else
@@ -279,8 +275,7 @@ int mf_destructor(struct makefile *m)
     makefile_create_target(m, "pconfigure__all");
     makefile_start_deps(m);
     cur = stringlist_start(m->targets_all);
-    while (stringlist_notend(cur))
-    {
+    while (stringlist_notend(cur)) {
         makefile_add_dep(m, stringlist_data(cur));
         cur = stringlist_next(cur);
     }
@@ -292,8 +287,7 @@ int mf_destructor(struct makefile *m)
     makefile_create_target(m, "all_install");
     makefile_start_deps(m);
     cur = stringlist_start(m->targets_all_install);
-    while (stringlist_notend(cur))
-    {
+    while (stringlist_notend(cur)) {
         makefile_add_dep(m, stringlist_data(cur));
         cur = stringlist_next(cur);
     }
@@ -306,8 +300,7 @@ int mf_destructor(struct makefile *m)
 
     makefile_start_deps(m);
     cur = stringlist_start(m->targets_check);
-    while (stringlist_notend(cur))
-    {
+    while (stringlist_notend(cur)) {
         makefile_add_dep(m, stringlist_data(cur));
         cur = stringlist_next(cur);
     }
@@ -322,8 +315,7 @@ int mf_destructor(struct makefile *m)
 
     makefile_start_cmds(m);
     cur = stringlist_start(m->targets_cleancache);
-    while (stringlist_notend(cur))
-    {
+    while (stringlist_notend(cur)) {
         makefile_add_cmd(m, "rm -rf \"%s\" >& /dev/null || true",
                          stringlist_data(cur));
         cur = stringlist_next(cur);
@@ -338,8 +330,7 @@ int mf_destructor(struct makefile *m)
 
     makefile_start_cmds(m);
     cur = stringlist_start(m->targets_clean);
-    while (stringlist_notend(cur))
-    {
+    while (stringlist_notend(cur)) {
         makefile_add_cmd(m, "rm -f \"%s\" >& /dev/null || true",
                          stringlist_data(cur));
         cur = stringlist_next(cur);
@@ -353,8 +344,7 @@ int mf_destructor(struct makefile *m)
     makefile_end_deps(m);
     makefile_start_cmds(m);
     cur = stringlist_start(m->targets_distclean);
-    while (stringlist_notend(cur))
-    {
+    while (stringlist_notend(cur)) {
         makefile_add_cmd(m, "rm -rf \"%s\" >& /dev/null || true",
                          stringlist_data(cur));
         cur = stringlist_next(cur);
@@ -368,8 +358,7 @@ int mf_destructor(struct makefile *m)
     makefile_end_deps(m);
     makefile_start_cmds(m);
     cur = stringlist_start(m->install);
-    while (stringlist_notend(cur))
-    {
+    while (stringlist_notend(cur)) {
         makefile_add_cmd(m, "%s", stringlist_data(cur));
         cur = stringlist_next(cur);
     }
@@ -380,8 +369,7 @@ int mf_destructor(struct makefile *m)
     makefile_end_deps(m);
     makefile_start_cmds(m);
     cur = stringlist_start(m->uninstall);
-    while (stringlist_notend(cur))
-    {
+    while (stringlist_notend(cur)) {
         makefile_add_cmd(m, "rm -f %s >& /dev/null || true",
                          stringlist_data(cur));
         cur = stringlist_next(cur);

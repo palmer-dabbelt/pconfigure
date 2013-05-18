@@ -557,8 +557,7 @@ int context_source_destructor(struct context *c)
     /* Try to find a language that's compatible with the language already used
      * in this binary, and is compatible with this current source file. */
     l = languagelist_search(c->ll, c->parent->language, c->full_path);
-    if (l == NULL)
-    {
+    if (l == NULL) {
         fprintf(stderr, "No language found for '%s'\n", c->full_path);
 
         if ((c->parent == NULL) || (c->parent->language == NULL))
@@ -575,8 +574,7 @@ int context_source_destructor(struct context *c)
 
     /* Some languages don't need to be compiled (just linked) so we skip the
      * entire compiling phase. */
-    if (language_needs_compile(l, c) == true)
-    {
+    if (language_needs_compile(l, c) == true) {
         /* This is the name that our code will be compiled into.  This must
          * succeed, as we just checked that it's necessary. */
         obj_name = language_objname(l, context, c);
@@ -584,8 +582,7 @@ int context_source_destructor(struct context *c)
 
         /* If we've already built this dependency, then it's not necessary to
          * add it to the build list again, so skip it. */
-        if (!stringlist_include(c->mf->targets, obj_name))
-        {
+        if (!stringlist_include(c->mf->targets, obj_name)) {
             makefile_add_targets(c->mf, obj_name);
             makefile_create_target(c->mf, obj_name);
 
@@ -627,8 +624,7 @@ int context_source_destructor(struct context *c)
             makefile_add_cleancache(c->mf, c->obj_dir);
         }
     }
-    else
-    {
+    else {
         /* The "objects" for languages that aren't compiled are really just the
          * included sources. */
         obj_name = talloc_reference(context, c->full_path);
@@ -636,8 +632,7 @@ int context_source_destructor(struct context *c)
 
     /* Adds every "extra" (which is defined as any other sources that should be 
      * linked in as a result of this SOURCES += line) to the stack. */
-    if (stringlist_include(c->parent->objects, obj_name) == false)
-    {
+    if (stringlist_include(c->parent->objects, obj_name) == false) {
 	/* *INDENT-OFF* */
 	language_extras(l, c, context,
 			lambda(void, (const char * extra),

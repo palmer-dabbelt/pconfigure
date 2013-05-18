@@ -80,8 +80,7 @@ int main(int argc, char **argv)
     talloc_set_log_stderr();
 
     o = clopts_new(argc, argv);
-    if (o == NULL)
-    {
+    if (o == NULL) {
 #ifdef DEBUG
         fprintf(stderr, "Internal error allocating clopts\n");
 #endif
@@ -90,8 +89,7 @@ int main(int argc, char **argv)
     }
 
     mf = makefile_new(o);
-    if (mf == NULL)
-    {
+    if (mf == NULL) {
 #ifndef DEBUG
         fprintf(stderr, "Internal error allocating makefile\n");
 #endif
@@ -100,8 +98,7 @@ int main(int argc, char **argv)
     }
 
     ll = languagelist_new(o);
-    if (ll == NULL)
-    {
+    if (ll == NULL) {
 #ifndef DEBUG
         fprintf(stderr, "Internal error allocating languagelist\n");
 #endif
@@ -110,8 +107,7 @@ int main(int argc, char **argv)
     }
 
     s = contextstack_new(o, mf, ll);
-    if (s == NULL)
-    {
+    if (s == NULL) {
 #ifndef DEBUG
         fprintf(stderr, "Internal error allocating contextstack\n");
 #endif
@@ -120,18 +116,15 @@ int main(int argc, char **argv)
     }
 
     /* Reads every input file in order */
-    for (i = 0; i < o->infile_count; i++)
-    {
-        if (parse_file(o->infiles[i]) != 0)
-        {
+    for (i = 0; i < o->infile_count; i++) {
+        if (parse_file(o->infiles[i]) != 0) {
             TALLOC_FREE(o);
             break;
         }
     }
 
     /* If there's anything left on the stack, then clear everything out */
-    while (!contextstack_isempty(s))
-    {
+    while (!contextstack_isempty(s)) {
         void *context;
 
         context = talloc_new(NULL);
@@ -162,8 +155,7 @@ int parse_file(const char *filename)
 
     /* Reads the entire file */
     line_num = 1;
-    while (fgets(line, MAX_LINE_SIZE, file) != NULL)
-    {
+    while (fgets(line, MAX_LINE_SIZE, file) != NULL) {
         int err;
 
 #ifdef DEBUG
@@ -176,16 +168,14 @@ int parse_file(const char *filename)
 
         /* Splits the line into bits */
         err = parse_line(line, left, op, right);
-        if (err != 0)
-        {
+        if (err != 0) {
             fprintf(stderr, "Read error %d on line %d of %s:\n\t%s",
                     err, line_num, filename, line);
             return err;
         }
 
         /* Calls the correct function to parse this input line */
-        if (parse_select(left, op, right) != 0)
-        {
+        if (parse_select(left, op, right) != 0) {
             fprintf(stderr, "Error parsing line %d:\n", line_num);
             fprintf(stderr, "%s\n", line);
             return -1;
@@ -214,8 +204,7 @@ int parse_line(const char *line, char *left, char *op, char *right)
         line_cur++;
 
     /* Splits into 3 parts */
-    while ((line[line_cur] != '\0') && !isspace(line[line_cur]))
-    {
+    while ((line[line_cur] != '\0') && !isspace(line[line_cur])) {
         assert(left_cur < (int)MAX_LINE_SIZE);
         left[left_cur] = line[line_cur];
         left_cur++;
@@ -225,8 +214,7 @@ int parse_line(const char *line, char *left, char *op, char *right)
     while ((line[line_cur] != '\0') && isspace(line[line_cur]))
         line_cur++;
 
-    while ((line[line_cur] != '\0') && !isspace(line[line_cur]))
-    {
+    while ((line[line_cur] != '\0') && !isspace(line[line_cur])) {
         assert(op_cur < (int)MAX_LINE_SIZE);
         op[op_cur] = line[line_cur];
         op_cur++;
@@ -236,8 +224,7 @@ int parse_line(const char *line, char *left, char *op, char *right)
     while ((line[line_cur] != '\0') && isspace(line[line_cur]))
         line_cur++;
 
-    while (line[line_cur] != '\0')
-    {
+    while (line[line_cur] != '\0') {
         assert(right_cur < (int)MAX_LINE_SIZE);
         right[right_cur] = line[line_cur];
         right_cur++;
@@ -247,8 +234,7 @@ int parse_line(const char *line, char *left, char *op, char *right)
     assert(right_cur != 1);
     right_cur--;
 
-    while ((right_cur > 0) && (isspace(right[right_cur])))
-    {
+    while ((right_cur > 0) && (isspace(right[right_cur]))) {
         right[right_cur] = '\0';
         right_cur--;
     }
@@ -268,10 +254,8 @@ int parse_select(const char *left, const char *op, char *right)
 
     memset(newright, '\0', MAX_LINE_SIZE);
     newi = i = cmdi = 0;
-    while (i < strlen(right))
-    {
-        if (right[i] == '`')
-        {
+    while (i < strlen(right)) {
+        if (right[i] == '`') {
             char *tmpname;
             int fd;
             int err;
@@ -280,8 +264,7 @@ int parse_select(const char *left, const char *op, char *right)
 
             i++;
             cmdi = 0;
-            while (right[i] != '`')
-            {
+            while (right[i] != '`') {
                 command[cmdi] = right[i];
                 cmdi++;
                 i++;
@@ -295,8 +278,7 @@ int parse_select(const char *left, const char *op, char *right)
             strcat(command, tmpname);
 
             err = system(command);
-            if (err != 0)
-            {
+            if (err != 0) {
                 int index;
                 char old;
 
@@ -310,15 +292,13 @@ int parse_select(const char *left, const char *op, char *right)
             }
 
             file = fopen(tmpname, "r");
-            while (fgets(line, MAX_LINE_SIZE, file) != NULL)
-            {
+            while (fgets(line, MAX_LINE_SIZE, file) != NULL) {
                 i++;
                 i += strlen(line);
                 if (i >= MAX_LINE_SIZE)
                     abort();
 
-                while (isspace(line[strlen(line) - 1]))
-                {
+                while (isspace(line[strlen(line) - 1])) {
                     line[strlen(line) - 1] = '\0';
                     i--;
                 }
@@ -331,8 +311,7 @@ int parse_select(const char *left, const char *op, char *right)
             close(fd);
             unlink(tmpname);
         }
-        else
-        {
+        else {
             newright[newi] = right[i];
             newi++;
             i++;
@@ -388,8 +367,7 @@ int parsefunc_prefix(const char *op, const char *right)
     int err;
     char *cmd;
 
-    if (strcmp(op, "=") != 0)
-    {
+    if (strcmp(op, "=") != 0) {
         fprintf(stderr, "We only support = for PREFIX\n");
         return -1;
     }
@@ -419,22 +397,19 @@ int parsefunc_languages(const char *op, const char *right)
     int err;
     void *context;
 
-    if (strcmp(op, "+=") != 0)
-    {
+    if (strcmp(op, "+=") != 0) {
         fprintf(stderr, "We only support += for LANGUAGES\n");
         return -1;
     }
 
     err = languagelist_select(ll, right);
-    if (err != 0)
-    {
+    if (err != 0) {
         fprintf(stderr, "Unable to select language '%s'\n", right);
         return -1;
     }
 
     /* If there's anything left on the stack, then clear everything out */
-    while (!contextstack_isempty(s))
-    {
+    while (!contextstack_isempty(s)) {
         context = talloc_new(NULL);
 
         /* We already know that there is an element on the stack, so there
@@ -459,8 +434,7 @@ int parsefunc_compileopts(const char *op, const char *right)
     size_t start, end;
     int quotes;
 
-    if (strcmp(op, "+=") != 0)
-    {
+    if (strcmp(op, "+=") != 0) {
         fprintf(stderr, "We only support += for COMPILEOPTS\n");
         return -1;
     }
@@ -469,13 +443,11 @@ int parsefunc_compileopts(const char *op, const char *right)
     start = 0;
     quotes = 0;
     end = 0;
-    while ((start < strlen(right)) && (end <= strlen(right)))
-    {
+    while ((start < strlen(right)) && (end <= strlen(right))) {
         if (right[end] == '\"')
             quotes++;
 
-        if ((isspace(right[end])) && (quotes % 2) == 0)
-        {
+        if ((isspace(right[end])) && (quotes % 2) == 0) {
             int err;
 
             memset(newright, '\0', MAX_LINE_SIZE);
@@ -493,8 +465,7 @@ int parsefunc_compileopts(const char *op, const char *right)
 
         end++;
     }
-    if (start != 0)
-    {
+    if (start != 0) {
         memset(newright, '\0', MAX_LINE_SIZE);
         strcpy(newright, right + start);
         return parsefunc_compileopts(op, newright);
@@ -502,8 +473,7 @@ int parsefunc_compileopts(const char *op, const char *right)
 
     /* If the stack is empty, then add this to the language-specific global
      * list of options. */
-    if (contextstack_isempty(s))
-    {
+    if (contextstack_isempty(s)) {
         struct language *l;
         char *duped;
         void *context;
@@ -511,8 +481,7 @@ int parsefunc_compileopts(const char *op, const char *right)
         context = talloc_new(NULL);
 
         l = languagelist_get(ll, context);
-        if (l == NULL)
-        {
+        if (l == NULL) {
             fprintf(stderr, "No last language\n");
             TALLOC_FREE(context);
             return -1;
@@ -545,8 +514,7 @@ int parsefunc_linkopts(const char *op, const char *right)
     size_t start, end;
     int quotes;
 
-    if (strcmp(op, "+=") != 0)
-    {
+    if (strcmp(op, "+=") != 0) {
         fprintf(stderr, "We only support += for LINKOPTS\n");
         return -1;
     }
@@ -555,13 +523,11 @@ int parsefunc_linkopts(const char *op, const char *right)
     start = 0;
     quotes = 0;
     end = 0;
-    while ((start < strlen(right)) && (end <= strlen(right)))
-    {
+    while ((start < strlen(right)) && (end <= strlen(right))) {
         if (right[end] == '\"')
             quotes++;
 
-        if ((isspace(right[end])) && (quotes % 2) == 0)
-        {
+        if ((isspace(right[end])) && (quotes % 2) == 0) {
             int err;
 
             memset(newright, '\0', MAX_LINE_SIZE);
@@ -579,8 +545,7 @@ int parsefunc_linkopts(const char *op, const char *right)
 
         end++;
     }
-    if (start != 0)
-    {
+    if (start != 0) {
         memset(newright, '\0', MAX_LINE_SIZE);
         strcpy(newright, right + start);
         return parsefunc_linkopts(op, newright);
@@ -588,8 +553,7 @@ int parsefunc_linkopts(const char *op, const char *right)
 
     /* If the stack is empty, then add this to the language-specific global
      * list of options. */
-    if (contextstack_isempty(s))
-    {
+    if (contextstack_isempty(s)) {
         struct language *l;
         char *duped;
         void *context;
@@ -597,8 +561,7 @@ int parsefunc_linkopts(const char *op, const char *right)
         context = talloc_new(NULL);
 
         l = languagelist_get(ll, context);
-        if (l == NULL)
-        {
+        if (l == NULL) {
             fprintf(stderr, "No last language\n");
             TALLOC_FREE(context);
             return -1;
@@ -625,15 +588,13 @@ int parsefunc_binaries(const char *op, const char *right)
 {
     void *context;
 
-    if (strcmp(op, "+=") != 0)
-    {
+    if (strcmp(op, "+=") != 0) {
         fprintf(stderr, "We only support += for BINARIES\n");
         return -1;
     }
 
     /* If there's anything left on the stack, then clear everything out */
-    while (!contextstack_isempty(s))
-    {
+    while (!contextstack_isempty(s)) {
         context = talloc_new(NULL);
 
         /* We already know that there is an element on the stack, so there
@@ -655,15 +616,13 @@ int parsefunc_libraries(const char *op, const char *right)
 {
     void *context;
 
-    if (strcmp(op, "+=") != 0)
-    {
+    if (strcmp(op, "+=") != 0) {
         fprintf(stderr, "We only support += for BINARIES\n");
         return -1;
     }
 
     /* If there's anything left on the stack, then clear everything out */
-    while (!contextstack_isempty(s))
-    {
+    while (!contextstack_isempty(s)) {
         context = talloc_new(NULL);
 
         /* We already know that there is an element on the stack, so there
@@ -685,15 +644,13 @@ int parsefunc_headers(const char *op, const char *right)
 {
     void *context;
 
-    if (strcmp(op, "+=") != 0)
-    {
+    if (strcmp(op, "+=") != 0) {
         fprintf(stderr, "We only support += for HEADERS\n");
         return -1;
     }
 
     /* If there's anything left on the stack, then clear everything out */
-    while (!contextstack_isempty(s))
-    {
+    while (!contextstack_isempty(s)) {
         context = talloc_new(NULL);
 
         /* We already know that there is an element on the stack, so there
@@ -713,8 +670,7 @@ int parsefunc_headers(const char *op, const char *right)
 
 int parsefunc_sources(const char *op, const char *right)
 {
-    if (strcmp(op, "+=") != 0)
-    {
+    if (strcmp(op, "+=") != 0) {
         fprintf(stderr, "We only support += for BINARIES\n");
         return -1;
     }
@@ -730,8 +686,7 @@ int parsefunc_config(const char *op, const char *right)
     char *filename;
     int out;
 
-    if (strcmp(op, "+=") != 0)
-    {
+    if (strcmp(op, "+=") != 0) {
         fprintf(stderr, "We only support += for CONFIG\n");
         return -1;
     }
@@ -749,16 +704,14 @@ int parsefunc_deplibs(const char *op, const char *right)
     char *duped;
     int err;
 
-    if (strcmp(op, "+=") != 0)
-    {
+    if (strcmp(op, "+=") != 0) {
         fprintf(stderr, "We only support += for DEPLIBS\n");
         return -1;
     }
 
     /* If the stack is empty, then add this to the language-specific global
      * list of options. */
-    if (contextstack_isempty(s))
-    {
+    if (contextstack_isempty(s)) {
         fprintf(stderr, "LIBS += called with an empty context\n");
         return -1;
     }
@@ -777,8 +730,7 @@ int parsefunc_compiler(const char *op, const char *right)
 {
     int err;
 
-    if (contextstack_isempty(s))
-    {
+    if (contextstack_isempty(s)) {
         struct language *l;
         char *duped;
         void *context;
@@ -786,8 +738,7 @@ int parsefunc_compiler(const char *op, const char *right)
         context = talloc_new(NULL);
 
         l = languagelist_get(ll, context);
-        if (l == NULL)
-        {
+        if (l == NULL) {
             fprintf(stderr, "No last language\n");
             TALLOC_FREE(context);
             return -1;
@@ -808,8 +759,7 @@ int parsefunc_linker(const char *op, const char *right)
 {
     int err;
 
-    if (contextstack_isempty(s))
-    {
+    if (contextstack_isempty(s)) {
         struct language *l;
         char *duped;
         void *context;
@@ -817,8 +767,7 @@ int parsefunc_linker(const char *op, const char *right)
         context = talloc_new(NULL);
 
         l = languagelist_get(ll, context);
-        if (l == NULL)
-        {
+        if (l == NULL) {
             fprintf(stderr, "No last language\n");
             TALLOC_FREE(context);
             return -1;
@@ -837,8 +786,7 @@ int parsefunc_linker(const char *op, const char *right)
 
 int parsefunc_libdir(const char *op, const char *right)
 {
-    if (!contextstack_isempty(s))
-    {
+    if (!contextstack_isempty(s)) {
         fprintf(stderr, "LIBDIR must be passed at the start\n");
         return 1;
     }
@@ -849,16 +797,14 @@ int parsefunc_libdir(const char *op, const char *right)
 
 int parsefunc_tests(const char *op, const char *right)
 {
-    if (strcmp(op, "+=") != 0)
-    {
+    if (strcmp(op, "+=") != 0) {
         fprintf(stderr, "We only support += for TESTS\n");
         return -1;
     }
 
     /* We actually want to clear _almost_ everything on the stack,
      * just everything up to and including the binary. */
-    while (!contextstack_isempty(s))
-    {
+    while (!contextstack_isempty(s)) {
         void *context;
         enum context_type type;
 
@@ -889,8 +835,7 @@ int parsefunc_testsrc(const char *op, const char *right)
 {
     int err;
 
-    if (strcmp(op, "+=") != 0)
-    {
+    if (strcmp(op, "+=") != 0) {
         fprintf(stderr, "We only support += for TESTS and SOURCES\n");
         return -1;
     }

@@ -63,8 +63,7 @@ CXTranslationUnit clang_parseTranslationUnit(CXIndex CIdx,
 
     src = NULL;
     hdr = NULL;
-    for (i = 0; i < argc; i++)
-    {
+    for (i = 0; i < argc; i++) {
         if (strncmp(argv[i], "-I", 2) == 0)
             hdr = argv[i] + 2;
 

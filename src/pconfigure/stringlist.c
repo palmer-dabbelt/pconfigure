@@ -42,14 +42,12 @@ struct stringlist *stringlist_new(void *context)
 
 int stringlist_add(struct stringlist *l, const char *to_add)
 {
-    if (l->head == NULL)
-    {
+    if (l->head == NULL) {
         l->head = talloc(l, struct stringlist_node);
         l->head->next = NULL;
         l->head->data = talloc_reference(l->head, to_add);
     }
-    else
-    {
+    else {
         struct stringlist_node *cur;
 
         cur = l->head;
@@ -74,8 +72,7 @@ struct stringlist *stringlist_copy(struct stringlist *l, void *context)
         return NULL;
 
     cur = stringlist_start(l);
-    while (stringlist_notend(cur))
-    {
+    while (stringlist_notend(cur)) {
         stringlist_add(new, stringlist_data(cur));
         cur = stringlist_next(cur);
     }
@@ -89,8 +86,7 @@ int stringlist_del(struct stringlist *l, const char *to_del)
 
     prev = NULL;
     cur = l->head;
-    while (cur != NULL)
-    {
+    while (cur != NULL) {
         if (strcmp(cur->data, to_del) == 0)
             break;
 
@@ -101,16 +97,14 @@ int stringlist_del(struct stringlist *l, const char *to_del)
     if (cur == NULL)
         return -1;
 
-    if (prev == NULL)
-    {
+    if (prev == NULL) {
         struct stringlist_node *old;
 
         old = l->head;
         l->head = old->next;
         talloc_free(old);
     }
-    else
-    {
+    else {
         struct stringlist_node *old;
 
         old = cur;
@@ -126,8 +120,7 @@ bool stringlist_include(struct stringlist * l, const char *s)
     struct stringlist_node *cur;
 
     cur = l->head;
-    while (cur != NULL)
-    {
+    while (cur != NULL) {
         if (strcmp(cur->data, s) == 0)
             return true;
 
@@ -144,8 +137,7 @@ int stringlist_size(struct stringlist *l)
 
     cur = l->head;
     count = 0;
-    while (cur != NULL)
-    {
+    while (cur != NULL) {
         count++;
         cur = cur->next;
     }
@@ -158,8 +150,7 @@ int stringlist_each(struct stringlist *l, int (*func) (const char *))
     struct stringlist_node *cur;
 
     cur = l->head;
-    while (cur != NULL)
-    {
+    while (cur != NULL) {
         int out;
         out = func(cur->data);
         if (out != 0)
@@ -178,8 +169,7 @@ const char *stringlist_hashcode(struct stringlist *l, void *context)
 
     hash = 5381;
     cur = l->head;
-    while (cur != NULL)
-    {
+    while (cur != NULL) {
         const char *str;
         char c;
 

@@ -47,21 +47,18 @@ int main(int argc, char **argv)
     output = NULL;
     last = NULL;
 
-    for (i = 1; i < argc; i++)
-    {
+    for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-o") == 0)
             last = argv[i];
         else if (last == NULL)
             input = argv[i];
-        else if (strcmp(last, "-o") == 0)
-        {
+        else if (strcmp(last, "-o") == 0) {
             output = argv[i];
             last = NULL;
         }
     }
 
-    if ((input == NULL) || (output == NULL))
-    {
+    if ((input == NULL) || (output == NULL)) {
         fprintf(stderr, "needs 2 arguments\ninput '%s'\noutput '%s'\n",
                 input, output);
         exit(1);
@@ -87,10 +84,8 @@ void cat_to_outfile(const char *input)
 
     infile = fopen(input, "r");
 
-    while (fgets(buffer, 1024, infile) != NULL)
-    {
-        if (strncmp(buffer, "#include \"", strlen("#include \"")) == 0)
-        {
+    while (fgets(buffer, 1024, infile) != NULL) {
+        if (strncmp(buffer, "#include \"", strlen("#include \"")) == 0) {
             size_t i, slash_max;
 
             char *full_path;

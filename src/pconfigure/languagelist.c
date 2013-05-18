@@ -63,10 +63,8 @@ int languagelist_select(struct languagelist *ll, const char *name)
 
     /* Attempts to find a language already in the list. */
     cur = ll->head;
-    while (cur != NULL)
-    {
-        if (strcmp(cur->data->name, name) == 0)
-        {
+    while (cur != NULL) {
+        if (strcmp(cur->data->name, name) == 0) {
             ll->selected = cur->data;
             break;
         }
@@ -116,8 +114,7 @@ struct language *languagelist_search(struct languagelist *ll,
         return NULL;
 
     cur = ll->head;
-    while (cur != NULL)
-    {
+    while (cur != NULL) {
         struct language *found;
 
         found = language_search(cur->data, parent, path);

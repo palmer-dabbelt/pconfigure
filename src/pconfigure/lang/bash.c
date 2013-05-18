@@ -114,8 +114,8 @@ void language_bash_deps(struct language *l_uncast, struct context *c,
     /* *INDENT-OFF* */
     pinclude_list(c->full_path, lambda(int, (const char *f, void *u),
                                        {
-                                       func("%s", f);
-                                       return 0;
+                                           func("%s", f);
+                                           return 0;
                                        }
                       ), NULL, dirs);
     /* *INDENT-ON* */
@@ -198,8 +198,8 @@ void language_bash_extras(struct language *l_uncast, struct context *c,
     /* *INDENT-OFF* */
     pinclude_list(c->full_path, lambda(int, (const char *f, void *u),
                                        {
-                                       func(f);
-                                       return 0;
+                                           func(f);
+                                           return 0;
                                        }
                       ), NULL, dirs);
     /* *INDENT-ON* */
