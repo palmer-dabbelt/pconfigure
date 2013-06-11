@@ -1,10 +1,19 @@
 ARCHIVE=`awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }' $0`
 TMPDIR=`mktemp -d`
 
+echo ""
+echo ""
+echo ""
+
+echo "Extracting"
 tail -n+$ARCHIVE $0 | base64 -d | tar xzv -C $TMPDIR
+echo ""
+echo ""
+echo ""
 
 CDIR=`pwd`
 cd $TMPDIR/work
+echo "Running"
 $PTEST_BINARY
 
 cd $TMPDIR
