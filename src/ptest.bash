@@ -2,7 +2,7 @@ if [[ "$1" == "" ]]
 then
     # This subshell is necessary to keep these variables after the
     # loop terminates
-    find check -type f | {
+    find check -type f | sort | {
         run="0"
         pass="0"
         fail="0"
