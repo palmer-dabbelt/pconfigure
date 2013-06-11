@@ -568,6 +568,10 @@ int context_source_destructor(struct context *c)
         abort();
     }
     c->parent->language = l;
+#ifdef DEBUG
+    fprintf(stderr, "\tc->parent->language->name: '%s'\n",
+            c->parent->language->name);
+#endif
 
     /* We need to allocate some temporary memory */
     context = talloc_new(NULL);

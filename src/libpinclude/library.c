@@ -62,11 +62,17 @@ static int _pinclude_list(const char *input, pinclude_callback_t cb,
                     slash_max = i;
             dir_path[slash_max] = '\0';
 
+            if (strlen(dir_path) == 0)
+                strcpy(dir_path, ".");
+
             /* Pull FILENAME out of #include "FILENAME" */
             filename = strdup(buffer + strlen("#include \""));
             filename[strlen(filename) - 2] = '\0';
 
-            asprintf(&full_path, "%s/%s", dir_path, filename);
+            if (strcmp(dir_path, ".") != 0)
+                asprintf(&full_path, "%s/%s", dir_path, filename);
+            else
+                asprintf(&full_path, "%s", filename);
 
             for (i = 0; i < FILE_MAX; i++)
                 if (included[i] != NULL

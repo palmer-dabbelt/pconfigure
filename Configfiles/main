@@ -52,6 +52,8 @@ DEPLIBS     += pinclude
 SOURCES     += pinclude.c
 TESTSRC     += empty.bash
 TESTSRC     += nonexist.bash
+TESTSRC     += samedir.bash
+TESTSRC     += samedir2.bash
 
 BINARIES    += pllvm-config
 SOURCES     += pllvm-config.bash
