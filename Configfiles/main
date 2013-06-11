@@ -54,6 +54,7 @@ TESTSRC     += empty.bash
 TESTSRC     += nonexist.bash
 TESTSRC     += samedir.bash
 TESTSRC     += samedir2.bash
+TESTSRC     += indir.bash
 
 BINARIES    += pllvm-config
 SOURCES     += pllvm-config.bash
