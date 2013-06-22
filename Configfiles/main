@@ -58,3 +58,7 @@ TESTSRC     += indir.bash
 
 BINARIES    += pllvm-config
 SOURCES     += pllvm-config.bash
+
+BINARIES    += pwinegcc
+SOURCES	    += pwinegcc.bash
+
