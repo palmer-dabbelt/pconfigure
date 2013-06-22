@@ -321,20 +321,6 @@ void language_c_link(struct language *l_uncast, struct context *c,
         func(false, "\\ -Wl,-rpath,%s/%s", c->prefix, c->lib_dir);
 
     /* *INDENT-OFF* */
-    stringlist_each(l->l.link_opts,
-		    lambda(int, (const char *opt),
-			   {
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-			));
-    stringlist_each(c->link_opts,
-		    lambda(int, (const char *opt),
-			   {
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-			));
     stringlist_each(c->objects,
 		    lambda(int, (const char *opt),
 			   {
@@ -350,6 +336,20 @@ void language_c_link(struct language *l_uncast, struct context *c,
 		    lambda(int, (const char *lib),
 			   {
 			       func(false, "\\ -l%s", lib);
+			       return 0;
+			   }
+			));
+    stringlist_each(l->l.link_opts,
+		    lambda(int, (const char *opt),
+			   {
+			       func(false, "\\ %s", opt);
+			       return 0;
+			   }
+			));
+    stringlist_each(c->link_opts,
+		    lambda(int, (const char *opt),
+			   {
+			       func(false, "\\ %s", opt);
 			       return 0;
 			   }
 			));
