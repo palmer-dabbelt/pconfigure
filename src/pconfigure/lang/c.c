@@ -55,6 +55,7 @@ static void language_c_extras(struct language *l_uncast, struct context *c,
 
 static char *string_strip(const char *in, void *context);
 static bool str_ends(const char *haystack, const char *needle);
+static char *string_hashcode(const char *string, void *context);
 
 struct language *language_c_new(struct clopts *o, const char *name)
 {
@@ -112,7 +113,7 @@ const char *language_c_objname(struct language *l_uncast, void *context,
                                struct context *c)
 {
     char *o;
-    const char *compileopts_hash, *langopts_hash;
+    const char *compileopts_hash, *langopts_hash, *compiler_hash;
     struct language_c *l;
     void *subcontext;
     const char *suffix;
@@ -122,6 +123,7 @@ const char *language_c_objname(struct language *l_uncast, void *context,
         return NULL;
 
     subcontext = talloc_new(NULL);
+    compiler_hash = string_hashcode(l->l.compile_cmd, subcontext);
     compileopts_hash = stringlist_hashcode(c->compile_opts, subcontext);
     langopts_hash = stringlist_hashcode(l->l.compile_opts, subcontext);
 
@@ -134,9 +136,9 @@ const char *language_c_objname(struct language *l_uncast, void *context,
     else
         suffix = "o";
 
-    o = talloc_asprintf(context, "%s/%s/%s-%s.%s",
-                        c->obj_dir,
-                        c->full_path, compileopts_hash, langopts_hash,
+    o = talloc_asprintf(context, "%s/%s/%s-%s-%s.%s",
+                        c->obj_dir, c->full_path,
+                        compiler_hash, compileopts_hash, langopts_hash,
                         suffix);
 
     TALLOC_FREE(subcontext);
@@ -497,4 +499,19 @@ bool str_ends(const char *haystack, const char *needle)
         return false;
 
     return strcmp(haystack + strlen(haystack) - strlen(needle), needle) == 0;
+}
+
+char *string_hashcode(const char *string, void *context)
+{
+    unsigned int hash;
+    char c;
+
+    hash = 5381;
+
+    /* FIXME: http://www.cse.yorku.ca/~oz/hash.html */
+    while ((c = *string++) != '\0')
+        hash = hash * 33 ^ c;
+    hash = hash * 33 ^ ' ';
+
+    return talloc_asprintf(context, "%u", hash);
 }
