@@ -88,9 +88,14 @@ void clang_getInclusions(CXTranslationUnit tu,
 {
     struct pinclude_visitor_args args;
     char *dirs[2];
+    struct CXFile source_file;
 
     args.visitor = visitor;
     args.client_data = client_data;
+
+    source_file.filename = strdup(tu->filename);
+    visitor(&source_file, NULL, 0, client_data);
+    free(source_file.filename);
 
     dirs[0] = tu->include_path;
     dirs[1] = NULL;
