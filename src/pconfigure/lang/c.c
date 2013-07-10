@@ -224,6 +224,7 @@ void language_c_deps(struct language *l_uncast, struct context *c,
                                    const char *fn_cstr;
                                    fn = clang_getFileName(included_file);
                                    fn_cstr = clang_getCString(fn);
+
 				   func("%s", string_strip(fn_cstr, context));
                                    clang_disposeString(fn);
 			       }

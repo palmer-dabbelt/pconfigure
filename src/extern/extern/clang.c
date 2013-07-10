@@ -70,7 +70,8 @@ CXTranslationUnit clang_parseTranslationUnit(CXIndex CIdx,
         if (argv[i][0] == '-')
             continue;
 
-        src = argv[i];
+        if (strlen(argv[i]) > 0)
+            src = argv[i];
     }
 
     if (src != NULL)

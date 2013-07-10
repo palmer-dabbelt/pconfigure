@@ -24,7 +24,6 @@
 #include "chisel.h"
 #include "../lambda.h"
 #include "../languagelist.h"
-#include <clang-c/Index.h>
 #include <ftw.h>
 #include <string.h>
 #include <unistd.h>
@@ -33,6 +32,12 @@
 #include <talloc.h>
 #else
 #include "extern/talloc.h"
+#endif
+
+#ifdef HAVE_CLANG
+#include <clang-c/Index.h>
+#else
+#include "extern/clang.h"
 #endif
 
 /* FIXME: This allows me to access the global langauge list, it's a

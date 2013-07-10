@@ -23,7 +23,6 @@
 
 #include "scala.h"
 #include "../lambda.h"
-#include <clang-c/Index.h>
 #include <ftw.h>
 #include <string.h>
 #include <unistd.h>
@@ -32,6 +31,12 @@
 #include <talloc.h>
 #else
 #include "extern/talloc.h"
+#endif
+
+#ifdef HAVE_CLANG
+#include <clang-c/Index.h>
+#else
+#include "extern/clang.h"
 #endif
 
 static struct language *language_scala_search(struct language *l_uncast,

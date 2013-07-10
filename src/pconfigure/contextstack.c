@@ -20,8 +20,13 @@
  */
 
 #include "contextstack.h"
-#include <talloc.h>
 #include <assert.h>
+
+#ifdef HAVE_TALLOC
+#include <talloc.h>
+#else
+#include "extern/talloc.h"
+#endif
 
 struct contextstack *contextstack_new(struct clopts *o,
                                       struct makefile *mf,

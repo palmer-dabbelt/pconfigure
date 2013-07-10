@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 if [[ "$1" == "--verbose" ]]
 then
@@ -35,15 +35,17 @@ clang="$(pllvm-config --optional --have CLANG --cflags) $(pllvm-config --optiona
 
 # Manually pull in included external libraries where necessary
 extrasrc=""
+extrahdr=""
 if [[ "$(echo "$talloc" | grep HAVE_TALLOC)" == "" ]]
 then
     echo "WARN: Using internal talloc"
-    extrasrc="$extrasrc src/extern/talloc.c"
+    extrasrc="$extrasrc src/extern/extern/talloc.c"
+    extrahdr="$extrahdr -Isrc/extern/extern/"
 fi
 if [[ "$(echo "$clang" | grep HAVE_CLANG)" == "" ]]
 then
     echo "WARN: Using internal clang"
-    extrasrc="$extrasrc src/extern/clang.c"
+    extrasrc="$extrasrc src/extern/extern/clang.c"
 fi
 
 # Actually build pconfigure here, this is the simple part :)
@@ -52,7 +54,7 @@ gcc --std=gnu99 -Wall -Werror -Wno-trampolines -g \
     `find "$SOURCE_PATH"src/libpinclude/ -iname "*.c"` \
     $extrasrc $talloc $clang \
     -DPCONFIGURE_VERSION=\"bootstrap\" \
-    -Isrc/extern/ -Iinclude/ \
+    -Isrc/extern/ -Iinclude/ $extrahdr \
     -o "$BOOTSTRAP_DIR/pconfigure" || exit $?
 
 # Runs pconfigure in order to build itself
