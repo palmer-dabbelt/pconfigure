@@ -146,11 +146,6 @@ static int _pinclude_list(const char *input, pinclude_callback_t cb,
             free(filename);
             free(full_path);
 
-            if (err != 0) {
-                fclose(infile);
-                return err;
-            }
-
             /* We want to skip this whole line */
             continue;
         }
