@@ -42,6 +42,8 @@ if which zinc >& /dev/null
 then
     strace -f -o "$workdir"/strace -e stat \
 	zinc -q -analysis-cache "$workdir"/zinc.cache \
+	$sources -d "$workdir" $classpath || \
+        zinc -analysis-cache "$workdir"/zinc.cache \
 	$sources -d "$workdir" $classpath
 else
     strace -f -o "$workdir"/strace -e stat \
