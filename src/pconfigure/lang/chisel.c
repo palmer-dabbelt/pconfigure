@@ -276,7 +276,7 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
     /* We then need to copy the header file out.  This needs to be in
      * a different directory because otherwise the C++ dependency
      * tracker will pick it up. */
-    func(false, "cp %s.d/gen/%s.h %s.d/inc/%s.h",
+    func(false, "cp %s.d/gen/%s_.h %s.d/inc/%s_.h",
          obj_path, design, obj_path, design);
 
     /* Actually build the C++ code into a binary! */
@@ -304,7 +304,7 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
                     ));
     /* *INDENT-ON* */
     func(false, "\\ -I%s", c->hdr_dir);
-    func(false, "\\ -c %s.d/gen/%s.cpp -o %s\n", obj_path, design, obj_path);
+    func(false, "\\ -c %s.d/gen/%s_.cpp -o %s\n", obj_path, design, obj_path);
 
     /* In order to allow C++ code to build, I have to manually go
      * munge the include path inside C++.  This is super-nasty, but I
@@ -325,7 +325,7 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
         if (system(make_dummy) != 0)
             abort();
         make_dummy = talloc_asprintf(context,
-                                     "if test ! -e %s.d/inc/%s.h; then touch -t 197101010101 %s.d/inc/%s.h; fi",
+                                     "if test ! -e %s.d/inc/%s_.h; then touch -t 197101010101 %s.d/inc/%s_.h; fi",
                                      obj_path, design, obj_path, design);
         if (system(make_dummy) != 0)
             abort();
@@ -396,8 +396,10 @@ void language_chisel_quirks(struct language *l_uncast,
                     ));
     /* *INDENT-ON* */
 
-    target_path = talloc_asprintf(context, "%s.d/inc/%s.h", obj_path, design);
-    source_path = talloc_asprintf(context, "%s.d/gen/%s.h", obj_path, design);
+    target_path =
+        talloc_asprintf(context, "%s.d/inc/%s_.h", obj_path, design);
+    source_path =
+        talloc_asprintf(context, "%s.d/gen/%s_.h", obj_path, design);
 
     /* Copy the generated header into the directory that's availiable
      * for C++ to use. */
