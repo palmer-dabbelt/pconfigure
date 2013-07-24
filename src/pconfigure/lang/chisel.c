@@ -289,8 +289,18 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
     func(false, "\\ -o %s.d/obj.jar\n", obj_path);
 
     /* Add a flag that tells Scala how to start up */
-    func(false, "pscalald -l chisel -o %s.d/obj.bin %s.d/obj.jar",
-         obj_path, obj_path);
+    func(false, "pscalald -l chisel\\");
+    func(false, "\\ -L %s", c->lib_dir);
+    /* *INDENT-OFF* */
+    stringlist_each(c->libraries,
+		    lambda(int, (const char *lib),
+			   {
+			       func(false, "\\ -l %s", lib);
+			       return 0;
+			   }
+			));
+    /* *INDENT-ON* */
+    func(false, "\\ -o %s.d/obj.bin %s.d/obj.jar\n", obj_path, obj_path);
 
     /* Actually run the resulting Chisel binary to produce some C++ code */
     func(false, "%s.d/obj.bin --targetDir %s.d/gen >& /dev/null"
