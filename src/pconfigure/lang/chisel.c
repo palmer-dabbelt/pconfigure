@@ -225,6 +225,7 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
     const char *compile_str;
     char *compile_opt;
     char *design;
+    const char *last_source;
 
     l = talloc_get_type(l_uncast, struct language_chisel);
     if (l == NULL)
@@ -270,11 +271,12 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
     /* Compile the scala sources */
     func(false, "pscalac -l chisel\\");
     func(false, "\\ -L %s", c->lib_dir);
+    last_source = NULL;
     /* *INDENT-OFF* */
     stringlist_each(l->deps,
 		    lambda(int, (const char *opt),
 			   {
-			       func(false, "\\ %s", opt);
+                               last_source = opt;
 			       return 0;
 			   }
                     ));
@@ -286,6 +288,10 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
 			   }
 			));
     /* *INDENT-ON* */
+    if (last_source == NULL) {
+        fprintf(stderr, "chisel compiler called with no sources!\n");
+    }
+    func(false, "\\ %s", last_source);
     func(false, "\\ -o %s.d/obj.jar\n", obj_path);
 
     /* Add a flag that tells Scala how to start up */
