@@ -46,11 +46,15 @@ workjar="$workdir"/out.jar
 # get loaded correctly.
 if which zinc >& /dev/null
 then
-    strace -f -o "$workdir"/strace -e stat \
-	zinc -q -analysis-cache "$workdir"/zinc.cache \
+    #strace -f -o "$workdir"/strace -e stat \
+	zinc -nailed -q -analysis-cache "$workdir"/zinc.cache \
 	$sources -d "$workdir" $classpath || \
-        zinc -analysis-cache "$workdir"/zinc.cache \
+        zinc -nailed -analysis-cache "$workdir"/zinc.cache \
 	$sources -d "$workdir" $classpath
+
+   cd "$workdir"
+   find -iname "*.class" > "$workdir"/jar-list
+   cd - >& /dev/null
 else
     strace -f -o "$workdir"/strace -e stat \
 	scalac -make:changed $sources -d "$workdir" $classpath
@@ -60,11 +64,11 @@ fi
 # outputs, so I guess at it using strace... :)
 cd "$workdir"
 
-cat "$workdir"/strace | cut -d' ' -f 2- | sed 's/^ //g' \
-    | grep "^stat" | sed 's@stat("\(.*\)",.*@\1@' \
-    | grep "^$workdir" | (while read f; do test ! -f $f || echo $f; done; ) \
-    | sed "s@$workdir/*@@" | grep ".class$" \
-    | sort | uniq > "$workdir"/jar-list
+#cat "$workdir"/strace | cut -d' ' -f 2- | sed 's/^ //g' \
+#    | grep "^stat" | sed 's@stat("\(.*\)",.*@\1@' \
+#    | grep "^$workdir" | (while read f; do test ! -f $f || echo $f; done; ) \
+#    | sed "s@$workdir/*@@" | grep ".class$" \
+#    | sort | uniq > "$workdir"/jar-list
 
 cat "$workdir"/jar-list | xargs jar cf "$workjar"
 
