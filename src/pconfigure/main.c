@@ -680,13 +680,33 @@ int parsefunc_headers(const char *op, const char *right)
 
 int parsefunc_sources(const char *op, const char *right)
 {
+    void *context;
+
     if (strcmp(op, "+=") != 0) {
         fprintf(stderr, "We only support += for BINARIES\n");
         return -1;
     }
 
-    /* Adds a binary to the stack, using the default compile options.  There is
-     * no need for this to  */
+    /* Clear out all the sources (but not the libraries or binaries) */
+    while (!contextstack_isempty(s)) {
+        struct context *c;
+
+        context = talloc_new(NULL);
+
+        /* We already know that there is an element on the stack, so there
+         * is no need to check for errors. */
+        c = contextstack_peek(s, context);
+
+        if (c->type != CONTEXT_TYPE_SOURCE) {
+            TALLOC_FREE(context);
+            break;
+        }
+
+        contextstack_pop(s, context);
+        TALLOC_FREE(context);
+    }
+
+    /* Adds the requested source to the compile stack. */
     contextstack_push_source(s, right);
     return 0;
 }
