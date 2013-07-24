@@ -43,6 +43,8 @@ extern struct languagelist *languagelist_new(struct clopts *o);
 
 extern int languagelist_select(struct languagelist *ll, const char *name);
 
+extern int languagelist_remove(struct languagelist *ll, const char *name);
+
 extern struct language *languagelist_search(struct languagelist *ll,
                                             struct language *parent,
                                             const char *path);

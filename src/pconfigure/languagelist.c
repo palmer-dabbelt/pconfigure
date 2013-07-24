@@ -102,6 +102,42 @@ int languagelist_select(struct languagelist *ll, const char *name)
     return 0;
 }
 
+int languagelist_remove(struct languagelist *ll, const char *name)
+{
+    struct languagelist_node *cur, *prev;
+
+    if (ll == NULL)
+        return -1;
+    if (name == NULL)
+        return -1;
+
+    /* Attempts to find a language already in the list. */
+    prev = NULL;
+    cur = ll->head;
+    while (cur != NULL) {
+        if (strcmp(cur->data->name, name) == 0)
+            break;
+
+        prev = cur;
+        cur = cur->next;
+    }
+
+    /* If the language isn't there then just give up right away. */
+    if (cur == NULL)
+        return -1;
+
+    if (prev == NULL) {
+        ll->head = cur->next;
+    }
+    else {
+        prev->next = cur->next;
+    }
+
+    talloc_free(cur);
+
+    return 0;
+}
+
 struct language *languagelist_search(struct languagelist *ll,
                                      struct language *parent,
                                      const char *path)

@@ -397,15 +397,17 @@ int parsefunc_languages(const char *op, const char *right)
     int err;
     void *context;
 
-    if (strcmp(op, "+=") != 0) {
-        fprintf(stderr, "We only support += for LANGUAGES\n");
+    if (strcmp(op, "+=") != 0 && strcmp(op, "-=") != 0) {
+        fprintf(stderr, "We only support [+=,-=] for LANGUAGES\n");
         return -1;
     }
 
-    err = languagelist_select(ll, right);
-    if (err != 0) {
-        fprintf(stderr, "Unable to select language '%s'\n", right);
-        return -1;
+    if (strcmp(op, "+=") == 0) {
+        err = languagelist_select(ll, right);
+        if (err != 0) {
+            fprintf(stderr, "Unable to select language '%s'\n", right);
+            return -1;
+        }
     }
 
     /* If there's anything left on the stack, then clear everything out */
@@ -419,6 +421,14 @@ int parsefunc_languages(const char *op, const char *right)
         /* That's all we need to do, as free()ing the context will cause it to
          * be cleaned up and pushed over to  */
         TALLOC_FREE(context);
+    }
+
+    if (strcmp(op, "-=") == 0) {
+        err = languagelist_remove(ll, right);
+        if (err != 0) {
+            fprintf(stderr, "Unable to remove language '%s'\n", right);
+            return -1;
+        }
     }
 
     return 0;
