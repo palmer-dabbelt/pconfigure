@@ -193,6 +193,21 @@ void language_chisel_deps(struct language *l_uncast, struct context *c,
 			 return 0;
 		     }),
 	 16, FTW_DEPTH);
+
+    stringlist_each(c->libraries,
+		    lambda(int, (const char *lib),
+			   {
+                               char *str;
+			       str = talloc_asprintf(ctx, "%s/lib%s.jar",
+                                                     c->lib_dir, lib);
+
+                               func(str);
+
+                               TALLOC_FREE(str);
+
+			       return 0;
+			   }
+			));
     /* *INDENT-ON* */
 
     TALLOC_FREE(ctx);
@@ -254,6 +269,7 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
 
     /* Compile the scala sources */
     func(false, "pscalac -l chisel\\");
+    func(false, "\\ -L %s", c->lib_dir);
     /* *INDENT-OFF* */
     stringlist_each(l->deps,
 		    lambda(int, (const char *opt),
@@ -262,6 +278,13 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
 			       return 0;
 			   }
                     ));
+    stringlist_each(c->libraries,
+		    lambda(int, (const char *lib),
+			   {
+			       func(false, "\\ -l %s", lib);
+			       return 0;
+			   }
+			));
     /* *INDENT-ON* */
     func(false, "\\ -o %s.d/obj.jar\n", obj_path);
 
