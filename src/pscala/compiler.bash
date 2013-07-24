@@ -1,7 +1,7 @@
 set -e
 
 sources=""
-jars=""
+jars="."
 jarpath="/usr/lib $HOME/.local/lib"
 while [[ "$1" != "" ]]
 do
@@ -12,8 +12,8 @@ do
 	shift
     elif [[ "$1" == "-l" ]]
     then
-	jar="$(find $jarpath -name "$2".jar)"
-	jars="$jar $jars"
+	jar="$(find $jarpath -name "$2".jar; find $jarpath -name lib"$2".jar)"
+	jars="$jar:$jars"
 	shift
 	shift
     elif [[ "$1" == "-L" ]]

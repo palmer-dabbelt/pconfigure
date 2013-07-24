@@ -4,7 +4,8 @@ shared="false"
 mainclass="Main"
 outfile=""
 inputs=""
-jars=""
+jarpath="/usr/lib $HOME/.local/lib"
+jars="."
 while [[ "$1" != "" ]]
 do
     if [[ "$1" == "-shared" ]]
@@ -23,8 +24,13 @@ do
 	shift
     elif [[ "$1" == "-l" ]]
     then
-	jar="$(find /usr/lib $HOME/.local/lib -name "$2".jar)"
-	jars="$jar $jars"
+	jar="$(find $jarpath -name "$2".jar; find $jarpath -name lib"$2".jar)"
+	jars="$jar:$jars"
+	shift
+	shift
+    elif [[ "$1" == "-L" ]]
+    then
+	jarpath="$jarpath $2"
 	shift
 	shift
     else
