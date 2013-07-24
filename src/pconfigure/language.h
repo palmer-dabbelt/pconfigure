@@ -38,6 +38,9 @@ struct language
     char *link_str;
     char *link_cmd;
 
+    /* Shared Object Extension (so for C, jar for Java) */
+    char *so_ext;
+
     struct stringlist *compile_opts;
     struct stringlist *link_opts;
 

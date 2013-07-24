@@ -82,11 +82,12 @@ struct language *language_chisel_new(struct clopts *o, const char *name)
     language_init(&(l->l));
     l->l.name = talloc_strdup(l, "chisel");
     l->l.link_name = talloc_strdup(l, "c");
-    l->l.compiled = true;
     l->l.compile_str = talloc_strdup(l, "ChC");
     l->l.compile_cmd = talloc_strdup(l, "${CXX}");
     l->l.link_str = talloc_strdup(l, "ChLD");
     l->l.link_cmd = talloc_strdup(l, "${CXX}");
+    l->l.so_ext = talloc_strdup(l, "jar");
+    l->l.compiled = true;
     l->l.search = &language_chisel_search;
     l->l.objname = &language_chisel_objname;
     l->l.deps = &language_chisel_deps;

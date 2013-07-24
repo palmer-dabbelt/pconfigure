@@ -71,11 +71,12 @@ struct language *language_c_new(struct clopts *o, const char *name)
     language_init(&(l->l));
     l->l.name = talloc_strdup(l, "c");
     l->l.link_name = talloc_strdup(l, "c");
-    l->l.compiled = true;
     l->l.compile_str = talloc_strdup(l, "CC");
     l->l.compile_cmd = talloc_strdup(l, "${CC}");
     l->l.link_str = talloc_strdup(l, "LD");
     l->l.link_cmd = talloc_strdup(l, "${CC}");
+    l->l.so_ext = talloc_strdup(l, "so");
+    l->l.compiled = true;
     l->l.search = &language_c_search;
     l->l.objname = &language_c_objname;
     l->l.deps = &language_c_deps;

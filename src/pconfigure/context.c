@@ -174,8 +174,9 @@ int context_binary_destructor(struct context *c)
 		      ));
     stringlist_each(c->libraries, lambda(int, (const char *lib),
 			       {
-				   makefile_add_dep(c->mf, "%s/lib%s.so",
-						    c->lib_dir, lib);
+				   makefile_add_dep(c->mf, "%s/lib%s.%s",
+						    c->lib_dir, lib,
+                                                    l->so_ext);
 				   return 0;
 			       }
 		      ));
@@ -212,8 +213,9 @@ int context_binary_destructor(struct context *c)
 		      ));
     stringlist_each(c->libraries, lambda(int, (const char *lib),
 			       {
-				   makefile_add_dep(c->mf, "%s/lib%s.so",
-						    c->lib_dir, lib);
+				   makefile_add_dep(c->mf, "%s/lib%s.%s",
+						    c->lib_dir, lib,
+                                                    l->so_ext);
 				   return 0;
 			       }
 		      ));
@@ -766,8 +768,9 @@ int context_test_destructor(struct context *c)
 		      ));
     stringlist_each(c->libraries, lambda(int, (const char *lib),
 			       {
-				   makefile_add_dep(c->mf, "%s/lib%s.so",
-						    c->lib_dir, lib);
+				   makefile_add_dep(c->mf, "%s/lib%s.%s",
+						    c->lib_dir, lib,
+                                                    l->so_ext);
 				   return 0;
 			       }
 		      ));

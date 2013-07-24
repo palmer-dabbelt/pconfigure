@@ -34,9 +34,19 @@ int language_init(struct language *l)
 
     l->name = NULL;
     l->link_name = NULL;
-    l->compiled = false;
+
+    l->compile_str = NULL;
+    l->compile_cmd = NULL;
+    l->link_str = NULL;
+    l->link_cmd = NULL;
+
+    l->so_ext = NULL;
+
     l->compile_opts = stringlist_new(l);
     l->link_opts = stringlist_new(l);
+
+    l->compiled = false;
+
     l->search = NULL;
     l->objname = NULL;
     l->deps = NULL;
