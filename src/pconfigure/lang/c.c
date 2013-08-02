@@ -137,10 +137,10 @@ const char *language_c_objname(struct language *l_uncast, void *context,
     else
         suffix = "o";
 
-    o = talloc_asprintf(context, "%s/%s/%s-%s-%s.%s",
+    o = talloc_asprintf(context, "%s/%s/%s-%s-%s-%s.%s",
                         c->obj_dir, c->full_path,
                         compiler_hash, compileopts_hash, langopts_hash,
-                        suffix);
+                        c->shared_target ? "shared" : "static", suffix);
 
     TALLOC_FREE(subcontext);
     return o;
@@ -173,7 +173,7 @@ void language_c_deps(struct language *l_uncast, struct context *c,
      * includes are used by the file in question. */
     clang_argc = stringlist_size(l->l.compile_opts)
         + stringlist_size(c->compile_opts) + 2;
-    clang_argv = talloc_array(context, char *, clang_argc + 3);
+    clang_argv = talloc_array(context, char *, clang_argc + 1);
     for (i = 0; i <= clang_argc; i++)
         clang_argv[i] = NULL;
 
@@ -214,7 +214,8 @@ void language_c_deps(struct language *l_uncast, struct context *c,
     /* *INDENT-OFF* */
     tu = clang_parseTranslationUnit(index, 0,
                                     (const char *const *)clang_argv,
-                                    clang_argc, 0, 0, CXTranslationUnit_None);
+                                    clang_argc, 0, 0,
+                                    CXTranslationUnit_None);
     clang_getInclusions(tu,
 			lambda(void,
 			       (CXFile included_file,
@@ -271,6 +272,10 @@ void language_c_build(struct language *l_uncast, struct context *c,
     }
 
     func(false, "%s\\", l->l.compile_cmd);
+
+    if (c->shared_target == true)
+        func(false, "\\ -fPIC");
+
     /* *INDENT-OFF* */
     stringlist_each(l->l.compile_opts,
 		    lambda(int, (const char *opt),
@@ -323,6 +328,9 @@ void language_c_link(struct language *l_uncast, struct context *c,
         func(false, "\\ -Wl,-rpath,%s", c->lib_dir);
     else
         func(false, "\\ -Wl,-rpath,%s/%s", c->prefix, c->lib_dir);
+
+    if (c->shared_target == true)
+        func(false, "\\ -fPIC");
 
     /* *INDENT-OFF* */
     stringlist_each(c->objects,

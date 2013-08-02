@@ -66,6 +66,7 @@ struct context *context_new_defaults(struct clopts *o, void *context,
     c->prefix = talloc_strdup(c, "/usr/local");
     c->compile_opts = stringlist_new(c);
     c->link_opts = stringlist_new(c);
+    c->shared_target = false;
     c->mf = talloc_reference(c, mf);
     c->ll = talloc_reference(c, ll);
     c->s = s;
@@ -93,6 +94,7 @@ struct context *context_new_binary(struct context *parent, void *context,
     c->prefix = talloc_reference(c, parent->prefix);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
+    c->shared_target = false;
     c->mf = talloc_reference(c, parent->mf);
     c->ll = talloc_reference(c, parent->ll);
     c->s = parent->s;
@@ -290,6 +292,7 @@ struct context *context_new_library(struct context *parent, void *context,
     c->link_opts = stringlist_copy(parent->link_opts, c);
     c->mf = talloc_reference(c, parent->mf);
     c->ll = talloc_reference(c, parent->ll);
+    c->shared_target = true;
     c->s = parent->s;
     c->language = NULL;
     c->objects = stringlist_new(c);
@@ -470,6 +473,7 @@ struct context *context_new_header(struct context *parent, void *context,
     c->prefix = talloc_reference(c, parent->prefix);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
+    c->shared_target = false;
     c->mf = talloc_reference(c, parent->mf);
     c->ll = talloc_reference(c, parent->ll);
     c->s = parent->s;
@@ -539,6 +543,7 @@ struct context *context_new_source(struct context *parent, void *context,
     c->prefix = talloc_reference(c, parent->prefix);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
+    c->shared_target = parent->shared_target;
     c->mf = talloc_reference(c, parent->mf);
     c->ll = talloc_reference(c, parent->ll);
     c->s = parent->s;
@@ -575,6 +580,7 @@ struct context *context_new_fullsrc(struct context *parent, void *context,
     c->prefix = talloc_reference(c, parent->prefix);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
+    c->shared_target = parent->shared_target;
     c->mf = talloc_reference(c, parent->mf);
     c->ll = talloc_reference(c, parent->ll);
     c->s = parent->s;
@@ -728,6 +734,7 @@ struct context *context_new_test(struct context *parent, void *context,
     c->link_opts = stringlist_copy(parent->link_opts, c);
     c->mf = talloc_reference(c, parent->mf);
     c->ll = talloc_reference(c, parent->ll);
+    c->shared_target = false;
     c->s = parent->s;
     c->language = NULL;
     c->objects = stringlist_new(c);
@@ -904,13 +911,16 @@ int context_add_library(struct context *c, const char *opt)
         lib_deps = liblist_new(lib_deps_ctx);
     }
 
+    /* *INDENT-OFF* */
     liblist_each(lib_deps, opt, lambda(int, (const char *dep),
                                        {
-                                       stringlist_add_ifnew(c->libraries,
-                                                            dep);
-                                       return 0;
+                                           stringlist_add_ifnew(c->libraries,
+                                                                dep);
+                                           return 0;
                                        }
-                 ));
+                     ));
+    /* *INDENT-ON* */
+
     return 0;
 }
 

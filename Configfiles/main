@@ -43,8 +43,6 @@ BINARIES    += ptest
 SOURCES	    += ptest.bash
 
 LIBRARIES   += libpinclude.so
-COMPILEOPTS += -fPIC
-LINKOPTS    += -fPIC
 SOURCES     += libpinclude/library.c
 
 BINARIES    += pinclude

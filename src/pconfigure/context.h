@@ -88,6 +88,11 @@ struct context
     struct stringlist *compile_opts;
     struct stringlist *link_opts;
 
+    /* This is set to true when the target is a shared library,
+     * otherwise false. This is TRUE when the current context is a
+     * source and its parent is a shared library. */
+    bool shared_target;
+
     /* The objects to be linked into this file (on sources, in the case of a
      * non-compiled language. */
     struct stringlist *objects;
