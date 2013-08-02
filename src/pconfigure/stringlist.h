@@ -47,6 +47,7 @@ extern struct stringlist *stringlist_copy(struct stringlist *l,
 
 /* Adds an entry to the given stringlist */
 extern int stringlist_add(struct stringlist *l, const char *to_add);
+extern int stringlist_add_ifnew(struct stringlist *l, const char *to_add);
 
 /* Removes a string from the given list */
 extern int stringlist_del(struct stringlist *l, const char *to_del);

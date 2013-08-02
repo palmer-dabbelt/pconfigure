@@ -29,12 +29,12 @@
 
 static void setup_infiles(struct clopts *o);
 
-struct clopts *clopts_new(int argc, char **argv)
+struct clopts *clopts_new(void *ctx, int argc, char **argv)
 {
     struct clopts *o;
     int i;
 
-    o = talloc(NULL, struct clopts);
+    o = talloc(ctx, struct clopts);
     if (o == NULL)
         return NULL;
 

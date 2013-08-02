@@ -62,6 +62,14 @@ int stringlist_add(struct stringlist *l, const char *to_add)
     return 0;
 }
 
+int stringlist_add_ifnew(struct stringlist *l, const char *to_add)
+{
+    if (stringlist_include(l, to_add))
+        return 1;
+
+    return stringlist_add(l, to_add);
+}
+
 struct stringlist *stringlist_copy(struct stringlist *l, void *context)
 {
     struct stringlist *new;

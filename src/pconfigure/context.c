@@ -22,6 +22,7 @@
 #include "context.h"
 #include "stringlist.h"
 #include "lambda.h"
+#include "liblist.h"
 #include <assert.h>
 #include <string.h>
 
@@ -31,11 +32,18 @@
 #include "extern/talloc.h"
 #endif
 
+/* This holds a list of the dependencies of every library in the
+ * system. */
+static void *lib_deps_ctx = NULL;
+static struct liblist *lib_deps = NULL;
+
 static int context_binary_destructor(struct context *c);
 static int context_library_destructor(struct context *c);
 static int context_header_destructor(struct context *c);
 static int context_source_destructor(struct context *c);
 static int context_test_destructor(struct context *c);
+
+static void context_destructor(void);
 
 struct context *context_new_defaults(struct clopts *o, void *context,
                                      struct makefile *mf,
@@ -303,6 +311,7 @@ int context_library_destructor(struct context *c)
     char *tmp;
     void *context;
     const char *hash_langlinkopts, *hash_linkopts, *hash_objs;
+    char *sname;
 
     assert(c->type == CONTEXT_TYPE_LIBRARY);
 #ifdef DEBUG
@@ -399,6 +408,44 @@ int context_library_destructor(struct context *c)
     makefile_add_uninstall(c->mf, tmp);
 
     makefile_add_distclean(c->mf, c->lib_dir);
+
+    /* Add this library to the big global list of libraries.  The idea
+     * here is that we can handle recursive library dependencies this
+     * way. */
+    sname = talloc_strndup(context, c->called_path + 3,
+                           strstr(c->called_path + 3, ".")
+                           - (c->called_path + 3));
+
+    if (lib_deps == NULL) {
+        lib_deps_ctx = talloc_init("context_library_destructor(): lib_deps");
+        atexit(&context_destructor);
+        lib_deps = liblist_new(lib_deps_ctx);
+    }
+
+    liblist_add(lib_deps, sname);
+
+    /* *INDENT-OFF* */
+    stringlist_each(c->libraries,
+                    lambda(int, (const char *dep),
+                           {
+                               liblist_add_dep_ifnew(lib_deps,
+                                                     sname,
+                                                     dep);
+
+                               liblist_each(lib_deps, dep,
+                                            lambda(int, (const char *dep),
+                                                   {
+                                                       liblist_add_dep_ifnew(lib_deps,
+                                                                             sname,
+                                                                             dep);
+                                                       return 0;
+                                                   };
+                                                ));
+
+                               return 0;
+                           }
+                        ));
+    /* *INDENT-ON* */
 
     TALLOC_FREE(context);
     return 0;
@@ -840,10 +887,34 @@ int context_add_linkopt(struct context *c, const char *opt)
 
 int context_add_library(struct context *c, const char *opt)
 {
+    int out;
+
     if (c == NULL)
         return -1;
     if (opt == NULL)
         return -1;
 
-    return stringlist_add(c->libraries, opt);
+    out = stringlist_add_ifnew(c->libraries, opt);
+    if (out < 0)
+        return out;
+
+    if (lib_deps == NULL) {
+        lib_deps_ctx = talloc_init("context_add_library(): lib_deps");
+        atexit(&context_destructor);
+        lib_deps = liblist_new(lib_deps_ctx);
+    }
+
+    liblist_each(lib_deps, opt, lambda(int, (const char *dep),
+                                       {
+                                       stringlist_add_ifnew(c->libraries,
+                                                            dep);
+                                       return 0;
+                                       }
+                 ));
+    return 0;
+}
+
+void context_destructor(void)
+{
+    talloc_free(lib_deps_ctx);
 }

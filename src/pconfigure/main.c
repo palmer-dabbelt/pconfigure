@@ -74,12 +74,17 @@ struct languagelist *ll;
 int main(int argc, char **argv)
 {
     int i;
+    void *root_context;
 
     /* talloc initialization, needs to come before any talloc calls */
     talloc_enable_leak_report();
     talloc_set_log_stderr();
 
-    o = clopts_new(argc, argv);
+    /* Generates a root context, which is used to track all the memory
+     * allocated by talloc. */
+    root_context = talloc_init("main(): root_context");
+
+    o = clopts_new(root_context, argc, argv);
     if (o == NULL) {
 #ifdef DEBUG
         fprintf(stderr, "Internal error allocating clopts\n");
@@ -139,6 +144,10 @@ int main(int argc, char **argv)
     }
 
     TALLOC_FREE(o);
+
+    /* Remove this and you'll end up with a leak report. */
+    TALLOC_FREE(root_context);
+
     return 0;
 }
 

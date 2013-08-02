@@ -39,6 +39,6 @@ struct clopts
 
 /* Parses the command-line options and creates a new (NULL-parented) list of
  * options. */
-extern struct clopts *clopts_new(int argc, char **argv);
+extern struct clopts *clopts_new(void *ctx, int argc, char **argv);
 
 #endif
