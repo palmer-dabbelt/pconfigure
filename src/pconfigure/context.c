@@ -460,7 +460,7 @@ struct context *context_new_header(struct context *parent, void *context,
     struct context *c;
 
     c = talloc(context, struct context);
-    c->type = CONTEXT_TYPE_LIBRARY;
+    c->type = CONTEXT_TYPE_HEADER;
     c->parent = c;
     c->test_parent = NULL;
     c->bin_dir = talloc_reference(c, parent->bin_dir);
