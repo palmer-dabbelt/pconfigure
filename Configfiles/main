@@ -6,7 +6,11 @@ COMPILEOPTS += -Wno-trampolines
 COMPILEOPTS += -Wno-unused-parameter
 COMPILEOPTS += -std=gnu99
 COMPILEOPTS += -DPCONFIGURE_VERSION=\"0.3.0git\"
+
 LANGUAGES   += bash
+
+LANGUAGES   += pkgconfig
+LINKOPTS    += s/@@pinclude_version@@/0.3.0git/g
 
 BINARIES    += pconfigure
 LINKOPTS    += `pllvm-config --optional --have CLANG --libs`
@@ -45,6 +49,9 @@ SOURCES	    += ptest.bash
 LIBRARIES   += libpinclude.so
 SOURCES     += libpinclude/library.c
 
+LIBRARIES   += pkgconfig/pinclude.pc
+SOURCES     += libpinclude/pinclude.pc
+
 BINARIES    += pinclude
 DEPLIBS     += pinclude
 SOURCES     += pinclude.c
@@ -60,4 +67,3 @@ SOURCES     += pllvm-config.bash
 
 BINARIES    += pwinegcc
 SOURCES	    += pwinegcc.bash
-

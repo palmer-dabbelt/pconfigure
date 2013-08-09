@@ -375,6 +375,14 @@ int context_library_destructor(struct context *c)
 			       }
 		      ));
     /* *INDENT-ON* */
+
+    /* If the language isn't compiled then we won't detect any changes
+     * when we try and build it -- it'll just get copied.  In this
+     * case we're just going to force a dependency on the Makefile, as
+     * that'll ensure it gets built. */
+    if (!language_needs_compile(l, c))
+        makefile_add_dep(c->mf, "Makefile");
+
     makefile_end_deps(c->mf);
 
     makefile_start_cmds(c->mf);

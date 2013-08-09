@@ -26,6 +26,7 @@
 #include "lang/asm.h"
 #include "lang/scala.h"
 #include "lang/chisel.h"
+#include "lang/pkgconfig.h"
 #include <string.h>
 #include <assert.h>
 
@@ -87,6 +88,8 @@ int languagelist_select(struct languagelist *ll, const char *name)
     if ((l = language_scala_new(o, name)) != NULL)
         l_nonull = l;
     if ((l = language_chisel_new(o, name)) != NULL)
+        l_nonull = l;
+    if ((l = language_pkgconfig_new(o, name)) != NULL)
         l_nonull = l;
 
     /* If no language was found then we have to give up entirely */
