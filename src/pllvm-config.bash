@@ -64,5 +64,5 @@ then
 fi
 
 # Outputs the results of pkg-config
-echo $stdout
+echo $stdout | sed 's@-DNDEBUG@@g'
 exit 0
