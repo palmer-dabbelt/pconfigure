@@ -154,7 +154,7 @@ void language_slib(struct language *l, struct context *c,
                    void (*func) (bool, const char *, ...))
 {
     assert(l != NULL);
-    assert(l->link != NULL);
+    assert(l->slib != NULL);
     l->slib(l, c, func);
 }
 
