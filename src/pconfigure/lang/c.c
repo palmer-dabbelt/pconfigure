@@ -428,6 +428,7 @@ void language_c_extras(struct language *l_uncast, struct context *c,
 			     char *cfile;
 			     char *sfile;
 			     char *hfile;
+			     char *cxxfile;
 
 			     va_start(args, format);
 			     hfile = talloc_vasprintf(context, format, args);
@@ -452,8 +453,32 @@ void language_c_extras(struct language *l_uncast, struct context *c,
 				 if (access(sfile, R_OK) == 0)
 				     func(sfile);
 			     
+			     va_start(args, format);
+			     cxxfile = talloc_array(context, char,
+                                                    strlen(cfile) + 20);
+			     va_end(args);
+
+			     memset(cxxfile, 0, strlen(cfile) + 10);
+			     strncpy(cxxfile, cfile, strlen(cfile) - 2);
+			     strcat(cxxfile, ".c++");
+			     if (access(cxxfile, R_OK) == 0)
+				 func(cxxfile);
+
+			     memset(cxxfile, 0, strlen(cfile) + 10);
+			     strncpy(cxxfile, cfile, strlen(cfile) - 2);
+			     strcat(cxxfile, ".cxx");
+			     if (access(cxxfile, R_OK) == 0)
+				 func(cxxfile);
+
+			     memset(cxxfile, 0, strlen(cfile) + 10);
+			     strncpy(cxxfile, cfile, strlen(cfile) - 2);
+			     strcat(cxxfile, ".cpp");
+			     if (access(cxxfile, R_OK) == 0)
+				 func(cxxfile);
+
 			     talloc_unlink(context, cfile);
 			     talloc_unlink(context, hfile);
+			     talloc_unlink(context, cxxfile);
 			 }
 		      ));
     /* *INDENT-ON* */

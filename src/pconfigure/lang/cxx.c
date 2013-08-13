@@ -97,6 +97,7 @@ void language_cxx_extras(struct language *l_uncast, struct context *c,
 			     va_start(args, NULL);
 
 			     cfile = talloc_vasprintf(context, format, args);
+
 			     cxxfile = talloc_array(context, char,
 						    strlen(cfile) + 20);
 
@@ -114,6 +115,24 @@ void language_cxx_extras(struct language *l_uncast, struct context *c,
 
 			     memset(cxxfile, 0, strlen(cfile) + 10);
 			     strncpy(cxxfile, cfile, strlen(cfile) - 2);
+			     strcat(cxxfile, ".cpp");
+			     if (access(cxxfile, R_OK) == 0)
+				 func(cxxfile);
+
+			     memset(cxxfile, 0, strlen(cfile) + 10);
+			     strncpy(cxxfile, cfile, strlen(cfile) - 4);
+			     strcat(cxxfile, ".c++");
+			     if (access(cxxfile, R_OK) == 0)
+				 func(cxxfile);
+
+			     memset(cxxfile, 0, strlen(cfile) + 10);
+			     strncpy(cxxfile, cfile, strlen(cfile) - 4);
+			     strcat(cxxfile, ".cxx");
+			     if (access(cxxfile, R_OK) == 0)
+				 func(cxxfile);
+
+			     memset(cxxfile, 0, strlen(cfile) + 10);
+			     strncpy(cxxfile, cfile, strlen(cfile) - 4);
 			     strcat(cxxfile, ".cpp");
 			     if (access(cxxfile, R_OK) == 0)
 				 func(cxxfile);
