@@ -2,7 +2,8 @@ LANGUAGES   += c
 COMPILEOPTS += -Wall
 COMPILEOPTS += -Wextra
 COMPILEOPTS += -Werror
-COMPILEOPTS += -Wno-trampolines
+#COMPILEOPTS += -Wno-trampolines
+COMPILEOPTS += `pgcc-config gcc 4.5 gt -Wno-trampolines`
 COMPILEOPTS += -Wno-unused-parameter
 COMPILEOPTS += -std=gnu99
 COMPILEOPTS += -DPCONFIGURE_VERSION=\"0.3.0git\"
