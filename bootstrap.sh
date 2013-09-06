@@ -27,7 +27,7 @@ $BOOTSTRAP_DIR/pbashc "$SOURCE_PATH"src/pllvm-config.bash \
 $BOOTSTRAP_DIR/pbashc "$SOURCE_PATH"src/pclean.bash \
     -o $BOOTSTRAP_DIR/pclean
 
-$BOOTSTRAP_DIR/pgcc-config "$SOURCE_PATH"src/pgcc-config.bash \
+$BOOTSTRAP_DIR/pbashc "$SOURCE_PATH"src/pgcc-config.bash \
     -o $BOOTSTRAP_DIR/pgcc-config
 
 export PATH="$BOOTSTRAP_DIR:$PATH"
