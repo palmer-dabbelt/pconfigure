@@ -6,6 +6,22 @@ then
     set -ex
 fi
 
+if [[ "$1" == "--prefix" ]]
+then
+    if test -f Configfiles/local
+    then
+        echo "Configfiles/local exists, not overwriting"
+        exit 1
+    fi
+
+    cat > Configfiles/local <<EOF
+PREFIX = $2
+EOF
+
+    shift
+    shift
+fi
+
 SOURCE_PATH="$1"
 BOOTSTRAP_DIR=bootstrap_bin
 
@@ -86,7 +102,7 @@ prefix=`cat "$SOURCE_PATH"src/pconfigure/context.c | grep prefix | head -1 | cut
 echo "run 'make install' to install this to the system"
 echo -e "\tby default it is installed into $prefix"
 
-prefix=`cat "$SOURCE_PATH"Configfiles/{local,main} | grep PREFIX | head | cut -d '=' -f 2`
+prefix=`cat "$SOURCE_PATH"Configfiles/{local,main} | grep PREFIX | head -1 | cut -d '=' -f 2`
 prefix=`echo $prefix`
 if [[ "$prefix" != "" ]]
 then
