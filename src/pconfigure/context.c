@@ -32,6 +32,10 @@
 #include "extern/talloc.h"
 #endif
 
+#ifndef DEFAULT_PREFIX
+#define DEFAULT_PREFIX "/usr/local"
+#endif
+
 /* This holds a list of the dependencies of every library in the
  * system. */
 static void *lib_deps_ctx = NULL;
@@ -63,7 +67,7 @@ struct context *context_new_defaults(struct clopts *o, void *context,
     c->src_dir = talloc_asprintf(c, "%ssrc", o->source_path);
     c->chk_dir = talloc_strdup(c, "check");
     c->tst_dir = talloc_asprintf(c, "%stest", o->source_path);
-    c->prefix = talloc_strdup(c, "/usr/local");
+    c->prefix = talloc_strdup(c, DEFAULT_PREFIX);
     c->compile_opts = stringlist_new(c);
     c->link_opts = stringlist_new(c);
     c->shared_target = false;
