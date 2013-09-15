@@ -53,6 +53,7 @@ LIBRARIES   += libpinclude.so
 SOURCES     += libpinclude/library.c
 
 LIBRARIES   += pkgconfig/pinclude.pc
+LINKOPTS    += `ppkg-config --optional --have TALLOC talloc --pkgconfig`
 SOURCES     += libpinclude/pinclude.pc
 
 BINARIES    += pinclude

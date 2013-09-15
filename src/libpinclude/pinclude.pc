@@ -6,7 +6,7 @@ includedir=${prefix}/@@pconfigure_hdrdir@@
 Name: pinclude
 Description: A simple C preprocessor library
 Version: @@pinclude_version@@
-Requires: talloc
+Requires: @@HAVE_TALLOC@@
 Libs: -Wl,-rpath,${libdir} -L${libdir} -lpinclude
 Cflags: -I${includedir} 
 URL: http://dabbelt.com/~palmer/software/pconfigure/
