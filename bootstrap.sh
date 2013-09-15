@@ -77,7 +77,6 @@ gcc --std=gnu99 -Wall -Werror -Wno-trampolines -g \
     `find "$SOURCE_PATH"src/pconfigure/ -iname "*.c"` \
     `find "$SOURCE_PATH"src/libpinclude/ -iname "*.c"` \
     $extrasrc $talloc $clang \
-    -DPCONFIGURE_VERSION=\"bootstrap\" \
     -Isrc/extern/ -Iinclude/ $extrahdr \
     -I$BOOTSTRAP_DIR \
     -o "$BOOTSTRAP_DIR/pconfigure" || exit $?
