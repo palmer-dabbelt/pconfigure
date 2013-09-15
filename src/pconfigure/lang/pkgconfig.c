@@ -114,7 +114,31 @@ const char *language_pkgconfig_objname(struct language *l_uncast,
 void language_pkgconfig_deps(struct language *l_uncast, struct context *c,
                              void (*func) (const char *, ...))
 {
+    struct language_pkgconfig *l;
     char *dirs[1];
+
+    l = talloc_get_type(l_uncast, struct language_pkgconfig);
+    if (l == NULL)
+        return;
+
+    /* *INDENT-OFF* */
+    stringlist_each(l->l.link_opts,
+		    lambda(int, (const char *opt),
+			   {
+                               if (strncmp(opt, "-S", 2) == 0)
+                                   func("%s", opt + 2);
+			       return 0;
+			   }
+                    ));
+    stringlist_each(c->link_opts,
+		    lambda(int, (const char *opt),
+			   {
+                               if (strncmp(opt, "-S", 2) == 0)
+                                   func("%s", opt + 2);
+			       return 0;
+			   }
+                    ));
+    /* *INDENT-ON* */
 
     dirs[0] = NULL;
     /* *INDENT-OFF* */
@@ -176,14 +200,20 @@ void language_pkgconfig_slib(struct language *l_uncast, struct context *c,
     stringlist_each(l->l.link_opts,
 		    lambda(int, (const char *opt),
 			   {
-			       func(false, "\\ | sed '%s'", opt);
+                               if (strncmp(opt, "-S", 2) == 0)
+                                   func(false, "\\ | sed `cat %s`", opt + 2);
+                               else
+                                   func(false, "\\ | sed '%s'", opt);
 			       return 0;
 			   }
                     ));
     stringlist_each(c->link_opts,
 		    lambda(int, (const char *opt),
 			   {
-			       func(false, "\\ | sed '%s'", opt);
+                               if (strncmp(opt, "-S", 2) == 0)
+                                   func(false, "\\ | sed `cat %s`", opt + 2);
+                               else
+                                   func(false, "\\ | sed '%s'", opt);
 			       return 0;
 			   }
                     ));
