@@ -82,6 +82,7 @@ struct context
     char *src_dir;
     char *chk_dir;
     char *tst_dir;
+    char *gen_dir;
     char *prefix;
 
     /* Options specific to this context */

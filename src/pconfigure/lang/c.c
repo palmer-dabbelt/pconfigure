@@ -172,14 +172,15 @@ void language_c_deps(struct language *l_uncast, struct context *c,
     /* Creates the argc/argv for a call to clang that will determine which
      * includes are used by the file in question. */
     clang_argc = stringlist_size(l->l.compile_opts)
-        + stringlist_size(c->compile_opts) + 2;
+        + stringlist_size(c->compile_opts) + 3;
     clang_argv = talloc_array(context, char *, clang_argc + 1);
     for (i = 0; i <= clang_argc; i++)
         clang_argv[i] = NULL;
 
     clang_argv[0] = talloc_strdup(clang_argv, c->full_path);
     clang_argv[1] = talloc_asprintf(clang_argv, "-I%s", c->hdr_dir);
-    i = 2;
+    clang_argv[2] = talloc_asprintf(clang_argv, "-I%s", c->gen_dir);
+    i = 3;
     /* *INDENT-OFF* */
     stringlist_each(l->l.compile_opts,
 		    lambda(int, (const char *str),
@@ -293,6 +294,7 @@ void language_c_build(struct language *l_uncast, struct context *c,
                     ));
     /* *INDENT-ON* */
     func(false, "\\ -I%s", c->hdr_dir);
+    func(false, "\\ -I%s", c->gen_dir);
     func(false, "\\ -c %s -o %s\n", c->full_path, obj_path);
 
     TALLOC_FREE(context);

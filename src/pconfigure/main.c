@@ -21,6 +21,7 @@
 
 #include "clopts.h"
 #include "contextstack.h"
+#include "generate.h"
 #include "languagelist.h"
 #include "makefile.h"
 #include <stdlib.h>
@@ -62,6 +63,7 @@ static int parsefunc_linker(const char *op, const char *right);
 static int parsefunc_libdir(const char *op, const char *right);
 static int parsefunc_tests(const char *op, const char *right);
 static int parsefunc_testsrc(const char *op, const char *right);
+static int parsefunc_generate(const char *op, const char *right);
 
 /* This is global data to avoid having really long parsefunc_* function calls */
 static struct clopts *o;
@@ -364,6 +366,8 @@ int parse_select(const char *left, const char *op, char *right)
         return parsefunc_tests(op, right);
     if (strcmp(left, "TESTSRC") == 0)
         return parsefunc_testsrc(op, right);
+    if (strcmp(left, "GENERATE") == 0)
+        return parsefunc_generate(op, right);
 
     return -2;
 }
@@ -883,4 +887,22 @@ int parsefunc_testsrc(const char *op, const char *right)
         return err;
 
     return parsefunc_sources(op, right);
+}
+
+int parsefunc_generate(const char *op, const char *right)
+{
+    void *ctx;
+    struct context *c;
+
+    if (strcmp(op, "+=") != 0) {
+        fprintf(stderr, "We only support += for GENERATE\n");
+        return -1;
+    }
+
+    ctx = talloc_new(NULL);
+    c = context_new_defaults(o, ctx, mf, ll, s);
+    generate(right, c, mf);
+    TALLOC_FREE(ctx);
+
+    return 0;
 }

@@ -67,6 +67,7 @@ struct context *context_new_defaults(struct clopts *o, void *context,
     c->src_dir = talloc_asprintf(c, "%ssrc", o->source_path);
     c->chk_dir = talloc_strdup(c, "check");
     c->tst_dir = talloc_asprintf(c, "%stest", o->source_path);
+    c->gen_dir = talloc_strdup(c, "obj/proc");
     c->prefix = talloc_strdup(c, DEFAULT_PREFIX);
     c->compile_opts = stringlist_new(c);
     c->link_opts = stringlist_new(c);
@@ -95,6 +96,7 @@ struct context *context_new_binary(struct context *parent, void *context,
     c->src_dir = talloc_reference(c, parent->src_dir);
     c->chk_dir = talloc_reference(c, parent->chk_dir);
     c->tst_dir = talloc_reference(c, parent->tst_dir);
+    c->gen_dir = talloc_reference(c, parent->gen_dir);
     c->prefix = talloc_reference(c, parent->prefix);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
@@ -292,6 +294,7 @@ struct context *context_new_library(struct context *parent, void *context,
     c->prefix = talloc_reference(c, parent->prefix);
     c->chk_dir = talloc_reference(c, parent->chk_dir);
     c->tst_dir = talloc_reference(c, parent->tst_dir);
+    c->gen_dir = talloc_reference(c, parent->gen_dir);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
     c->mf = talloc_reference(c, parent->mf);
@@ -482,6 +485,7 @@ struct context *context_new_header(struct context *parent, void *context,
     c->src_dir = talloc_reference(c, parent->src_dir);
     c->chk_dir = talloc_reference(c, parent->chk_dir);
     c->tst_dir = talloc_reference(c, parent->tst_dir);
+    c->gen_dir = talloc_reference(c, parent->gen_dir);
     c->prefix = talloc_reference(c, parent->prefix);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
@@ -552,6 +556,7 @@ struct context *context_new_source(struct context *parent, void *context,
     c->src_dir = talloc_reference(c, parent->src_dir);
     c->chk_dir = talloc_reference(c, parent->chk_dir);
     c->tst_dir = talloc_reference(c, parent->tst_dir);
+    c->gen_dir = talloc_reference(c, parent->gen_dir);
     c->prefix = talloc_reference(c, parent->prefix);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
@@ -589,6 +594,7 @@ struct context *context_new_fullsrc(struct context *parent, void *context,
     c->src_dir = talloc_reference(c, parent->src_dir);
     c->chk_dir = talloc_reference(c, parent->chk_dir);
     c->tst_dir = talloc_reference(c, parent->tst_dir);
+    c->gen_dir = talloc_reference(c, parent->gen_dir);
     c->prefix = talloc_reference(c, parent->prefix);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
@@ -741,6 +747,7 @@ struct context *context_new_test(struct context *parent, void *context,
                                  parent->called_path);
     c->chk_dir = talloc_reference(c, parent->chk_dir);
     c->tst_dir = talloc_reference(c, parent->tst_dir);
+    c->gen_dir = talloc_reference(c, parent->gen_dir);
     c->prefix = talloc_reference(c, parent->prefix);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
