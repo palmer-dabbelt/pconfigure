@@ -54,18 +54,20 @@ CXTranslationUnit clang_parseTranslationUnit(CXIndex CIdx,
 {
     CXTranslationUnit out;
     const char *src;
-    const char *hdr;
     int i;
+    int hdr_i;
 
     out = malloc(sizeof(*out));
     out->filename = NULL;
-    out->include_path = NULL;
+
+    for (i = 0; i < CLANG_INCLUDE_COUNT; i++)
+        out->include_path[i] = NULL;
 
     src = NULL;
-    hdr = NULL;
+    hdr_i = 0;
     for (i = 0; i < argc; i++) {
         if (strncmp(argv[i], "-I", 2) == 0)
-            hdr = argv[i] + 2;
+            out->include_path[hdr_i++] = strdup(argv[i] + 2);
 
         if (argv[i][0] == '-')
             continue;
@@ -77,9 +79,6 @@ CXTranslationUnit clang_parseTranslationUnit(CXIndex CIdx,
     if (src != NULL)
         out->filename = strdup(src);
 
-    if (hdr != NULL)
-        out->include_path = strdup(hdr);
-
     return out;
 }
 
@@ -87,8 +86,9 @@ void clang_getInclusions(CXTranslationUnit tu,
                          CXInclusionVisitor visitor, CXClientData client_data)
 {
     struct pinclude_visitor_args args;
-    char *dirs[2];
+    char *dirs[CLANG_INCLUDE_COUNT + 1];
     struct CXFile source_file;
+    int i;
 
     args.visitor = visitor;
     args.client_data = client_data;
@@ -97,8 +97,10 @@ void clang_getInclusions(CXTranslationUnit tu,
     visitor(&source_file, NULL, 0, client_data);
     free(source_file.filename);
 
-    dirs[0] = tu->include_path;
-    dirs[1] = NULL;
+    for (i = 0; i < CLANG_INCLUDE_COUNT; i++)
+        dirs[i] = tu->include_path[i];
+    dirs[i] = NULL;
+
     pinclude_list(tu->filename, &pinclude_visitor, &args, dirs);
 }
 
@@ -141,11 +143,14 @@ void clang_disposeString(CXString string)
 
 void clang_disposeTranslationUnit(CXTranslationUnit tu)
 {
+    int i;
+
     if (tu->filename != NULL)
         free(tu->filename);
 
-    if (tu->include_path != NULL)
-        free(tu->include_path);
+    for (i = 0; i < CLANG_INCLUDE_COUNT; i++)
+        if (tu->include_path[i] != NULL)
+            free(tu->include_path[i]);
 
     free(tu);
 }
