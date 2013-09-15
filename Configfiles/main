@@ -10,9 +10,10 @@ COMPILEOPTS += -std=gnu99
 LANGUAGES   += bash
 
 LANGUAGES   += pkgconfig
-LINKOPTS    += s/@@pinclude_version@@/0.3.0/g
+LINKOPTS    += -Sobj/proc/version-pc.sed
 
 GENERATE    += version.h
+GENERATE    += version-pc.sed
 
 BINARIES    += pconfigure
 LINKOPTS    += `pllvm-config --optional --have CLANG --libs`
