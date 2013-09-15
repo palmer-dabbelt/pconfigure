@@ -28,11 +28,6 @@
 #endif
 #include <string.h>
 
-#ifdef VERSION_GIT
-#undef PCONFIGURE_VERSION
-#define PCONFIGURE_VERSION VERSION_GIT
-#endif
-
 static void setup_infiles(struct clopts *o);
 
 struct clopts *clopts_new(void *ctx, int argc, char **argv)

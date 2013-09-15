@@ -6,7 +6,6 @@ COMPILEOPTS += -Werror
 COMPILEOPTS += `pgcc-config gcc 4.5 gt -Wno-trampolines`
 COMPILEOPTS += -Wno-unused-parameter
 COMPILEOPTS += -std=gnu99
-COMPILEOPTS += -DPCONFIGURE_VERSION=\"0.3.0\"
 
 LANGUAGES   += bash
 

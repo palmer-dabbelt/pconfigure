@@ -1,5 +1,7 @@
 #!/bin/bash
 
+version="v0.3.0"
+
 if [[ "$1" == "--deps" ]]
 then
     ref="$(cat .git/HEAD | cut -d' ' -f2)"
@@ -17,9 +19,17 @@ then
     gv=`git describe`
     if [[ "$?" == "0" ]]
     then
-        echo "#define VERSION_GIT \"${gv}-git\""
+        if [[ "$(echo "$gv" | cut -d'-' -f1)" != "$version" ]]
+        then
+            echo "$0 has mismatched version" >&2
+            exit 1
+        fi
+
+        version="${gv}-git"
     fi
 
+    echo "#define PCONFIGURE_VERSION \"${version}\""
+    
     exit 0
 fi
 
