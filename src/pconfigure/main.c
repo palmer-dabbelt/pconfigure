@@ -87,12 +87,12 @@ int main(int argc, char **argv)
     root_context = talloc_init("main(): root_context");
 
     o = clopts_new(root_context, argc, argv);
+
+    /* clopts are NULL when a short print is triggered -- this just
+     * cleans up so there isn't a talloc error message. */
     if (o == NULL) {
-#ifdef DEBUG
-        fprintf(stderr, "Internal error allocating clopts\n");
-#endif
-        TALLOC_FREE(o);
-        return 1;
+        TALLOC_FREE(root_context);
+        return 0;
     }
 
     mf = makefile_new(o);

@@ -73,7 +73,7 @@ struct clopts *clopts_new(void *ctx, int argc, char **argv)
         else if (strcmp(argv[i], "--version") == 0) {
             printf("pconfigure %s\n", PCONFIGURE_VERSION);
             TALLOC_FREE(o);
-            exit(0);
+            return NULL;
         }
         else if (strcmp(argv[i], "--sourcepath") == 0) {
             talloc_free((char *)o->source_path);
