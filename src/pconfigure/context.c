@@ -387,8 +387,22 @@ int context_library_destructor(struct context *c)
      * when we try and build it -- it'll just get copied.  In this
      * case we're just going to force a dependency on the Makefile, as
      * that'll ensure it gets built. */
-    if (!language_needs_compile(l, c))
+    if (!language_needs_compile(l, c)) {
         makefile_add_dep(c->mf, "Makefile");
+
+        /* *INDENT-OFF* */
+        language_deps(l, c, lambda(void, (const char *format, ...),
+                                   {
+                                       va_list args;
+                                       va_start(args, NULL);
+                                       makefile_vadd_dep(c->mf,
+                                                         format, args);
+                                       va_end(args);
+                                   }
+                          ));
+        /* *INDENT-ON* */
+
+    }
 
     makefile_end_deps(c->mf);
 
