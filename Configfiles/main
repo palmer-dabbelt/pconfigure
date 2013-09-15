@@ -6,12 +6,14 @@ COMPILEOPTS += -Werror
 COMPILEOPTS += `pgcc-config gcc 4.5 gt -Wno-trampolines`
 COMPILEOPTS += -Wno-unused-parameter
 COMPILEOPTS += -std=gnu99
-COMPILEOPTS += -DPCONFIGURE_VERSION=\"0.3.0git\"
+COMPILEOPTS += -DPCONFIGURE_VERSION=\"0.3.0\"
 
 LANGUAGES   += bash
 
 LANGUAGES   += pkgconfig
-LINKOPTS    += s/@@pinclude_version@@/0.3.0git/g
+LINKOPTS    += s/@@pinclude_version@@/0.3.0/g
+
+GENERATE    += version.h
 
 BINARIES    += pconfigure
 LINKOPTS    += `pllvm-config --optional --have CLANG --libs`

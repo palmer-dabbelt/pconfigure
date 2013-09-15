@@ -20,12 +20,18 @@
  */
 
 #include "clopts.h"
+#include "version.h"
 #ifdef HAVE_TALLOC
 #include <talloc.h>
 #else
 #include "extern/talloc.h"
 #endif
 #include <string.h>
+
+#ifdef VERSION_GIT
+#undef PCONFIGURE_VERSION
+#define PCONFIGURE_VERSION VERSION_GIT
+#endif
 
 static void setup_infiles(struct clopts *o);
 

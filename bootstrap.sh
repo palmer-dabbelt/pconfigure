@@ -33,7 +33,10 @@ mkdir -p $BOOTSTRAP_DIR
 #############################################################################
 # Manually builds some of the utilities                                     #
 #############################################################################
+./src/version.h.proc --generate > $BOOTSTRAP_DIR/version.h
+
 gcc --std=gnu99 `find "$SOURCE_PATH"src/pbashc.c -iname "*.c"` \
+    -I$BOOTSTRAP_DIR \
     -o "$BOOTSTRAP_DIR/pbashc"
 
 $BOOTSTRAP_DIR/pbashc "$SOURCE_PATH"src/ppkg-config.bash \
@@ -76,6 +79,7 @@ gcc --std=gnu99 -Wall -Werror -Wno-trampolines -g \
     $extrasrc $talloc $clang \
     -DPCONFIGURE_VERSION=\"bootstrap\" \
     -Isrc/extern/ -Iinclude/ $extrahdr \
+    -I$BOOTSTRAP_DIR \
     -o "$BOOTSTRAP_DIR/pconfigure" || exit $?
 
 # Runs pconfigure in order to build itself

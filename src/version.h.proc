@@ -1,0 +1,26 @@
+#!/bin/bash
+
+if [[ "$1" == "--deps" ]]
+then
+    ref="$(cat .git/HEAD | cut -d' ' -f2)"
+    if [[ "$?" != "0" ]]
+    then
+        exit 0
+    fi
+
+    echo ".git/$ref"
+    exit 0
+fi
+
+if [[ "$1" == "--generate" ]]
+then
+    gv=`git describe`
+    if [[ "$?" == "0" ]]
+    then
+        echo "#define VERSION_GIT \"${gv}-git\""
+    fi
+
+    exit 0
+fi
+
+exit 1
