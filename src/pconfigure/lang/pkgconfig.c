@@ -116,8 +116,6 @@ void language_pkgconfig_deps(struct language *l_uncast, struct context *c,
 {
     char *dirs[1];
 
-    func("%s", c->full_path);
-
     dirs[0] = NULL;
     /* *INDENT-OFF* */
     pinclude_list(c->full_path, lambda(int, (const char *f, void *u),
