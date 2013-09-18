@@ -41,6 +41,16 @@ then
         echo -e "NPASS\t"$pass
         echo -e "NFAIL\t"$fail
         echo -e "NERROR\t"$error
+
+        if [[ "$fail" != "0" ]]
+        then
+            exit 1
+        fi
+
+        if [[ "$error" != "0" ]]
+        then
+            exit 2
+        fi
     }
 
     exit 0
