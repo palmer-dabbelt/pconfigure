@@ -10,7 +10,12 @@ then
         exit 0
     fi
 
-    echo ".git/$ref"
+    if test -f ".git/$ref"
+    then
+        echo ".git/$ref"
+    else
+        echo ".git/refs/heads/master"
+    fi
     exit 0
 fi
 
