@@ -1,5 +1,12 @@
 if [[ "$1" == "" ]]
 then
+    # If there's no test directory then just give up
+    if test ! -d check
+    then
+        echo "No tests"
+        exit 0
+    fi
+
     # This subshell is necessary to keep these variables after the
     # loop terminates
     find check -type f | sort | {
