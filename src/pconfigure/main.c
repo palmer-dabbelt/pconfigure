@@ -858,7 +858,7 @@ int parsefunc_tests(const char *op, const char *right)
 
         /* We don't want to push that last binary because it's needed
          * by the test cases in order to run against said binary. */
-        if (type == CONTEXT_TYPE_BINARY)
+        if (type == CONTEXT_TYPE_BINARY || type == CONTEXT_TYPE_LIBRARY)
             goto push_test;
 
         /* Actually pop the stack here */
