@@ -97,8 +97,6 @@ struct language *language_chisel_new(struct clopts *o, const char *name)
     l->l.extras = &language_chisel_extras;
     l->l.quirks = &language_chisel_quirks;
 
-    l->deps = stringlist_new(l);
-
     return &(l->l);
 }
 
@@ -187,7 +185,6 @@ void language_chisel_deps(struct language *l_uncast, struct context *c,
 			 if (strcmp(path + strlen(path) - 6, ".scala") == 0) {
 			     copy = talloc_strdup(ctx, path);
 			     func(copy);
-			     stringlist_add(l->deps, copy);
 			 }
 			 
 			 return 0;
@@ -271,18 +268,14 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
     /* Compile the scala sources */
     func(false, "pscalac -l chisel\\");
     func(false, "\\ -L %s", c->lib_dir);
-    last_source = NULL;
+    last_source = c->full_path;
     /* *INDENT-OFF* */
-    stringlist_each(l->deps,
-		    lambda(int, (const char *opt),
-			   {
-                               last_source = opt;
-			       return 0;
-			   }
-                    ));
     stringlist_each(c->libraries,
 		    lambda(int, (const char *lib),
 			   {
+                               if (strcmp(lib+strlen(lib)-3, ".so") == 0)
+                                   return 0;
+
 			       func(false, "\\ -l %s", lib);
 			       return 0;
 			   }

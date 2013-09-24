@@ -28,8 +28,6 @@
 struct language_chisel
 {
     struct language l;
-
-    struct stringlist *deps;
 };
 
 extern struct language *language_chisel_new(struct clopts *o,
