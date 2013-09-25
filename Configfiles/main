@@ -31,6 +31,9 @@ TESTSRC     += simple.bash
 BINARIES    += pbashc
 SOURCES	    += pbashc.c
 
+BINARIES    += pperlc
+SOURCES	    += pperlc.c
+
 BINARIES    += ppkg-config
 SOURCES	    += ppkg-config.bash
 
