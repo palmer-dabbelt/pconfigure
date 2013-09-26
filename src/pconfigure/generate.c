@@ -27,12 +27,14 @@ void generate(const char *filename, struct context *c, struct makefile *mf)
     target = talloc_asprintf(ctx, "%s/%s", c->gen_dir, filename);
 
     cmd = talloc_asprintf(ctx, "mkdir -p %s", c->gen_dir);
-    system(cmd);
+    if (system(cmd) != 0)
+        abort();
 
     cmd = talloc_asprintf(ctx,
                           "if test ! -e %s; then ./%s --generate > %s; fi",
                           target, proc_name, target);
-    system(cmd);
+    if (system(cmd) != 0)
+        abort();
 
     makefile_create_target(mf, target);
 
@@ -49,7 +51,8 @@ void generate(const char *filename, struct context *c, struct makefile *mf)
         fd = mkstemp(tmpname);
 
         cmd = talloc_asprintf(ctx, "./%s --deps > %s", proc_name, tmpname);
-        system(cmd);
+        if (system(cmd) != 0)
+            abort();
 
         file = fopen(tmpname, "r");
         while (fgets(line, MAX_LINE_SIZE, file) != NULL) {
