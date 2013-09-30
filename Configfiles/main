@@ -29,12 +29,14 @@ SOURCES	    += pclean.bash
 TESTSRC     += simple.bash
 
 BINARIES    += pbashc
+COMPILEOPTS += -DLANG_BASH
 SOURCES	    += pbashc.c
 TESTSRC     += simple.bash
 TESTSRC     += samedir.bash
 
 BINARIES    += pperlc
-SOURCES	    += pperlc.c
+COMPILEOPTS += -DLANG_PERL
+SOURCES	    += pbashc.c
 TESTSRC     += simple.bash
 TESTSRC     += samedir.bash
 

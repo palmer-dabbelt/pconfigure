@@ -25,8 +25,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef PBASHC_SHEBANG
-#define PBASHC_SHEBANG "#!/bin/bash\n"
+#ifndef SHEBANG
+#if defined(LANG_PERL)
+#define SHEBANG "#!/usr/bin/perl\n"
+#elif defined(LANG_BASH)
+#define SHEBANG "#!/bin/bash\n"
+#else
+#error "No language defined"
+#endif
 #endif
 
 /* The output file is a global file. */
@@ -66,7 +72,7 @@ int main(int argc, char **argv)
 
     outfile = fopen(output, "w");
 
-    fprintf(outfile, PBASHC_SHEBANG "\n");
+    fprintf(outfile, SHEBANG "\n");
 
     cat_to_outfile(input);
     fclose(outfile);
