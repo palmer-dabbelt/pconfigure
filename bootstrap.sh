@@ -37,6 +37,7 @@ mkdir -p $BOOTSTRAP_DIR
 
 gcc --std=gnu99 `find "$SOURCE_PATH"src/pbashc.c -iname "*.c"` \
     -I$BOOTSTRAP_DIR \
+    -DLANG_BASH \
     -o "$BOOTSTRAP_DIR/pbashc"
 
 $BOOTSTRAP_DIR/pbashc "$SOURCE_PATH"src/ppkg-config.bash \
