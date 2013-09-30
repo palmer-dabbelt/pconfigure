@@ -104,8 +104,13 @@ void cat_to_outfile(const char *input)
             filename = strdup(buffer + strlen("#include \""));
             filename[strlen(filename) - 2] = '\0';
 
-            if (asprintf(&full_path, "%s/%s", dir_path, filename) < 0)
-                abort();
+            if (strlen(dir_path) == 0){
+                if (asprintf(&full_path, "%s", filename) < 0)
+                    abort();
+            } else {
+                if (asprintf(&full_path, "%s/%s", dir_path, filename) < 0)
+                    abort();
+            }
 
             cat_to_outfile(full_path);
 

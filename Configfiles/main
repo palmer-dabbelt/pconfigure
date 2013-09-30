@@ -31,6 +31,7 @@ TESTSRC     += simple.bash
 BINARIES    += pbashc
 SOURCES	    += pbashc.c
 TESTSRC     += simple.bash
+TESTSRC     += samedir.bash
 
 BINARIES    += pperlc
 SOURCES	    += pperlc.c
