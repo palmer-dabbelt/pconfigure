@@ -35,6 +35,8 @@ TESTSRC     += samedir.bash
 
 BINARIES    += pperlc
 SOURCES	    += pperlc.c
+TESTSRC     += simple.bash
+TESTSRC     += samedir.bash
 
 BINARIES    += ppkg-config
 SOURCES	    += ppkg-config.bash
