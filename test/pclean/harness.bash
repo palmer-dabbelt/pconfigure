@@ -1,3 +1,5 @@
+set -ex
+
 ARCHIVE=`awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }' $0`
 TMPDIR=`mktemp -d`
 
