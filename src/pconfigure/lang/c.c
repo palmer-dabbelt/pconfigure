@@ -327,7 +327,7 @@ void language_c_link(struct language *l_uncast, struct context *c,
     func(false, "\\\t@%s ", l->l.link_cmd);
     func(false, "\\ -L%s", c->lib_dir);
     if (should_install == false)
-        func(false, "\\ -Wl,-rpath,%s", c->lib_dir);
+        func(false, "\\ -Wl,-rpath,\\$$ORIGIN/../%s", c->lib_dir);
     else
         func(false, "\\ -Wl,-rpath,%s/%s", c->prefix, c->lib_dir);
 
