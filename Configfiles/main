@@ -23,6 +23,7 @@ COMPILEOPTS += `ppkg-config  --optional --have TALLOC talloc --cflags`
 COMPILEOPTS += -Isrc/extern/
 DEPLIBS     += pinclude
 SOURCES     += pconfigure/main.c
+TESTSRC     += version.bash
 TESTSRC     += simple-c.bash
 
 BINARIES    += pclean
