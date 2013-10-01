@@ -134,8 +134,7 @@ int languagelist_remove(struct languagelist *ll, const char *name)
 
     if (prev == NULL) {
         ll->head = cur->next;
-    }
-    else {
+    } else {
         prev->next = cur->next;
     }
 

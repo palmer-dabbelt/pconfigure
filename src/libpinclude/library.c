@@ -72,8 +72,7 @@ static int _pinclude_list(const char *input, pinclude_callback_t cb,
             if (strcmp(dir_path, ".") != 0) {
                 if (asprintf(&full_path, "%s/%s", dir_path, filename) < 0)
                     abort();
-            }
-            else {
+            } else {
                 if (asprintf(&full_path, "%s", filename) < 0)
                     abort();
             }

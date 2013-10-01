@@ -714,8 +714,7 @@ int context_source_destructor(struct context *c)
             makefile_add_clean(c->mf, obj_name);
             makefile_add_cleancache(c->mf, c->obj_dir);
         }
-    }
-    else {
+    } else {
         /* The "objects" for languages that aren't compiled are really just the
          * included sources. */
         obj_name = talloc_reference(context, c->full_path);
@@ -943,7 +942,6 @@ int context_add_library(struct context *c, const char *opt)
         atexit(&context_destructor);
         lib_deps = liblist_new(lib_deps_ctx);
     }
-
     /* *INDENT-OFF* */
     liblist_each(lib_deps, opt, lambda(int, (const char *dep),
                                        {

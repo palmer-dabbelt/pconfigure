@@ -70,13 +70,11 @@ struct clopts *clopts_new(void *ctx, int argc, char **argv)
 
             talloc_unlink(o, o->infiles);
             o->infiles = infiles;
-        }
-        else if (strcmp(argv[i], "--version") == 0) {
+        } else if (strcmp(argv[i], "--version") == 0) {
             printf("pconfigure %s\n", PCONFIGURE_VERSION);
             TALLOC_FREE(o);
             return NULL;
-        }
-        else if (strcmp(argv[i], "--sourcepath") == 0) {
+        } else if (strcmp(argv[i], "--sourcepath") == 0) {
             talloc_free((char *)o->source_path);
 
             if (argv[i + 1][strlen(argv[i + 1]) - 1] != '/')
@@ -87,8 +85,7 @@ struct clopts *clopts_new(void *ctx, int argc, char **argv)
             setup_infiles(o);
 
             i++;
-        }
-        else {
+        } else {
             fprintf(stderr, "Unknown argument: '%s'\n", argv[i]);
             abort();
         }

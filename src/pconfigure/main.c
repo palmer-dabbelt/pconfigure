@@ -321,8 +321,7 @@ int parse_select(const char *left, const char *op, char *right)
 
             close(fd);
             unlink(tmpname);
-        }
-        else {
+        } else {
             newright[newi] = right[i];
             newi++;
             i++;

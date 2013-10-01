@@ -47,8 +47,7 @@ int liblist_add(struct liblist *l, const char *name)
         l->head->next = NULL;
         l->head->name = talloc_reference(l->head, name);
         l->head->deps = stringlist_new(l->head);
-    }
-    else {
+    } else {
         struct liblist_node *cur;
 
         cur = l->head;
