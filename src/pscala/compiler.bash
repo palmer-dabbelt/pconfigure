@@ -64,11 +64,15 @@ fi
 # outputs, so I guess at it using strace... :)
 cd "$workdir"
 
-#cat "$workdir"/strace | cut -d' ' -f 2- | sed 's/^ //g' \
-#    | grep "^stat" | sed 's@stat("\(.*\)",.*@\1@' \
-#    | grep "^$workdir" | (while read f; do test ! -f $f || echo $f; done; ) \
-#    | sed "s@$workdir/*@@" | grep ".class$" \
-#    | sort | uniq > "$workdir"/jar-list
+if test -f "$workdir"/strace
+then
+    cat "$workdir"/strace | cut -d' ' -f 2- | sed 's/^ //g' \
+        | grep "^stat" | sed 's@stat("\(.*\)",.*@\1@' \
+        | grep "^$workdir" \
+        | (while read f; do test ! -f $f || echo $f; done; ) \
+        | sed "s@$workdir/*@@" | grep ".class$" \
+        | sort | uniq > "$workdir"/jar-list
+fi
 
 cat "$workdir"/jar-list | xargs jar cf "$workjar"
 
