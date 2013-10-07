@@ -94,7 +94,7 @@ void language_cxx_extras(struct language *l_uncast, struct context *c,
 			     char *cfile;
 			     char *cxxfile;
 
-			     va_start(args, NULL);
+			     va_start(args, format);
 
 			     cfile = talloc_vasprintf(context, format, args);
 

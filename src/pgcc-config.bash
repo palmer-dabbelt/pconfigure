@@ -31,6 +31,15 @@ then
             fi
             exit 0
         ;;
+
+        "lt")
+            first="$(echo -e "$dumpversion\n$version" | sort -V | tail -n1)"
+            if [[ "$first" == "$version" ]]
+            then
+                echo "$flag"
+            fi
+            exit 0
+        ;;
     esac
 
     echo "Unsupported test $test" >&2

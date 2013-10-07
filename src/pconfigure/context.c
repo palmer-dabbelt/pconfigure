@@ -205,7 +205,7 @@ int context_binary_destructor(struct context *c)
 				      const char *format, ...),
 			       {
 				   va_list args;
-				   va_start(args, NULL);
+				   va_start(args, format);
 				   if (nam == true)
 				       makefile_vnam_cmd(c->mf, format, args);
 				   else
@@ -244,7 +244,7 @@ int context_binary_destructor(struct context *c)
 				      const char *format, ...),
 			       {
 				   va_list args;
-				   va_start(args, NULL);
+				   va_start(args, format);
 				   if (nam == true)
 				       makefile_vnam_cmd(c->mf, format, args);
 				   else
@@ -394,7 +394,7 @@ int context_library_destructor(struct context *c)
         language_deps(l, c, lambda(void, (const char *format, ...),
                                    {
                                        va_list args;
-                                       va_start(args, NULL);
+                                       va_start(args, format);
                                        makefile_vadd_dep(c->mf,
                                                          format, args);
                                        va_end(args);
@@ -412,7 +412,7 @@ int context_library_destructor(struct context *c)
 				      const char *format, ...),
 			       {
 				   va_list args;
-				   va_start(args, NULL);
+				   va_start(args, format);
 				   if (nam == true)
 				       makefile_vnam_cmd(c->mf, format, args);
 				   else
@@ -682,7 +682,7 @@ int context_source_destructor(struct context *c)
             language_deps(l, c, lambda(void, (const char *format, ...),
                                        {
 					   va_list args;
-					   va_start(args, NULL);
+					   va_start(args, format);
 					   makefile_vadd_dep(c->mf,
 							     format, args);
 					   va_end(args);
@@ -697,7 +697,7 @@ int context_source_destructor(struct context *c)
 					       const char *format, ...),
 					{
 					    va_list args;
-					    va_start(args, NULL);
+					    va_start(args, format);
 					    if (nam == true)
 						makefile_vnam_cmd(c->mf, format,
 								 args);
@@ -869,7 +869,7 @@ int context_test_destructor(struct context *c)
 				      const char *format, ...),
 			       {
 				   va_list args;
-				   va_start(args, NULL);
+				   va_start(args, format);
 				   if (nam == true)
 				       makefile_vnam_cmd(c->mf, format, args);
 				   else

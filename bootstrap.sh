@@ -30,6 +30,12 @@ BOOTSTRAP_DIR=bootstrap_bin
 make distclean >& /dev/null || true
 mkdir -p $BOOTSTRAP_DIR
 
+CFLAGS="-Wno-trampolines"
+if [[ "$(uname)" == "Darwin" ]]
+then
+    CFLAGS="-fnested-functions"
+fi
+
 #############################################################################
 # Manually builds some of the utilities                                     #
 #############################################################################
@@ -74,7 +80,7 @@ then
 fi
 
 # Actually build pconfigure here, this is the simple part :)
-gcc --std=gnu99 -Wall -Werror -Wno-trampolines -g \
+gcc --std=gnu99 -Wall -Werror -g $CFLAGS \
     `find "$SOURCE_PATH"src/pconfigure/ -iname "*.c"` \
     `find "$SOURCE_PATH"src/libpinclude/ -iname "*.c"` \
     $extrasrc $talloc $clang \
