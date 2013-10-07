@@ -18,13 +18,19 @@ flag="$4"
 
 if [[ "$test" != "" && "$flag" != "" ]]
 then
-    dumpversion="$($program -dumpversion)"
+    dumpversion="$($program -dumpversion | cut -d'.' -f1-2)"
     match="false"
+
+    if [[ "$(echo "$dumpversion" | cut -d '.' -f 1)" != "4" ]]
+    then
+        echo "OSX doesn't have sort -V, so we only support gcc-4"
+        exit 1
+    fi
 
     case "$test"
     in
         "gt")
-            first="$(echo -e "$dumpversion\n$version" | sort -V | head -n1)"
+            first="$(echo -e "$dumpversion\n$version" | sort -k2 -t. -g | head -n1)"
             if [[ "$first" == "$version" ]]
             then
                 echo "$flag"
@@ -33,7 +39,7 @@ then
         ;;
 
         "lt")
-            first="$(echo -e "$dumpversion\n$version" | sort -V | tail -n1)"
+            first="$(echo -e "$dumpversion\n$version" | sort -k2 -t. -g | tail -n1)"
             if [[ "$first" == "$version" ]]
             then
                 echo "$flag"
