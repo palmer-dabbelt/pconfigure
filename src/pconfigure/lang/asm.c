@@ -20,7 +20,6 @@
  */
 
 #include "cxx.h"
-#include "../lambda.h"
 #include <string.h>
 #include <unistd.h>
 
