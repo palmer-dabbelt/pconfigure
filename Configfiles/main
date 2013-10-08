@@ -26,6 +26,7 @@ SOURCES     += pconfigure/main.c
 TESTSRC     += version.bash
 TESTSRC     += simple-c.bash
 TESTSRC     += tek.bash
+TESTSRC     += bash-deps.bash
 
 BINARIES    += pclean
 SOURCES	    += pclean.bash
