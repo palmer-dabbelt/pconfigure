@@ -25,6 +25,7 @@ DEPLIBS     += pinclude
 SOURCES     += pconfigure/main.c
 TESTSRC     += version.bash
 TESTSRC     += simple-c.bash
+TESTSRC     += tek.bash
 
 BINARIES    += pclean
 SOURCES	    += pclean.bash
