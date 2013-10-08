@@ -19,7 +19,9 @@
  * along with pconfigure.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "funcs.h"
 #include "perl.h"
+
 #include <string.h>
 #include <unistd.h>
 #include <pinclude.h>
@@ -46,38 +48,14 @@ static void language_perl_link(struct language *l_uncast, struct context *c,
 static void language_perl_extras(struct language *l_uncast, struct context *c,
                                  void *context, void (*func) (const char *));
 
-/* Wrapper function for pinclude: simply directly passes along every
- * given string to some other function, but as a printf-style
- * argument. */
-struct printf_func
-{
-    void (*func) (const char *, ...);
-};
-static int wrap_pinclude_str(const char *format, void *args_uncast);
-
-/* Wrapper function for pinclude: simply directly passes along every
- * given string to some other function, but as a printf-style
- * argument. */
-struct string_func
-{
-    void (*func) (const char *);
-};
-static int pass_pinclude_str(const char *format, void *args_uncast);
-
+/* This one only passes the first link string that it comes into
+ * contact with, but aside from that it's like
+ * "func_stringlist_each_cmd_cont()". */
 struct link_func
 {
     int obj_count;
     void (*func) (bool, const char *, ...);
 };
-
-/* Wrapper function for the link list handling: passes every argument
- * on to another function, but wrapped such that it ends up inside the
- * same makefile command. */
-static int pass_link_str(const char *opt, void *args_uncast);
-
-/* This one only passes the first link string that it comes into
- * contact with, as opposed to "pass_link_str()", which passes all of
- * them. */
 static int pass_first_link_str(const char *opt, void *args_uncast);
 
 struct language *language_perl_new(struct clopts *o, const char *name)
@@ -141,13 +119,11 @@ void language_perl_deps(struct language *l_uncast, struct context *c,
                         void (*func) (const char *, ...))
 {
     char *dirs[1];
-    struct printf_func pif;
 
     func("%s", c->full_path);
 
     dirs[0] = NULL;
-    pif.func = func;
-    pinclude_list(c->full_path, &wrap_pinclude_str, &pif, dirs);
+    func_pinclude_list_printf(c->full_path, func, dirs);
 }
 
 void language_perl_build(struct language *l_uncast, struct context *c,
@@ -163,7 +139,6 @@ void language_perl_link(struct language *l_uncast, struct context *c,
     struct language_perl *l;
     void *context;
     const char *link_path;
-    struct link_func link_func;
 
     l = talloc_get_type(l_uncast, struct language_perl);
     if (l == NULL)
@@ -174,8 +149,6 @@ void language_perl_link(struct language *l_uncast, struct context *c,
     else
         link_path = c->link_path_install;
 
-    link_func.func = func;
-
     context = talloc_new(NULL);
 
     func(true, "echo -e \"%s\\t%s\"",
@@ -184,16 +157,20 @@ void language_perl_link(struct language *l_uncast, struct context *c,
     func(false, "mkdir -p `dirname %s` >& /dev/null || true", link_path);
 
     func(false, "%s \\", l->l.link_cmd);
-    stringlist_each(l->l.link_opts, &pass_link_str, &link_func);
-    stringlist_each(c->link_opts, &pass_link_str, &link_func);
+    func_stringlist_each_cmd_cont(l->l.link_opts, func);
+    func_stringlist_each_cmd_cont(c->link_opts, func);
 
     /* FIXME: deps() doesn't get called because this isn't compiled
      * code so we need to fake this with extras() instead.  That means
      * every perl script gets set as an object to be linked and
      * therefor gets cat'd to the end of the file.  In this case we
      * want to skip those extra files and just link the first one. */
-    link_func.obj_count = 0;
-    stringlist_each(c->objects, &pass_first_link_str, &link_func);
+    {
+        struct link_func link_func;
+        link_func.obj_count = 0;
+        link_func.func = func;
+        stringlist_each(c->objects, &pass_first_link_str, &link_func);
+    }
     func(false, "\\ -o %s\n", link_path);
 
     TALLOC_FREE(context);
@@ -203,39 +180,9 @@ void language_perl_extras(struct language *l_uncast, struct context *c,
                           void *context, void (*func) (const char *))
 {
     char *dirs[1];
-    struct string_func pif;
 
     dirs[0] = NULL;
-    pif.func = func;
-    pinclude_list(c->full_path, &pass_pinclude_str, &pif, dirs);
-}
-
-int wrap_pinclude_str(const char *f, void *args_uncast)
-{
-    struct printf_func *args;
-    args = args_uncast;
-
-    args->func("%s", f);
-
-    return 0;
-}
-
-int pass_pinclude_str(const char *f, void *args_uncast)
-{
-    struct printf_func *args;
-    args = args_uncast;
-
-    args->func(f);
-
-    return 0;
-}
-
-int pass_link_str(const char *opt, void *args_uncast)
-{
-    struct link_func *args;
-    args = args_uncast;
-    args->func(false, "\\ %s", opt);
-    return 0;
+    func_pinclude_list_string(c->full_path, func, dirs);
 }
 
 int pass_first_link_str(const char *opt, void *args_uncast)
