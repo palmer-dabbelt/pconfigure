@@ -53,7 +53,7 @@ then
         fi
     }
 
-    exit 0
+    exit $?
 fi
 
 # Parse the commandline arguments
