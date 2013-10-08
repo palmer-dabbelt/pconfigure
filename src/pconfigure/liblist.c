@@ -80,7 +80,7 @@ int liblist_add_dep_ifnew(struct liblist *l, const char *n, const char *dep)
 }
 
 int liblist_each(struct liblist *l, const char *name,
-                 int (*func) (const char *))
+                 int (*func) (const char *, void *), void *arg)
 {
     struct liblist_node *cur;
 
@@ -89,7 +89,7 @@ int liblist_each(struct liblist *l, const char *name,
         int out;
 
         if (strcmp(cur->name, name) == 0) {
-            out = stringlist_each(cur->deps, func);
+            out = stringlist_each(cur->deps, func, arg);
             if (out != 0)
                 return out;
         }

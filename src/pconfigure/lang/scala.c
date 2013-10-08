@@ -213,26 +213,26 @@ void language_scala_build(struct language *l_uncast, struct context *c,
     func(false, "%s\\", l->l.compile_cmd);
     /* *INDENT-OFF* */
     stringlist_each(l->l.compile_opts,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
 			       func(false, "\\ %s", opt);
 			       return 0;
 			   }
-                    ));
+                        ), NULL);
     stringlist_each(c->compile_opts,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
 			       func(false, "\\ %s", opt);
 			       return 0;
 			   }
-                    ));
+                        ), NULL);
     stringlist_each(l->deps,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
 			       func(false, "\\ %s", opt);
 			       return 0;
 			   }
-                    ));
+                        ), NULL);
 
     /* *INDENT-ON* */
     func(false, "\\ -o %s\n", obj_path);
@@ -269,33 +269,33 @@ void language_scala_link(struct language *l_uncast, struct context *c,
 
     /* *INDENT-OFF* */
     stringlist_each(l->l.link_opts,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
 			       func(false, "\\ %s", opt);
 			       return 0;
 			   }
-			));
+			), NULL);
     stringlist_each(c->link_opts,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
 			       func(false, "\\ %s", opt);
 			       return 0;
 			   }
-			));
+			), NULL);
     stringlist_each(c->objects,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
 			       func(false, "\\ %s", opt);
 			       return 0;
 			   }
-			));
+			), NULL);
     stringlist_each(c->libraries,
-		    lambda(int, (const char *lib),
+		    lambda(int, (const char *lib, void *uu),
 			   {
 			       func(false, "\\ -l%s", lib);
 			       return 0;
 			   }
-			));
+			), NULL);
     /* *INDENT-ON* */
     func(false, "\\\n");
 
@@ -327,33 +327,33 @@ void language_scala_slib(struct language *l_uncast, struct context *c,
 
     /* *INDENT-OFF* */
     stringlist_each(l->l.link_opts,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
 			       func(false, "\\ %s", opt);
 			       return 0;
 			   }
-			));
+			), NULL);
     stringlist_each(c->link_opts,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
 			       func(false, "\\ %s", opt);
 			       return 0;
 			   }
-			));
+			), NULL);
     stringlist_each(c->objects,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
 			       func(false, "\\ %s", opt);
 			       return 0;
 			   }
-			));
+			), NULL);
     stringlist_each(c->libraries,
-		    lambda(int, (const char *lib),
+		    lambda(int, (const char *lib, void *uu),
 			   {
 			       func(false, "\\ -l%s", lib);
 			       return 0;
 			   }
-			));
+			), NULL);
     /* *INDENT-ON* */
     func(false, "\\\n");
 

@@ -155,19 +155,19 @@ void language_bash_link(struct language *l_uncast, struct context *c,
     func(false, "%s \\", l->l.link_cmd);
     /* *INDENT-OFF* */
     stringlist_each(l->l.link_opts,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
 			       func(false, "\\ %s", opt);
 			       return 0;
 			   }
-                    ));
+                        ), NULL);
     stringlist_each(c->link_opts,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
 			       func(false, "\\ %s", opt);
 			       return 0;
 			   }
-                    ));
+                        ), NULL);
 
     /* FIXME: deps() doesn't get called because this isn't compiled
      * code so we need to fake this with extras() instead.  That means
@@ -176,13 +176,13 @@ void language_bash_link(struct language *l_uncast, struct context *c,
      * want to skip those extra files and just link the first one. */
     obj_count = 0;
     stringlist_each(c->objects,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
                                if (obj_count++ == 0)
                                    func(false, "\\ %s", opt);
 			       return 0;
 			   }
-                    ));
+                        ), NULL);
     /* *INDENT-ON* */
     func(false, "\\ -o %s\n", link_path);
 

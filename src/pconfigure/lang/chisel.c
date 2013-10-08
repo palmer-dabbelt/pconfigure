@@ -192,7 +192,7 @@ void language_chisel_deps(struct language *l_uncast, struct context *c,
 	 16, FTW_DEPTH);
 
     stringlist_each(c->libraries,
-		    lambda(int, (const char *lib),
+		    lambda(int, (const char *lib, void *uu),
 			   {
                                char *str;
 			       str = talloc_asprintf(ctx, "%s/lib%s.jar",
@@ -204,7 +204,7 @@ void language_chisel_deps(struct language *l_uncast, struct context *c,
 
 			       return 0;
 			   }
-			));
+			), NULL);
     /* *INDENT-ON* */
 
     TALLOC_FREE(ctx);
@@ -244,7 +244,7 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
      * know this for a while. */
     design = NULL;
     stringlist_each(l->l.compile_opts,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
 			       if (str_starts(opt, "-d"))
 				   design = talloc_asprintf(context,
@@ -252,9 +252,9 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
 
 			       return 0;
 			   }
-                    ));
+                        ), NULL);
     stringlist_each(c->compile_opts,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *Uu),
 			   {
 			       if (str_starts(opt, "-d"))
 				   design = talloc_asprintf(context,
@@ -262,7 +262,7 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
 
 			       return 0;
 			   }
-                    ));
+                        ), NULL);
     /* *INDENT-ON* */
 
     /* Compile the scala sources */
@@ -271,7 +271,7 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
     last_source = c->full_path;
     /* *INDENT-OFF* */
     stringlist_each(c->libraries,
-		    lambda(int, (const char *lib),
+		    lambda(int, (const char *lib, void *uu),
 			   {
                                if (strcmp(lib+strlen(lib)-3, ".so") == 0)
                                    return 0;
@@ -279,7 +279,7 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
 			       func(false, "\\ -l %s", lib);
 			       return 0;
 			   }
-			));
+			), NULL);
     /* *INDENT-ON* */
     if (last_source == NULL) {
         fprintf(stderr, "chisel compiler called with no sources!\n");
@@ -292,12 +292,12 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
     func(false, "\\ -L %s", c->lib_dir);
     /* *INDENT-OFF* */
     stringlist_each(c->libraries,
-		    lambda(int, (const char *lib),
+		    lambda(int, (const char *lib, void *uu),
 			   {
 			       func(false, "\\ -l %s", lib);
 			       return 0;
 			   }
-			));
+			), NULL);
     /* *INDENT-ON* */
     func(false, "\\ -o %s.d/obj.bin %s.d/obj.jar\n", obj_path, obj_path);
 
@@ -316,7 +316,7 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
     func(false, "%s\\", l->l.compile_cmd);
     /* *INDENT-OFF* */
     stringlist_each(l->l.compile_opts,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
 			       if (str_starts(opt, "-d"))
 				   return 0;
@@ -324,9 +324,9 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
 			       func(false, "\\ %s", opt);
 			       return 0;
 			   }
-                    ));
+                        ), NULL);
     stringlist_each(c->compile_opts,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
 			       if (str_starts(opt, "-d"))
 				   return 0;
@@ -334,7 +334,7 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
 			       func(false, "\\ %s", opt);
 			       return 0;
 			   }
-                    ));
+                        ), NULL);
     /* *INDENT-ON* */
     func(false, "\\ -I%s", c->hdr_dir);
     func(false, "\\ -c %s.d/gen/%s.cpp -o %s\n", obj_path, design, obj_path);
@@ -408,7 +408,7 @@ void language_chisel_quirks(struct language *l_uncast,
      * know this for a while. */
     design = NULL;
     stringlist_each(l->l.compile_opts,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
 			       if (str_starts(opt, "-d"))
 				   design = talloc_asprintf(context,
@@ -416,9 +416,9 @@ void language_chisel_quirks(struct language *l_uncast,
 
 			       return 0;
 			   }
-                    ));
+                        ), NULL);
     stringlist_each(c->compile_opts,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
 			       if (str_starts(opt, "-d"))
 				   design = talloc_asprintf(context,
@@ -426,7 +426,7 @@ void language_chisel_quirks(struct language *l_uncast,
 
 			       return 0;
 			   }
-                    ));
+                        ), NULL);
     /* *INDENT-ON* */
 
     target_path = talloc_asprintf(context, "%s.d/inc/%s.h", obj_path, design);

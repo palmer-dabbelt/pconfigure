@@ -58,7 +58,7 @@ extern int liblist_add_dep_ifnew(struct liblist *l,
 /* Searches the given list for the given library name, and then calls
 the given function for every dependency of that library. */
 extern int liblist_each(struct liblist *l, const char *name,
-                        int (*func) (const char *));
+                        int (*func) (const char *, void *), void *arg);
 
 static inline struct liblist_node *liblist_start(struct liblist *l)
 {

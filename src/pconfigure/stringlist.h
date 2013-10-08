@@ -62,7 +62,8 @@ extern const char *stringlist_hashcode(struct stringlist *l, void *context);
 extern int stringlist_size(struct stringlist *l);
 
 /* Calls the given function for every element in the list */
-extern int stringlist_each(struct stringlist *l, int (*func) (const char *));
+extern int stringlist_each(struct stringlist *l,
+                           int (*func) (const char *, void *), void *arg);
 
 static inline struct stringlist_node *stringlist_start(struct stringlist *l)
 {

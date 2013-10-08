@@ -138,12 +138,12 @@ int context_binary_destructor(struct context *c)
     /* *INDENT-OFF* */
 #ifdef DEBUG
     stringlist_each(c->objects,
-		    lambda(int, (const char *obj),
+		    lambda(int, (const char *obj, void *uu),
 			   {
 			       fprintf(stderr, "obj: %s\n", obj);
 			       return 0;
 			   }
-			));
+			), NULL);
 #endif
     /* *INDENT-ON* */
 
@@ -182,20 +182,20 @@ int context_binary_destructor(struct context *c)
 
     makefile_start_deps(c->mf);
     /* *INDENT-OFF* */
-    stringlist_each(c->objects, lambda(int, (const char *obj),
+    stringlist_each(c->objects, lambda(int, (const char *obj, void *uu),
 			       {
 				   makefile_add_dep(c->mf, "%s", obj);
 				   return 0;
 			       }
-		      ));
-    stringlist_each(c->libraries, lambda(int, (const char *lib),
+                        ), NULL);
+    stringlist_each(c->libraries, lambda(int, (const char *lib, void *uu),
 			       {
 				   makefile_add_dep(c->mf, "%s/lib%s.%s",
 						    c->lib_dir, lib,
                                                     l->so_ext);
 				   return 0;
 			       }
-		      ));
+                        ), NULL);
     /* *INDENT-ON* */
     makefile_end_deps(c->mf);
 
@@ -221,20 +221,20 @@ int context_binary_destructor(struct context *c)
 
     makefile_start_deps(c->mf);
     /* *INDENT-OFF* */
-    stringlist_each(c->objects, lambda(int, (const char *obj),
+    stringlist_each(c->objects, lambda(int, (const char *obj, void *uu),
 			       {
 				   makefile_add_dep(c->mf, "%s", obj);
 				   return 0;
 			       }
-		      ));
-    stringlist_each(c->libraries, lambda(int, (const char *lib),
+                        ), NULL);
+    stringlist_each(c->libraries, lambda(int, (const char *lib, void *uu),
 			       {
 				   makefile_add_dep(c->mf, "%s/lib%s.%s",
 						    c->lib_dir, lib,
                                                     l->so_ext);
 				   return 0;
 			       }
-		      ));
+                        ), NULL);
     /* *INDENT-ON* */
     makefile_end_deps(c->mf);
 
@@ -336,12 +336,12 @@ int context_library_destructor(struct context *c)
     /* *INDENT-OFF* */
 #ifdef DEBUG
     stringlist_each(c->objects,
-		    lambda(int, (const char *obj),
+		    lambda(int, (const char *obj, void *uu),
 			   {
 			       fprintf(stderr, "obj: %s\n", obj);
 			       return 0;
 			   }
-			));
+			), NULL);
 #endif
     /* *INDENT-ON* */
 
@@ -375,12 +375,12 @@ int context_library_destructor(struct context *c)
 
     makefile_start_deps(c->mf);
     /* *INDENT-OFF* */
-    stringlist_each(c->objects, lambda(int, (const char *obj),
+    stringlist_each(c->objects, lambda(int, (const char *obj, void *uu),
 			       {
 				   makefile_add_dep(c->mf, "%s", obj);
 				   return 0;
 			       }
-		      ));
+                        ), NULL);
     /* *INDENT-ON* */
 
     /* If the language isn't compiled then we won't detect any changes
@@ -458,25 +458,25 @@ int context_library_destructor(struct context *c)
 
     /* *INDENT-OFF* */
     stringlist_each(c->libraries,
-                    lambda(int, (const char *dep),
+                    lambda(int, (const char *dep, void *uu),
                            {
                                liblist_add_dep_ifnew(lib_deps,
                                                      sname,
                                                      dep);
 
                                liblist_each(lib_deps, dep,
-                                            lambda(int, (const char *dep),
+                                            lambda(int, (const char *dep, void *uu),
                                                    {
                                                        liblist_add_dep_ifnew(lib_deps,
                                                                              sname,
                                                                              dep);
                                                        return 0;
                                                    };
-                                                ));
+                                                ), NULL);
 
                                return 0;
                            }
-                        ));
+                        ), NULL);
     /* *INDENT-ON* */
 
     TALLOC_FREE(context);
@@ -802,12 +802,12 @@ int context_test_destructor(struct context *c)
     /* *INDENT-OFF* */
 #ifdef DEBUG
     stringlist_each(c->objects,
-		    lambda(int, (const char *obj),
+		    lambda(int, (const char *obj, void *uu),
 			   {
 			       fprintf(stderr, "obj: %s\n", obj);
 			       return 0;
 			   }
-			));
+			), NULL);
 #endif
     /* *INDENT-ON* */
 
@@ -846,20 +846,20 @@ int context_test_destructor(struct context *c)
 
     makefile_start_deps(c->mf);
     /* *INDENT-OFF* */
-    stringlist_each(c->objects, lambda(int, (const char *obj),
+    stringlist_each(c->objects, lambda(int, (const char *obj, void *uu),
 			       {
 				   makefile_add_dep(c->mf, "%s", obj);
 				   return 0;
 			       }
-		      ));
-    stringlist_each(c->libraries, lambda(int, (const char *lib),
+                        ), NULL);
+    stringlist_each(c->libraries, lambda(int, (const char *lib, void *uu),
 			       {
 				   makefile_add_dep(c->mf, "%s/lib%s.%s",
 						    c->lib_dir, lib,
                                                     l->so_ext);
 				   return 0;
 			       }
-		      ));
+                        ), NULL);
     /* *INDENT-ON* */
     makefile_end_deps(c->mf);
 
@@ -946,13 +946,13 @@ int context_add_library(struct context *c, const char *opt)
     }
 
     /* * INDENT-OFF* */
-    liblist_each(lib_deps, opt, lambda(int, (const char *dep),
+    liblist_each(lib_deps, opt, lambda(int, (const char *dep, void *uu),
                                        {
                                            stringlist_add_ifnew(c->libraries,
                                                                 dep);
                                            return 0;
                                        }
-                     ));
+                     ), NULL);
     /* * INDENT-ON* */
 
     return 0;

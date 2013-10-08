@@ -123,21 +123,21 @@ void language_pkgconfig_deps(struct language *l_uncast, struct context *c,
 
     /* *INDENT-OFF* */
     stringlist_each(l->l.link_opts,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
                                if (strncmp(opt, "-S", 2) == 0)
                                    func("%s", opt + 2);
 			       return 0;
 			   }
-                    ));
+                        ), NULL);
     stringlist_each(c->link_opts,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
                                if (strncmp(opt, "-S", 2) == 0)
                                    func("%s", opt + 2);
 			       return 0;
 			   }
-                    ));
+                        ), NULL);
     /* *INDENT-ON* */
 
     dirs[0] = NULL;
@@ -185,20 +185,20 @@ void language_pkgconfig_slib(struct language *l_uncast, struct context *c,
      * want to skip those extra files and just link the first one. */
     obj_count = 0;
     stringlist_each(c->objects,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
                                if (obj_count++ == 0)
                                    func(false, "\\ %s", opt);
 			       return 0;
 			   }
-                    ));
+                        ), NULL);
 
     func(false, "\\ | sed 's^@@pconfigure_prefix@@^%s^g'", c->prefix);
     func(false, "\\ | sed 's^@@pconfigure_libdir@@^%s^g'", c->lib_dir);
     func(false, "\\ | sed 's^@@pconfigure_hdrdir@@^%s^g'", c->hdr_dir);
     
     stringlist_each(l->l.link_opts,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
                                if (strncmp(opt, "-S", 2) == 0)
                                    func(false, "\\ | sed `cat %s`", opt + 2);
@@ -206,9 +206,9 @@ void language_pkgconfig_slib(struct language *l_uncast, struct context *c,
                                    func(false, "\\ | sed '%s'", opt);
 			       return 0;
 			   }
-                    ));
+                        ), NULL);
     stringlist_each(c->link_opts,
-		    lambda(int, (const char *opt),
+		    lambda(int, (const char *opt, void *uu),
 			   {
                                if (strncmp(opt, "-S", 2) == 0)
                                    func(false, "\\ | sed `cat %s`", opt + 2);
@@ -216,7 +216,7 @@ void language_pkgconfig_slib(struct language *l_uncast, struct context *c,
                                    func(false, "\\ | sed '%s'", opt);
 			       return 0;
 			   }
-                    ));
+                        ), NULL);
     /* *INDENT-ON* */
     func(false, "\\ > %s\n", c->link_path);
 

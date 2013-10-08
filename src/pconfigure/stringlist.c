@@ -151,14 +151,15 @@ int stringlist_size(struct stringlist *l)
     return count;
 }
 
-int stringlist_each(struct stringlist *l, int (*func) (const char *))
+int stringlist_each(struct stringlist *l,
+                    int (*func) (const char *, void *), void *arg)
 {
     struct stringlist_node *cur;
 
     cur = l->head;
     while (cur != NULL) {
         int out;
-        out = func(cur->data);
+        out = func(cur->data, arg);
         if (out != 0)
             return out;
 
