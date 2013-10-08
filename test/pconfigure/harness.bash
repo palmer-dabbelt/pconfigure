@@ -19,6 +19,13 @@ cd $TMPDIR
 echo "Running"
 $PTEST_BINARY
 make
+
+if test -x ./update
+then
+    ./update
+    make
+fi
+
 ./bin/test > test.out
 
 out="$(diff -u test.out test.gold)"
