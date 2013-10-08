@@ -19,7 +19,8 @@ cd $TMPDIR/input
 $PTEST_BINARY $(cat $TMPDIR/filename) | sort > $TMPDIR/stdout.test
 
 cd $TMPDIR
-out="$(diff -ur $TMPDIR/stdout.test $TMPDIR/stdout.gold)"
+cat $TMPDIR/stdout.gold | sort > $TMPDIR/stdout.gold.sorted
+out="$(diff -ur $TMPDIR/stdout.test $TMPDIR/stdout.gold.sorted)"
 
 echo ""
 echo ""
