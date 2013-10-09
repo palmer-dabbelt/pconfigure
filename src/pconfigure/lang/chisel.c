@@ -22,7 +22,8 @@
 #define _XOPEN_SOURCE 500
 
 #include "chisel.h"
-#include "../lambda.h"
+#include "ftwfn.h"
+#include "funcs.h"
 #include "../languagelist.h"
 #include <ftw.h>
 #include <string.h>
@@ -44,6 +45,7 @@
  * huge hack! */
 extern struct languagelist *ll;
 
+/* Member functions. */
 static struct language *language_chisel_search(struct language *l_uncast,
                                                struct language *parent,
                                                const char *path);
@@ -68,7 +70,35 @@ static void language_chisel_extras(struct language *l_uncast,
 static void language_chisel_quirks(struct language *l_uncast,
                                    struct context *c, struct makefile *mf);
 
-static bool str_starts(const char *haystack, const char *needle);
+/* Adds every file to the dependency list. */
+struct ftw_args
+{
+    struct language_chisel *l;
+    void *ctx;
+    void (*func) (void *, const char *, ...);
+    void *arg;
+};
+
+static int ftw_add(const char *fpath, const struct stat *sb,
+                   int typeflag, struct FTW *ftwbuf, void *arg);
+
+/* Checks if a given library is a "*.so" and eats it, otherwise passes
+ * it along to the given function. */
+struct eat_so_args
+{
+    void (*func) (bool, const char *, ...);
+};
+static int eat_so(const char *lib, void *args_uncast);
+
+/* I think there probably should be a cleaner way to do this, but I'm
+ * not entirely sure how to go about it. */
+struct jarlib_args
+{
+    struct context *c;
+    void (*func) (void *, const char *, ...);
+    void *arg;
+};
+static int jarlib(const char *lib, void *args_uncast);
 
 struct language *language_chisel_new(struct clopts *o, const char *name)
 {
@@ -176,38 +206,22 @@ void language_chisel_deps(struct language *l_uncast, struct context *c,
     /* FIXME: I can't properly handle Scala dependencies, so I just
      * build every Scala file in the same directory as the current
      * Scala file.  This is probably very bad... */
-    /* *INDENT-OFF* */
-    nftw(dir, lambda(int, (const char *path,
-			   const struct stat *sb,
-			   int type,
-			   struct FTW *ftwbuf),
-		     {
-			 char *copy;
+    {
+        struct ftw_args fa;
+        fa.l = l;
+        fa.ctx = ctx;
+        fa.func = func;
+        fa.arg = arg;
+        aftw(dir, &ftw_add, 16, FTW_DEPTH, &fa);
+    }
 
-			 if (strcmp(path + strlen(path) - 6, ".scala") == 0) {
-			     copy = talloc_strdup(ctx, path);
-			     func(arg, "%s", copy);
-			 }
-			 
-			 return 0;
-		     }),
-	 16, FTW_DEPTH);
-
-    stringlist_each(c->libraries,
-		    lambda(int, (const char *lib, void *uu),
-			   {
-                               char *str;
-			       str = talloc_asprintf(ctx, "%s/lib%s.jar",
-                                                     c->lib_dir, lib);
-
-                               func(arg, "%s", str);
-
-                               TALLOC_FREE(str);
-
-			       return 0;
-			   }
-			), NULL);
-    /* *INDENT-ON* */
+    {
+        struct jarlib_args jla;
+        jla.func = func;
+        jla.c = c;
+        jla.arg = arg;
+        stringlist_each(c->libraries, &jarlib, &jla);
+    }
 
     TALLOC_FREE(ctx);
 
@@ -241,48 +255,37 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
     func(false, "mkdir -p %s.d/gen >& /dev/null || true", obj_path);
     func(false, "mkdir -p %s.d/inc >& /dev/null || true", obj_path);
 
-    /* *INDENT-OFF* */
     /* Search for the design name, which is necessary because we can't
      * know this for a while. */
     design = NULL;
-    stringlist_each(l->l.compile_opts,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       if (str_starts(opt, "-d"))
-				   design = talloc_asprintf(context,
-							    "%s", opt+2);
 
-			       return 0;
-			   }
-                        ), NULL);
-    stringlist_each(c->compile_opts,
-		    lambda(int, (const char *opt, void *Uu),
-			   {
-			       if (str_starts(opt, "-d"))
-				   design = talloc_asprintf(context,
-							    "%s", opt+2);
+    {
+        const char *found;
+        found = stringlist_search_start(l->l.compile_opts, "-d", context);
 
-			       return 0;
-			   }
-                        ), NULL);
-    /* *INDENT-ON* */
+        if (found != NULL)
+            design = talloc_strdup(context, found + 2);
+    }
+
+    {
+        const char *found;
+        found = stringlist_search_start(c->compile_opts, "-d", context);
+
+        if (found != NULL)
+            design = talloc_strdup(context, found + 2);
+    }
 
     /* Compile the scala sources */
     func(false, "pscalac -l chisel\\");
     func(false, "\\ -L %s", c->lib_dir);
     last_source = c->full_path;
-    /* *INDENT-OFF* */
-    stringlist_each(c->libraries,
-		    lambda(int, (const char *lib, void *uu),
-			   {
-                               if (strcmp(lib+strlen(lib)-3, ".so") == 0)
-                                   return 0;
 
-			       func(false, "\\ -l %s", lib);
-			       return 0;
-			   }
-			), NULL);
-    /* *INDENT-ON* */
+    {
+        struct eat_so_args esa;
+        esa.func = func;
+        stringlist_each(c->libraries, &eat_so, &esa);
+    }
+
     if (last_source == NULL) {
         fprintf(stderr, "chisel compiler called with no sources!\n");
     }
@@ -292,15 +295,7 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
     /* Add a flag that tells Scala how to start up */
     func(false, "pscalald -l chisel\\");
     func(false, "\\ -L %s", c->lib_dir);
-    /* *INDENT-OFF* */
-    stringlist_each(c->libraries,
-		    lambda(int, (const char *lib, void *uu),
-			   {
-			       func(false, "\\ -l %s", lib);
-			       return 0;
-			   }
-			), NULL);
-    /* *INDENT-ON* */
+    func_stringlist_each_cmd_lcont(c->libraries, func);
     func(false, "\\ -o %s.d/obj.bin %s.d/obj.jar\n", obj_path, obj_path);
 
     /* Actually run the resulting Chisel binary to produce some C++ code */
@@ -316,28 +311,8 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
 
     /* Actually build the C++ code into a binary! */
     func(false, "%s\\", l->l.compile_cmd);
-    /* *INDENT-OFF* */
-    stringlist_each(l->l.compile_opts,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       if (str_starts(opt, "-d"))
-				   return 0;
-
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-                        ), NULL);
-    stringlist_each(c->compile_opts,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       if (str_starts(opt, "-d"))
-				   return 0;
-
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-                        ), NULL);
-    /* *INDENT-ON* */
+    func_stringlist_each_cmd_cont_nostart(l->l.compile_opts, func, "-d");
+    func_stringlist_each_cmd_cont_nostart(c->compile_opts, func, "-d");
     func(false, "\\ -I%s", c->hdr_dir);
     func(false, "\\ -c %s.d/gen/%s.cpp -o %s\n", obj_path, design, obj_path);
 
@@ -406,31 +381,25 @@ void language_chisel_quirks(struct language *l_uncast,
     context = talloc_new(NULL);
     obj_path = language_objname(l_uncast, context, c);
 
-    /* *INDENT-OFF* */
     /* Search for the design name, which is necessary because we can't
      * know this for a while. */
     design = NULL;
-    stringlist_each(l->l.compile_opts,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       if (str_starts(opt, "-d"))
-				   design = talloc_asprintf(context,
-							    "%s", opt+2);
 
-			       return 0;
-			   }
-                        ), NULL);
-    stringlist_each(c->compile_opts,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       if (str_starts(opt, "-d"))
-				   design = talloc_asprintf(context,
-							    "%s", opt+2);
+    {
+        const char *found;
+        found = stringlist_search_start(l->l.compile_opts, "-d", context);
 
-			       return 0;
-			   }
-                        ), NULL);
-    /* *INDENT-ON* */
+        if (found != NULL)
+            design = talloc_strdup(context, found + 2);
+    }
+
+    {
+        const char *found;
+        found = stringlist_search_start(c->compile_opts, "-d", context);
+
+        if (found != NULL)
+            design = talloc_strdup(context, found + 2);
+    }
 
     target_path = talloc_asprintf(context, "%s.d/inc/%s.h", obj_path, design);
     source_path = talloc_asprintf(context, "%s.d/gen/%s.h", obj_path, design);
@@ -469,7 +438,56 @@ void language_chisel_quirks(struct language *l_uncast,
     TALLOC_FREE(context);
 }
 
-bool str_starts(const char *haystack, const char *needle)
+int ftw_add(const char *path, const struct stat *sb,
+            int typeflag, struct FTW *ftwbuf, void *args_uncast)
 {
-    return strncmp(haystack, needle, strlen(needle)) == 0;
+    char *copy;
+    void *ctx;
+    void (*func) (void *, const char *, ...);
+    void *arg;
+
+    {
+        struct ftw_args *args;
+        args = args_uncast;
+        ctx = args->ctx;
+        func = args->func;
+        arg = args->arg;
+    }
+
+    if (strcmp(path + strlen(path) - 6, ".scala") == 0) {
+        copy = talloc_strdup(ctx, path);
+        func(arg, "%s", copy);
+    }
+
+    return 0;
+}
+
+int eat_so(const char *lib, void *args_uncast)
+{
+    struct eat_so_args *args;
+    args = args_uncast;
+
+    if (strcmp(lib + strlen(lib) - 3, ".so") == 0)
+        return 0;
+
+    args->func(false, "\\ -l %s", lib);
+    return 0;
+}
+
+int jarlib(const char *lib, void *args_uncast)
+{
+    struct context *c;
+    char *str;
+    struct jarlib_args *args;
+    void *arg;
+
+    args = args_uncast;
+    c = args->c;
+    arg = args->arg;
+
+    str = talloc_asprintf(NULL, "%s/lib%s.jar", c->lib_dir, lib);
+    args->func(arg, "%s", str);
+
+    TALLOC_FREE(str);
+    return 0;
 }

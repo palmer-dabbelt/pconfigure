@@ -61,7 +61,7 @@ static void language_scala_extras(struct language *l_uncast,
                                   void (*func) (void *, const char *),
                                   void *arg);
 
-/* */
+/* Adds every file to the dependency list. */
 struct ftw_args
 {
     struct language_scala *l;

@@ -136,6 +136,22 @@ bool stringlist_include(struct stringlist * l, const char *s)
     return false;
 }
 
+const char *stringlist_search_start(struct stringlist *l,
+                                    const char *s, void *ctx)
+{
+    struct stringlist_node *cur;
+
+    cur = l->head;
+    while (cur != NULL) {
+        if (strncmp(cur->data, s, strlen(s)) == 0)
+            return talloc_reference(ctx, cur->data);
+
+        cur = cur->next;
+    }
+
+    return NULL;
+}
+
 int stringlist_size(struct stringlist *l)
 {
     struct stringlist_node *cur;

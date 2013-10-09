@@ -19,21 +19,12 @@
  * along with pconfigure.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef FTWFN_H
-#define FTWFN_H
+#ifndef STR_H
+#define STR_H
 
-#ifndef _XOPEN_SOURCE
-#define _XOPEN_SOURCE 500
-#endif
+#include <stdbool.h>
 
-#include <ftw.h>
-
-/* This is a replacement for nftw that takes an argument pointer that
- * is passed to every invocation.  Note that the current
- * implementation is NOT thread-safe! */
-int aftw(const char *dirpath,
-         int (*fn) (const char *fpath, const struct stat * sb,
-                    int typeflag, struct FTW * ftwbuf, void *arg),
-         int nopenfd, int flags, void *arg);
+/* Returns TRUE if "haystack" starts with "needle". */
+bool str_sta(const char *haystack, const char *needle);
 
 #endif

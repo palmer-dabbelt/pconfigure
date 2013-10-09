@@ -52,4 +52,10 @@ void func_stringlist_each_cmd_cont(struct stringlist *sl,
 void func_stringlist_each_cmd_lcont(struct stringlist *sl,
                                     void (*func) (bool, const char *, ...));
 
+/* This is almost exactly the same as "func_stringlist_each_cmd_cont",
+ * except that it skips strings that start with the passed string. */
+void func_stringlist_each_cmd_cont_nostart(struct stringlist *sl,
+                                           void (*f) (bool, const char *,
+                                                      ...), const char *skip);
+
 #endif

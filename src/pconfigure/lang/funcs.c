@@ -20,6 +20,7 @@
  */
 
 #include "funcs.h"
+#include "str.h"
 
 #include <pinclude.h>
 
@@ -42,6 +43,7 @@ struct func_cmd
     bool type;
     const char *format;
     void (*func) (bool, const char *, ...);
+    const char *skip_start;
 };
 static int cmd_wrap_str(const char *s, void *args_uncast);
 
@@ -72,6 +74,7 @@ void func_stringlist_each_cmd_cont(struct stringlist *sl,
     f.type = false;
     f.format = "\\ %s";
     f.func = func;
+    f.skip_start = NULL;
     stringlist_each(sl, &cmd_wrap_str, &f);
 }
 
@@ -82,6 +85,21 @@ void func_stringlist_each_cmd_lcont(struct stringlist *sl,
     f.type = false;
     f.format = "\\ -l%s";
     f.func = func;
+    f.skip_start = NULL;
+    stringlist_each(sl, &cmd_wrap_str, &f);
+}
+
+void func_stringlist_each_cmd_cont_nostart(struct stringlist *sl,
+                                           void (*func) (bool,
+                                                         const char *,
+                                                         ...),
+                                           const char *skip)
+{
+    struct func_cmd f;
+    f.type = false;
+    f.format = "\\ %s";
+    f.func = func;
+    f.skip_start = skip;
     stringlist_each(sl, &cmd_wrap_str, &f);
 }
 
@@ -106,7 +124,9 @@ int cmd_wrap_str(const char *s, void *args_uncast)
     struct func_cmd *args;
     args = args_uncast;
 
-    args->func(args->type, args->format, s);
+    if (str_sta(s, args->skip_start))
+        return 0;
 
+    args->func(args->type, args->format, s);
     return 0;
 }

@@ -55,6 +55,12 @@ extern int stringlist_del(struct stringlist *l, const char *to_del);
 /* Checks if the given string is in the given string list */
 extern bool stringlist_include(struct stringlist *l, const char *s);
 
+/* Searches the given list for a string that starts with the given
+ * substring, returning the first one found (allocated as a
+ * sub-context of ctx).  */
+extern const char *stringlist_search_start(struct stringlist *l,
+                                           const char *s, void *ctx);
+
 /* Returns a hash code for a given string list */
 extern const char *stringlist_hashcode(struct stringlist *l, void *context);
 
