@@ -391,7 +391,7 @@ int context_library_destructor(struct context *c)
         makefile_add_dep(c->mf, "Makefile");
 
         /* *INDENT-OFF* */
-        language_deps(l, c, lambda(void, (const char *format, ...),
+        language_deps(l, c, lambda(void, (void *uu, const char *format, ...),
                                    {
                                        va_list args;
                                        va_start(args, format);
@@ -399,7 +399,7 @@ int context_library_destructor(struct context *c)
                                                          format, args);
                                        va_end(args);
                                    }
-                          ));
+                          ), NULL);
         /* *INDENT-ON* */
 
     }
@@ -679,7 +679,7 @@ int context_source_destructor(struct context *c)
 
 	    /* *INDENT-OFF* */
             makefile_start_deps(c->mf);
-            language_deps(l, c, lambda(void, (const char *format, ...),
+            language_deps(l, c, lambda(void, (void *uu, const char *format, ...),
                                        {
 					   va_list args;
 					   va_start(args, format);
@@ -687,7 +687,7 @@ int context_source_destructor(struct context *c)
 							     format, args);
 					   va_end(args);
                                        }
-			      ));
+			      ), NULL);
             makefile_end_deps(c->mf);
 	    /* *INDENT-ON* */
 

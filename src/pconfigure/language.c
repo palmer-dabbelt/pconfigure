@@ -127,11 +127,11 @@ bool language_needs_compile(struct language * l, struct context * c)
 }
 
 void language_deps(struct language *l, struct context *c,
-                   void (*func) (const char *, ...))
+                   void (*func) (void *, const char *, ...), void *arg)
 {
     assert(l != NULL);
     assert(l->deps != NULL);
-    l->deps(l, c, func);
+    l->deps(l, c, func, arg);
 }
 
 void language_build(struct language *l, struct context *c,

@@ -33,7 +33,8 @@ static struct language *language_asm_search(struct language *l_uncast,
                                             struct language *parent,
                                             const char *path);
 static void language_asm_deps(struct language *l_uncast, struct context *c,
-                              void (*func) (const char *, ...));
+                              void (*func) (void *arg, const char *, ...),
+                              void *);
 
 struct language *language_asm_new(struct clopts *o, const char *name)
 {
@@ -82,7 +83,7 @@ struct language *language_asm_search(struct language *l_uncast,
 }
 
 void language_asm_deps(struct language *l_uncast, struct context *c,
-                       void (*func) (const char *, ...))
+                       void (*func) (void *arg, const char *, ...), void *arg)
 {
     struct language_c *l;
 
@@ -90,5 +91,5 @@ void language_asm_deps(struct language *l_uncast, struct context *c,
     if (l == NULL)
         abort();
 
-    func("%s", c->full_path);
+    func(arg, "%s", c->full_path);
 }

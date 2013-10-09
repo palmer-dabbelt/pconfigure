@@ -50,7 +50,8 @@ static struct language *language_chisel_search(struct language *l_uncast,
 static const char *language_chisel_objname(struct language *l_uncast,
                                            void *context, struct context *c);
 static void language_chisel_deps(struct language *l_uncast, struct context *c,
-                                 void (*func) (const char *, ...));
+                                 void (*func) (void *, const char *, ...),
+                                 void *arg);
 static void language_chisel_build(struct language *l_uncast,
                                   struct context *c, void (*func) (bool,
                                                                    const char
@@ -153,7 +154,7 @@ const char *language_chisel_objname(struct language *l_uncast, void *context,
 }
 
 void language_chisel_deps(struct language *l_uncast, struct context *c,
-                          void (*func) (const char *, ...))
+                          void (*func) (void *, const char *, ...), void *arg)
 {
     void *ctx;
     struct language_chisel *l;
@@ -184,7 +185,7 @@ void language_chisel_deps(struct language *l_uncast, struct context *c,
 
 			 if (strcmp(path + strlen(path) - 6, ".scala") == 0) {
 			     copy = talloc_strdup(ctx, path);
-			     func(copy);
+			     func(arg, "%s", copy);
 			 }
 			 
 			 return 0;
@@ -198,7 +199,7 @@ void language_chisel_deps(struct language *l_uncast, struct context *c,
 			       str = talloc_asprintf(ctx, "%s/lib%s.jar",
                                                      c->lib_dir, lib);
 
-                               func(str);
+                               func(arg, "%s", str);
 
                                TALLOC_FREE(str);
 

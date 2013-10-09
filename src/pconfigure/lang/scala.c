@@ -45,7 +45,8 @@ static struct language *language_scala_search(struct language *l_uncast,
 static const char *language_scala_objname(struct language *l_uncast,
                                           void *context, struct context *c);
 static void language_scala_deps(struct language *l_uncast, struct context *c,
-                                void (*func) (const char *, ...));
+                                void (*func) (void *, const char *, ...),
+                                void *arg);
 static void language_scala_build(struct language *l_uncast, struct context *c,
                                  void (*func) (bool, const char *, ...));
 static void language_scala_link(struct language *l_uncast, struct context *c,
@@ -143,7 +144,7 @@ const char *language_scala_objname(struct language *l_uncast, void *context,
 }
 
 void language_scala_deps(struct language *l_uncast, struct context *c,
-                         void (*func) (const char *, ...))
+                         void (*func) (void *, const char *, ...), void *arg)
 {
     void *ctx;
     struct language_scala *l;
@@ -174,7 +175,7 @@ void language_scala_deps(struct language *l_uncast, struct context *c,
 
 			 if (strcmp(path + strlen(path) - 6, ".scala") == 0) {
 			     copy = talloc_strdup(ctx, path);
-			     func(copy);
+			     func(arg, "%s", copy);
 			     stringlist_add(l->deps, copy);
 			 }
 			 

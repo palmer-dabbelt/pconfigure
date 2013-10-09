@@ -39,7 +39,8 @@ static const char *language_pkgconfig_objname(struct language *l_uncast,
                                               struct context *c);
 static void language_pkgconfig_deps(struct language *l_uncast,
                                     struct context *c,
-                                    void (*func) (const char *, ...));
+                                    void (*func) (void *, const char *, ...),
+                                    void *arg);
 static void language_pkgconfig_build(struct language *l_uncast,
                                      struct context *c, void (*func) (bool,
                                                                       const
@@ -112,7 +113,8 @@ const char *language_pkgconfig_objname(struct language *l_uncast,
 }
 
 void language_pkgconfig_deps(struct language *l_uncast, struct context *c,
-                             void (*func) (const char *, ...))
+                             void (*func) (void *, const char *, ...),
+                             void *arg)
 {
     struct language_pkgconfig *l;
     char *dirs[1];
@@ -126,7 +128,7 @@ void language_pkgconfig_deps(struct language *l_uncast, struct context *c,
 		    lambda(int, (const char *opt, void *uu),
 			   {
                                if (strncmp(opt, "-S", 2) == 0)
-                                   func("%s", opt + 2);
+                                   func(arg, "%s", opt + 2);
 			       return 0;
 			   }
                         ), NULL);
@@ -134,7 +136,7 @@ void language_pkgconfig_deps(struct language *l_uncast, struct context *c,
 		    lambda(int, (const char *opt, void *uu),
 			   {
                                if (strncmp(opt, "-S", 2) == 0)
-                                   func("%s", opt + 2);
+                                   func(arg, "%s", opt + 2);
 			       return 0;
 			   }
                         ), NULL);
@@ -144,7 +146,7 @@ void language_pkgconfig_deps(struct language *l_uncast, struct context *c,
     /* *INDENT-OFF* */
     pinclude_list(c->full_path, lambda(int, (const char *f, void *u),
                                        {
-                                           func("%s", f);
+                                           func(arg, "%s", f);
                                            return 0;
                                        }
                       ), NULL, dirs);

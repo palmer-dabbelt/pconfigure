@@ -25,7 +25,8 @@
 
 struct func_printf
 {
-    void (*func) (const char *, ...);
+    void (*func) (void *, const char *, ...);
+    void *arg;
 };
 static int printf_wrap_str(const char *format, void *args_uncast);
 
@@ -44,10 +45,12 @@ struct func_cmd
 static int cmd_wrap_str(const char *s, void *args_uncast);
 
 void func_pinclude_list_printf(const char *full_path,
-                               void (*func) (const char *, ...), char **dirs)
+                               void (*func) (void *, const char *, ...),
+                               void *arg, char **dirs)
 {
     struct func_printf f;
     f.func = func;
+    f.arg = arg;
     pinclude_list(full_path, &printf_wrap_str, &f, dirs);
 }
 

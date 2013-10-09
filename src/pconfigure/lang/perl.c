@@ -39,7 +39,8 @@ static struct language *language_perl_search(struct language *l_uncast,
 static const char *language_perl_objname(struct language *l_uncast,
                                          void *context, struct context *c);
 static void language_perl_deps(struct language *l_uncast, struct context *c,
-                               void (*func) (const char *, ...));
+                               void (*func) (void *, const char *, ...),
+                               void *arg);
 static void language_perl_build(struct language *l_uncast, struct context *c,
                                 void (*func) (bool, const char *, ...));
 static void language_perl_link(struct language *l_uncast, struct context *c,
@@ -116,14 +117,14 @@ const char *language_perl_objname(struct language *l_uncast, void *context,
 }
 
 void language_perl_deps(struct language *l_uncast, struct context *c,
-                        void (*func) (const char *, ...))
+                        void (*func) (void *, const char *, ...), void *arg)
 {
     char *dirs[1];
 
     func("%s", c->full_path);
 
     dirs[0] = NULL;
-    func_pinclude_list_printf(c->full_path, func, dirs);
+    func_pinclude_list_printf(c->full_path, func, arg, dirs);
 }
 
 void language_perl_build(struct language *l_uncast, struct context *c,

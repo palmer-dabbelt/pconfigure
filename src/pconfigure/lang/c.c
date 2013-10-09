@@ -42,7 +42,8 @@ static struct language *language_c_search(struct language *l_uncast,
 static const char *language_c_objname(struct language *l_uncast,
                                       void *context, struct context *c);
 static void language_c_deps(struct language *l_uncast, struct context *c,
-                            void (*func) (const char *, ...));
+                            void (*func) (void *arg, const char *, ...),
+                            void *arg);
 static void language_c_build(struct language *l_uncast, struct context *c,
                              void (*func) (bool, const char *, ...));
 static void language_c_link(struct language *l_uncast, struct context *c,
@@ -147,7 +148,7 @@ const char *language_c_objname(struct language *l_uncast, void *context,
 }
 
 void language_c_deps(struct language *l_uncast, struct context *c,
-                     void (*func) (const char *, ...))
+                     void (*func) (void *arg, const char *, ...), void *arg)
 {
     void *context;
     struct language_c *l;
@@ -159,7 +160,7 @@ void language_c_deps(struct language *l_uncast, struct context *c,
 
     /* Linker scripts have no dependencies. */
     if (strcmp(c->full_path + strlen(c->full_path) - 3, ".ld") == 0) {
-        func(c->full_path);
+        func(arg, "%s", c->full_path);
         return;
     }
 
@@ -228,7 +229,7 @@ void language_c_deps(struct language *l_uncast, struct context *c,
                                    fn = clang_getFileName(included_file);
                                    fn_cstr = clang_getCString(fn);
 
-				   func("%s", string_strip(fn_cstr, context));
+				   func(arg, "%s", string_strip(fn_cstr, context));
                                    clang_disposeString(fn);
 			       }
 			    ), NULL);
@@ -424,7 +425,7 @@ void language_c_extras(struct language *l_uncast, struct context *c,
 {
     /* *INDENT-OFF* */
     language_deps(l_uncast, c, 
-		  lambda(void, (const char *format, ...),
+		  lambda(void, (void *arg, const char *format, ...),
 			 {
 			     va_list args;
 			     char *cfile;
@@ -482,7 +483,7 @@ void language_c_extras(struct language *l_uncast, struct context *c,
 			     talloc_unlink(context, hfile);
 			     talloc_unlink(context, cxxfile);
 			 }
-		      ));
+		      ), NULL);
     /* *INDENT-ON* */
 }
 

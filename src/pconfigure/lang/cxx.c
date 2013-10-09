@@ -20,7 +20,6 @@
  */
 
 #include "cxx.h"
-#include "../lambda.h"
 #include <string.h>
 #include <unistd.h>
 
@@ -30,11 +29,22 @@
 #include "extern/talloc.h"
 #endif
 
+/* Instance methods. */
 static struct language *language_cxx_search(struct language *l_uncast,
                                             struct language *parent,
                                             const char *path);
 static void language_cxx_extras(struct language *l_uncast, struct context *c,
                                 void *context, void (*func) (const char *));
+
+/* Searches for C++-looking files that are close to the current
+ * file. */
+struct find_similar_files_args
+{
+    struct context *c;
+    void *context;
+    void (*func) (const char *);
+};
+static void find_similar_files(void *arg_uncast, const char *format, ...);
 
 struct language *language_cxx_new(struct clopts *o, const char *name)
 {
@@ -86,71 +96,84 @@ struct language *language_cxx_search(struct language *l_uncast,
 void language_cxx_extras(struct language *l_uncast, struct context *c,
                          void *context, void (*func) (const char *))
 {
-    /* *INDENT-OFF* */
-    language_deps(l_uncast, c, 
-		  lambda(void, (const char *format, ...),
-			 {
-			     va_list args;
-			     char *cfile;
-			     char *cxxfile;
+    struct find_similar_files_args args;
 
-			     va_start(args, format);
+    args.c = c;
+    args.context = context;
+    args.func = func;
 
-			     cfile = talloc_vasprintf(context, format, args);
+    language_deps(l_uncast, c, &find_similar_files, &args);
+}
 
-			     cxxfile = talloc_array(context, char,
-						    strlen(cfile) + 20);
+void find_similar_files(void *args_uncast, const char *format, ...)
+{
+    va_list args;
+    char *cfile;
+    char *cxxfile;
 
-			     memset(cxxfile, 0, strlen(cfile) + 10);
-			     strncpy(cxxfile, cfile, strlen(cfile) - 2);
-			     strcat(cxxfile, ".c++");
-			     if (access(cxxfile, R_OK) == 0)
-				 func(cxxfile);
+    void *context;
+    void (*func) (const char *);
 
-			     memset(cxxfile, 0, strlen(cfile) + 10);
-			     strncpy(cxxfile, cfile, strlen(cfile) - 2);
-			     strcat(cxxfile, ".cxx");
-			     if (access(cxxfile, R_OK) == 0)
-				 func(cxxfile);
+    {
+        struct find_similar_files_args *args;
+        args = args_uncast;
+        context = args->context;
+        func = args->func;
+    }
 
-			     memset(cxxfile, 0, strlen(cfile) + 10);
-			     strncpy(cxxfile, cfile, strlen(cfile) - 2);
-			     strcat(cxxfile, ".cpp");
-			     if (access(cxxfile, R_OK) == 0)
-				 func(cxxfile);
+    va_start(args, format);
 
-			     memset(cxxfile, 0, strlen(cfile) + 10);
-			     strncpy(cxxfile, cfile, strlen(cfile) - 4);
-			     strcat(cxxfile, ".c++");
-			     if (access(cxxfile, R_OK) == 0)
-				 func(cxxfile);
+    cfile = talloc_vasprintf(context, format, args);
 
-			     memset(cxxfile, 0, strlen(cfile) + 10);
-			     strncpy(cxxfile, cfile, strlen(cfile) - 4);
-			     strcat(cxxfile, ".cxx");
-			     if (access(cxxfile, R_OK) == 0)
-				 func(cxxfile);
+    cxxfile = talloc_array(context, char, strlen(cfile) + 20);
 
-			     memset(cxxfile, 0, strlen(cfile) + 10);
-			     strncpy(cxxfile, cfile, strlen(cfile) - 4);
-			     strcat(cxxfile, ".cpp");
-			     if (access(cxxfile, R_OK) == 0)
-				 func(cxxfile);
+    memset(cxxfile, 0, strlen(cfile) + 10);
+    strncpy(cxxfile, cfile, strlen(cfile) - 2);
+    strcat(cxxfile, ".c++");
+    if (access(cxxfile, R_OK) == 0)
+        func(cxxfile);
 
-			     if (strcmp(cfile + strlen(cfile) - 2, ".h") == 0)
-				 cfile[strlen(cfile)-1] = 'c';
-			     if (strcmp(cfile + strlen(cfile) - 4, ".h++") == 0)
-				 cfile[strlen(cfile)-3] = 'c';
-			     if (strcmp(cfile + strlen(cfile) - 4, ".hxx") == 0)
-				 cfile[strlen(cfile)-3] = 'c';
-			     if (strcmp(cfile + strlen(cfile) - 4, ".hpp") == 0)
-				 cfile[strlen(cfile)-3] = 'c';
-			     if (access(cfile, R_OK) == 0)
-				 if (strcmp(cfile + strlen(cfile) - 2, ".c") == 0)
-				     func(cfile);
-			     
-			     va_end(args);
-			 }
-		      ));
-    /* *INDENT-ON* */
+    memset(cxxfile, 0, strlen(cfile) + 10);
+    strncpy(cxxfile, cfile, strlen(cfile) - 2);
+    strcat(cxxfile, ".cxx");
+    if (access(cxxfile, R_OK) == 0)
+        func(cxxfile);
+
+    memset(cxxfile, 0, strlen(cfile) + 10);
+    strncpy(cxxfile, cfile, strlen(cfile) - 2);
+    strcat(cxxfile, ".cpp");
+    if (access(cxxfile, R_OK) == 0)
+        func(cxxfile);
+
+    memset(cxxfile, 0, strlen(cfile) + 10);
+    strncpy(cxxfile, cfile, strlen(cfile) - 4);
+    strcat(cxxfile, ".c++");
+    if (access(cxxfile, R_OK) == 0)
+        func(cxxfile);
+
+    memset(cxxfile, 0, strlen(cfile) + 10);
+    strncpy(cxxfile, cfile, strlen(cfile) - 4);
+    strcat(cxxfile, ".cxx");
+    if (access(cxxfile, R_OK) == 0)
+        func(cxxfile);
+
+    memset(cxxfile, 0, strlen(cfile) + 10);
+    strncpy(cxxfile, cfile, strlen(cfile) - 4);
+    strcat(cxxfile, ".cpp");
+    if (access(cxxfile, R_OK) == 0)
+        func(cxxfile);
+
+    if (strcmp(cfile + strlen(cfile) - 2, ".h") == 0)
+        cfile[strlen(cfile) - 1] = 'c';
+    if (strcmp(cfile + strlen(cfile) - 4, ".h++") == 0)
+        cfile[strlen(cfile) - 3] = 'c';
+    if (strcmp(cfile + strlen(cfile) - 4, ".hxx") == 0)
+        cfile[strlen(cfile) - 3] = 'c';
+    if (strcmp(cfile + strlen(cfile) - 4, ".hpp") == 0)
+        cfile[strlen(cfile) - 3] = 'c';
+    if (access(cfile, R_OK) == 0)
+        if (strcmp(cfile + strlen(cfile) - 2, ".c") == 0)
+            func(cfile);
+
+    va_end(args);
 }
