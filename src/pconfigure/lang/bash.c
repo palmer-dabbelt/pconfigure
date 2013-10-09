@@ -47,7 +47,9 @@ static void language_bash_link(struct language *l_uncast, struct context *c,
                                void (*func) (bool, const char *, ...),
                                bool should_install);
 static void language_bash_extras(struct language *l_uncast, struct context *c,
-                                 void *context, void (*func) (const char *));
+                                 void *context,
+                                 void (*func) (void *, const char *),
+                                 void *arg);
 
 /* This one only passes the first link string that it comes into
  * contact with, but aside from that it's like
@@ -178,12 +180,13 @@ void language_bash_link(struct language *l_uncast, struct context *c,
 }
 
 void language_bash_extras(struct language *l_uncast, struct context *c,
-                          void *context, void (*func) (const char *))
+                          void *context,
+                          void (*func) (void *, const char *), void *arg)
 {
     char *dirs[1];
 
     dirs[0] = NULL;
-    func_pinclude_list_string(c->full_path, func, dirs);
+    func_pinclude_list_string(c->full_path, func, arg, dirs);
 }
 
 int pass_first_link_str(const char *opt, void *args_uncast)

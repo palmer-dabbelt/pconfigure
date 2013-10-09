@@ -50,7 +50,7 @@ struct language
                                 const char *);
     const char *(*objname) (struct language *, void *, struct context *);
     void (*deps) (struct language *, struct context *,
-                  void (*)(void *, const char *, ...), void *arg);
+                  void (*)(void *, const char *, ...), void *);
     void (*build) (struct language *, struct context *,
                    void (*)(bool, const char *, ...));
     void (*link) (struct language *, struct context *,
@@ -58,7 +58,7 @@ struct language
     void (*slib) (struct language *, struct context *,
                   void (*)(bool, const char *, ...));
     void (*extras) (struct language *, struct context *, void *,
-                    void (*)(const char *));
+                    void (*)(void *, const char *), void *);
     void (*quirks) (struct language *, struct context *, struct makefile *);
 };
 
@@ -88,7 +88,7 @@ extern void language_link(struct language *l, struct context *c,
 extern void language_slib(struct language *l, struct context *c,
                           void (*func) (bool, const char *, ...));
 extern void language_extras(struct language *l, struct context *c, void *cxt,
-                            void (*func) (const char *));
+                            void (*func) (void *, const char *), void *arg);
 extern void language_quirks(struct language *l, struct context *c,
                             struct makefile *mf);
 

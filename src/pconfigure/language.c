@@ -159,11 +159,11 @@ void language_slib(struct language *l, struct context *c,
 }
 
 void language_extras(struct language *l, struct context *c, void *context,
-                     void (*func) (const char *))
+                     void (*func) (void *, const char *), void *arg)
 {
     assert(l != NULL);
     assert(l->extras != NULL);
-    l->extras(l, c, context, func);
+    l->extras(l, c, context, func, arg);
 }
 
 void language_quirks(struct language *l, struct context *c,

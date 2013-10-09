@@ -34,7 +34,9 @@ static struct language *language_cxx_search(struct language *l_uncast,
                                             struct language *parent,
                                             const char *path);
 static void language_cxx_extras(struct language *l_uncast, struct context *c,
-                                void *context, void (*func) (const char *));
+                                void *context,
+                                void (*func) (void *arg, const char *),
+                                void *);
 
 /* Searches for C++-looking files that are close to the current
  * file. */
@@ -42,7 +44,8 @@ struct find_similar_files_args
 {
     struct context *c;
     void *context;
-    void (*func) (const char *);
+    void *arg;
+    void (*func) (void *, const char *);
 };
 static void find_similar_files(void *arg_uncast, const char *format, ...);
 
@@ -94,13 +97,15 @@ struct language *language_cxx_search(struct language *l_uncast,
 }
 
 void language_cxx_extras(struct language *l_uncast, struct context *c,
-                         void *context, void (*func) (const char *))
+                         void *context,
+                         void (*func) (void *, const char *), void *arg)
 {
     struct find_similar_files_args args;
 
     args.c = c;
     args.context = context;
     args.func = func;
+    args.arg = arg;
 
     language_deps(l_uncast, c, &find_similar_files, &args);
 }
@@ -112,13 +117,15 @@ void find_similar_files(void *args_uncast, const char *format, ...)
     char *cxxfile;
 
     void *context;
-    void (*func) (const char *);
+    void (*func) (void *, const char *);
+    void *arg;
 
     {
         struct find_similar_files_args *args;
         args = args_uncast;
         context = args->context;
         func = args->func;
+        arg = args->arg;
     }
 
     va_start(args, format);
@@ -131,37 +138,37 @@ void find_similar_files(void *args_uncast, const char *format, ...)
     strncpy(cxxfile, cfile, strlen(cfile) - 2);
     strcat(cxxfile, ".c++");
     if (access(cxxfile, R_OK) == 0)
-        func(cxxfile);
+        func(arg, cxxfile);
 
     memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 2);
     strcat(cxxfile, ".cxx");
     if (access(cxxfile, R_OK) == 0)
-        func(cxxfile);
+        func(arg, cxxfile);
 
     memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 2);
     strcat(cxxfile, ".cpp");
     if (access(cxxfile, R_OK) == 0)
-        func(cxxfile);
+        func(arg, cxxfile);
 
     memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 4);
     strcat(cxxfile, ".c++");
     if (access(cxxfile, R_OK) == 0)
-        func(cxxfile);
+        func(arg, cxxfile);
 
     memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 4);
     strcat(cxxfile, ".cxx");
     if (access(cxxfile, R_OK) == 0)
-        func(cxxfile);
+        func(arg, cxxfile);
 
     memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 4);
     strcat(cxxfile, ".cpp");
     if (access(cxxfile, R_OK) == 0)
-        func(cxxfile);
+        func(arg, cxxfile);
 
     if (strcmp(cfile + strlen(cfile) - 2, ".h") == 0)
         cfile[strlen(cfile) - 1] = 'c';
@@ -173,7 +180,7 @@ void find_similar_files(void *args_uncast, const char *format, ...)
         cfile[strlen(cfile) - 3] = 'c';
     if (access(cfile, R_OK) == 0)
         if (strcmp(cfile + strlen(cfile) - 2, ".c") == 0)
-            func(cfile);
+            func(arg, cfile);
 
     va_end(args);
 }

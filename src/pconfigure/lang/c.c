@@ -52,7 +52,8 @@ static void language_c_link(struct language *l_uncast, struct context *c,
 static void language_c_slib(struct language *l_uncast, struct context *c,
                             void (*func) (bool, const char *, ...));
 static void language_c_extras(struct language *l_uncast, struct context *c,
-                              void *context, void (*func) (const char *));
+                              void *context,
+                              void (*func) (void *, const char *), void *arg);
 
 static char *string_strip(const char *in, void *context);
 static bool str_ends(const char *haystack, const char *needle);
@@ -421,7 +422,8 @@ void language_c_slib(struct language *l_uncast, struct context *c,
 }
 
 void language_c_extras(struct language *l_uncast, struct context *c,
-                       void *context, void (*func) (const char *))
+                       void *context,
+                       void (*func) (void *arg, const char *), void *arg)
 {
     /* *INDENT-OFF* */
     language_deps(l_uncast, c, 
@@ -450,11 +452,11 @@ void language_c_extras(struct language *l_uncast, struct context *c,
 
 			     if (strcmp(cfile, hfile) != 0)
 				 if (access(cfile, R_OK) == 0)
-				     func(cfile);
+				     func(arg, cfile);
 
 			     if (strcmp(sfile, hfile) != 0)
 				 if (access(sfile, R_OK) == 0)
-				     func(sfile);
+				     func(arg, sfile);
 			     
 			     va_start(args, format);
 			     cxxfile = talloc_array(context, char,
@@ -465,19 +467,19 @@ void language_c_extras(struct language *l_uncast, struct context *c,
 			     strncpy(cxxfile, cfile, strlen(cfile) - 2);
 			     strcat(cxxfile, ".c++");
 			     if (access(cxxfile, R_OK) == 0)
-				 func(cxxfile);
+				 func(arg, cxxfile);
 
 			     memset(cxxfile, 0, strlen(cfile) + 10);
 			     strncpy(cxxfile, cfile, strlen(cfile) - 2);
 			     strcat(cxxfile, ".cxx");
 			     if (access(cxxfile, R_OK) == 0)
-				 func(cxxfile);
+				 func(arg, cxxfile);
 
 			     memset(cxxfile, 0, strlen(cfile) + 10);
 			     strncpy(cxxfile, cfile, strlen(cfile) - 2);
 			     strcat(cxxfile, ".cpp");
 			     if (access(cxxfile, R_OK) == 0)
-				 func(cxxfile);
+				 func(arg, cxxfile);
 
 			     talloc_unlink(context, cfile);
 			     talloc_unlink(context, hfile);

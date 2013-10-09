@@ -63,7 +63,8 @@ static void language_chisel_slib(struct language *l_uncast, struct context *c,
                                  void (*func) (bool, const char *, ...));
 static void language_chisel_extras(struct language *l_uncast,
                                    struct context *c, void *context,
-                                   void (*func) (const char *));
+                                   void (*func) (void *, const char *),
+                                   void *arg);
 static void language_chisel_quirks(struct language *l_uncast,
                                    struct context *c, struct makefile *mf);
 
@@ -380,7 +381,8 @@ void language_chisel_slib(struct language *l_uncast, struct context *c,
 }
 
 void language_chisel_extras(struct language *l_uncast, struct context *c,
-                            void *context, void (*func) (const char *))
+                            void *context,
+                            void (*func) (void *, const char *), void *arg)
 {
     /* FIXME: Scala doesn't seem to support incremental compilation,
      * so we can't really handle the whole extras thing.  I just

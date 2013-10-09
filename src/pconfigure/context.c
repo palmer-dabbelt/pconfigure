@@ -725,11 +725,11 @@ int context_source_destructor(struct context *c)
     if (stringlist_include(c->parent->objects, obj_name) == false) {
 	/* *INDENT-OFF* */
 	language_extras(l, c, context,
-			lambda(void, (const char * extra),
+			lambda(void, (void *uu, const char * extra),
 			       {
 				   contextstack_push_fullsrc(c->s, extra);
 			       }
-			    ));
+			    ), NULL);
 	/* *INDENT-ON* */
 
         stringlist_add(c->parent->objects, obj_name);

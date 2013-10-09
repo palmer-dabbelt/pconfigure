@@ -56,7 +56,8 @@ static void language_scala_slib(struct language *l_uncast, struct context *c,
                                 void (*func) (bool, const char *, ...));
 static void language_scala_extras(struct language *l_uncast,
                                   struct context *c, void *context,
-                                  void (*func) (const char *));
+                                  void (*func) (void *, const char *),
+                                  void *arg);
 
 struct language *language_scala_new(struct clopts *o, const char *name)
 {
@@ -362,7 +363,8 @@ void language_scala_slib(struct language *l_uncast, struct context *c,
 }
 
 void language_scala_extras(struct language *l_uncast, struct context *c,
-                           void *context, void (*func) (const char *))
+                           void *context,
+                           void (*func) (void *arg, const char *), void *arg)
 {
     /* FIXME: Scala doesn't seem to support incremental compilation,
      * so we can't really handle the whole extras thing.  I just
