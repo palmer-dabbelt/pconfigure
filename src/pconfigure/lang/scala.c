@@ -21,8 +21,9 @@
 
 #define _XOPEN_SOURCE 500
 
+#include "ftwfn.h"
+#include "funcs.h"
 #include "scala.h"
-#include "../lambda.h"
 #include <ftw.h>
 #include <string.h>
 #include <unistd.h>
@@ -39,6 +40,7 @@
 #include "extern/clang.h"
 #endif
 
+/* Member functions. */
 static struct language *language_scala_search(struct language *l_uncast,
                                               struct language *parent,
                                               const char *path);
@@ -58,6 +60,18 @@ static void language_scala_extras(struct language *l_uncast,
                                   struct context *c, void *context,
                                   void (*func) (void *, const char *),
                                   void *arg);
+
+/* */
+struct ftw_args
+{
+    struct language_scala *l;
+    void *ctx;
+    void (*func) (void *, const char *, ...);
+    void *arg;
+};
+
+static int ftw_add(const char *fpath, const struct stat *sb,
+                   int typeflag, struct FTW *ftwbuf, void *arg);
 
 struct language *language_scala_new(struct clopts *o, const char *name)
 {
@@ -166,24 +180,14 @@ void language_scala_deps(struct language *l_uncast, struct context *c,
     /* FIXME: I can't properly handle Scala dependencies, so I just
      * build every Scala file in the same directory as the current
      * Scala file.  This is probably very bad... */
-    /* *INDENT-OFF* */
-    nftw(dir, lambda(int, (const char *path,
-			   const struct stat *sb,
-			   int type,
-			   struct FTW *ftwbuf),
-		     {
-			 char *copy;
-
-			 if (strcmp(path + strlen(path) - 6, ".scala") == 0) {
-			     copy = talloc_strdup(ctx, path);
-			     func(arg, "%s", copy);
-			     stringlist_add(l->deps, copy);
-			 }
-			 
-			 return 0;
-		     }),
-	 16, FTW_DEPTH);
-    /* *INDENT-ON* */
+    {
+        struct ftw_args fa;
+        fa.l = l;
+        fa.ctx = ctx;
+        fa.func = func;
+        fa.arg = arg;
+        aftw(dir, &ftw_add, 16, FTW_DEPTH, &fa);
+    }
 
     TALLOC_FREE(ctx);
 
@@ -213,30 +217,11 @@ void language_scala_build(struct language *l_uncast, struct context *c,
     func(false, "mkdir -p `dirname %s` >& /dev/null || true", obj_path);
 
     func(false, "%s\\", l->l.compile_cmd);
-    /* *INDENT-OFF* */
-    stringlist_each(l->l.compile_opts,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-                        ), NULL);
-    stringlist_each(c->compile_opts,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-                        ), NULL);
-    stringlist_each(l->deps,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-                        ), NULL);
 
-    /* *INDENT-ON* */
+    func_stringlist_each_cmd_cont(l->l.compile_opts, func);
+    func_stringlist_each_cmd_cont(c->compile_opts, func);
+    func_stringlist_each_cmd_cont(l->deps, func);
+
     func(false, "\\ -o %s\n", obj_path);
 
     TALLOC_FREE(context);
@@ -269,36 +254,11 @@ void language_scala_link(struct language *l_uncast, struct context *c,
     func(false, "%s -o %s", l->l.link_cmd, link_path);
     func(false, "\\");
 
-    /* *INDENT-OFF* */
-    stringlist_each(l->l.link_opts,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-			), NULL);
-    stringlist_each(c->link_opts,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-			), NULL);
-    stringlist_each(c->objects,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-			), NULL);
-    stringlist_each(c->libraries,
-		    lambda(int, (const char *lib, void *uu),
-			   {
-			       func(false, "\\ -l%s", lib);
-			       return 0;
-			   }
-			), NULL);
-    /* *INDENT-ON* */
+    func_stringlist_each_cmd_cont(l->l.link_opts, func);
+    func_stringlist_each_cmd_cont(c->link_opts, func);
+    func_stringlist_each_cmd_cont(c->objects, func);
+    func_stringlist_each_cmd_lcont(c->libraries, func);
+
     func(false, "\\\n");
 
     TALLOC_FREE(context);
@@ -327,36 +287,11 @@ void language_scala_slib(struct language *l_uncast, struct context *c,
     func(false, "%s -shared -o %s", l->l.link_cmd, link_path);
     func(false, "\\");
 
-    /* *INDENT-OFF* */
-    stringlist_each(l->l.link_opts,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-			), NULL);
-    stringlist_each(c->link_opts,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-			), NULL);
-    stringlist_each(c->objects,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-			), NULL);
-    stringlist_each(c->libraries,
-		    lambda(int, (const char *lib, void *uu),
-			   {
-			       func(false, "\\ -l%s", lib);
-			       return 0;
-			   }
-			), NULL);
-    /* *INDENT-ON* */
+    func_stringlist_each_cmd_cont(l->l.link_opts, func);
+    func_stringlist_each_cmd_cont(c->link_opts, func);
+    func_stringlist_each_cmd_cont(c->objects, func);
+    func_stringlist_each_cmd_lcont(c->libraries, func);
+
     func(false, "\\\n");
 
     TALLOC_FREE(context);
@@ -369,4 +304,31 @@ void language_scala_extras(struct language *l_uncast, struct context *c,
     /* FIXME: Scala doesn't seem to support incremental compilation,
      * so we can't really handle the whole extras thing.  I just
      * depend on every scala file, which is probably not the best. */
+}
+
+int ftw_add(const char *path, const struct stat *sb,
+            int typeflag, struct FTW *ftwbuf, void *args_uncast)
+{
+    char *copy;
+    struct language_scala *l;
+    void *ctx;
+    void (*func) (void *, const char *, ...);
+    void *arg;
+
+    {
+        struct ftw_args *args;
+        args = args_uncast;
+        l = args->l;
+        ctx = args->ctx;
+        func = args->func;
+        arg = args->arg;
+    }
+
+    if (strcmp(path + strlen(path) - 6, ".scala") == 0) {
+        copy = talloc_strdup(ctx, path);
+        func(arg, "%s", copy);
+        stringlist_add(l->deps, copy);
+    }
+
+    return 0;
 }

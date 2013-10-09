@@ -75,6 +75,16 @@ void func_stringlist_each_cmd_cont(struct stringlist *sl,
     stringlist_each(sl, &cmd_wrap_str, &f);
 }
 
+void func_stringlist_each_cmd_lcont(struct stringlist *sl,
+                                    void (*func) (bool, const char *, ...))
+{
+    struct func_cmd f;
+    f.type = false;
+    f.format = "\\ -l%s";
+    f.func = func;
+    stringlist_each(sl, &cmd_wrap_str, &f);
+}
+
 int printf_wrap_str(const char *format, void *args_uncast)
 {
     struct func_printf *args;

@@ -47,4 +47,9 @@ void func_pinclude_list_string(const char *full_path,
 void func_stringlist_each_cmd_cont(struct stringlist *sl,
                                    void (*func) (bool, const char *, ...));
 
+/* This is almost exactly the same as "func_stringlist_each_cmd_cont",
+ * but it adds a "-l" before every command. */
+void func_stringlist_each_cmd_lcont(struct stringlist *sl,
+                                    void (*func) (bool, const char *, ...));
+
 #endif
