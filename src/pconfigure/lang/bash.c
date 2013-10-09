@@ -20,7 +20,8 @@
  */
 
 #include "bash.h"
-#include "../lambda.h"
+#include "funcs.h"
+
 #include <string.h>
 #include <unistd.h>
 #include <pinclude.h>
@@ -31,6 +32,7 @@
 #include "extern/talloc.h"
 #endif
 
+/* These are the member functions for the bash language. */
 static struct language *language_bash_search(struct language *l_uncast,
                                              struct language *parent,
                                              const char *path);
@@ -45,6 +47,16 @@ static void language_bash_link(struct language *l_uncast, struct context *c,
                                bool should_install);
 static void language_bash_extras(struct language *l_uncast, struct context *c,
                                  void *context, void (*func) (const char *));
+
+/* This one only passes the first link string that it comes into
+ * contact with, but aside from that it's like
+ * "func_stringlist_each_cmd_cont()". */
+struct link_func
+{
+    int obj_count;
+    void (*func) (bool, const char *, ...);
+};
+static int pass_first_link_str(const char *opt, void *args_uncast);
 
 struct language *language_bash_new(struct clopts *o, const char *name)
 {
@@ -111,14 +123,7 @@ void language_bash_deps(struct language *l_uncast, struct context *c,
     func("%s", c->full_path);
 
     dirs[0] = NULL;
-    /* *INDENT-OFF* */
-    pinclude_list(c->full_path, lambda(int, (const char *f, void *u),
-                                       {
-                                           func("%s", f);
-                                           return 0;
-                                       }
-                      ), NULL, dirs);
-    /* *INDENT-ON* */
+    func_pinclude_list_printf(c->full_path, func, dirs);
 }
 
 void language_bash_build(struct language *l_uncast, struct context *c,
@@ -134,7 +139,6 @@ void language_bash_link(struct language *l_uncast, struct context *c,
     struct language_bash *l;
     void *context;
     const char *link_path;
-    int obj_count;
 
     l = talloc_get_type(l_uncast, struct language_bash);
     if (l == NULL)
@@ -153,37 +157,20 @@ void language_bash_link(struct language *l_uncast, struct context *c,
     func(false, "mkdir -p `dirname %s` >& /dev/null || true", link_path);
 
     func(false, "%s \\", l->l.link_cmd);
-    /* *INDENT-OFF* */
-    stringlist_each(l->l.link_opts,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-                        ), NULL);
-    stringlist_each(c->link_opts,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-                        ), NULL);
+    func_stringlist_each_cmd_cont(l->l.link_opts, func);
+    func_stringlist_each_cmd_cont(c->link_opts, func);
 
     /* FIXME: deps() doesn't get called because this isn't compiled
      * code so we need to fake this with extras() instead.  That means
      * every bash script gets set as an object to be linked and
      * therefor gets cat'd to the end of the file.  In this case we
      * want to skip those extra files and just link the first one. */
-    obj_count = 0;
-    stringlist_each(c->objects,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-                               if (obj_count++ == 0)
-                                   func(false, "\\ %s", opt);
-			       return 0;
-			   }
-                        ), NULL);
-    /* *INDENT-ON* */
+    {
+        struct link_func link_func;
+        link_func.obj_count = 0;
+        link_func.func = func;
+        stringlist_each(c->objects, &pass_first_link_str, &link_func);
+    }
     func(false, "\\ -o %s\n", link_path);
 
     TALLOC_FREE(context);
@@ -195,12 +182,16 @@ void language_bash_extras(struct language *l_uncast, struct context *c,
     char *dirs[1];
 
     dirs[0] = NULL;
-    /* *INDENT-OFF* */
-    pinclude_list(c->full_path, lambda(int, (const char *f, void *u),
-                                       {
-                                           func(f);
-                                           return 0;
-                                       }
-                      ), NULL, dirs);
-    /* *INDENT-ON* */
+    func_pinclude_list_string(c->full_path, func, dirs);
+}
+
+int pass_first_link_str(const char *opt, void *args_uncast)
+{
+    struct link_func *args;
+    args = args_uncast;
+
+    if (args->obj_count++ == 0)
+        args->func(false, "\\ %s", opt);
+
+    return 0;
 }
