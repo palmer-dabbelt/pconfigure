@@ -22,6 +22,7 @@
 #ifndef FTWFN_H
 #define FTWFN_H
 
+#define _XOPEN_SOURCE 500
 #include <ftw.h>
 
 /* This is a replacement for nftw that takes an argument pointer that
