@@ -31,10 +31,9 @@ make
 
 if test -x ./update
 then
+    sleep 1s
     ./update
-    sleep 1
     make
-    cat Makefile
 fi
 
 ./bin/test > test.out
