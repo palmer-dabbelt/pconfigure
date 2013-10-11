@@ -513,14 +513,16 @@ char *string_strip(const char *filename_cstr, void *context)
                 last_dir = o;
             }
 
-            if (filename_cstr[i - 1] == '.' && filename_cstr[i - 2] == '.') {
-                if (pprev_dir > 0) {
-                    o = pprev_dir;
-                    pprev_dir = -1;
-                    prev_dir = -1;
-                    last_dir = -1;
-                }
-            }
+	    if (i > 2) {
+		if (filename_cstr[i - 1] == '.' && filename_cstr[i - 2] == '.') {
+		    if (pprev_dir > 0) {
+			o = pprev_dir;
+			pprev_dir = -1;
+			prev_dir = -1;
+			last_dir = -1;
+		    }
+		}
+	    }
 
             source_name[o] = filename_cstr[i];
 
