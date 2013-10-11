@@ -54,6 +54,7 @@ int language_init(struct language *l)
     l->link = NULL;
     l->slib = NULL;
     l->extras = NULL;
+    l->quirks = NULL;
 
     return 0;
 }
