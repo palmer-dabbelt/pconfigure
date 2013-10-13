@@ -11,6 +11,8 @@ echo ""
 echo ""
 echo ""
 
+export PATH="$(dirname $(readlink -f $PTEST_BINARY)):$PATH"
+
 echo "Extracting"
 tail -n+$ARCHIVE $0 | base64 -d | tar xzv -C $TMPDIR
 echo ""
