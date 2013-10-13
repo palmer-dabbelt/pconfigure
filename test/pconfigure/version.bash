@@ -6,6 +6,6 @@ trap "rm -rf $TMPDIR" EXIT
 cd $TMPDIR
 
 touch Configfile
-pconfigure --version
+$PTEST_BINARY --version
 
 test ! -f $tmpdir/Makefile
