@@ -734,8 +734,18 @@ int parsefunc_config(const char *op, const char *right)
     }
 
     filename = talloc_asprintf(s, "Configfiles/%s", right);
+
+    if (access(filename, R_OK) != 0) {
+        fprintf(stderr, "Unable to open CONFIG '%s'\n", filename);
+        return 1;
+    }
+
     out = parse_file(filename);
     TALLOC_FREE(filename);
+
+    if (mf->opts->verbose)
+        fprintf(stderr, "CONFIG += '%s'\n", right);
+
     return out;
 }
 
