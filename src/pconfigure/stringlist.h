@@ -82,6 +82,12 @@ extern struct stringlist *stringlist_without(struct stringlist *in,
 extern size_t stringlist_to_alloced_array(struct stringlist *l,
                                           char **array, size_t index);
 
+/* Calls "fprintf(f, format, cur->data)" on every element of this
+ * string list -- note that that means that "format" is going to have
+ * to have exactly one %s in it. */
+extern void stringlist_fprintf(struct stringlist *l, FILE * f,
+                               const char *format);
+
 static inline struct stringlist_node *stringlist_start(struct stringlist *l)
 {
     return l->head;

@@ -100,6 +100,8 @@ extern void makefile_start_deps(struct makefile *m);
 extern void makefile_add_dep(struct makefile *m, const char *format, ...);
 extern void makefile_vadd_dep(struct makefile *m,
                               const char *format, va_list ap);
+extern void makefile_addl_dep(struct makefile *m, struct stringlist *l,
+                              const char *format, ...);
 extern void makefile_end_deps(struct makefile *m);
 
 /* Adds a new comand for building a target (_start as above) */

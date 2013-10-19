@@ -21,10 +21,11 @@
 
 #include "context.h"
 #include "stringlist.h"
-#include "lambda.h"
 #include "liblist.h"
 #include <assert.h>
 #include <string.h>
+
+#include "lambda.h"
 
 #ifdef HAVE_TALLOC
 #include <talloc.h>
@@ -135,17 +136,9 @@ int context_binary_destructor(struct context *c)
 
     context = talloc_new(NULL);
 
-    /* *INDENT-OFF* */
 #ifdef DEBUG
-    stringlist_each(c->objects,
-		    lambda(int, (const char *obj, void *uu),
-			   {
-			       fprintf(stderr, "obj: %s\n", obj);
-			       return 0;
-			   }
-			), NULL);
+    stringlist_fprintf(c->objects, stderr, "obj: %s\n");
 #endif
-    /* *INDENT-ON* */
 
     hash_langlinkopts = stringlist_hashcode(c->language->link_opts, context);
     hash_linkopts = stringlist_hashcode(c->link_opts, context);
@@ -181,22 +174,11 @@ int context_binary_destructor(struct context *c)
     makefile_create_target(c->mf, c->link_path);
 
     makefile_start_deps(c->mf);
-    /* *INDENT-OFF* */
-    stringlist_each(c->objects, lambda(int, (const char *obj, void *uu),
-			       {
-				   makefile_add_dep(c->mf, "%s", obj);
-				   return 0;
-			       }
-                        ), NULL);
-    stringlist_each(c->libraries, lambda(int, (const char *lib, void *uu),
-			       {
-				   makefile_add_dep(c->mf, "%s/lib%s.%s",
-						    c->lib_dir, lib,
-                                                    l->so_ext);
-				   return 0;
-			       }
-                        ), NULL);
-    /* *INDENT-ON* */
+
+    makefile_addl_dep(c->mf, c->objects, "%%s");
+    makefile_addl_dep(c->mf, c->libraries, "%s/lib%%s.%s",
+                      c->lib_dir, l->so_ext);
+
     makefile_end_deps(c->mf);
 
     makefile_start_cmds(c->mf);
@@ -220,22 +202,11 @@ int context_binary_destructor(struct context *c)
     makefile_create_target(c->mf, c->link_path_install);
 
     makefile_start_deps(c->mf);
-    /* *INDENT-OFF* */
-    stringlist_each(c->objects, lambda(int, (const char *obj, void *uu),
-			       {
-				   makefile_add_dep(c->mf, "%s", obj);
-				   return 0;
-			       }
-                        ), NULL);
-    stringlist_each(c->libraries, lambda(int, (const char *lib, void *uu),
-			       {
-				   makefile_add_dep(c->mf, "%s/lib%s.%s",
-						    c->lib_dir, lib,
-                                                    l->so_ext);
-				   return 0;
-			       }
-                        ), NULL);
-    /* *INDENT-ON* */
+
+    makefile_addl_dep(c->mf, c->objects, "%%s");
+    makefile_addl_dep(c->mf, c->libraries, "%s/lib%%s.%s",
+                      c->lib_dir, l->so_ext);
+
     makefile_end_deps(c->mf);
 
     makefile_start_cmds(c->mf);
@@ -333,17 +304,9 @@ int context_library_destructor(struct context *c)
 
     context = talloc_new(NULL);
 
-    /* *INDENT-OFF* */
 #ifdef DEBUG
-    stringlist_each(c->objects,
-		    lambda(int, (const char *obj, void *uu),
-			   {
-			       fprintf(stderr, "obj: %s\n", obj);
-			       return 0;
-			   }
-			), NULL);
+    stringlist_fprintf(c->objects, stderr, "obj: %s\n", obj);
 #endif
-    /* *INDENT-ON* */
 
     hash_langlinkopts = stringlist_hashcode(c->language->link_opts, context);
     hash_linkopts = stringlist_hashcode(c->link_opts, context);
@@ -374,14 +337,8 @@ int context_library_destructor(struct context *c)
     makefile_create_target(c->mf, c->link_path);
 
     makefile_start_deps(c->mf);
-    /* *INDENT-OFF* */
-    stringlist_each(c->objects, lambda(int, (const char *obj, void *uu),
-			       {
-				   makefile_add_dep(c->mf, "%s", obj);
-				   return 0;
-			       }
-                        ), NULL);
-    /* *INDENT-ON* */
+
+    makefile_addl_dep(c->mf, c->objects, "%%s");
 
     /* If the language isn't compiled then we won't detect any changes
      * when we try and build it -- it'll just get copied.  In this
@@ -799,17 +756,9 @@ int context_test_destructor(struct context *c)
 
     context = talloc_new(NULL);
 
-    /* *INDENT-OFF* */
 #ifdef DEBUG
-    stringlist_each(c->objects,
-		    lambda(int, (const char *obj, void *uu),
-			   {
-			       fprintf(stderr, "obj: %s\n", obj);
-			       return 0;
-			   }
-			), NULL);
+    stringlist_fprintf(c->objects, stderr, "obj: %s\n");
 #endif
-    /* *INDENT-ON* */
 
     hash_langlinkopts = stringlist_hashcode(c->language->link_opts, context);
     hash_linkopts = stringlist_hashcode(c->link_opts, context);
@@ -845,22 +794,9 @@ int context_test_destructor(struct context *c)
     makefile_create_target(c->mf, c->link_path);
 
     makefile_start_deps(c->mf);
-    /* *INDENT-OFF* */
-    stringlist_each(c->objects, lambda(int, (const char *obj, void *uu),
-			       {
-				   makefile_add_dep(c->mf, "%s", obj);
-				   return 0;
-			       }
-                        ), NULL);
-    stringlist_each(c->libraries, lambda(int, (const char *lib, void *uu),
-			       {
-				   makefile_add_dep(c->mf, "%s/lib%s.%s",
-						    c->lib_dir, lib,
-                                                    l->so_ext);
-				   return 0;
-			       }
-                        ), NULL);
-    /* *INDENT-ON* */
+    makefile_addl_dep(c->mf, c->objects, "%%s");
+    makefile_addl_dep(c->mf, c->objects, "%s/lib%%s.%s",
+                      c->lib_dir, l->so_ext);
     makefile_end_deps(c->mf);
 
     makefile_start_cmds(c->mf);

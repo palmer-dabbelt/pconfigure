@@ -159,6 +159,29 @@ void makefile_vadd_dep(struct makefile *m, const char *format, va_list args)
     vfprintf(m->file, format, args);
 }
 
+void makefile_addl_dep(struct makefile *m, struct stringlist *l,
+                       const char *format, ...)
+{
+    va_list args;
+    char *sl_format;
+    void *context;
+
+    context = talloc_new(NULL);
+
+    assert(m->state == MAKEFILE_STATE_DEPS);
+    m->state = MAKEFILE_STATE_DEPS;
+
+    va_start(args, format);
+    sl_format = talloc_vasprintf(context, format, args);
+    va_end(args);
+
+    sl_format = talloc_asprintf(context, " %s", sl_format);
+
+    stringlist_fprintf(l, m->file, sl_format);
+
+    TALLOC_FREE(context);
+}
+
 void makefile_end_deps(struct makefile *m)
 {
     assert(m->state == MAKEFILE_STATE_DEPS);

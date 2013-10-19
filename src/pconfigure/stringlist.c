@@ -242,3 +242,14 @@ size_t stringlist_to_alloced_array(struct stringlist * l,
 
     return index;
 }
+
+void stringlist_fprintf(struct stringlist *l, FILE * f, const char *format)
+{
+    struct stringlist_node *cur;
+
+    cur = l->head;
+    while (cur != NULL) {
+        fprintf(f, format, cur->data);
+        cur = cur->next;
+    }
+}
