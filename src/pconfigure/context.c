@@ -795,7 +795,7 @@ int context_test_destructor(struct context *c)
 
     makefile_start_deps(c->mf);
     makefile_addl_dep(c->mf, c->objects, "%%s");
-    makefile_addl_dep(c->mf, c->objects, "%s/lib%%s.%s",
+    makefile_addl_dep(c->mf, c->libraries, "%s/lib%%s.%s",
                       c->lib_dir, l->so_ext);
     makefile_end_deps(c->mf);
 
