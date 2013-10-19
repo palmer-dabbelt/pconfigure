@@ -71,6 +71,17 @@ extern int stringlist_size(struct stringlist *l);
 extern int stringlist_each(struct stringlist *l,
                            int (*func) (const char *, void *), void *arg);
 
+/* Returns a new stringlist with the given string removed, if it exists. */
+extern struct stringlist *stringlist_without(struct stringlist *in,
+                                             void *ctx, const char *str);
+
+/* Converts a stringlist to an array of string pointers, assuming the
+ * array of pointers has already been allocated.  Memory is allocated
+ * as a sub-context of "array", and members are filled it starting at
+ * "index".  Returns the last index in the array to be touched. */
+extern size_t stringlist_to_alloced_array(struct stringlist *l,
+                                          char **array, size_t index);
+
 static inline struct stringlist_node *stringlist_start(struct stringlist *l)
 {
     return l->head;

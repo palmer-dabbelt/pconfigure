@@ -20,7 +20,6 @@
  */
 
 #include "c.h"
-#include "../lambda.h"
 #include <string.h>
 #include <unistd.h>
 
@@ -58,6 +57,17 @@ static void language_c_extras(struct language *l_uncast, struct context *c,
 static char *string_strip(const char *in, void *context);
 static bool str_ends(const char *haystack, const char *needle);
 static char *string_hashcode(const char *string, void *context);
+
+/* This converts from the clang inclusion format into the format
+ * required by the pconfigure context support. */
+struct pass_inclusions_args
+{
+    void (*func) (void *arg, const char *, ...);
+    void *arg;
+};
+static void pass_inclusions(CXFile included_file,
+                            CXSourceLocation * inclusion_stack,
+                            unsigned include_len, void *args_uncast);
 
 struct language *language_c_new(struct clopts *o, const char *name)
 {
@@ -173,44 +183,27 @@ void language_c_deps(struct language *l_uncast, struct context *c,
 
     /* Creates the argc/argv for a call to clang that will determine which
      * includes are used by the file in question. */
-    clang_argc = stringlist_size(l->l.compile_opts)
-        + stringlist_size(c->compile_opts) + 3;
-    clang_argv = talloc_array(context, char *, clang_argc + 1);
-    for (i = 0; i <= clang_argc; i++)
+    {
+        struct stringlist *lang_wo;
+        struct stringlist *ctx_wo;
+
+        lang_wo = stringlist_without(l->l.compile_opts, context, "-fopenmp");
+        ctx_wo = stringlist_without(c->compile_opts, context, "-fopenmp");
+
+        clang_argc = stringlist_size(lang_wo) + stringlist_size(ctx_wo) + 3;
+        clang_argv = talloc_array(context, char *, clang_argc + 1);
+        for (i = 0; i <= clang_argc; i++)
+            clang_argv[i] = NULL;
+
+        clang_argv[0] = talloc_strdup(clang_argv, c->full_path);
+        clang_argv[1] = talloc_asprintf(clang_argv, "-I%s", c->hdr_dir);
+        clang_argv[2] = talloc_asprintf(clang_argv, "-I%s", c->gen_dir);
+
+        i = 3;
+        i = stringlist_to_alloced_array(lang_wo, clang_argv, i);
+        i = stringlist_to_alloced_array(ctx_wo, clang_argv, i);
         clang_argv[i] = NULL;
-
-    clang_argv[0] = talloc_strdup(clang_argv, c->full_path);
-    clang_argv[1] = talloc_asprintf(clang_argv, "-I%s", c->hdr_dir);
-    clang_argv[2] = talloc_asprintf(clang_argv, "-I%s", c->gen_dir);
-    i = 3;
-    /* *INDENT-OFF* */
-    stringlist_each(l->l.compile_opts,
-		    lambda(int, (const char *str, void *uu),
-			   {
-			       if (strcmp(str, "-fopenmp") == 0) {
-				   clang_argc--;
-				   return 0;
-			       }
-
-			       clang_argv[i] = talloc_strdup(clang_argv, str);
-			       i++;
-			       return 0;
-			   }
-                        ), NULL);
-    stringlist_each(c->compile_opts,
-		    lambda(int, (const char *str, void *uu),
-			   {
-			       if (strcmp(str, "-fopenmp") == 0) {
-				   clang_argc--;
-				   return 0;
-			       }
-
-			       clang_argv[i] = talloc_strdup(clang_argv, str);
-			       i++;
-			       return 0;
-			   }
-                        ), NULL);
-    /* *INDENT-ON* */
+    }
 
     /* Asks libclang for the list of includes */
     index = clang_createIndex(0, 0);
@@ -219,27 +212,22 @@ void language_c_deps(struct language *l_uncast, struct context *c,
                                     (const char *const *)clang_argv,
                                     clang_argc, 0, 0,
                                     CXTranslationUnit_None);
-    clang_getInclusions(tu,
-			lambda(void,
-			       (CXFile included_file,
-				CXSourceLocation * inclusion_stack,
-				unsigned include_len, void *unused),
-			       {
-                                   CXString fn;
-                                   const char *fn_cstr;
-                                   fn = clang_getFileName(included_file);
-                                   fn_cstr = clang_getCString(fn);
 
-				   func(arg, "%s", string_strip(fn_cstr, context));
-                                   clang_disposeString(fn);
-			       }
-			    ), NULL);
-    /* *INDENT-ON* */
+    {
+        struct pass_inclusions_args pai;
+
+        pai.func = func;
+        pai.arg = arg;
+        clang_getInclusions(tu, &pass_inclusions, &pai);
+    }
+
     clang_disposeTranslationUnit(tu);
     clang_disposeIndex(index);
 
     TALLOC_FREE(context);
 }
+
+#include "../lambda.h"
 
 void language_c_build(struct language *l_uncast, struct context *c,
                       void (*func) (bool, const char *, ...))
@@ -513,16 +501,17 @@ char *string_strip(const char *filename_cstr, void *context)
                 last_dir = o;
             }
 
-	    if (i > 2) {
-		if (filename_cstr[i - 1] == '.' && filename_cstr[i - 2] == '.') {
-		    if (pprev_dir > 0) {
-			o = pprev_dir;
-			pprev_dir = -1;
-			prev_dir = -1;
-			last_dir = -1;
-		    }
-		}
-	    }
+            if (i > 2) {
+                if (filename_cstr[i - 1] == '.'
+                    && filename_cstr[i - 2] == '.') {
+                    if (pprev_dir > 0) {
+                        o = pprev_dir;
+                        pprev_dir = -1;
+                        prev_dir = -1;
+                        last_dir = -1;
+                    }
+                }
+            }
 
             source_name[o] = filename_cstr[i];
 
@@ -556,4 +545,26 @@ char *string_hashcode(const char *string, void *context)
     hash = hash * 33 ^ ' ';
 
     return talloc_asprintf(context, "%u", hash);
+}
+
+void pass_inclusions(CXFile included_file,
+                     CXSourceLocation * inclusion_stack,
+                     unsigned include_len, void *args_uncast)
+{
+    struct pass_inclusions_args *args;
+    CXString fn;
+    const char *fn_cstr;
+    void *context;
+
+    context = talloc_new(NULL);
+
+    args = args_uncast;
+
+    fn = clang_getFileName(included_file);
+
+    fn_cstr = clang_getCString(fn);
+    args->func(args->arg, "%s", string_strip(fn_cstr, context));
+    clang_disposeString(fn);
+
+    TALLOC_FREE(context);
 }

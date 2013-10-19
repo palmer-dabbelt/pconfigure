@@ -207,3 +207,38 @@ const char *stringlist_hashcode(struct stringlist *l, void *context)
 
     return talloc_asprintf(context, "%u", hash);
 }
+
+struct stringlist *stringlist_without(struct stringlist *in,
+                                      void *ctx, const char *str)
+{
+    struct stringlist *out;
+    struct stringlist_node *cur;
+
+    out = stringlist_new(ctx);
+
+    cur = in->head;
+    while (cur != NULL) {
+        if (strcmp(str, cur->data) != 0)
+            stringlist_add(out, cur->data);
+
+        cur = cur->next;
+    }
+
+    return out;
+}
+
+size_t stringlist_to_alloced_array(struct stringlist * l,
+                                   char **array, size_t index)
+{
+    struct stringlist_node *cur;
+
+    cur = l->head;
+    while (cur != NULL) {
+        array[index] = talloc_strdup(array, cur->data);
+
+        index++;
+        cur = cur->next;
+    }
+
+    return index;
+}

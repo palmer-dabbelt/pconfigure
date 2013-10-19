@@ -58,4 +58,6 @@ void func_stringlist_each_cmd_cont_nostart(struct stringlist *sl,
                                            void (*f) (bool, const char *,
                                                       ...), const char *skip);
 
+/*  */
+
 #endif
