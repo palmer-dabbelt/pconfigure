@@ -69,6 +69,16 @@ static void pass_inclusions(CXFile included_file,
                             CXSourceLocation * inclusion_stack,
                             unsigned include_len, void *args_uncast);
 
+/* This is the function that searches for new sorts of C files that
+ * are somehow related to all the existing files. */
+struct find_files_args
+{
+    void *context;
+    void (*func) (void *arg, const char *);
+    void *arg;
+};
+static void find_files(void *args_uncast, const char *format, ...);
+
 struct language *language_c_new(struct clopts *o, const char *name)
 {
     struct language_c *l;
@@ -207,11 +217,10 @@ void language_c_deps(struct language *l_uncast, struct context *c,
 
     /* Asks libclang for the list of includes */
     index = clang_createIndex(0, 0);
-    /* *INDENT-OFF* */
+
     tu = clang_parseTranslationUnit(index, 0,
                                     (const char *const *)clang_argv,
-                                    clang_argc, 0, 0,
-                                    CXTranslationUnit_None);
+                                    clang_argc, 0, 0, CXTranslationUnit_None);
 
     {
         struct pass_inclusions_args pai;
@@ -349,74 +358,17 @@ void language_c_slib(struct language *l_uncast, struct context *c,
     TALLOC_FREE(context);
 }
 
-#include "../lambda.h"
-
 void language_c_extras(struct language *l_uncast, struct context *c,
                        void *context,
                        void (*func) (void *arg, const char *), void *arg)
 {
-    /* *INDENT-OFF* */
-    language_deps(l_uncast, c, 
-		  lambda(void, (void *arg, const char *format, ...),
-			 {
-			     va_list args;
-			     char *cfile;
-			     char *sfile;
-			     char *hfile;
-			     char *cxxfile;
+    struct find_files_args ffa;
 
-			     va_start(args, format);
-			     hfile = talloc_vasprintf(context, format, args);
-			     va_end(args);
+    ffa.context = context;
+    ffa.func = func;
+    ffa.arg = arg;
 
-			     va_start(args, format);
-			     cfile = talloc_vasprintf(context, format, args);
-			     va_end(args);
-
-			     cfile[strlen(cfile)-1] = 'c';
-
-			     va_start(args, format);
-			     sfile = talloc_vasprintf(context, format, args);
-			     va_end(args);
-			     sfile[strlen(sfile)-1] = 'S';
-
-			     if (strcmp(cfile, hfile) != 0)
-				 if (access(cfile, R_OK) == 0)
-				     func(arg, cfile);
-
-			     if (strcmp(sfile, hfile) != 0)
-				 if (access(sfile, R_OK) == 0)
-				     func(arg, sfile);
-			     
-			     va_start(args, format);
-			     cxxfile = talloc_array(context, char,
-                                                    strlen(cfile) + 20);
-			     va_end(args);
-
-			     memset(cxxfile, 0, strlen(cfile) + 10);
-			     strncpy(cxxfile, cfile, strlen(cfile) - 2);
-			     strcat(cxxfile, ".c++");
-			     if (access(cxxfile, R_OK) == 0)
-				 func(arg, cxxfile);
-
-			     memset(cxxfile, 0, strlen(cfile) + 10);
-			     strncpy(cxxfile, cfile, strlen(cfile) - 2);
-			     strcat(cxxfile, ".cxx");
-			     if (access(cxxfile, R_OK) == 0)
-				 func(arg, cxxfile);
-
-			     memset(cxxfile, 0, strlen(cfile) + 10);
-			     strncpy(cxxfile, cfile, strlen(cfile) - 2);
-			     strcat(cxxfile, ".cpp");
-			     if (access(cxxfile, R_OK) == 0)
-				 func(arg, cxxfile);
-
-			     talloc_unlink(context, cfile);
-			     talloc_unlink(context, hfile);
-			     talloc_unlink(context, cxxfile);
-			 }
-		      ), NULL);
-    /* *INDENT-ON* */
+    language_deps(l_uncast, c, &find_files, &ffa);
 }
 
 char *string_strip(const char *filename_cstr, void *context)
@@ -501,4 +453,75 @@ void pass_inclusions(CXFile included_file,
     clang_disposeString(fn);
 
     TALLOC_FREE(context);
+}
+
+void find_files(void *args_uncast, const char *format, ...)
+{
+    va_list args;
+    char *cfile;
+    char *sfile;
+    char *hfile;
+    char *cxxfile;
+
+    void *context;
+    void (*func) (void *arg, const char *);
+    void *arg;
+
+    {
+        struct find_files_args *args;
+        args = args_uncast;
+
+        context = args->context;
+        func = args->func;
+        arg = args->arg;
+    }
+
+    va_start(args, format);
+    hfile = talloc_vasprintf(context, format, args);
+    va_end(args);
+
+    va_start(args, format);
+    cfile = talloc_vasprintf(context, format, args);
+    va_end(args);
+
+    cfile[strlen(cfile) - 1] = 'c';
+
+    va_start(args, format);
+    sfile = talloc_vasprintf(context, format, args);
+    va_end(args);
+    sfile[strlen(sfile) - 1] = 'S';
+
+    if (strcmp(cfile, hfile) != 0)
+        if (access(cfile, R_OK) == 0)
+            func(arg, cfile);
+
+    if (strcmp(sfile, hfile) != 0)
+        if (access(sfile, R_OK) == 0)
+            func(arg, sfile);
+
+    va_start(args, format);
+    cxxfile = talloc_array(context, char, strlen(cfile) + 20);
+    va_end(args);
+
+    memset(cxxfile, 0, strlen(cfile) + 10);
+    strncpy(cxxfile, cfile, strlen(cfile) - 2);
+    strcat(cxxfile, ".c++");
+    if (access(cxxfile, R_OK) == 0)
+        func(arg, cxxfile);
+
+    memset(cxxfile, 0, strlen(cfile) + 10);
+    strncpy(cxxfile, cfile, strlen(cfile) - 2);
+    strcat(cxxfile, ".cxx");
+    if (access(cxxfile, R_OK) == 0)
+        func(arg, cxxfile);
+
+    memset(cxxfile, 0, strlen(cfile) + 10);
+    strncpy(cxxfile, cfile, strlen(cfile) - 2);
+    strcat(cxxfile, ".cpp");
+    if (access(cxxfile, R_OK) == 0)
+        func(arg, cxxfile);
+
+    talloc_unlink(context, cfile);
+    talloc_unlink(context, hfile);
+    talloc_unlink(context, cxxfile);
 }
