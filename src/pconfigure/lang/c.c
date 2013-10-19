@@ -20,6 +20,7 @@
  */
 
 #include "c.h"
+#include "funcs.h"
 #include <string.h>
 #include <unistd.h>
 
@@ -55,7 +56,6 @@ static void language_c_extras(struct language *l_uncast, struct context *c,
                               void (*func) (void *, const char *), void *arg);
 
 static char *string_strip(const char *in, void *context);
-static bool str_ends(const char *haystack, const char *needle);
 static char *string_hashcode(const char *string, void *context);
 
 /* This converts from the clang inclusion format into the format
@@ -227,8 +227,6 @@ void language_c_deps(struct language *l_uncast, struct context *c,
     TALLOC_FREE(context);
 }
 
-#include "../lambda.h"
-
 void language_c_build(struct language *l_uncast, struct context *c,
                       void (*func) (bool, const char *, ...))
 {
@@ -267,22 +265,9 @@ void language_c_build(struct language *l_uncast, struct context *c,
     if (c->shared_target == true)
         func(false, "\\ -fPIC");
 
-    /* *INDENT-OFF* */
-    stringlist_each(l->l.compile_opts,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-                        ), NULL);
-    stringlist_each(c->compile_opts,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-                        ), NULL);
-    /* *INDENT-ON* */
+    func_stringlist_each_cmd_cont(l->l.compile_opts, func);
+    func_stringlist_each_cmd_cont(c->compile_opts, func);
+
     func(false, "\\ -I%s", c->hdr_dir);
     func(false, "\\ -I%s", c->gen_dir);
     func(false, "\\ -c %s -o %s\n", c->full_path, obj_path);
@@ -324,40 +309,13 @@ void language_c_link(struct language *l_uncast, struct context *c,
     if (c->shared_target == true)
         func(false, "\\ -fPIC");
 
-    /* *INDENT-OFF* */
-    stringlist_each(c->objects,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       if (str_ends(opt, ".ld"))
-				   func(false, "\\ -T%s", opt);
-			       else
-				   func(false, "\\ %s", opt);
+    func_stringlist_each_cmd_Tcont(c->objects, func);
 
-			       return 0;
-			   }
-			), NULL);
-    stringlist_each(c->libraries,
-		    lambda(int, (const char *lib, void *uu),
-			   {
-			       func(false, "\\ -l%s", lib);
-			       return 0;
-			   }
-			), NULL);
-    stringlist_each(l->l.link_opts,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-			), NULL);
-    stringlist_each(c->link_opts,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-			), NULL);
-    /* *INDENT-ON* */
+    func_stringlist_each_cmd_lcont(c->libraries, func);
+
+    func_stringlist_each_cmd_cont(l->l.link_opts, func);
+    func_stringlist_each_cmd_cont(c->link_opts, func);
+
     func(false, "\\ -o %s\n", link_path);
 
     TALLOC_FREE(context);
@@ -381,33 +339,17 @@ void language_c_slib(struct language *l_uncast, struct context *c,
     func(false, "mkdir -p `dirname %s` >& /dev/null || true", c->link_path);
 
     func(false, "\\\t@%s -shared", l->l.link_cmd);
-    /* *INDENT-OFF* */
-    stringlist_each(l->l.link_opts,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-                        ), NULL);
-    stringlist_each(c->link_opts,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-                        ), NULL);
-    stringlist_each(c->objects,
-		    lambda(int, (const char *opt, void *uu),
-			   {
-			       func(false, "\\ %s", opt);
-			       return 0;
-			   }
-                        ), NULL);
-    /* *INDENT-ON* */
+
+    func_stringlist_each_cmd_cont(l->l.link_opts, func);
+    func_stringlist_each_cmd_cont(c->link_opts, func);
+    func_stringlist_each_cmd_cont(c->objects, func);
+
     func(false, "\\ -o %s\n", c->link_path);
 
     TALLOC_FREE(context);
 }
+
+#include "../lambda.h"
 
 void language_c_extras(struct language *l_uncast, struct context *c,
                        void *context,
@@ -522,14 +464,6 @@ char *string_strip(const char *filename_cstr, void *context)
     }
 
     return source_name;
-}
-
-bool str_ends(const char *haystack, const char *needle)
-{
-    if (strlen(haystack) < strlen(needle))
-        return false;
-
-    return strcmp(haystack + strlen(haystack) - strlen(needle), needle) == 0;
 }
 
 char *string_hashcode(const char *string, void *context)

@@ -23,6 +23,7 @@
 #include "str.h"
 
 #include <pinclude.h>
+#include <string.h>
 
 struct func_printf
 {
@@ -46,6 +47,15 @@ struct func_cmd
     const char *skip_start;
 };
 static int cmd_wrap_str(const char *s, void *args_uncast);
+
+struct func_Tcmd
+{
+    bool type;
+    void (*func) (bool, const char *, ...);
+};
+static int cmd_wrap_Tstr(const char *s, void *args_uncast);
+
+static bool str_ends(const char *haystack, const char *needle);
 
 void func_pinclude_list_printf(const char *full_path,
                                void (*func) (void *, const char *, ...),
@@ -89,6 +99,15 @@ void func_stringlist_each_cmd_lcont(struct stringlist *sl,
     stringlist_each(sl, &cmd_wrap_str, &f);
 }
 
+void func_stringlist_each_cmd_Tcont(struct stringlist *sl,
+                                    void (*func) (bool, const char *, ...))
+{
+    struct func_Tcmd f;
+    f.type = false;
+    f.func = func;
+    stringlist_each(sl, &cmd_wrap_Tstr, &f);
+}
+
 void func_stringlist_each_cmd_cont_nostart(struct stringlist *sl,
                                            void (*func) (bool,
                                                          const char *,
@@ -129,4 +148,25 @@ int cmd_wrap_str(const char *s, void *args_uncast)
 
     args->func(args->type, args->format, s);
     return 0;
+}
+
+int cmd_wrap_Tstr(const char *s, void *args_uncast)
+{
+    struct func_Tcmd *args;
+    args = args_uncast;
+
+    if (str_ends(s, ".ld"))
+        args->func(args->type, "\\ -T%s", s);
+    else
+        args->func(args->type, "\\ %s", s);
+
+    return 0;
+}
+
+bool str_ends(const char *haystack, const char *needle)
+{
+    if (strlen(haystack) < strlen(needle))
+        return false;
+
+    return strcmp(haystack + strlen(haystack) - strlen(needle), needle) == 0;
 }
