@@ -860,8 +860,6 @@ int context_add_linkopt(struct context *c, const char *opt)
     return stringlist_add(c->link_opts, opt);
 }
 
-/* FIXME: Why is indent going nuts here?  I don't know! */
-/* *INDENT-OFF* */
 int context_add_library(struct context *c, const char *opt)
 {
     int out;
@@ -881,15 +879,7 @@ int context_add_library(struct context *c, const char *opt)
         lib_deps = liblist_new(lib_deps_ctx);
     }
 
-    /* * INDENT-OFF* */
-    liblist_each(lib_deps, opt, lambda(int, (const char *dep, void *uu),
-                                       {
-                                           stringlist_add_ifnew(c->libraries,
-                                                                dep);
-                                           return 0;
-                                       }
-                     ), NULL);
-    /* * INDENT-ON* */
+    liblist_add_to_sl_ifnew(lib_deps, opt, c->libraries);
 
     return 0;
 }
@@ -898,4 +888,3 @@ void context_destructor(void)
 {
     talloc_free(lib_deps_ctx);
 }
-/* *INDENT-ON* */

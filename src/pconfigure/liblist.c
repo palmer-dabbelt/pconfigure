@@ -99,3 +99,24 @@ int liblist_each(struct liblist *l, const char *name,
 
     return 0;
 }
+
+int liblist_add_to_sl_ifnew(struct liblist *l, const char *name,
+                            struct stringlist *add_to)
+{
+    struct liblist_node *cur;
+
+    cur = l->head;
+    while (cur != NULL) {
+        int out;
+
+        if (strcmp(cur->name, name) == 0) {
+            out = stringlist_addl_ifnew(add_to, cur->deps);
+            if (out != 0)
+                return out;
+        }
+
+        cur = cur->next;
+    }
+
+    return 0;
+}

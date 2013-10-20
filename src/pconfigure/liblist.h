@@ -60,6 +60,11 @@ the given function for every dependency of that library. */
 extern int liblist_each(struct liblist *l, const char *name,
                         int (*func) (const char *, void *), void *arg);
 
+/* Adds every library to the given string list if it's a new
+ * library. */
+extern int liblist_add_to_sl_ifnew(struct liblist *l, const char *name,
+                                   struct stringlist *add_to);
+
 static inline struct liblist_node *liblist_start(struct liblist *l)
 {
     return l->head;

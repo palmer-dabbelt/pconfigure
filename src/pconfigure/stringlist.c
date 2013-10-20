@@ -69,6 +69,24 @@ int stringlist_add_ifnew(struct stringlist *l, const char *to_add)
     return stringlist_add(l, to_add);
 }
 
+int stringlist_addl_ifnew(struct stringlist *to, struct stringlist *fr)
+{
+    struct stringlist_node *cur;
+
+    cur = fr->head;
+    while (cur != NULL) {
+        int out;
+
+        out = stringlist_add_ifnew(to, cur->data);
+        if (out != 0)
+            return out;
+
+        cur = cur->next;
+    }
+
+    return 0;
+}
+
 struct stringlist *stringlist_copy(struct stringlist *l, void *context)
 {
     struct stringlist *new;
