@@ -22,6 +22,7 @@
 #include "context.h"
 #include "stringlist.h"
 #include "liblist.h"
+#include "pass_vcmd.h"
 #include <assert.h>
 #include <string.h>
 
@@ -182,20 +183,7 @@ int context_binary_destructor(struct context *c)
     makefile_end_deps(c->mf);
 
     makefile_start_cmds(c->mf);
-    /* *INDENT-OFF* */
-    language_link(l, c, lambda(void, (bool nam,
-				      const char *format, ...),
-			       {
-				   va_list args;
-				   va_start(args, format);
-				   if (nam == true)
-				       makefile_vnam_cmd(c->mf, format, args);
-				   else
-				       makefile_vadd_cmd(c->mf, format, args);
-				   va_end(args);
-			       }
-		      ), false);
-    /* *INDENT-ON* */
+    language_link_pass_vcmd(l, c, false);
     makefile_end_cmds(c->mf);
 
     /* Link a second time, but with the install path now */
@@ -210,20 +198,7 @@ int context_binary_destructor(struct context *c)
     makefile_end_deps(c->mf);
 
     makefile_start_cmds(c->mf);
-    /* *INDENT-OFF* */
-    language_link(l, c, lambda(void, (bool nam,
-				      const char *format, ...),
-			       {
-				   va_list args;
-				   va_start(args, format);
-				   if (nam == true)
-				       makefile_vnam_cmd(c->mf, format, args);
-				   else
-				       makefile_vadd_cmd(c->mf, format, args);
-				   va_end(args);
-			       }
-		      ), true);
-    /* *INDENT-ON* */
+    language_link_pass_vcmd(l, c, true);
     makefile_end_cmds(c->mf);
 
     /* There is an install/uninstall target */
@@ -364,20 +339,7 @@ int context_library_destructor(struct context *c)
     makefile_end_deps(c->mf);
 
     makefile_start_cmds(c->mf);
-    /* *INDENT-OFF* */
-    language_slib(l, c, lambda(void, (bool nam,
-				      const char *format, ...),
-			       {
-				   va_list args;
-				   va_start(args, format);
-				   if (nam == true)
-				       makefile_vnam_cmd(c->mf, format, args);
-				   else
-				       makefile_vadd_cmd(c->mf, format, args);
-				   va_end(args);
-			       }
-		      ));
-    /* *INDENT-ON* */
+    language_slib_pass_vcmd(l, c);
     makefile_end_cmds(c->mf);
 
     /* There is an install/uninstall target */
@@ -648,24 +610,9 @@ int context_source_destructor(struct context *c)
             makefile_end_deps(c->mf);
 	    /* *INDENT-ON* */
 
-	    /* *INDENT-OFF* */
             makefile_start_cmds(c->mf);
-            language_build(l, c, lambda(void, (bool nam,
-					       const char *format, ...),
-					{
-					    va_list args;
-					    va_start(args, format);
-					    if (nam == true)
-						makefile_vnam_cmd(c->mf, format,
-								 args);
-					    else
-						makefile_vadd_cmd(c->mf, format,
-								  args);
-					    va_end(args);
-					}
-                          ));
+            language_build_pass_vcmd(l, c);
             makefile_end_cmds(c->mf);
-	    /* *INDENT-ON* */
 
             makefile_add_targets(c->mf, obj_name);
             makefile_add_clean(c->mf, obj_name);
@@ -800,20 +747,7 @@ int context_test_destructor(struct context *c)
     makefile_end_deps(c->mf);
 
     makefile_start_cmds(c->mf);
-    /* *INDENT-OFF* */
-    language_link(l, c, lambda(void, (bool nam,
-				      const char *format, ...),
-			       {
-				   va_list args;
-				   va_start(args, format);
-				   if (nam == true)
-				       makefile_vnam_cmd(c->mf, format, args);
-				   else
-				       makefile_vadd_cmd(c->mf, format, args);
-				   va_end(args);
-			       }
-		      ), false);
-    /* *INDENT-ON* */
+    language_link_pass_vcmd(l, c, false);
     makefile_end_cmds(c->mf);
 
     makefile_add_distclean(c->mf, c->chk_dir);
