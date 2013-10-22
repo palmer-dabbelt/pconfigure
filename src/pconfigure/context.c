@@ -23,6 +23,7 @@
 #include "stringlist.h"
 #include "liblist.h"
 #include "pass_vcmd.h"
+#include "pass_cspush.h"
 #include <assert.h>
 #include <string.h>
 
@@ -627,15 +628,7 @@ int context_source_destructor(struct context *c)
     /* Adds every "extra" (which is defined as any other sources that should be 
      * linked in as a result of this SOURCES += line) to the stack. */
     if (stringlist_include(c->parent->objects, obj_name) == false) {
-	/* *INDENT-OFF* */
-	language_extras(l, c, context,
-			lambda(void, (void *uu, const char * extra),
-			       {
-				   contextstack_push_fullsrc(c->s, extra);
-			       }
-			    ), NULL);
-	/* *INDENT-ON* */
-
+        language_extras_pass_cs_push_fs(l, c, context, c->s);
         stringlist_add(c->parent->objects, obj_name);
     }
 
