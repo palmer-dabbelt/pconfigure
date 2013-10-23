@@ -12,7 +12,7 @@ echo ""
 echo ""
 
 echo "Extracting"
-tail -n+$ARCHIVE $0 | base64 -d | tar xzv -C $TMPDIR
+tail -n+$ARCHIVE $0 | base64 --decode | tar xzv -C $TMPDIR
 echo ""
 echo ""
 echo ""
@@ -53,7 +53,7 @@ echo ""
 echo ""
 
 echo "Extracting"
-tail -n+$ARCHIVE $0 | base64 -d | tar xzv -C $TMPDIR
+tail -n+$ARCHIVE $0 | base64 --decode | tar xzv -C $TMPDIR
 echo ""
 echo ""
 echo ""
