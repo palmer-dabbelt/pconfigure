@@ -2,10 +2,8 @@ LANGUAGES   += c
 COMPILEOPTS += -Wall
 COMPILEOPTS += -Wextra
 COMPILEOPTS += -Werror
-COMPILEOPTS += `pgcc-config gcc 4.5 gt -Wno-trampolines`
 COMPILEOPTS += -Wno-unused-parameter
 COMPILEOPTS += -std=gnu99
-COMPILEOPTS += `pgcc-config gcc 4.3 lt -fnested-functions`
 
 LANGUAGES   += bash
 
