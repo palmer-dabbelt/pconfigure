@@ -28,8 +28,6 @@
 #include <assert.h>
 #include <string.h>
 
-#include "lambda.h"
-
 #ifdef HAVE_TALLOC
 #include <talloc.h>
 #else
@@ -565,19 +563,9 @@ int context_source_destructor(struct context *c)
             makefile_add_targets(c->mf, obj_name);
             makefile_create_target(c->mf, obj_name);
 
-	    /* *INDENT-OFF* */
             makefile_start_deps(c->mf);
-            language_deps(l, c, lambda(void, (void *uu, const char *format, ...),
-                                       {
-					   va_list args;
-					   va_start(args, format);
-					   makefile_vadd_dep(c->mf,
-							     format, args);
-					   va_end(args);
-                                       }
-			      ), NULL);
+            language_deps_vadd_dep(l, c, c->mf);
             makefile_end_deps(c->mf);
-	    /* *INDENT-ON* */
 
             makefile_start_cmds(c->mf);
             language_build_pass_vcmd(l, c);
