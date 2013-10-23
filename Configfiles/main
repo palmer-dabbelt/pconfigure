@@ -13,6 +13,19 @@ LINKOPTS    += -Sobj/proc/version-pc.sed
 GENERATE    += version.h
 GENERATE    += version-pc.sed
 
+##############################################################################
+# Libraries                                                                  #
+##############################################################################
+LIBRARIES   += libpinclude.so
+SOURCES     += libpinclude/library.c
+
+LIBRARIES   += pkgconfig/pinclude.pc
+LINKOPTS    += `ppkg-config --optional --have TALLOC talloc --pkgconfig`
+SOURCES     += libpinclude/pinclude.pc
+
+##############################################################################
+# Binaries                                                                   #
+##############################################################################
 BINARIES    += pconfigure
 LINKOPTS    += `pllvm-config --optional --have CLANG --libs`
 COMPILEOPTS += `pllvm-config --optional --have CLANG --cflags`
@@ -60,13 +73,6 @@ SOURCES	    += pnasm.bash
 
 BINARIES    += ptest
 SOURCES	    += ptest.bash
-
-LIBRARIES   += libpinclude.so
-SOURCES     += libpinclude/library.c
-
-LIBRARIES   += pkgconfig/pinclude.pc
-LINKOPTS    += `ppkg-config --optional --have TALLOC talloc --pkgconfig`
-SOURCES     += libpinclude/pinclude.pc
 
 BINARIES    += pinclude
 DEPLIBS     += pinclude
