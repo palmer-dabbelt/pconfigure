@@ -270,6 +270,7 @@ int context_library_destructor(struct context *c)
     char *sname;
 
     assert(c->type == CONTEXT_TYPE_LIBRARY);
+
 #ifdef DEBUG
     fprintf(stderr, "context_library_destructor('%s')\n", c->full_path);
 #endif
@@ -278,6 +279,20 @@ int context_library_destructor(struct context *c)
     assert(l != NULL);
 
     context = talloc_new(NULL);
+
+    /* Checks if the library name doesn't match and attempts to
+     * correct it. */
+    {
+        char *new_name;
+        char *old_name;
+
+        old_name = talloc_strdup(context, c->full_path);
+        strstr(old_name, ".")[0] = '\0';
+
+        new_name = talloc_asprintf(c, "%s.%s", old_name, c->language->so_ext);
+
+        c->full_path = new_name;
+    }
 
 #ifdef DEBUG
     stringlist_fprintf(c->objects, stderr, "obj: %s\n", obj);

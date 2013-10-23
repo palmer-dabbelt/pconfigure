@@ -97,7 +97,13 @@ struct language *language_c_new(struct clopts *o, const char *name)
     l->l.compile_cmd = talloc_strdup(l, "${CC}");
     l->l.link_str = talloc_strdup(l, "LD");
     l->l.link_cmd = talloc_strdup(l, "${CC}");
+#if defined(__APPLE__)
+    l->l.so_ext = talloc_strdup(l, "dylib");
+#elif defined(__linux__)
     l->l.so_ext = talloc_strdup(l, "so");
+#else
+#error "Set a shared object extension for your platform"
+#endif
     l->l.compiled = true;
     l->l.search = &language_c_search;
     l->l.objname = &language_c_objname;
