@@ -22,6 +22,10 @@
 #ifndef STRINGLIST_H
 #define STRINGLIST_H
 
+struct stringlist;
+
+#include "liblist.h"
+
 #include <stdio.h>
 #include <stdbool.h>
 
@@ -92,6 +96,12 @@ extern size_t stringlist_to_alloced_array(struct stringlist *l,
  * to have exactly one %s in it. */
 extern void stringlist_fprintf(struct stringlist *l, FILE * f,
                                const char *format);
+
+/* Adds every element in the given string list to the given
+ * liblist, under the given lib name. */
+extern void stringlist_add_to_liblist(struct stringlist *l,
+                                      struct liblist *ll,
+                                      const char *lib_name);
 
 static inline struct stringlist_node *stringlist_start(struct stringlist *l)
 {

@@ -365,28 +365,7 @@ int context_library_destructor(struct context *c)
 
     liblist_add(lib_deps, sname);
 
-    /* *INDENT-OFF* */
-    stringlist_each(c->libraries,
-                    lambda(int, (const char *dep, void *uu),
-                           {
-                               liblist_add_dep_ifnew(lib_deps,
-                                                     sname,
-                                                     dep);
-
-                               liblist_each(lib_deps, dep,
-                                            lambda(int, (const char *dep, void *uu),
-                                                   {
-                                                       liblist_add_dep_ifnew(lib_deps,
-                                                                             sname,
-                                                                             dep);
-                                                       return 0;
-                                                   };
-                                                ), NULL);
-
-                               return 0;
-                           }
-                        ), NULL);
-    /* *INDENT-ON* */
+    stringlist_add_to_liblist(c->libraries, lib_deps, sname);
 
     TALLOC_FREE(context);
     return 0;

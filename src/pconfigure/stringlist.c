@@ -271,3 +271,15 @@ void stringlist_fprintf(struct stringlist *l, FILE * f, const char *format)
         cur = cur->next;
     }
 }
+
+void stringlist_add_to_liblist(struct stringlist *l,
+                               struct liblist *ll, const char *lib_name)
+{
+    struct stringlist_node *cur;
+
+    cur = l->head;
+    while (cur != NULL) {
+        liblist_add_dep_ifnew(ll, lib_name, cur->data);
+        cur = cur->next;
+    }
+}

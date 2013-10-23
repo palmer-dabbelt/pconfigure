@@ -22,6 +22,8 @@
 #ifndef LIBLIST_H
 #define LIBLIST_H
 
+struct liblist;
+
 #include <stdio.h>
 #include <stdbool.h>
 #include "stringlist.h"
