@@ -22,6 +22,7 @@
 #include "context.h"
 #include "stringlist.h"
 #include "liblist.h"
+#include "pass_vadd.h"
 #include "pass_vcmd.h"
 #include "pass_cspush.h"
 #include <assert.h>
@@ -322,19 +323,7 @@ int context_library_destructor(struct context *c)
      * that'll ensure it gets built. */
     if (!language_needs_compile(l, c)) {
         makefile_add_dep(c->mf, "Makefile");
-
-        /* *INDENT-OFF* */
-        language_deps(l, c, lambda(void, (void *uu, const char *format, ...),
-                                   {
-                                       va_list args;
-                                       va_start(args, format);
-                                       makefile_vadd_dep(c->mf,
-                                                         format, args);
-                                       va_end(args);
-                                   }
-                          ), NULL);
-        /* *INDENT-ON* */
-
+        language_deps_vadd_dep(l, c, c->mf);
     }
 
     makefile_end_deps(c->mf);
