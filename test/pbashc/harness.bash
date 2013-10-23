@@ -1,24 +1,67 @@
 set -ex
 
 #############################################################################
-# Run the test with valgrind                                                #
+# Run the test without valgrind                                             #
 #############################################################################
 ARCHIVE=`awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }' $0`
-TMPDIR=`mktemp -d -t ptest.XXXXXXXXXX`
-trap "rm -rf $TMPDIR" EXIT
+tempdir=`mktemp -d -t ptest.XXXXXXXXXX`
+trap "rm -rf $tempdir" EXIT
 
 echo ""
 echo ""
 echo ""
 
 echo "Extracting"
-tail -n+$ARCHIVE $0 | base64 --decode | tar xzv -C $TMPDIR
+tail -n+$ARCHIVE $0 | base64 --decode | tar xzv -C $tempdir
 echo ""
 echo ""
 echo ""
 
 CDIR=`pwd`
-cd $TMPDIR
+cd $tempdir
+echo "Running"
+$PTEST_BINARY -i in.bash -o out.bash
+
+cd $tempdir
+out="$(diff -ur out.bash gold.bash)"
+
+cd $CDIR
+rm -rf $tempdir
+
+if [[ "$out" != "" ]]
+then
+    exit 1
+fi
+
+#############################################################################
+# Run the test with valgrind                                                #
+#############################################################################
+if [[ "$(which valgrind)" == "" ]]
+then
+    exit 0
+fi
+
+if test ! -x `which valgrind`
+then
+    exit 0
+fi
+
+ARCHIVE=`awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }' $0`
+tempdir=`mktemp -d -t ptest.XXXXXXXXXX`
+trap "rm -rf $tempdir" EXIT
+
+echo ""
+echo ""
+echo ""
+
+echo "Extracting"
+tail -n+$ARCHIVE $0 | base64 --decode | tar xzv -C $tempdir
+echo ""
+echo ""
+echo ""
+
+CDIR=`pwd`
+cd $tempdir
 echo "Running"
 
 valgrind -q $PTEST_BINARY -i in.bash -o out.bash >& test.valgrind
@@ -28,44 +71,11 @@ then
     exit 2
 fi
 
-cd $TMPDIR
+cd $tempdir
 out="$(diff -ur out.bash gold.bash)"
 
 cd $CDIR
-rm -rf $TMPDIR
-
-if [[ "$out" != "" ]]
-then
-    exit 1
-fi
-
-#############################################################################
-# Run the test without valgrind                                             #
-#############################################################################
-ARCHIVE=`awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }' $0`
-TMPDIR=`mktemp -d -t ptest.XXXXXXXXXX`
-trap "rm -rf $TMPDIR" EXIT
-
-echo ""
-echo ""
-echo ""
-
-echo "Extracting"
-tail -n+$ARCHIVE $0 | base64 --decode | tar xzv -C $TMPDIR
-echo ""
-echo ""
-echo ""
-
-CDIR=`pwd`
-cd $TMPDIR
-echo "Running"
-$PTEST_BINARY -i in.bash -o out.bash
-
-cd $TMPDIR
-out="$(diff -ur out.bash gold.bash)"
-
-cd $CDIR
-rm -rf $TMPDIR
+rm -rf $tempdir
 
 if [[ "$out" != "" ]]
 then

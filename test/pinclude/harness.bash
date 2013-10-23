@@ -4,8 +4,8 @@ set -ex
 # Run the test without valgrind                                             #
 #############################################################################
 ARCHIVE=`awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }' $0`
-TMPDIR=`mktemp -d -t ptest.XXXXXXXXXX`
-trap "rm -rf $TMPDIR" EXIT
+tempdir=`mktemp -d -t ptest.XXXXXXXXXX`
+trap "rm -rf $tempdir" EXIT
 
 echo ""
 echo ""
@@ -13,32 +13,32 @@ echo ""
 
 echo "Extracting"
 
-tail -n+$ARCHIVE $0 | base64 --decode | tar xzv -C $TMPDIR
+tail -n+$ARCHIVE $0 | base64 --decode | tar xzv -C $tempdir
 
 CDIR=`pwd`
 export LD_LIBRARY_PATH=`pwd`/lib
 
-cd $TMPDIR/input
-$PTEST_BINARY $(cat $TMPDIR/filename) |& sort > $TMPDIR/stdout.test
+cd $tempdir/input
+$PTEST_BINARY $(cat $tempdir/filename) |& sort > $tempdir/stdout.test
 
-cd $TMPDIR
-cat $TMPDIR/stdout.gold | sort > $TMPDIR/stdout.gold.sorted
-out="$(diff -ur $TMPDIR/stdout.test $TMPDIR/stdout.gold.sorted)"
+cd $tempdir
+cat $tempdir/stdout.gold | sort > $tempdir/stdout.gold.sorted
+out="$(diff -ur $tempdir/stdout.test $tempdir/stdout.gold.sorted)"
 
 echo ""
 echo ""
 echo ""
 echo "Expected"
-cat $TMPDIR/stdout.gold
+cat $tempdir/stdout.gold
 
 echo ""
 echo ""
 echo ""
 echo "Got"
-cat $TMPDIR/stdout.test
+cat $tempdir/stdout.test
 
 cd $CDIR
-rm -rf $TMPDIR
+rm -rf $tempdir
 
 if [[ "$out" != "" ]]
 then
@@ -48,9 +48,19 @@ fi
 #############################################################################
 # Run the test with valgrind                                                #
 #############################################################################
+if [[ "$(which valgrind)" == "" ]]
+then
+    exit 0
+fi
+
+if test ! -x `which valgrind`
+then
+    exit 0
+fi
+
 ARCHIVE=`awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }' $0`
-TMPDIR=`mktemp -d -t ptest.XXXXXXXXXX`
-trap "rm -rf $TMPDIR" EXIT
+tempdir=`mktemp -d -t ptest.XXXXXXXXXX`
+trap "rm -rf $tempdir" EXIT
 
 echo ""
 echo ""
@@ -58,32 +68,32 @@ echo ""
 
 echo "Extracting"
 
-tail -n+$ARCHIVE $0 | base64 --decode | tar xzv -C $TMPDIR
+tail -n+$ARCHIVE $0 | base64 --decode | tar xzv -C $tempdir
 
 CDIR=`pwd`
 export LD_LIBRARY_PATH=`pwd`/lib
 
-cd $TMPDIR/input
-valgrind -q $PTEST_BINARY $(cat $TMPDIR/filename) |& sort > $TMPDIR/stdout.test
+cd $tempdir/input
+valgrind -q $PTEST_BINARY $(cat $tempdir/filename) |& sort > $tempdir/stdout.test
 
-cd $TMPDIR
-cat $TMPDIR/stdout.gold | sort > $TMPDIR/stdout.gold.sorted
-out="$(diff -ur $TMPDIR/stdout.test $TMPDIR/stdout.gold.sorted)"
+cd $tempdir
+cat $tempdir/stdout.gold | sort > $tempdir/stdout.gold.sorted
+out="$(diff -ur $tempdir/stdout.test $tempdir/stdout.gold.sorted)"
 
 echo ""
 echo ""
 echo ""
 echo "Expected"
-cat $TMPDIR/stdout.gold
+cat $tempdir/stdout.gold
 
 echo ""
 echo ""
 echo ""
 echo "Got"
-cat $TMPDIR/stdout.test
+cat $tempdir/stdout.test
 
 cd $CDIR
-rm -rf $TMPDIR
+rm -rf $tempdir
 
 if [[ "$out" != "" ]]
 then

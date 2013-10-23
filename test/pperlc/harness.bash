@@ -1,38 +1,32 @@
 set -ex
 
 #############################################################################
-# Run the test with valgrind                                                #
+# Run the test without valgrind                                             #
 #############################################################################
 ARCHIVE=`awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }' $0`
-TMPDIR=`mktemp -d -t ptest.XXXXXXXXXX`
-trap "rm -rf $TMPDIR" EXIT
+tempdir=`mktemp -d -t ptest.XXXXXXXXXX`
+trap "rm -rf $tempdir" EXIT
 
 echo ""
 echo ""
 echo ""
 
 echo "Extracting"
-tail -n+$ARCHIVE $0 | base64 --decode | tar xzv -C $TMPDIR
+tail -n+$ARCHIVE $0 | base64 --decode | tar xzv -C $tempdir
 echo ""
 echo ""
 echo ""
 
 CDIR=`pwd`
-cd $TMPDIR
+cd $tempdir
 echo "Running"
+$PTEST_BINARY -i in.pl -o out.pl
 
-valgrind -q $PTEST_BINARY -i in.pl -o out.pl >& test.valgrind
-
-if [[ "$(cat test.valgrind | wc -l)" != "0" ]]
-then
-    exit 2
-fi
-
-cd $TMPDIR
+cd $tempdir
 out="$(diff -ur out.pl gold.pl)"
 
 cd $CDIR
-rm -rf $TMPDIR
+rm -rf $tempdir
 
 if [[ "$out" == "" ]]
 then
@@ -42,32 +36,48 @@ else
 fi
 
 #############################################################################
-# Run the test without valgrind                                             #
+# Run the test with valgrind                                                #
 #############################################################################
+if [[ "$(which valgrind)" == "" ]]
+then
+    exit 0
+fi
+
+if test ! -x `which valgrind`
+then
+    exit 0
+fi
+
 ARCHIVE=`awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }' $0`
-TMPDIR=`mktemp -d -t ptest.XXXXXXXXXX`
-trap "rm -rf $TMPDIR" EXIT
+tempdir=`mktemp -d -t ptest.XXXXXXXXXX`
+trap "rm -rf $tempdir" EXIT
 
 echo ""
 echo ""
 echo ""
 
 echo "Extracting"
-tail -n+$ARCHIVE $0 | base64 --decode | tar xzv -C $TMPDIR
+tail -n+$ARCHIVE $0 | base64 --decode | tar xzv -C $tempdir
 echo ""
 echo ""
 echo ""
 
 CDIR=`pwd`
-cd $TMPDIR
+cd $tempdir
 echo "Running"
-$PTEST_BINARY -i in.pl -o out.pl
 
-cd $TMPDIR
+valgrind -q $PTEST_BINARY -i in.pl -o out.pl >& test.valgrind
+
+if [[ "$(cat test.valgrind | wc -l)" != "0" ]]
+then
+    exit 2
+fi
+
+cd $tempdir
 out="$(diff -ur out.pl gold.pl)"
 
 cd $CDIR
-rm -rf $TMPDIR
+rm -rf $tempdir
 
 if [[ "$out" == "" ]]
 then
