@@ -4,14 +4,14 @@ set -ex
 # Run the test with valgrind                                                #
 #############################################################################
 ARCHIVE=`awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }' $0`
-TMPDIR=`mktemp -d`
+TMPDIR=`mktemp -d -t ptest.XXXXXXXXXX`
 trap "rm -rf $TMPDIR" EXIT
 
 echo ""
 echo ""
 echo ""
 
-export PATH="$(dirname $(readlink -f $PTEST_BINARY)):$PATH"
+export PATH="$(dirname $PTEST_BINARY):$PATH"
 
 echo "Extracting"
 tail -n+$ARCHIVE $0 | base64 -d | tar xzv -C $TMPDIR
@@ -54,7 +54,7 @@ fi
 # Run the test without valgrind                                             #
 #############################################################################
 ARCHIVE=`awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }' $0`
-TMPDIR=`mktemp -d`
+TMPDIR=`mktemp -d -t ptest.XXXXXXXXXX`
 trap "rm -rf $TMPDIR" EXIT
 
 echo ""

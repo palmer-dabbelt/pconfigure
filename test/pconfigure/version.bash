@@ -1,6 +1,6 @@
 set -ex
 
-TMPDIR=`mktemp -d`
+TMPDIR=`mktemp -d -t ptest.XXXXXXXXXX`
 trap "rm -rf $TMPDIR" EXIT
 
 cd $TMPDIR

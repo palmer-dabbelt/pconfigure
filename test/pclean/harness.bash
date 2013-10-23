@@ -4,7 +4,7 @@ set -ex
 # Run the test without valgrind                                             #
 #############################################################################
 ARCHIVE=`awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }' $0`
-TMPDIR=`mktemp -d`
+TMPDIR=`mktemp -d -t ptest.XXXXXXXXXX`
 trap "rm -rf $TMPDIR" EXIT
 
 echo ""
@@ -37,7 +37,7 @@ fi
 # Run the test with valgrind                                                #
 #############################################################################
 ARCHIVE=`awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }' $0`
-TMPDIR=`mktemp -d`
+TMPDIR=`mktemp -d -t ptest.XXXXXXXXXX`
 trap "rm -rf $TMPDIR" EXIT
 
 echo ""
