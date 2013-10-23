@@ -287,10 +287,10 @@ int context_library_destructor(struct context *c)
     hash_linkopts = stringlist_hashcode(c->link_opts, context);
     hash_objs = stringlist_hashcode(c->objects, context);
     talloc_unlink(c, (char *)c->link_path);
-    c->link_path = talloc_asprintf(c, "%s/%s/%s-%s-%s.shlib",
+    c->link_path = talloc_asprintf(c, "%s/%s/%s-%s-%s-shared.%s",
                                    c->obj_dir, c->full_path,
                                    hash_langlinkopts, hash_linkopts,
-                                   hash_objs);
+                                   hash_objs, c->language->so_ext);
 
     makefile_add_targets(c->mf, c->full_path);
     makefile_add_all(c->mf, c->full_path);

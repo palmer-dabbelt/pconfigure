@@ -102,6 +102,7 @@ struct language *language_pkgconfig_new(struct clopts *o, const char *name)
     l->l.compile_cmd = talloc_strdup(l, "");
     l->l.link_str = talloc_strdup(l, "PKGCFG");
     l->l.link_cmd = talloc_strdup(l, "ppkgconfigc");
+    l->l.so_ext = talloc_strdup(l, "pc");
     l->l.search = &language_pkgconfig_search;
     l->l.objname = &language_pkgconfig_objname;
     l->l.deps = &language_pkgconfig_deps;
