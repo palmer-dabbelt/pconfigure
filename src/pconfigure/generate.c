@@ -1,3 +1,5 @@
+#define _BSD_SOURCE
+
 #include "generate.h"
 #include <ctype.h>
 #include <stdio.h>

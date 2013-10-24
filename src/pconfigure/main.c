@@ -19,6 +19,8 @@
  * along with pconfigure.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define _BSD_SOURCE
+
 #include "clopts.h"
 #include "contextstack.h"
 #include "generate.h"

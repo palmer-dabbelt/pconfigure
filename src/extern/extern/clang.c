@@ -19,6 +19,8 @@
  * along with pconfigure.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define _GNU_SOURCE
+
 #include "clang.h"
 
 #include <pinclude.h>

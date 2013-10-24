@@ -26,6 +26,8 @@
 
 struct CXIndex
 {
+    /* Here to make pedantic happy. */
+    char unused;
 };
 typedef struct CXIndex *CXIndex;
 
@@ -38,12 +40,14 @@ typedef struct CXTranslationUnit *CXTranslationUnit;
 
 struct CXUnsavedFile
 {
+    /* Here to make pedantic happy. */
+    char unused;
 };
 typedef struct CXUnsavedFile *CXUnsavedFile;
 
 enum CXTranslationUnit_Flags
 {
-    CXTranslationUnit_None = 0x0,
+    CXTranslationUnit_None = 0x0
 };
 
 struct CXFile
@@ -54,6 +58,8 @@ typedef struct CXFile *CXFile;
 
 struct CXSourceLocation
 {
+    /* Here to make pedantic happy. */
+    char unused;
 };
 typedef struct CXSourceLocation *CXSourceLocation;
 

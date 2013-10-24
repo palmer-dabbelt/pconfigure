@@ -31,6 +31,9 @@
   inspired by http://swapped.cc/halloc/
 */
 
+#define _GNU_SOURCE
+#define _XOPEN_SOURCE 700
+
 #include "talloc.h"
 
 #include <stdint.h>
@@ -1763,17 +1766,21 @@ _PUBLIC_ void *_talloc_realloc(const void *context, void *ptr, size_t size,
 */
 _PUBLIC_ void *_talloc_move(const void *new_ctx, const void *_pptr)
 {
+#if 0
     const void **pptr = discard_const_p(const void *, _pptr);
     void *ret = talloc_steal(new_ctx, discard_const_p(void, *pptr));
     (*pptr) = NULL;
     return ret;
+#else
+    abort();
+#endif
 }
 
 enum talloc_mem_count_type
 {
     TOTAL_MEM_SIZE,
     TOTAL_MEM_BLOCKS,
-    TOTAL_MEM_LIMIT,
+    TOTAL_MEM_LIMIT
 };
 
 static size_t _talloc_total_mem_internal(const void *ptr,
@@ -2259,15 +2266,10 @@ _PUBLIC_ char *talloc_strndup_append_buffer(char *s, const char *a, size_t n)
     return __talloc_strlendup_append(s, slen, a, strnlen(a, n));
 }
 
-/* FIXME: I've just hard-coded these */
-#if 0
-#ifndef HAVE_VA_COPY
-#ifdef HAVE___VA_COPY
-#define va_copy(dest, src) __va_copy(dest, src)
+#ifdef __amd64__
+#define va_copy(dest, src) ((void) memcpy((dest), (src), sizeof(va_list)))
 #else
-#define va_copy(dest, src) (dest) = (src)
-#endif
-#endif
+#error "Figure out what va_copy is on your machine"
 #endif
 
 _PUBLIC_ char *talloc_vasprintf(const void *t, const char *fmt, va_list ap)
