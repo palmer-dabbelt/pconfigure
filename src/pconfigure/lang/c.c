@@ -316,10 +316,15 @@ void language_c_link(struct language *l_uncast, struct context *c,
 
     func(false, "\\\t@%s ", l->l.link_cmd);
     func(false, "\\ -L%s", c->lib_dir);
-    if (should_install == false)
+    if (should_install == false) {
+#ifdef __APPLE__
+        func(false, "\\ -Wl,-rpath,`pwd`/%s", c->lib_dir);
+#else
         func(false, "\\ -Wl,-rpath,\\$$ORIGIN/../%s", c->lib_dir);
-    else
+#endif
+    } else {
         func(false, "\\ -Wl,-rpath,%s/%s", c->prefix, c->lib_dir);
+    }
 
     if (c->shared_target == true)
         func(false, "\\ -fPIC");
@@ -349,7 +354,7 @@ void language_c_slib(struct language *l_uncast, struct context *c,
     context = talloc_new(NULL);
 
     func(true, "echo -e \"%s\\t%s\"",
-         l->l.link_str, c->full_path + strlen(c->bin_dir) + 1);
+         l->l.link_str, c->full_path + strlen(c->lib_dir) + 1);
 
     func(false, "mkdir -p `dirname %s` >& /dev/null || true", c->link_path);
 
@@ -359,7 +364,11 @@ void language_c_slib(struct language *l_uncast, struct context *c,
     func_stringlist_each_cmd_cont(c->link_opts, func);
     func_stringlist_each_cmd_cont(c->objects, func);
 
-    func(false, "\\ -o %s\n", c->link_path);
+    func(false, "\\ -o %s", c->link_path);
+#ifdef __APPLE__
+    func(false, "\\ -Wl,-install_name,@rpath/%s\n",
+         c->full_path + strlen(c->lib_dir) + 1);
+#endif
 
     TALLOC_FREE(context);
 }
