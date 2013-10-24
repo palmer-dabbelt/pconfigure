@@ -93,7 +93,7 @@ tmpdir=`mktemp -d -t ptest-wrapper.XXXXXXXXXX`
 export PTEST_BINARY="$bin"
 export PTEST_TMPDIR="$tmpdir"
 
-"$test" >"$tmpdir"/ptest__stdout 2>"$tmpdir"/ptest__stderr
+"$test" >&"$tmpdir"/ptest__output
 echo "$?" >"$tmpdir"/ptest__return
 
 cd $tmpdir
