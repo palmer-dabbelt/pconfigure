@@ -39,7 +39,7 @@ enum context_type
     CONTEXT_TYPE_LIBRARY,
     CONTEXT_TYPE_HEADER,
     CONTEXT_TYPE_SOURCE,
-    CONTEXT_TYPE_TEST,
+    CONTEXT_TYPE_TEST
 };
 
 struct context

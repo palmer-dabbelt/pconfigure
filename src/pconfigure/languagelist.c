@@ -101,7 +101,7 @@ int languagelist_select(struct languagelist *ll, const char *name)
 
     /* There was a language found, so add it to the list */
     cur = talloc(ll, struct languagelist_node);
-    cur->data = talloc_steal(cur, l_nonull);
+    cur->data = talloc_reference(cur, l_nonull);
     cur->next = ll->head;
     ll->head = cur;
     ll->selected = l_nonull;

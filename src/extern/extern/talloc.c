@@ -381,7 +381,7 @@ static void talloc_abort_unknown_value(void)
 }
 
 /* panic if we get a bad magic value */
-static inline struct talloc_chunk *talloc_chunk_from_ptr(const void *ptr)
+static __inline__ struct talloc_chunk *talloc_chunk_from_ptr(const void *ptr)
 {
     const char *pp = (const char *)ptr;
     struct talloc_chunk *tc =
@@ -436,7 +436,7 @@ do { \
 /*
   return the parent chunk of a pointer
 */
-static inline struct talloc_chunk *talloc_parent_chunk(const void *ptr)
+static __inline__ struct talloc_chunk *talloc_parent_chunk(const void *ptr)
 {
     struct talloc_chunk *tc;
 
@@ -582,7 +582,7 @@ static struct talloc_chunk *talloc_alloc_pool(struct talloc_chunk *parent,
 /* 
    Allocate a bit of memory as a child of an existing pointer
 */
-static inline void *__talloc(const void *context, size_t size)
+static __inline__ void *__talloc(const void *context, size_t size)
 {
     struct talloc_chunk *tc = NULL;
     struct talloc_memlimit *limit = NULL;
@@ -711,7 +711,7 @@ _PUBLIC_ int talloc_increase_ref_count(const void *ptr)
 /*
   helper for talloc_reference()
 
-  this is referenced by a function pointer and should not be inline
+  this is referenced by a function pointer and should not be __inline__
 */
 static int talloc_reference_destructor(struct talloc_reference_handle *handle)
 {
@@ -724,7 +724,8 @@ static int talloc_reference_destructor(struct talloc_reference_handle *handle)
    more efficient way to add a name to a pointer - the name must point to a 
    true string constant
 */
-static inline void _talloc_set_name_const(const void *ptr, const char *name)
+static __inline__ void _talloc_set_name_const(const void *ptr,
+                                              const char *name)
 {
     struct talloc_chunk *tc = talloc_chunk_from_ptr(ptr);
     tc->name = name;
@@ -733,8 +734,8 @@ static inline void _talloc_set_name_const(const void *ptr, const char *name)
 /*
   internal talloc_named_const()
 */
-static inline void *_talloc_named_const(const void *context, size_t size,
-                                        const char *name)
+static __inline__ void *_talloc_named_const(const void *context, size_t size,
+                                            const char *name)
 {
     void *ptr;
 
@@ -786,8 +787,8 @@ _PUBLIC_ void *_talloc_reference_loc(const void *context, const void *ptr,
 
 static void *_talloc_steal_internal(const void *new_ctx, const void *ptr);
 
-static inline void _talloc_free_poolmem(struct talloc_chunk *tc,
-                                        const char *location)
+static __inline__ void _talloc_free_poolmem(struct talloc_chunk *tc,
+                                            const char *location)
 {
     union talloc_pool_chunk *pool;
     void *next_tc;
@@ -843,14 +844,14 @@ static inline void _talloc_free_poolmem(struct talloc_chunk *tc,
     }
 }
 
-static inline void _talloc_free_children_internal(struct talloc_chunk *tc,
-                                                  void *ptr,
-                                                  const char *location);
+static __inline__ void _talloc_free_children_internal(struct talloc_chunk *tc,
+                                                      void *ptr,
+                                                      const char *location);
 
 /* 
    internal talloc_free call
 */
-static inline int _talloc_free_internal(void *ptr, const char *location)
+static __inline__ int _talloc_free_internal(void *ptr, const char *location)
 {
     struct talloc_chunk *tc;
 
@@ -1148,7 +1149,7 @@ _PUBLIC_ void *talloc_reparent(const void *old_parent, const void *new_parent,
   talloc_reference() has done. The context and pointer arguments
   must match those given to a talloc_reference()
 */
-static inline int talloc_unreference(const void *context, const void *ptr)
+static __inline__ int talloc_unreference(const void *context, const void *ptr)
 {
     struct talloc_chunk *tc = talloc_chunk_from_ptr(ptr);
     struct talloc_reference_handle *h;
@@ -1228,12 +1229,14 @@ _PUBLIC_ int talloc_unlink(const void *context, void *ptr)
 /*
   add a name to an existing pointer - va_list version
 */
-static inline const char *talloc_set_name_v(const void *ptr, const char *fmt,
-                                            va_list ap) PRINTF_ATTRIBUTE(2,
-                                                                         0);
+static __inline__ const char *talloc_set_name_v(const void *ptr,
+                                                const char *fmt,
+                                                va_list ap)
+PRINTF_ATTRIBUTE(2, 0);
 
-     static inline const char *talloc_set_name_v(const void *ptr,
-                                                 const char *fmt, va_list ap)
+     static __inline__ const char *talloc_set_name_v(const void *ptr,
+                                                     const char *fmt,
+                                                     va_list ap)
 {
     struct talloc_chunk *tc = talloc_chunk_from_ptr(ptr);
     tc->name = talloc_vasprintf(ptr, fmt, ap);
@@ -1374,9 +1377,9 @@ _PUBLIC_ void *talloc_init(const char *fmt, ...)
     return ptr;
 }
 
-static inline void _talloc_free_children_internal(struct talloc_chunk *tc,
-                                                  void *ptr,
-                                                  const char *location)
+static __inline__ void _talloc_free_children_internal(struct talloc_chunk *tc,
+                                                      void *ptr,
+                                                      const char *location)
 {
     while (tc->child) {
         /* we need to work out who will own an abandoned child
@@ -2123,8 +2126,8 @@ _PUBLIC_ void *_talloc_memdup(const void *t, const void *p, size_t size,
     return newp;
 }
 
-static inline char *__talloc_strlendup(const void *t, const char *p,
-                                       size_t len)
+static __inline__ char *__talloc_strlendup(const void *t, const char *p,
+                                           size_t len)
 {
     char *ret;
 
@@ -2159,8 +2162,8 @@ _PUBLIC_ char *talloc_strndup(const void *t, const char *p, size_t n)
     return __talloc_strlendup(t, p, strnlen(p, n));
 }
 
-static inline char *__talloc_strlendup_append(char *s, size_t slen,
-                                              const char *a, size_t alen)
+static __inline__ char *__talloc_strlendup_append(char *s, size_t slen,
+                                                  const char *a, size_t alen)
 {
     char *ret;
 
@@ -2309,13 +2312,15 @@ _PUBLIC_ char *talloc_asprintf(const void *t, const char *fmt, ...)
     return ret;
 }
 
-static inline char *__talloc_vaslenprintf_append(char *s, size_t slen,
-                                                 const char *fmt, va_list ap)
+static __inline__ char *__talloc_vaslenprintf_append(char *s, size_t slen,
+                                                     const char *fmt,
+                                                     va_list ap)
 PRINTF_ATTRIBUTE(3, 0);
 
-     static inline char *__talloc_vaslenprintf_append(char *s, size_t slen,
-                                                      const char *fmt,
-                                                      va_list ap)
+     static __inline__ char *__talloc_vaslenprintf_append(char *s,
+                                                          size_t slen,
+                                                          const char *fmt,
+                                                          va_list ap)
 {
     ssize_t alen;
     va_list ap2;

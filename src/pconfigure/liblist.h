@@ -67,27 +67,27 @@ extern int liblist_each(struct liblist *l, const char *name,
 extern int liblist_add_to_sl_ifnew(struct liblist *l, const char *name,
                                    struct stringlist *add_to);
 
-static inline struct liblist_node *liblist_start(struct liblist *l)
+static __inline__ struct liblist_node *liblist_start(struct liblist *l)
 {
     return l->head;
 }
 
-static inline bool liblist_notend(struct liblist_node *c)
+static __inline__ bool liblist_notend(struct liblist_node *c)
 {
     return c != NULL;
 }
 
-static inline const char *liblist_name(struct liblist_node *c)
+static __inline__ const char *liblist_name(struct liblist_node *c)
 {
     return c->name;
 }
 
-static inline struct stringlist *liblist_deps(struct liblist_node *c)
+static __inline__ struct stringlist *liblist_deps(struct liblist_node *c)
 {
     return c->deps;
 }
 
-static inline struct liblist_node *liblist_next(struct liblist_node *c)
+static __inline__ struct liblist_node *liblist_next(struct liblist_node *c)
 {
     return c->next;
 }

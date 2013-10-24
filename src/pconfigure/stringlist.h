@@ -103,23 +103,24 @@ extern void stringlist_add_to_liblist(struct stringlist *l,
                                       struct liblist *ll,
                                       const char *lib_name);
 
-static inline struct stringlist_node *stringlist_start(struct stringlist *l)
+static __inline__ struct stringlist_node *stringlist_start(struct stringlist
+                                                           *l)
 {
     return l->head;
 }
 
-static inline bool stringlist_notend(struct stringlist_node *c)
+static __inline__ bool stringlist_notend(struct stringlist_node *c)
 {
     return c != NULL;
 }
 
-static inline const char *stringlist_data(struct stringlist_node *c)
+static __inline__ const char *stringlist_data(struct stringlist_node *c)
 {
     return c->data;
 }
 
-static inline struct stringlist_node *stringlist_next(struct stringlist_node
-                                                      *c)
+static __inline__ struct stringlist_node *stringlist_next(struct
+                                                          stringlist_node *c)
 {
     return c->next;
 }

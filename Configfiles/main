@@ -3,7 +3,8 @@ COMPILEOPTS += -Wall
 COMPILEOPTS += -Wextra
 COMPILEOPTS += -Werror
 COMPILEOPTS += -Wno-unused-parameter
-COMPILEOPTS += -std=gnu99
+COMPILEOPTS += -ansi
+COMPILEOPTS += -pedantic
 
 LANGUAGES   += bash
 

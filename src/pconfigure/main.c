@@ -37,7 +37,7 @@
 #include "extern/talloc.h"
 #endif
 
-static const unsigned int MAX_LINE_SIZE = 1024;
+#define MAX_LINE_SIZE 1024
 
 /* Parses an entire file */
 static int parse_file(const char *filename);
