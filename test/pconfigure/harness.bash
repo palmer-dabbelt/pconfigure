@@ -27,7 +27,9 @@ make
 
 if test -x ./update
 then
+    sleep 2s
     ./update
+    sleep 2s
     make
 fi
 
@@ -86,8 +88,9 @@ make
 
 if test -x ./update
 then
-    sleep 1s
+    sleep 2s
     ./update
+    sleep 2s
     make
 fi
 
