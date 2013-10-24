@@ -2266,11 +2266,15 @@ _PUBLIC_ char *talloc_strndup_append_buffer(char *s, const char *a, size_t n)
     return __talloc_strlendup_append(s, slen, a, strnlen(a, n));
 }
 
+#ifndef va_copy
+
 #ifdef __amd64__
 #define va_copy(dest, src) ((void) memcpy((dest), (src), sizeof(va_list)))
 #else
-#error "Figure out what va_copy is on your machine"
+#error "Figure out what va_copy is on your machine and define it"
 #endif
+
+#endif /*va_copy*/
 
 _PUBLIC_ char *talloc_vasprintf(const void *t, const char *fmt, va_list ap)
 {
