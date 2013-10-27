@@ -29,12 +29,14 @@ int main(int argc __attribute__ ((unused)),
          char **argv __attribute__ ((unused)))
 {
     char *dirs[1];
+    char *defs[1];
 
     if (argc != 2)
         return 1;
 
     dirs[0] = NULL;
-    return pinclude_list(argv[1], &callback, NULL, dirs);
+    defs[0] = NULL;
+    return pinclude_list(argv[1], &callback, NULL, dirs, defs);
 }
 
 int callback(const char *filename, void *unused)

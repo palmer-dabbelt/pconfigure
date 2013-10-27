@@ -34,12 +34,12 @@
 /* Passes "pinclude_list" on to a printf-like function. */
 void func_pinclude_list_printf(const char *full_path,
                                void (*func) (void *arg, const char *, ...),
-                               void *arg, char **dirs);
+                               void *arg, char **dirs, char **defines);
 
 /* Passes "pinclude_list" on to a string function. */
 void func_pinclude_list_string(const char *full_path,
                                void (*func) (void *, const char *),
-                               void *arg, char **dirs);
+                               void *arg, char **dirs, char **defines);
 
 /* Passes "stringlist_each" on to a command function, in a manner such
  * that it will simply continue the current command in the Makefile.

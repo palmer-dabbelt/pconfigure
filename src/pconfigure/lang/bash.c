@@ -122,11 +122,12 @@ void language_bash_deps(struct language *l_uncast, struct context *c,
                         void (*func) (void *, const char *, ...), void *arg)
 {
     char *dirs[1];
+    char *defs[1];
 
     func(arg, "%s", c->full_path);
 
     dirs[0] = NULL;
-    func_pinclude_list_printf(c->full_path, func, arg, dirs);
+    func_pinclude_list_printf(c->full_path, func, arg, dirs, defs);
 }
 
 void language_bash_build(struct language *l_uncast, struct context *c,
@@ -184,9 +185,11 @@ void language_bash_extras(struct language *l_uncast, struct context *c,
                           void (*func) (void *, const char *), void *arg)
 {
     char *dirs[1];
+    char *defs[1];
 
     dirs[0] = NULL;
-    func_pinclude_list_string(c->full_path, func, arg, dirs);
+    defs[0] = NULL;
+    func_pinclude_list_string(c->full_path, func, arg, dirs, defs);
 }
 
 int pass_first_link_str(const char *opt, void *args_uncast)

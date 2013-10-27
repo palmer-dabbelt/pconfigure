@@ -23,6 +23,7 @@
 #define CLANG_H
 
 #define CLANG_INCLUDE_COUNT 1024
+#define CLANG_DEFINE_COUNT 1024
 
 struct CXIndex
 {
@@ -34,6 +35,7 @@ typedef struct CXIndex *CXIndex;
 struct CXTranslationUnit
 {
     char *include_path[CLANG_INCLUDE_COUNT];
+    char *defines[CLANG_DEFINE_COUNT];
     char *filename;
 };
 typedef struct CXTranslationUnit *CXTranslationUnit;

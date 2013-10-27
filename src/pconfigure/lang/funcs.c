@@ -59,22 +59,22 @@ static bool str_ends(const char *haystack, const char *needle);
 
 void func_pinclude_list_printf(const char *full_path,
                                void (*func) (void *, const char *, ...),
-                               void *arg, char **dirs)
+                               void *arg, char **dirs, char **defines)
 {
     struct func_printf f;
     f.func = func;
     f.arg = arg;
-    pinclude_list(full_path, &printf_wrap_str, &f, dirs);
+    pinclude_list(full_path, &printf_wrap_str, &f, dirs, defines);
 }
 
 void func_pinclude_list_string(const char *full_path,
                                void (*func) (void *, const char *),
-                               void *arg, char **dirs)
+                               void *arg, char **dirs, char **defines)
 {
     struct func_string f;
     f.func = func;
     f.arg = arg;
-    pinclude_list(full_path, &string_wrap_str, &f, dirs);
+    pinclude_list(full_path, &string_wrap_str, &f, dirs, defines);
 }
 
 void func_stringlist_each_cmd_cont(struct stringlist *sl,

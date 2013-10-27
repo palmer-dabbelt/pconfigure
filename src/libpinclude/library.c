@@ -23,7 +23,9 @@
 #define _GNU_SOURCE
 #endif
 
+#include <ctype.h>
 #include <pinclude.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,21 +33,119 @@
 
 #define LINE_MAX 1024
 #define FILE_MAX 1024
+#define NEST_MAX 32
+
+#ifndef DEBUG_LIBPINLCUDE_EACHLINE
+
+#ifdef DEBUG_LIBPINCLUDE_DEFINE
+#define DEBUG_LIBPINCLUDE_EACHLINE
+#endif
+
+#ifdef DEBUG_LIBPINCLUDE_INCLUDE
+#define DEBUG_LIBPINCLUDE_EACHLINE
+#endif
+
+#endif /* DEBUG_LIBPINCLUDE_EACHLINE */
+
+static void str_chomp(char *str);
 
 static int _pinclude_list(const char *input, pinclude_callback_t cb,
-                          void *priv, char **include_dirs, char **included)
+                          void *priv, char **include_dirs, char **defined,
+                          char **included)
 {
     int err;
     FILE *infile;
     char buffer[LINE_MAX];
     size_t i;
+    bool state[NEST_MAX];
+    int state_i;
+
+#ifdef DEBUG_LIBPINCLUDE_DEFINE
+    fprintf(stderr, "input: '%s'\n", input);
+#endif
 
     infile = fopen(input, "r");
 
     if (infile == NULL)
         return -1;
 
+    state_i = 0;
+    state[state_i] = true;
+
     while (fgets(buffer, LINE_MAX, infile) != NULL) {
+#ifdef DEBUG_LIBPINCLUDE_EACHLINE
+        fprintf(stderr, "    %s", buffer);
+#endif
+
+        /* Here's where we handle the #if{,n}def preprocessor
+         * directives. */
+        if (strncmp(buffer, "#ifdef ", strlen("#ifdef ")) == 0) {
+            char *define;
+            bool matched;
+
+            define = buffer + strlen("#ifdef ");
+            str_chomp(define);
+
+            matched = false;
+            for (i = 0; defined[i] != NULL; i++)
+                if (strcmp(define, defined[i]) == 0)
+                    matched = true;
+
+            state_i++;
+            state[state_i] = matched;
+
+#ifdef DEBUG_LIBPINCLUDE_DEFINE
+            fprintf(stderr, "ifdef: '%s' (%d -> %d)\n",
+                    define, state_i, state[state_i]);
+#endif
+        }
+
+        if (strncmp(buffer, "#ifndef ", strlen("#ifndef ")) == 0) {
+            char *define;
+            bool matched;
+
+            define = buffer + strlen("#ifndef ");
+            str_chomp(define);
+
+            matched = false;
+            for (i = 0; defined[i] != NULL; i++)
+                if (strcmp(define, defined[i]) == 0)
+                    matched = true;
+
+            state_i++;
+            state[state_i] = !matched;
+
+#ifdef DEBUG_LIBPINCLUDE_DEFINE
+            fprintf(stderr, "ifndef: '%s' (%d -> %d)\n",
+                    define, state_i, state[state_i]);
+#endif
+        }
+
+        if (strncmp(buffer, "#else", strlen("#else")) == 0) {
+            state[state_i] = !state[state_i];
+
+#ifdef DEBUG_LIBPINCLUDE_DEFINE
+            fprintf(stderr, "else: (%d -> %d)\n", state_i, state[state_i]);
+#endif
+        }
+
+        if (strncmp(buffer, "#endif ", strlen("#endif ")) == 0) {
+            if (state_i == 0)
+                abort();
+
+            state_i--;
+
+#ifdef DEBUG_LIBPINCLUDE_DEFINE
+            fprintf(stderr, "endif: (%d -> %d)\n", state_i, state[state_i]);
+#endif
+        }
+
+        /* If we're #ifdef'd out then skip the line. */
+        if (state[state_i] == false)
+            continue;
+
+        /* Finally attempt to recursively enumerate the #include
+         * files. */
         if (strncmp(buffer, "#include \"", strlen("#include \"")) == 0) {
             size_t slash_max;
 
@@ -90,6 +190,10 @@ static int _pinclude_list(const char *input, pinclude_callback_t cb,
                     included[i] = strdup(full_path);
                     break;
                 }
+
+#ifdef DEBUG_LIBPINCLUDE_INCLUDE
+                fprintf(stderr, "inc: '%s'\n", full_path);
+#endif
 
                 if ((err = cb(full_path, priv)) != 0) {
                     free(dir_path);
@@ -138,7 +242,8 @@ static int _pinclude_list(const char *input, pinclude_callback_t cb,
             }
 
           skip_dirs:
-            err = _pinclude_list(full_path, cb, priv, include_dirs, included);
+            err = _pinclude_list(full_path, cb, priv, include_dirs, defined,
+                                 included);
 
           skip_file:
             free(dir_path);
@@ -152,11 +257,14 @@ static int _pinclude_list(const char *input, pinclude_callback_t cb,
 
     fclose(infile);
 
+#ifdef DEBUG_LIBPINCLUDE_DEFINE
+    fprintf(stderr, "close: '%s'\n", input);
+#endif
     return 0;
 }
 
 int pinclude_list(const char *input, pinclude_callback_t cb,
-                  void *priv, char **include_dirs)
+                  void *priv, char **include_dirs, char **defined)
 {
     int err;
     int i;
@@ -165,11 +273,17 @@ int pinclude_list(const char *input, pinclude_callback_t cb,
     for (i = 0; i < LINE_MAX; i++)
         included[i] = NULL;
 
-    err = _pinclude_list(input, cb, priv, include_dirs, included);
+    err = _pinclude_list(input, cb, priv, include_dirs, defined, included);
 
     for (i = 0; i < FILE_MAX; i++)
         if (included[i] != NULL)
             free(included[i]);
 
     return err;
+}
+
+void str_chomp(char *str)
+{
+    while ((strlen(str) > 0) && isspace(str[strlen(str) - 1]))
+        str[strlen(str) - 1] = '\0';
 }
