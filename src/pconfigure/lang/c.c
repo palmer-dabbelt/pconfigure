@@ -486,7 +486,7 @@ void find_files(void *args_uncast, const char *format, ...)
         struct find_files_args *args;
         args = args_uncast;
 
-        context = args->context;
+        context = talloc_new(args->context);
         func = args->func;
         arg = args->arg;
     }
@@ -498,6 +498,11 @@ void find_files(void *args_uncast, const char *format, ...)
     va_start(args, format);
     cfile = talloc_vasprintf(context, format, args);
     va_end(args);
+
+    if (cfile[0] == '/') {
+        TALLOC_FREE(context);
+        return;
+    }
 
     cfile[strlen(cfile) - 1] = 'c';
 
@@ -536,7 +541,5 @@ void find_files(void *args_uncast, const char *format, ...)
     if (access(cxxfile, R_OK) == 0)
         func(arg, cxxfile);
 
-    talloc_unlink(context, cfile);
-    talloc_unlink(context, hfile);
-    talloc_unlink(context, cxxfile);
+    TALLOC_FREE(context);
 }

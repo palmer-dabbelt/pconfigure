@@ -123,7 +123,7 @@ void find_similar_files(void *args_uncast, const char *format, ...)
     {
         struct find_similar_files_args *args;
         args = args_uncast;
-        context = args->context;
+        context = talloc_new(args->context);
         func = args->func;
         arg = args->arg;
     }
@@ -131,6 +131,11 @@ void find_similar_files(void *args_uncast, const char *format, ...)
     va_start(args, format);
 
     cfile = talloc_vasprintf(context, format, args);
+
+    if (cfile[0] == '/') {
+        TALLOC_FREE(context);
+        return;
+    }
 
     cxxfile = talloc_array(context, char, strlen(cfile) + 20);
 
@@ -181,6 +186,8 @@ void find_similar_files(void *args_uncast, const char *format, ...)
     if (access(cfile, R_OK) == 0)
         if (strcmp(cfile + strlen(cfile) - 2, ".c") == 0)
             func(arg, cfile);
+
+    TALLOC_FREE(context);
 
     va_end(args);
 }
