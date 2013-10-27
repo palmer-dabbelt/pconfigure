@@ -24,14 +24,14 @@ then
             ret="$(tar -xOf "$f" ptest__return)"
             if [[ "$ret" == "0" ]]
             then
-                echo -e "PASS\t$(echo "$f" | cut -d'/' -f2-)"
+                echo -e "  PASS\t$(echo "$f" | cut -d'/' -f2-)"
                 pass=$(expr $pass + 1)
             elif [[ "$ret" == "1" ]]
             then
-                echo -e "FAIL\t$(echo "$f" | cut -d'/' -f2-)"
+                echo -e "* FAIL\t$(echo "$f" | cut -d'/' -f2-)"
                 fail=$(expr $fail + 1)
             else
-                echo -e "ERROR\t$(echo "$f" | cut -d'/' -f2-)"
+                echo -e "! EROR\t$(echo "$f" | cut -d'/' -f2-)"
                 error=$(expr $error + 1)
             fi
         done
@@ -40,7 +40,7 @@ then
         echo -e "NRUN\t"$run
         echo -e "NPASS\t"$pass
         echo -e "NFAIL\t"$fail
-        echo -e "NERROR\t"$error
+        echo -e "NEROR\t"$error
 
         if [[ "$fail" != "0" ]]
         then
