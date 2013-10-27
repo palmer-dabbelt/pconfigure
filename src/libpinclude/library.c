@@ -144,6 +144,16 @@ static int _pinclude_list(const char *input, pinclude_callback_t cb,
         if (state[state_i] == false)
             continue;
 
+        /* Here's a hack: treat <> includes just like "" includes. */
+        if (strncmp(buffer, "#include <", strlen("#include <")) == 0) {
+            buffer[strlen("#include <") - 1] = '"';
+            strstr(buffer, ">")[0] = '"';
+
+#ifdef DEBUG_LIBPINCLUDE_INCLUDE
+            fprintf(stderr, "include -> %s", buffer);
+#endif
+        }
+
         /* Finally attempt to recursively enumerate the #include
          * files. */
         if (strncmp(buffer, "#include \"", strlen("#include \"")) == 0) {

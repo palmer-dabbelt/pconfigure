@@ -42,6 +42,7 @@ TESTSRC     += tek.bash
 TESTSRC     += bash-deps.bash
 TESTSRC     += c-cxx.bash
 TESTSRC     += c-ifndef.bash
+TESTSRC     += syshdr.bash
 
 BINARIES    += pclean
 SOURCES	    += pclean.bash
