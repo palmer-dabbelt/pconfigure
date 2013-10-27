@@ -129,7 +129,15 @@ static int _pinclude_list(const char *input, pinclude_callback_t cb,
 #endif
         }
 
-        if (strncmp(buffer, "#endif ", strlen("#endif ")) == 0) {
+        /* FIXME: I'm just faking support for #if here because I don't
+         * want to solve equations.  This keeps the stack correct but
+         * doesn't actually handle the check. */
+        if (strncmp(buffer, "#if ", strlen("#if ")) == 0) {
+            state_i++;
+            state[state_i] = true;
+        }
+
+        if (strncmp(buffer, "#endif", strlen("#endif")) == 0) {
             if (state_i == 0)
                 abort();
 
