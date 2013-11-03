@@ -145,7 +145,7 @@ int languagelist_remove(struct languagelist *ll, const char *name)
 
 struct language *languagelist_search(struct languagelist *ll,
                                      struct language *parent,
-                                     const char *path)
+                                     const char *path, struct context *c)
 {
     struct languagelist_node *cur;
 
@@ -158,7 +158,7 @@ struct language *languagelist_search(struct languagelist *ll,
     while (cur != NULL) {
         struct language *found;
 
-        found = language_search(cur->data, parent, path);
+        found = language_search(cur->data, parent, path, c);
         if (found != NULL)
             return found;
 

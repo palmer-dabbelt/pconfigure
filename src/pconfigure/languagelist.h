@@ -47,7 +47,8 @@ extern int languagelist_remove(struct languagelist *ll, const char *name);
 
 extern struct language *languagelist_search(struct languagelist *ll,
                                             struct language *parent,
-                                            const char *path);
+                                            const char *path,
+                                            struct context *c);
 
 extern struct language *languagelist_get(struct languagelist *ll,
                                          void *context);

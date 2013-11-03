@@ -32,7 +32,8 @@
 /* Instance methods. */
 static struct language *language_cxx_search(struct language *l_uncast,
                                             struct language *parent,
-                                            const char *path);
+                                            const char *path,
+                                            struct context *c);
 static void language_cxx_extras(struct language *l_uncast, struct context *c,
                                 void *context,
                                 void (*func) (void *arg, const char *),
@@ -74,7 +75,7 @@ struct language *language_cxx_new(struct clopts *o, const char *name)
 
 struct language *language_cxx_search(struct language *l_uncast,
                                      struct language *parent,
-                                     const char *path)
+                                     const char *path, struct context *c)
 {
     struct language_c *l;
 

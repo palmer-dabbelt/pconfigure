@@ -35,7 +35,8 @@
 /* These are the member functions for the perl language. */
 static struct language *language_perl_search(struct language *l_uncast,
                                              struct language *parent,
-                                             const char *path);
+                                             const char *path,
+                                             struct context *c);
 static const char *language_perl_objname(struct language *l_uncast,
                                          void *context, struct context *c);
 static void language_perl_deps(struct language *l_uncast, struct context *c,
@@ -91,7 +92,7 @@ struct language *language_perl_new(struct clopts *o, const char *name)
 
 struct language *language_perl_search(struct language *l_uncast,
                                       struct language *parent,
-                                      const char *path)
+                                      const char *path, struct context *c)
 {
     struct language_perl *l;
 

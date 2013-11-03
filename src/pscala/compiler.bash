@@ -49,7 +49,7 @@ then
     #strace -f -o "$workdir"/strace -e stat \
 	zinc -nailed -q -analysis-cache "$workdir"/zinc.cache \
 	$sources -d "$workdir" $classpath || \
-        zinc -nailed -analysis-cache "$workdir"/zinc.cache \
+        zinc -analysis-cache "$workdir"/zinc.cache \
 	$sources -d "$workdir" $classpath
 
    cd "$workdir"

@@ -34,7 +34,8 @@
 /* Member functions. */
 static struct language *language_pkgconfig_search(struct language *l_uncast,
                                                   struct language *parent,
-                                                  const char *path);
+                                                  const char *path,
+                                                  struct context *c);
 static const char *language_pkgconfig_objname(struct language *l_uncast,
                                               void *context,
                                               struct context *c);
@@ -115,7 +116,8 @@ struct language *language_pkgconfig_new(struct clopts *o, const char *name)
 
 struct language *language_pkgconfig_search(struct language *l_uncast,
                                            struct language *parent,
-                                           const char *path)
+                                           const char *path,
+                                           struct context *c)
 {
     struct language_pkgconfig *l;
 

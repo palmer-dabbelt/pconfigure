@@ -544,7 +544,7 @@ int context_source_destructor(struct context *c)
 
     /* Try to find a language that's compatible with the language already used
      * in this binary, and is compatible with this current source file. */
-    l = languagelist_search(c->ll, c->parent->language, c->full_path);
+    l = languagelist_search(c->ll, c->parent->language, c->full_path, c);
     if (l == NULL) {
         fprintf(stderr, "No language found for '%s'\n", c->full_path);
 

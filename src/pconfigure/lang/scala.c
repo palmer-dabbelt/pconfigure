@@ -43,7 +43,8 @@
 /* Member functions. */
 static struct language *language_scala_search(struct language *l_uncast,
                                               struct language *parent,
-                                              const char *path);
+                                              const char *path,
+                                              struct context *c);
 static const char *language_scala_objname(struct language *l_uncast,
                                           void *context, struct context *c);
 static void language_scala_deps(struct language *l_uncast, struct context *c,
@@ -108,7 +109,7 @@ struct language *language_scala_new(struct clopts *o, const char *name)
 
 struct language *language_scala_search(struct language *l_uncast,
                                        struct language *parent,
-                                       const char *path)
+                                       const char *path, struct context *c)
 {
     struct language_scala *l;
 

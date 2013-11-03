@@ -48,7 +48,8 @@ extern struct languagelist *ll;
 /* Member functions. */
 static struct language *language_chisel_search(struct language *l_uncast,
                                                struct language *parent,
-                                               const char *path);
+                                               const char *path,
+                                               struct context *c);
 static const char *language_chisel_objname(struct language *l_uncast,
                                            void *context, struct context *c);
 static void language_chisel_deps(struct language *l_uncast, struct context *c,
@@ -134,9 +135,22 @@ struct language *language_chisel_new(struct clopts *o, const char *name)
 
 struct language *language_chisel_search(struct language *l_uncast,
                                         struct language *parent,
-                                        const char *path)
+                                        const char *path, struct context *c)
 {
     struct language_chisel *l;
+
+    /* Chisel can't build libraries, those are defered to Scala. */
+    if (c == NULL)
+        return NULL;
+
+    if (c->type != CONTEXT_TYPE_SOURCE)
+        return NULL;
+
+    if (c->parent == NULL)
+        return NULL;
+
+    if (c->parent->type != CONTEXT_TYPE_BINARY)
+        return NULL;
 
     l = talloc_get_type(l_uncast, struct language_chisel);
     if (l == NULL)
@@ -319,7 +333,7 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
     /* In order to allow C++ code to build, I have to manually go
      * munge the include path inside C++.  This is super-nasty, but I
      * guess it's as good as it's going to get... :( */
-    cxx_lang = languagelist_search(ll, l_uncast, "somefile.c++");
+    cxx_lang = languagelist_search(ll, l_uncast, "somefile.c++", NULL);
     if (cxx_lang == NULL)
         abort();
     compile_opt = talloc_asprintf(context, "-I%s.d/inc/", obj_path);

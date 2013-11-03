@@ -106,11 +106,12 @@ int language_add_linkopt(struct language *l, const char *opt)
 }
 
 struct language *language_search(struct language *l,
-                                 struct language *parent, const char *path)
+                                 struct language *parent,
+                                 const char *path, struct context *c)
 {
     assert(l != NULL);
     assert(l->search != NULL);
-    return l->search(l, parent, path);
+    return l->search(l, parent, path, c);
 }
 
 const char *language_objname(struct language *l, void *context,

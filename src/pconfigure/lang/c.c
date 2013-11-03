@@ -38,7 +38,8 @@
 
 static struct language *language_c_search(struct language *l_uncast,
                                           struct language *parent,
-                                          const char *path);
+                                          const char *path,
+                                          struct context *c);
 static const char *language_c_objname(struct language *l_uncast,
                                       void *context, struct context *c);
 static void language_c_deps(struct language *l_uncast, struct context *c,
@@ -117,7 +118,8 @@ struct language *language_c_new(struct clopts *o, const char *name)
 }
 
 struct language *language_c_search(struct language *l_uncast,
-                                   struct language *parent, const char *path)
+                                   struct language *parent,
+                                   const char *path, struct context *c)
 {
     struct language_c *l;
 

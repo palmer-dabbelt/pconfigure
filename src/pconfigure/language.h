@@ -47,7 +47,7 @@ struct language
     bool compiled;
 
     struct language *(*search) (struct language *, struct language *,
-                                const char *);
+                                const char *, struct context *);
     const char *(*objname) (struct language *, void *, struct context *);
     void (*deps) (struct language *, struct context *,
                   void (*)(void *, const char *, ...), void *);
@@ -72,7 +72,7 @@ extern int language_add_linkopt(struct language *l, const char *opt);
 
 extern struct language *language_search(struct language *l,
                                         struct language *parent,
-                                        const char *path);
+                                        const char *path, struct context *c);
 extern const char *language_objname(struct language *l, void *context,
                                     struct context *c);
 
