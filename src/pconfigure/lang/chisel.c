@@ -336,7 +336,7 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
     cxx_lang = languagelist_search(ll, l_uncast, "somefile.c++", NULL);
     if (cxx_lang == NULL)
         abort();
-    compile_opt = talloc_asprintf(context, "-I%s.d/inc/", obj_path);
+    compile_opt = talloc_asprintf(context, "-I%s.d/inc", obj_path);
     language_add_compileopt(cxx_lang, compile_opt);
 
     /* Additionally, it's necessary to make a dummy C++ file NOW.
