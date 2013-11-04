@@ -36,7 +36,7 @@ fi
 # Make a temporary working directory
 #workdir=`mktemp -d -t pscalac.XXXXXX`
 #trap "set +e; rm -rf $workdir; rm -f $outfile" EXIT
-workdir="$(readlink -f $(pwd))"/"$(dirname "$outfile")"/pscalac-cache
+workdir="$(pwd)"/"$(dirname "$outfile")"/pscalac-cache
 mkdir -p "$workdir"
 
 workjar="$workdir"/out.jar
