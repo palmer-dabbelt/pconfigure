@@ -56,8 +56,12 @@ then
    find -iname "*.class" > "$workdir"/jar-list
    cd - >& /dev/null
 else
-    strace -f -o "$workdir"/strace -e stat \
+    #strace -f -o "$workdir"/strace -e stat \
 	scalac -make:changed $sources -d "$workdir" $classpath
+
+   cd "$workdir"
+   find -iname "*.class" > "$workdir"/jar-list
+   cd - >& /dev/null
 fi
 
 # There isn't a real way to get a list of clas files that Scala
