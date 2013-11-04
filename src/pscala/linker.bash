@@ -59,7 +59,7 @@ done
 # Create the new jar that contains every file from the extracted jars,
 # with an extra argument that specifies which class to run
 cd "$workdir"
-find -iname "*.class" | xargs jar cfe "$workjar" $mainclass
+find . -iname "*.class" | xargs jar cfe "$workjar" $mainclass
 cd - >& /dev/null
 
 # Generate a self-extracting BASH archive as the output file

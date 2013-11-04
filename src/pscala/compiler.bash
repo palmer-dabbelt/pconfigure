@@ -53,14 +53,14 @@ then
 	$sources -d "$workdir" $classpath
 
    cd "$workdir"
-   find -iname "*.class" > "$workdir"/jar-list
+   find . -iname "*.class" > "$workdir"/jar-list
    cd - >& /dev/null
 else
     #strace -f -o "$workdir"/strace -e stat \
 	scalac -make:changed $sources -d "$workdir" $classpath
 
    cd "$workdir"
-   find -iname "*.class" > "$workdir"/jar-list
+   find . -iname "*.class" > "$workdir"/jar-list
    cd - >& /dev/null
 fi
 
