@@ -93,7 +93,7 @@ void func_stringlist_each_cmd_lcont(struct stringlist *sl,
 {
     struct func_cmd f;
     f.type = false;
-    f.format = "\\ -l%s";
+    f.format = "\\ -l %s";
     f.func = func;
     f.skip_start = NULL;
     stringlist_each(sl, &cmd_wrap_str, &f);
