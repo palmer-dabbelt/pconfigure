@@ -85,7 +85,8 @@ struct language *language_cxx_search(struct language *l_uncast,
 
     if ((strcmp(path + strlen(path) - 4, ".c++") != 0) &&
         (strcmp(path + strlen(path) - 4, ".cxx") != 0) &&
-        (strcmp(path + strlen(path) - 4, ".cpp") != 0))
+        (strcmp(path + strlen(path) - 4, ".cpp") != 0) &&
+        (strcmp(path + strlen(path) - 3, ".cc") != 0))
         return NULL;
 
     if (parent == NULL)
@@ -159,6 +160,36 @@ void find_similar_files(void *args_uncast, const char *format, ...)
         func(arg, cxxfile);
 
     memset(cxxfile, 0, strlen(cfile) + 10);
+    strncpy(cxxfile, cfile, strlen(cfile) - 2);
+    strcat(cxxfile, ".cc");
+    if (access(cxxfile, R_OK) == 0)
+        func(arg, cxxfile);
+
+    memset(cxxfile, 0, strlen(cfile) + 10);
+    strncpy(cxxfile, cfile, strlen(cfile) - 3);
+    strcat(cxxfile, ".c++");
+    if (access(cxxfile, R_OK) == 0)
+        func(arg, cxxfile);
+
+    memset(cxxfile, 0, strlen(cfile) + 10);
+    strncpy(cxxfile, cfile, strlen(cfile) - 3);
+    strcat(cxxfile, ".cxx");
+    if (access(cxxfile, R_OK) == 0)
+        func(arg, cxxfile);
+
+    memset(cxxfile, 0, strlen(cfile) + 10);
+    strncpy(cxxfile, cfile, strlen(cfile) - 3);
+    strcat(cxxfile, ".cpp");
+    if (access(cxxfile, R_OK) == 0)
+        func(arg, cxxfile);
+
+    memset(cxxfile, 0, strlen(cfile) + 10);
+    strncpy(cxxfile, cfile, strlen(cfile) - 3);
+    strcat(cxxfile, ".cc");
+    if (access(cxxfile, R_OK) == 0)
+        func(arg, cxxfile);
+
+    memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 4);
     strcat(cxxfile, ".c++");
     if (access(cxxfile, R_OK) == 0)
@@ -173,6 +204,12 @@ void find_similar_files(void *args_uncast, const char *format, ...)
     memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 4);
     strcat(cxxfile, ".cpp");
+    if (access(cxxfile, R_OK) == 0)
+        func(arg, cxxfile);
+
+    memset(cxxfile, 0, strlen(cfile) + 10);
+    strncpy(cxxfile, cfile, strlen(cfile) - 4);
+    strcat(cxxfile, ".cc");
     if (access(cxxfile, R_OK) == 0)
         func(arg, cxxfile);
 
