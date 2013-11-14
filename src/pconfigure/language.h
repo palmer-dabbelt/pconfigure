@@ -41,6 +41,9 @@ struct language
     /* Shared Object Extension (so for C, jar for Java) */
     char *so_ext;
 
+    /* Static object extension (a for C). */
+    char *a_ext;
+
     struct stringlist *compile_opts;
     struct stringlist *link_opts;
 

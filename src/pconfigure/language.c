@@ -41,6 +41,7 @@ int language_init(struct language *l)
     l->link_cmd = NULL;
 
     l->so_ext = NULL;
+    l->a_ext = NULL;
 
     l->compile_opts = stringlist_new(l);
     l->link_opts = stringlist_new(l);

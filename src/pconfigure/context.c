@@ -285,11 +285,24 @@ int context_library_destructor(struct context *c)
     {
         char *new_name;
         char *old_name;
+        char *ext;
 
         old_name = talloc_strdup(context, c->full_path);
+
+        if (strstr(old_name, ".") == NULL)
+            abort();
+
+        if (strcmp(strstr(old_name, ".") + 1, c->language->so_ext) == 0)
+            c->shared_target = true;
+        else if (strcmp(strstr(old_name, ".") + 1, c->language->a_ext) == 0)
+            c->shared_target = false;
+        else
+            abort();
+
         strstr(old_name, ".")[0] = '\0';
 
-        new_name = talloc_asprintf(c, "%s.%s", old_name, c->language->so_ext);
+        ext = c->shared_target ? c->language->so_ext : c->language->a_ext;
+        new_name = talloc_asprintf(c, "%s.%s", old_name, ext);
 
         c->full_path = new_name;
     }
@@ -560,6 +573,43 @@ int context_source_destructor(struct context *c)
     fprintf(stderr, "\tc->parent->language->name: '%s'\n",
             c->parent->language->name);
 #endif
+
+    /* Try and figure out if the grandparent of this code should be a
+     * shared or static library. */
+    {
+        struct context *lc;
+
+        lc = c;
+        while (lc != NULL) {
+            if (lc->type == CONTEXT_TYPE_LIBRARY)
+                break;
+
+            if (lc->parent == lc) {
+                lc = NULL;
+                break;
+            }
+
+            lc = lc->parent;
+        }
+
+        /* It's very possible we ended up with something that
+         * _doesn't_ target a library, which is perfectly fine. */
+        if (lc != NULL) {
+            char *ext;
+
+            ext = strstr(lc->full_path, ".");
+            if (ext == NULL)
+                abort();
+            ext++;
+
+            if (strcmp(ext, lc->language->so_ext) == 0)
+                c->shared_target = true;
+            else if (strcmp(ext, lc->language->a_ext) == 0)
+                c->shared_target = false;
+            else
+                abort();
+        }
+    }
 
     /* We need to allocate some temporary memory */
     context = talloc_new(NULL);

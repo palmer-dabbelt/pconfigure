@@ -105,6 +105,7 @@ struct language *language_c_new(struct clopts *o, const char *name)
 #else
 #error "Set a shared object extension for your platform"
 #endif
+    l->l.a_ext = talloc_strdup(l, "a");
     l->l.compiled = true;
     l->l.search = &language_c_search;
     l->l.objname = &language_c_objname;
@@ -287,6 +288,7 @@ void language_c_build(struct language *l_uncast, struct context *c,
 
     func(false, "\\ -I%s", c->hdr_dir);
     func(false, "\\ -I%s", c->gen_dir);
+    func(false, "\\ -D__PCONFIGURE__PREFIX=\\\"%s\\\"", c->prefix);
     func(false, "\\ -c %s -o %s\n", c->full_path, obj_path);
 
     TALLOC_FREE(context);
@@ -360,13 +362,20 @@ void language_c_slib(struct language *l_uncast, struct context *c,
 
     func(false, "mkdir -p `dirname %s` >& /dev/null || true", c->link_path);
 
-    func(false, "\\\t@%s -shared", l->l.link_cmd);
+    if (c->shared_target == true)
+        func(false, "\\\t@%s -shared", l->l.link_cmd);
+    else
+        func(false, "\\\t@${AR} rcs %s", c->link_path);
 
-    func_stringlist_each_cmd_cont(l->l.link_opts, func);
-    func_stringlist_each_cmd_cont(c->link_opts, func);
+    if (c->shared_target == true) {
+        func_stringlist_each_cmd_cont(l->l.link_opts, func);
+        func_stringlist_each_cmd_cont(c->link_opts, func);
+    }
+
     func_stringlist_each_cmd_cont(c->objects, func);
 
-    func(false, "\\ -o %s", c->link_path);
+    if (c->shared_target == true)
+        func(false, "\\ -o %s", c->link_path);
 #ifdef __APPLE__
     func(false, "\\ -Wl,-install_name,@rpath/%s\n",
          c->full_path + strlen(c->lib_dir) + 1);
