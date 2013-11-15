@@ -292,9 +292,10 @@ int context_library_destructor(struct context *c)
         if (strstr(old_name, ".") == NULL)
             abort();
 
-        if (strcmp(strstr(old_name, ".") + 1, c->language->so_ext) == 0)
+        if (strcmp(strstr(old_name, ".") + 1, c->language->so_ext_canon) == 0)
             c->shared_target = true;
-        else if (strcmp(strstr(old_name, ".") + 1, c->language->a_ext) == 0)
+        else if (strcmp(strstr(old_name, ".") + 1, c->language->a_ext_canon)
+                 == 0)
             c->shared_target = false;
         else
             abort();
@@ -602,9 +603,9 @@ int context_source_destructor(struct context *c)
                 abort();
             ext++;
 
-            if (strcmp(ext, lc->language->so_ext) == 0)
+            if (strcmp(ext, lc->language->so_ext_canon) == 0)
                 c->shared_target = true;
-            else if (strcmp(ext, lc->language->a_ext) == 0)
+            else if (strcmp(ext, lc->language->a_ext_canon) == 0)
                 c->shared_target = false;
             else
                 abort();

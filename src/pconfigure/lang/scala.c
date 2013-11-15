@@ -93,6 +93,7 @@ struct language *language_scala_new(struct clopts *o, const char *name)
     l->l.link_str = talloc_strdup(l, "SLD");
     l->l.link_cmd = talloc_strdup(l, "pscalald");
     l->l.so_ext = talloc_strdup(l, "jar");
+    l->l.so_ext_canon = talloc_strdup(l, "jar");
     l->l.compiled = true;
     l->l.search = &language_scala_search;
     l->l.objname = &language_scala_objname;

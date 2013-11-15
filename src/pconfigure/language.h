@@ -38,11 +38,18 @@ struct language
     char *link_str;
     char *link_cmd;
 
-    /* Shared Object Extension (so for C, jar for Java) */
+    /* Shared Object Extension (so for C, jar for Java).  The
+     * canonical name is always "so" for C (regardles of platform),
+     * while the non-canonical name varies ("dynlib" on OSX, for
+     * example). */
     char *so_ext;
+    char *so_ext_canon;
 
-    /* Static object extension (a for C). */
+    /* Static object extension (a for C).  AFAIK these two are always
+     * the same, but that's probably just because I haven't build
+     * static libraries on OSX. */
     char *a_ext;
+    char *a_ext_canon;
 
     struct stringlist *compile_opts;
     struct stringlist *link_opts;

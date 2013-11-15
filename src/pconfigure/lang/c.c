@@ -105,7 +105,9 @@ struct language *language_c_new(struct clopts *o, const char *name)
 #else
 #error "Set a shared object extension for your platform"
 #endif
+    l->l.so_ext_canon = talloc_strdup(l, "so");
     l->l.a_ext = talloc_strdup(l, "a");
+    l->l.a_ext_canon = talloc_strdup(l, "a");
     l->l.compiled = true;
     l->l.search = &language_c_search;
     l->l.objname = &language_c_objname;
