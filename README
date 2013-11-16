@@ -1,3 +1,10 @@
 Copyright 2012 Palmer Dabbelt <palmer@dabbelt.com>
 
 pconfigure: A GNU autoconf/automake replacement
+
+To build and install pconfigure, run the following commands:
+$ ./bootstrap.sh --prefix $HOME/.local
+$ make
+$ make install
+$ make check
+$ ptest
