@@ -80,7 +80,7 @@ struct find_files_args
 };
 static void find_files(void *args_uncast, const char *format, ...);
 
-struct language *language_c_new(struct clopts *o, const char *name)
+struct language_c *language_c_new_uc(struct clopts *o, const char *name)
 {
     struct language_c *l;
 
@@ -116,8 +116,10 @@ struct language *language_c_new(struct clopts *o, const char *name)
     l->l.link = &language_c_link;
     l->l.slib = &language_c_slib;
     l->l.extras = &language_c_extras;
+    l->cflags = talloc_strdup(l, "$(CFLAGS)");
+    l->ldflags = talloc_strdup(l, "$(LDFLAGS)");
 
-    return &(l->l);
+    return l;
 }
 
 struct language *language_c_search(struct language *l_uncast,
@@ -280,7 +282,7 @@ void language_c_build(struct language *l_uncast, struct context *c,
         return;
     }
 
-    func(false, "%s\\", l->l.compile_cmd);
+    func(false, "%s %s\\", l->l.compile_cmd, l->cflags);
 
     if (c->shared_target == true)
         func(false, "\\ -fPIC");
@@ -320,7 +322,7 @@ void language_c_link(struct language *l_uncast, struct context *c,
 
     func(false, "mkdir -p `dirname %s` >& /dev/null || true", link_path);
 
-    func(false, "\\\t@%s ", l->l.link_cmd);
+    func(false, "\\\t@%s %s", l->l.link_cmd, l->ldflags);
     func(false, "\\ -L%s", c->lib_dir);
     if (should_install == false) {
 #ifdef __APPLE__
@@ -365,9 +367,9 @@ void language_c_slib(struct language *l_uncast, struct context *c,
     func(false, "mkdir -p `dirname %s` >& /dev/null || true", c->link_path);
 
     if (c->shared_target == true)
-        func(false, "\\\t@%s -shared", l->l.link_cmd);
+        func(false, "\\\t@%s -shared %s", l->l.link_cmd, l->ldflags);
     else
-        func(false, "\\\t@${AR} rcs %s", c->link_path);
+        func(false, "\\\t@${AR} rcs %s %s", c->link_path, l->ldflags);
 
     if (c->shared_target == true) {
         func_stringlist_each_cmd_cont(l->l.link_opts, func);

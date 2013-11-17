@@ -39,25 +39,26 @@ static void language_asm_deps(struct language *l_uncast, struct context *c,
 
 struct language *language_asm_new(struct clopts *o, const char *name)
 {
-    struct language *l;
+    struct language_c *l;
 
     if (strcmp(name, "asm") != 0)
         return NULL;
 
-    l = language_c_new(o, "c");
+    l = language_c_new_uc(o, "c");
     if (l == NULL)
         return NULL;
 
-    l->name = talloc_strdup(l, "asm");
-    l->compiled = true;
-    l->compile_str = talloc_strdup(l, "ASM");
-    l->compile_cmd = talloc_strdup(l, "${CC} -xassembler");
-    l->link_str = talloc_strdup(l, "LD");
-    l->link_cmd = talloc_strdup(l, "${CC}");
-    l->search = &language_asm_search;
-    l->deps = &language_asm_deps;
+    l->l.name = talloc_strdup(l, "asm");
+    l->l.compiled = true;
+    l->l.compile_str = talloc_strdup(l, "ASM");
+    l->l.compile_cmd = talloc_strdup(l, "${CC} -xassembler");
+    l->l.link_str = talloc_strdup(l, "LD");
+    l->l.link_cmd = talloc_strdup(l, "${CC}");
+    l->l.search = &language_asm_search;
+    l->l.deps = &language_asm_deps;
+    l->cflags = talloc_strdup(l, "$(ASMFLAGS)");
 
-    return l;
+    return &(l->l);
 }
 
 struct language *language_asm_search(struct language *l_uncast,

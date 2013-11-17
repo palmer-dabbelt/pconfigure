@@ -28,8 +28,22 @@
 struct language_c
 {
     struct language l;
+
+    /* These allow subclasses of language_c to override what variable
+     * name their flags take.  Note that this must be specified as the
+     * whole make line (ie, "$(CFLAGS)"), which allows for trickier
+     * sorts of overriding. */
+    const char *cflags;
+    const char *ldflags;
 };
 
-extern struct language *language_c_new(struct clopts *o, const char *name);
+extern struct language_c *language_c_new_uc(struct clopts *o,
+                                            const char *name);
+
+static __inline__ struct language *language_c_new(struct clopts *o,
+                                                  const char *name)
+{
+    return &(language_c_new_uc(o, name)->l);
+}
 
 #endif

@@ -52,25 +52,26 @@ static void find_similar_files(void *arg_uncast, const char *format, ...);
 
 struct language *language_cxx_new(struct clopts *o, const char *name)
 {
-    struct language *l;
+    struct language_c *l;
 
     if (strcmp(name, "c++") != 0)
         return NULL;
 
-    l = language_c_new(o, "c");
+    l = language_c_new_uc(o, "c");
     if (l == NULL)
         return NULL;
 
-    l->name = talloc_strdup(l, "c++");
-    l->compiled = true;
-    l->compile_str = talloc_strdup(l, "C++");
-    l->compile_cmd = talloc_strdup(l, "${CXX}");
-    l->link_str = talloc_strdup(l, "LD++");
-    l->link_cmd = talloc_strdup(l, "${CXX}");
-    l->search = &language_cxx_search;
-    l->extras = &language_cxx_extras;
+    l->l.name = talloc_strdup(l, "c++");
+    l->l.compiled = true;
+    l->l.compile_str = talloc_strdup(l, "C++");
+    l->l.compile_cmd = talloc_strdup(l, "${CXX}");
+    l->l.link_str = talloc_strdup(l, "LD++");
+    l->l.link_cmd = talloc_strdup(l, "${CXX}");
+    l->l.search = &language_cxx_search;
+    l->l.extras = &language_cxx_extras;
+    l->cflags = talloc_strdup(l, "$(CXXFLAGS)");
 
-    return l;
+    return &(l->l);
 }
 
 struct language *language_cxx_search(struct language *l_uncast,
