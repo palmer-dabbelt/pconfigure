@@ -428,7 +428,7 @@ struct context *context_new_header(struct context *parent, void *context,
 
     c->called_path = talloc_strdup(c, called_path);
     c->full_path = talloc_asprintf(c, "%s/%s", c->hdr_dir, called_path);
-    c->link_path = talloc_strdup(c, "");
+    c->link_path = talloc_strdup(c, c->full_path);
     c->link_path_install = talloc_strdup(c, "");
 
     talloc_set_destructor(c, &context_header_destructor);
@@ -458,7 +458,7 @@ int context_header_destructor(struct context *c)
     tmp =
         talloc_asprintf(context,
                         "install -m a=r %s $D/`dirname \"%s/%s\"`",
-                        c->full_path, c->prefix, c->full_path);
+                        c->link_path, c->prefix, c->full_path);
     makefile_add_install(c->mf, tmp);
 
     tmp = talloc_asprintf(context, "%s/%s", c->prefix, c->full_path);
