@@ -369,7 +369,7 @@ void language_c_slib(struct language *l_uncast, struct context *c,
     if (c->shared_target == true)
         func(false, "\\\t@%s -shared %s", l->l.link_cmd, l->ldflags);
     else
-        func(false, "\\\t@${AR} rcs %s %s", c->link_path, l->ldflags);
+        func(false, "\\\t@${AR} rcs %s", c->link_path);
 
     if (c->shared_target == true) {
         func_stringlist_each_cmd_cont(l->l.link_opts, func);
