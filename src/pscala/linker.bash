@@ -22,16 +22,28 @@ do
 	outfile="$2"
 	shift
 	shift
-    elif [[ "$1" == "-l" ]]
+    elif [[ "$1" == -l* ]]
     then
-	jar="$(find -H $jarpath -name lib"$2".jar)"
+        lib="$(echo "$1" | sed s/^-l//)"
+        if [[ "$1" == "-l" ]]
+        then
+            lib="$2"
+            shift
+        fi
+
+	jar="$(find -H $jarpath -name lib"$lib".jar | head -n1)"
 	jars="$jar:$jars"
 	shift
-	shift
-    elif [[ "$1" == "-L" ]]
+    elif [[ "$1" == -L* ]]
     then
-	jarpath="$jarpath $2"
-	shift
+        lib="$(echo "$1" | sed s/^-L//)"
+        if [[ "$1" == "-L" ]]
+        then
+            lib="$2"
+            shift
+        fi
+
+	jarpath="$jarpath $lib"
 	shift
     else
 	inputs="$1 $inputs"
