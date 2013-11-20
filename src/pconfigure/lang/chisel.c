@@ -121,8 +121,8 @@ struct language *language_chisel_new(struct clopts *o, const char *name)
     l->l.link_cmd = talloc_strdup(l, "${CXX}");
     l->l.so_ext = talloc_strdup(l, "so");
     l->l.so_ext_canon = talloc_strdup(l, "so");
-    l->l.a_ext = talloc_strdup(l, "jar");
-    l->l.a_ext_canon = talloc_strdup(l, "jar");
+    l->l.a_ext = talloc_strdup(l, "a");
+    l->l.a_ext_canon = talloc_strdup(l, "a");
     l->l.compiled = true;
     l->l.search = &language_chisel_search;
     l->l.objname = &language_chisel_objname;
@@ -142,7 +142,6 @@ struct language *language_chisel_search(struct language *l_uncast,
 {
     struct language_chisel *l;
 
-    /* Chisel can't build libraries, those are defered to Scala. */
     if (c == NULL)
         return NULL;
 
@@ -150,6 +149,12 @@ struct language *language_chisel_search(struct language *l_uncast,
         return NULL;
 
     if (c->parent == NULL)
+        return NULL;
+
+    /* Chisel doesn't build libraries whose names end in .jar, those
+     * are scala libraries. */
+    if (strcmp(c->parent->full_path + strlen(c->parent->full_path) - 4,
+               ".jar") == 0)
         return NULL;
 
     l = talloc_get_type(l_uncast, struct language_chisel);
