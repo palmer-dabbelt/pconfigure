@@ -356,6 +356,16 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
         make_dummy = talloc_asprintf(context, "mkdir -p %s.d/inc/", obj_path);
         if (system(make_dummy) != 0)
             abort();
+
+        if (obj_path == NULL) {
+            fprintf(stderr, "Called chisel object\n");
+            abort();
+        }
+        if (design == NULL) {
+            fprintf(stderr, "Called chisel without -d\n");
+            abort();
+        }
+
         make_dummy = talloc_asprintf(context,
                                      "if test ! -e %s.d/inc/%s.h; then touch -t 197101010101 %s.d/inc/%s.h; fi",
                                      obj_path, design, obj_path, design);
