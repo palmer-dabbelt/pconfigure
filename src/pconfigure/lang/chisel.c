@@ -119,8 +119,10 @@ struct language *language_chisel_new(struct clopts *o, const char *name)
     l->l.compile_cmd = talloc_strdup(l, "${CXX}");
     l->l.link_str = talloc_strdup(l, "ChLD");
     l->l.link_cmd = talloc_strdup(l, "${CXX}");
-    l->l.so_ext = talloc_strdup(l, "jar");
-    l->l.so_ext_canon = talloc_strdup(l, "jar");
+    l->l.so_ext = talloc_strdup(l, "so");
+    l->l.so_ext_canon = talloc_strdup(l, "so");
+    l->l.a_ext = talloc_strdup(l, "jar");
+    l->l.a_ext_canon = talloc_strdup(l, "jar");
     l->l.compiled = true;
     l->l.search = &language_chisel_search;
     l->l.objname = &language_chisel_objname;
@@ -148,9 +150,6 @@ struct language *language_chisel_search(struct language *l_uncast,
         return NULL;
 
     if (c->parent == NULL)
-        return NULL;
-
-    if (c->parent->type != CONTEXT_TYPE_BINARY)
         return NULL;
 
     l = talloc_get_type(l_uncast, struct language_chisel);
@@ -191,9 +190,10 @@ const char *language_chisel_objname(struct language *l_uncast, void *context,
     /* This should be checked higher up in the stack, but just make sure */
     assert(c->full_path[strlen(c->src_dir)] == '/');
 
-    o = talloc_asprintf(context, "%s/%s/%s-%s.o",
+    o = talloc_asprintf(context, "%s/%s/%s-%s-%s.o",
                         c->obj_dir,
-                        c->full_path, compileopts_hash, langopts_hash);
+                        c->full_path, compileopts_hash, langopts_hash,
+                        c->shared_target ? "shared" : "static");
 
     TALLOC_FREE(subcontext);
     return o;
@@ -304,7 +304,7 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
     if (last_source == NULL) {
         fprintf(stderr, "chisel compiler called with no sources!\n");
     }
-    func(false, "\\ %s", last_source);
+    func(false, "\\ $$(find `dirname %s` -iname *.scala)", last_source);
     func(false, "\\ -o %s.d/obj.jar\n", obj_path);
 
     /* Add a flag that tells Scala how to start up */
@@ -329,6 +329,8 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
     func_stringlist_each_cmd_cont_nostart(l->l.compile_opts, func, "-d");
     func_stringlist_each_cmd_cont_nostart(c->compile_opts, func, "-d");
     func(false, "\\ -I%s", c->hdr_dir);
+    if (c->shared_target)
+        func(false, "\\ -fPIC");
     func(false, "\\ -c %s.d/gen/%s.cpp -o %s\n", obj_path, design, obj_path);
 
     /* In order to allow C++ code to build, I have to manually go
