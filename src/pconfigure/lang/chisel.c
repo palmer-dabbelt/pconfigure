@@ -436,6 +436,14 @@ void language_chisel_quirks(struct language *l_uncast,
     target_path = talloc_asprintf(context, "%s.d/inc/%s.h", obj_path, design);
     source_path = talloc_asprintf(context, "%s.d/gen/%s.h", obj_path, design);
 
+    /* We need a special test here because pconfigure won't do any
+     * checking for quirks that have already been run. */
+    if (stringlist_include(mf->targets, target_path))
+        goto cleanup;
+
+    if (stringlist_include(mf->targets, source_path))
+        goto cleanup;
+
     /* Copy the generated header into the directory that's availiable
      * for C++ to use. */
     makefile_create_target(mf, target_path);
@@ -467,6 +475,7 @@ void language_chisel_quirks(struct language *l_uncast,
     makefile_add_cmd(mf, "touch %s", source_path);
     makefile_end_cmds(mf);
 
+  cleanup:
     TALLOC_FREE(context);
 }
 
