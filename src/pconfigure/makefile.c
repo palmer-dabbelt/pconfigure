@@ -40,7 +40,7 @@ struct makefile *makefile_new(struct clopts *o)
     m = talloc(o, struct makefile);
     talloc_set_destructor(m, &mf_destructor);
     m->opts = o;
-    m->file = fopen("Makefile", "w");
+    m->file = fopen(o->outfile, "w");
     m->targets_all = stringlist_new(m);
     m->targets_all_install = stringlist_new(m);
     m->targets_check = stringlist_new(m);
