@@ -71,6 +71,7 @@ void makefile_create_target(struct makefile *m, const char *name)
 {
     assert(m->state == MAKEFILE_STATE_NONE);
     m->state = MAKEFILE_STATE_TARGET;
+    stringlist_add(m->targets, talloc_strdup(m, name));
 
     fprintf(m->file, "%s:", name);
 }
