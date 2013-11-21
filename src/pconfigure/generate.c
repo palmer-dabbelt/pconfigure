@@ -33,8 +33,8 @@ void generate(const char *filename, struct context *c, struct makefile *mf)
         abort();
 
     cmd = talloc_asprintf(ctx,
-                          "if test ! -e %s; then ./%s --generate > %s; fi",
-                          target, proc_name, target);
+                          "if test ! -e %s; then touch -t 197101010101 %s; fi",
+                          target, target);
     if (system(cmd) != 0)
         abort();
 
