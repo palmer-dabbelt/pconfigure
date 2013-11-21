@@ -45,6 +45,9 @@ struct clopts *clopts_new(void *ctx, int argc, char **argv)
 
     o->source_path = talloc_strdup(o, "");
 
+    o->binname = NULL;
+    o->srcname = NULL;
+
     o->infiles = NULL;
     setup_infiles(o);
 
@@ -85,6 +88,12 @@ struct clopts *clopts_new(void *ctx, int argc, char **argv)
             setup_infiles(o);
 
             i++;
+        } else if (strcmp(argv[i], "--binname") == 0) {
+            o->binname = talloc_strdup(o, argv[i + 1]);
+            i++;
+        } else if (strcmp(argv[i], "--srcname") == 0) {
+            o->srcname = talloc_strdup(o, argv[i + 1]);
+            i++;
         } else {
             fprintf(stderr, "Unknown argument: '%s'\n", argv[i]);
             abort();
@@ -94,6 +103,24 @@ struct clopts *clopts_new(void *ctx, int argc, char **argv)
     if (o->verbose == true)
         for (i = 0; i < o->infile_count; i++)
             printf("Reading '%s'\n", o->infiles[i]);
+
+    /* Here's some special sauce for binname/srcname.  Effectively we
+     * need to pass both of these, and if we do then we go and
+     * redirect the Makefile at /dev/null to prevent it from
+     * overwriting the proper one. */
+    if (o->binname == NULL && o->srcname != NULL) {
+        printf("Provided --srcname without --binname\n");
+        abort();
+    }
+
+    if (o->binname != NULL && o->srcname == NULL) {
+        printf("Provided --binname without --srcname\n");
+        abort();
+    }
+
+    if (o->binname != NULL && o->srcname != NULL) {
+        o->outfile = talloc_strdup(o, "/dev/null");
+    }
 
     return o;
 }

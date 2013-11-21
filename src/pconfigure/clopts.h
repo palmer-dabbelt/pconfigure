@@ -35,6 +35,14 @@ struct clopts
 
     /* This is the directory in which the sources live */
     const char *source_path;
+
+    /* We use this if we're running from a generate scrpit and trying
+     * to find the object name that cooresponds to some input source,
+     * within a given project.  This is expected to be called from
+     * within a generate script, which means that it won't itself call
+     * any generate scripts. */
+    const char *binname;
+    const char *srcname;
 };
 
 /* Parses the command-line options and creates a new (NULL-parented) list of

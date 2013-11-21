@@ -67,10 +67,13 @@ static int parsefunc_tests(const char *op, const char *right);
 static int parsefunc_testsrc(const char *op, const char *right);
 static int parsefunc_generate(const char *op, const char *right);
 
-/* This is global data to avoid having really long parsefunc_* function calls */
-static struct clopts *o;
+/* This is global data to avoid having really long parsefunc_*
+ * function calls. */
+struct clopts *o;
 static struct makefile *mf;
 static struct contextstack *s;
+bool found_binary;
+void *root_context;
 
 /* FIXME: This is needed by lang/chisel.c, which is a huge hack! */
 struct languagelist *ll;
@@ -78,7 +81,6 @@ struct languagelist *ll;
 int main(int argc, char **argv)
 {
     int i;
-    void *root_context;
 
     /* talloc initialization, needs to come before any talloc calls */
     talloc_enable_leak_report();
@@ -96,6 +98,9 @@ int main(int argc, char **argv)
         TALLOC_FREE(root_context);
         return 0;
     }
+
+    /* Start without having found the binary or the source. */
+    found_binary = false;
 
     mf = makefile_new(o);
     if (mf == NULL) {
@@ -617,6 +622,13 @@ int parsefunc_binaries(const char *op, const char *right)
         return -1;
     }
 
+    /* If we're searching for a binary and this isn't it then just
+     * give up. */
+    if (o->binname != NULL) {
+        if (strcmp(right, o->binname) == 0)
+            found_binary = true;
+    }
+
     /* If there's anything left on the stack, then clear everything out */
     while (!contextstack_isempty(s)) {
         context = talloc_new(NULL);
@@ -722,6 +734,7 @@ int parsefunc_sources(const char *op, const char *right)
 
     /* Adds the requested source to the compile stack. */
     contextstack_push_source(s, right);
+
     return 0;
 }
 
@@ -904,6 +917,14 @@ int parsefunc_generate(const char *op, const char *right)
 {
     void *ctx;
     struct context *c;
+
+    /* Don't call generate if --binname or --srcname was passed as
+     * it's expected that these sorts of calls come from generate
+     * scripts, expected that they won't generate any output, and not
+     * necessary to call generate because it won't change the object
+     * name anyway. */
+    if ((o->binname != NULL) || (o->srcname != NULL))
+        return 0;
 
     if (strcmp(op, "+=") != 0) {
         fprintf(stderr, "We only support += for GENERATE\n");

@@ -43,6 +43,11 @@
 static void *lib_deps_ctx = NULL;
 static struct liblist *lib_deps = NULL;
 
+/* Here's a bit of a hack: these come from main and are set as part of
+ * the commandline arguments. */
+extern bool found_binary;
+extern struct clopts *o;
+
 static int context_binary_destructor(struct context *c);
 static int context_library_destructor(struct context *c);
 static int context_header_destructor(struct context *c);
@@ -622,6 +627,14 @@ int context_source_destructor(struct context *c)
          * succeed, as we just checked that it's necessary. */
         obj_name = language_objname(l, context, c);
         assert(obj_name != NULL);
+
+        /* This handles half of the whole "--binname --objname" stuff,
+         * which is why it's so messy! */
+        if (found_binary && (strcmp(c->called_path, o->srcname) == 0)) {
+            printf("%s\n", obj_name);
+            talloc_disable_null_tracking();
+            exit(0);
+        }
 
         /* If we've already built this dependency, then it's not necessary to
          * add it to the build list again, so skip it. */
