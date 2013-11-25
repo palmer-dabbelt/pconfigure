@@ -16,7 +16,8 @@
 
 #define MAX_LINE_SIZE 10240
 
-void generate(const char *filename, struct context *c, struct makefile *mf)
+void generate(const char *filename, const char *dirname,
+              struct context *c, struct makefile *mf)
 {
     void *ctx;
     const char *proc_name;
@@ -25,7 +26,7 @@ void generate(const char *filename, struct context *c, struct makefile *mf)
 
     ctx = talloc_new(c);
 
-    proc_name = talloc_asprintf(ctx, "%s/%s.proc", c->src_dir, filename);
+    proc_name = talloc_asprintf(ctx, "%s/%s.proc", dirname, filename);
     target = talloc_asprintf(ctx, "%s/%s", c->gen_dir, filename);
 
     cmd = talloc_asprintf(ctx, "mkdir -p %s", c->gen_dir);

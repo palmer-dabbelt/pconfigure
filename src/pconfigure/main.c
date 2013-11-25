@@ -66,6 +66,7 @@ static int parsefunc_libdir(const char *op, const char *right);
 static int parsefunc_tests(const char *op, const char *right);
 static int parsefunc_testsrc(const char *op, const char *right);
 static int parsefunc_generate(const char *op, const char *right);
+static int parsefunc_tgenerate(const char *op, const char *right);
 static int parsefunc_testdeps(const char *op, const char *right);
 
 /* This is global data to avoid having really long parsefunc_*
@@ -375,6 +376,8 @@ int parse_select(const char *left, const char *op, char *right)
         return parsefunc_testsrc(op, right);
     if (strcmp(left, "GENERATE") == 0)
         return parsefunc_generate(op, right);
+    if (strcmp(left, "TGENERATE") == 0)
+        return parsefunc_tgenerate(op, right);
     if (strcmp(left, "TESTDEPS") == 0)
         return parsefunc_testdeps(op, right);
 
@@ -936,7 +939,33 @@ int parsefunc_generate(const char *op, const char *right)
 
     ctx = talloc_new(NULL);
     c = context_new_defaults(o, ctx, mf, ll, s);
-    generate(right, c, mf);
+    generate(right, c->src_dir, c, mf);
+    TALLOC_FREE(ctx);
+
+    return 0;
+}
+
+int parsefunc_tgenerate(const char *op, const char *right)
+{
+    void *ctx;
+    struct context *c;
+
+    /* Don't call generate if --binname or --srcname was passed as
+     * it's expected that these sorts of calls come from generate
+     * scripts, expected that they won't generate any output, and not
+     * necessary to call generate because it won't change the object
+     * name anyway. */
+    if ((o->binname != NULL) || (o->srcname != NULL))
+        return 0;
+
+    if (strcmp(op, "+=") != 0) {
+        fprintf(stderr, "We only support += for GENERATE\n");
+        return -1;
+    }
+
+    ctx = talloc_new(NULL);
+    c = context_new_defaults(o, ctx, mf, ll, s);
+    generate(right, c->tst_dir, c, mf);
     TALLOC_FREE(ctx);
 
     return 0;

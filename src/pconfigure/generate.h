@@ -25,6 +25,7 @@
 #include "context.h"
 #include "makefile.h"
 
-void generate(const char *proc_name, struct context *c, struct makefile *m);
+void generate(const char *proc_name, const char *dir,
+              struct context *c, struct makefile *m);
 
 #endif
