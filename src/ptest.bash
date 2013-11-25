@@ -1,5 +1,16 @@
 if [[ "$1" == "" ]]
 then
+    make -q check
+    makeq="$?"
+
+    if [[ "$makeq" != "0" ]]
+    then
+        echo "*** WARNING: 'make check' is not up to date ***"
+        echo ""
+        echo ""
+        echo ""
+    fi
+
     # If there's no test directory then just give up
     if test ! -d check
     then
@@ -52,6 +63,14 @@ then
             exit 2
         fi
     }
+
+    if [[ "$makeq" != "0" ]]
+    then
+        echo ""
+        echo ""
+        echo ""
+        echo "*** WARNING: 'make check' is not up to date ***"
+    fi
 
     exit $?
 fi
