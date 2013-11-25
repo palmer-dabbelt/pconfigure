@@ -66,6 +66,7 @@ static int parsefunc_libdir(const char *op, const char *right);
 static int parsefunc_tests(const char *op, const char *right);
 static int parsefunc_testsrc(const char *op, const char *right);
 static int parsefunc_generate(const char *op, const char *right);
+static int parsefunc_testdeps(const char *op, const char *right);
 
 /* This is global data to avoid having really long parsefunc_*
  * function calls. */
@@ -374,6 +375,8 @@ int parse_select(const char *left, const char *op, char *right)
         return parsefunc_testsrc(op, right);
     if (strcmp(left, "GENERATE") == 0)
         return parsefunc_generate(op, right);
+    if (strcmp(left, "TESTDEPS") == 0)
+        return parsefunc_testdeps(op, right);
 
     return -2;
 }
@@ -937,4 +940,33 @@ int parsefunc_generate(const char *op, const char *right)
     TALLOC_FREE(ctx);
 
     return 0;
+}
+
+int parsefunc_testdeps(const char *op, const char *right)
+{
+    struct context *c;
+    void *context;
+    char *duped;
+    int err;
+
+    if (strcmp(op, "+=") != 0) {
+        fprintf(stderr, "We only support += for TESTDEPS\n");
+        return -1;
+    }
+
+    /* If the stack is empty, then add this to the language-specific global
+     * list of options. */
+    if (contextstack_isempty(s)) {
+        fprintf(stderr, "TESTDEPS += called with an empty context\n");
+        return -1;
+    }
+
+    /* The context stack isn't empty, so instead change the options of the
+     * current top-of-stack. */
+    context = talloc_new(NULL);
+    c = contextstack_peek(s, context);
+    duped = talloc_strdup(context, right);
+    err = context_add_testdep(c, duped);
+    TALLOC_FREE(context);
+    return err;
 }

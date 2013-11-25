@@ -114,6 +114,7 @@ struct context *context_new_binary(struct context *parent, void *context,
     c->language = NULL;
     c->objects = stringlist_new(c);
     c->libraries = stringlist_new(c);
+    c->testdeps = stringlist_new(c);
 
     c->called_path = talloc_strdup(c, called_path);
     c->full_path = talloc_asprintf(c, "%s/%s", c->bin_dir, called_path);
@@ -255,6 +256,7 @@ struct context *context_new_library(struct context *parent, void *context,
     c->language = NULL;
     c->objects = stringlist_new(c);
     c->libraries = stringlist_new(c);
+    c->testdeps = stringlist_new(c);
 
     c->called_path = talloc_strdup(c, called_path);
     c->full_path = talloc_asprintf(c, "%s/%s", c->lib_dir, called_path);
@@ -430,6 +432,7 @@ struct context *context_new_header(struct context *parent, void *context,
     c->language = NULL;
     c->objects = stringlist_new(c);
     c->libraries = stringlist_new(c);
+    c->testdeps = stringlist_new(c);
 
     c->called_path = talloc_strdup(c, called_path);
     c->full_path = talloc_asprintf(c, "%s/%s", c->hdr_dir, called_path);
@@ -501,6 +504,7 @@ struct context *context_new_source(struct context *parent, void *context,
     c->language = NULL;
     c->objects = stringlist_new(c);
     c->libraries = stringlist_new(c);
+    c->testdeps = stringlist_new(c);
 
     c->called_path = talloc_strdup(c, called_path);
     c->full_path = talloc_asprintf(c, "%s/%s", c->src_dir, called_path);
@@ -539,6 +543,7 @@ struct context *context_new_fullsrc(struct context *parent, void *context,
     c->language = NULL;
     c->objects = stringlist_new(c);
     c->libraries = stringlist_new(c);
+    c->testdeps = stringlist_new(c);
 
     c->full_path = talloc_strdup(c, full_path);
     c->link_path = talloc_strdup(c, "");
@@ -703,6 +708,7 @@ struct context *context_new_test(struct context *parent, void *context,
     c->language = NULL;
     c->objects = stringlist_new(c);
     c->libraries = stringlist_new(c);
+    c->testdeps = stringlist_copy(parent->testdeps, c);
 
     c->called_path = talloc_strdup(c, called_path);
     c->full_path = talloc_asprintf(c, "%s/%s/%s", c->bin_dir,
@@ -756,6 +762,7 @@ int context_test_destructor(struct context *c)
     makefile_start_deps(c->mf);
     makefile_add_dep(c->mf, "%s", c->test_parent->full_path);
     makefile_add_dep(c->mf, "%s", c->link_path);
+    makefile_addl_dep(c->mf, c->testdeps, "%%s");
     makefile_end_deps(c->mf);
     makefile_start_cmds(c->mf);
     makefile_nam_cmd(c->mf, "echo \"TEST\t%s\"",
@@ -844,6 +851,16 @@ int context_add_library(struct context *c, const char *opt)
     liblist_add_to_sl_ifnew(lib_deps, opt, c->libraries);
 
     return 0;
+}
+
+int context_add_testdep(struct context *c, const char *opt)
+{
+    if (c == NULL)
+        return -1;
+    if (opt == NULL)
+        return -1;
+
+    return stringlist_add_ifnew(c->testdeps, opt);
 }
 
 void context_destructor(void)

@@ -101,6 +101,10 @@ struct context
     /* The libraries that will be linked into this object.  This is only
      * necessary for libraries that are internal to the project. */
     struct stringlist *libraries;
+
+    /* The additional dependencies that should be built before this
+     * can actually be tested. */
+    struct stringlist *testdeps;
 };
 
 extern struct context *context_new_defaults(struct clopts *o, void *context,
@@ -132,5 +136,6 @@ extern int context_set_prefix(struct context *c, char *opt);
 extern int context_add_compileopt(struct context *c, const char *opt);
 extern int context_add_linkopt(struct context *c, const char *opt);
 extern int context_add_library(struct context *c, const char *opt);
+extern int context_add_testdep(struct context *c, const char *opt);
 
 #endif
