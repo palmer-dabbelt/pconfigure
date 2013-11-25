@@ -635,10 +635,12 @@ int context_source_destructor(struct context *c)
 
         /* This handles half of the whole "--binname --objname" stuff,
          * which is why it's so messy! */
-        if (found_binary && (strcmp(c->called_path, o->srcname) == 0)) {
-            printf("%s\n", obj_name);
-            talloc_disable_null_tracking();
-            exit(0);
+        if (found_binary && c->called_path != NULL) {
+            if (strcmp(c->called_path, o->srcname) == 0) {
+                printf("%s\n", obj_name);
+                talloc_disable_null_tracking();
+                exit(0);
+            }
         }
 
         /* If we've already built this dependency, then it's not necessary to

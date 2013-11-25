@@ -875,6 +875,11 @@ int parsefunc_tests(const char *op, const char *right)
         return -1;
     }
 
+    if (o->testname != NULL) {
+        if (strcmp(o->testname, right) == 0)
+            found_binary = true;
+    }
+
     /* We actually want to clear _almost_ everything on the stack,
      * just everything up to and including the binary. */
     while (!contextstack_isempty(s)) {

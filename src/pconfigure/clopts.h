@@ -42,6 +42,7 @@ struct clopts
      * within a generate script, which means that it won't itself call
      * any generate scripts. */
     const char *binname;
+    const char *testname;
     const char *srcname;
 };
 

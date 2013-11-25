@@ -91,6 +91,9 @@ struct clopts *clopts_new(void *ctx, int argc, char **argv)
         } else if (strcmp(argv[i], "--binname") == 0) {
             o->binname = talloc_strdup(o, argv[i + 1]);
             i++;
+        } else if (strcmp(argv[i], "--testname") == 0) {
+            o->testname = talloc_strdup(o, argv[i + 1]);
+            i++;
         } else if (strcmp(argv[i], "--srcname") == 0) {
             o->srcname = talloc_strdup(o, argv[i + 1]);
             i++;
@@ -108,17 +111,13 @@ struct clopts *clopts_new(void *ctx, int argc, char **argv)
      * need to pass both of these, and if we do then we go and
      * redirect the Makefile at /dev/null to prevent it from
      * overwriting the proper one. */
-    if (o->binname == NULL && o->srcname != NULL) {
-        printf("Provided --srcname without --binname\n");
-        abort();
-    }
+    if (o->srcname != NULL) {
+        if (o->binname == NULL && o->testname == NULL) {
+            printf("Provided --srcname without either "
+                   "--binname or --testname\n");
+            abort();
+        }
 
-    if (o->binname != NULL && o->srcname == NULL) {
-        printf("Provided --binname without --srcname\n");
-        abort();
-    }
-
-    if (o->binname != NULL && o->srcname != NULL) {
         o->outfile = talloc_strdup(o, "/dev/null");
     }
 
