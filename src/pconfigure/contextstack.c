@@ -290,3 +290,10 @@ void contextstack_set_default_lib_dir(struct contextstack *s,
     talloc_unlink(s->def, s->def->lib_dir);
     s->def->lib_dir = talloc_strdup(s->def, path);
 }
+
+void contextstack_set_default_hdr_dir(struct contextstack *s,
+                                      const char *path)
+{
+    talloc_unlink(s->def, s->def->hdr_dir);
+    s->def->hdr_dir = talloc_strdup(s->def, path);
+}

@@ -74,5 +74,7 @@ extern void contextstack_push_test(struct contextstack *s,
 /* Sets some default options. */
 extern void contextstack_set_default_lib_dir(struct contextstack *s,
                                              const char *path);
+extern void contextstack_set_default_hdr_dir(struct contextstack *s,
+                                             const char *path);
 
 #endif
