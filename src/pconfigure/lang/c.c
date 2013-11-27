@@ -328,7 +328,11 @@ void language_c_link(struct language *l_uncast, struct context *c,
 #ifdef __APPLE__
         func(false, "\\ -Wl,-rpath,`pwd`/%s", c->lib_dir);
 #else
-        func(false, "\\ -Wl,-rpath,\\$$ORIGIN/../%s", c->lib_dir);
+        if (c->parent->type != CONTEXT_TYPE_TEST) {
+            func(false, "\\ -Wl,-rpath,\\$$ORIGIN/../%s", c->lib_dir);
+        } else {
+            func(false, "\\ -Wl,-rpath,%s", c->lib_dir);
+        }
 #endif
     } else {
         func(false, "\\ -Wl,-rpath,%s/%s", c->prefix, c->lib_dir);
