@@ -64,6 +64,9 @@ static int _pinclude_list(const char *input, pinclude_callback_t cb,
     fprintf(stderr, "input: '%s'\n", input);
 #endif
 
+    if (input[0] == '/')
+        return 0;
+
     infile = fopen(input, "r");
 
     if (infile == NULL)
