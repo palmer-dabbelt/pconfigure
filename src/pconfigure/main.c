@@ -69,6 +69,7 @@ static int parsefunc_generate(const char *op, const char *right);
 static int parsefunc_tgenerate(const char *op, const char *right);
 static int parsefunc_testdeps(const char *op, const char *right);
 static int parsefunc_hdrdir(const char *op, const char *right);
+static int parsefunc_testdir(const char *op, const char *right);
 
 /* This is global data to avoid having really long parsefunc_*
  * function calls. */
@@ -383,6 +384,8 @@ int parse_select(const char *left, const char *op, char *right)
         return parsefunc_testdeps(op, right);
     if (strcmp(left, "HDRDIR") == 0)
         return parsefunc_hdrdir(op, right);
+    if (strcmp(left, "TESTDIR") == 0)
+        return parsefunc_testdir(op, right);
 
     return -2;
 }
@@ -1015,6 +1018,28 @@ int parsefunc_testdeps(const char *op, const char *right)
     c = contextstack_peek(s, context);
     duped = talloc_strdup(context, right);
     err = context_add_testdep(c, duped);
+    TALLOC_FREE(context);
+    return err;
+}
+
+int parsefunc_testdir(const char *op, const char *right)
+{
+    struct context *c;
+    void *context;
+    char *duped;
+    int err;
+
+    if (strcmp(op, "=") != 0) {
+        fprintf(stderr, "We only support = for TESTDIR\n");
+        return -1;
+    }
+
+    /* The context stack isn't empty, so instead change the options of the
+     * current top-of-stack. */
+    context = talloc_new(NULL);
+    c = contextstack_peek(s, context);
+    duped = talloc_strdup(context, right);
+    err = context_set_testdir(c, duped);
     TALLOC_FREE(context);
     return err;
 }

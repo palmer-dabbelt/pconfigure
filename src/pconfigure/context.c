@@ -115,6 +115,7 @@ struct context *context_new_binary(struct context *parent, void *context,
     c->objects = stringlist_new(c);
     c->libraries = stringlist_new(c);
     c->testdeps = stringlist_new(c);
+    c->testdir = talloc_asprintf(c, "%s/%s", c->tst_dir, called_path);
 
     c->called_path = talloc_strdup(c, called_path);
     c->full_path = talloc_asprintf(c, "%s/%s", c->bin_dir, called_path);
@@ -257,6 +258,7 @@ struct context *context_new_library(struct context *parent, void *context,
     c->objects = stringlist_new(c);
     c->libraries = stringlist_new(c);
     c->testdeps = stringlist_new(c);
+    c->testdir = talloc_asprintf(c, "%s/%s", c->tst_dir, called_path);
 
     c->called_path = talloc_strdup(c, called_path);
     c->full_path = talloc_asprintf(c, "%s/%s", c->lib_dir, called_path);
@@ -711,6 +713,8 @@ struct context *context_new_test(struct context *parent, void *context,
     c->objects = stringlist_new(c);
     c->libraries = stringlist_new(c);
     c->testdeps = stringlist_copy(parent->testdeps, c);
+    c->testdir = talloc_strdup(c, parent->testdir);
+    c->src_dir = talloc_strdup(c, parent->testdir);
 
     c->called_path = talloc_strdup(c, called_path);
     c->full_path = talloc_asprintf(c, "%s/%s/%s", c->bin_dir,
@@ -806,6 +810,24 @@ int context_set_prefix(struct context *c, char *opt)
     c->prefix = talloc_reference(c, opt);
 
     if (c->prefix == NULL)
+        return -1;
+
+    return 0;
+}
+
+int context_set_testdir(struct context *c, char *opt)
+{
+    if (c == NULL)
+        return -1;
+    if (opt == NULL)
+        return -1;
+
+    assert(c->testdir != NULL);
+    /* FIXME: This cast is probably bad, is the talloc API broken? */
+    talloc_unlink(c, (char *)c->testdir);
+    c->testdir = talloc_reference(c, opt);
+
+    if (c->testdir == NULL)
         return -1;
 
     return 0;

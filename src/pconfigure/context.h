@@ -105,6 +105,9 @@ struct context
     /* The additional dependencies that should be built before this
      * can actually be tested. */
     struct stringlist *testdeps;
+
+    /* The directory that test sources come from. */
+    const char *testdir;
 };
 
 extern struct context *context_new_defaults(struct clopts *o, void *context,
@@ -132,6 +135,7 @@ extern struct context *context_new_test(struct context *parent,
                                         const char *called_path);
 
 extern int context_set_prefix(struct context *c, char *opt);
+extern int context_set_testdir(struct context *c, char *opt);
 
 extern int context_add_compileopt(struct context *c, const char *opt);
 extern int context_add_linkopt(struct context *c, const char *opt);
