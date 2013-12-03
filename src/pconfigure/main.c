@@ -754,6 +754,7 @@ int parsefunc_config(const char *op, const char *right)
 {
     char *filename;
     int out;
+    int exe_fd;
 
     if (strcmp(op, "+=") != 0) {
         fprintf(stderr, "We only support += for CONFIG\n");
@@ -761,6 +762,26 @@ int parsefunc_config(const char *op, const char *right)
     }
 
     filename = talloc_asprintf(s, "Configfiles/%s", right);
+
+    exe_fd = -1;
+    if (access(filename, X_OK) == 0) {
+        char *exe_filename;
+        char *cmd;
+
+        exe_filename = talloc_strdup(s, "/tmp/pconfigure-config-XXXXXX");
+        exe_fd = mkstemp(exe_filename);
+        if (exe_fd == -1) {
+            fprintf(stderr, "Unable to open temp file\n");
+            abort();
+        }
+
+        cmd = talloc_asprintf(s, "%s > %s", filename, exe_filename);
+        if (system(cmd) != 0)
+            fprintf(stderr, "%s failed to run\n", filename);
+
+        TALLOC_FREE(cmd);
+        filename = exe_filename;
+    }
 
     if (access(filename, R_OK) != 0) {
         fprintf(stderr, "Unable to open CONFIG '%s'\n", filename);
@@ -772,6 +793,11 @@ int parsefunc_config(const char *op, const char *right)
 
     if (mf->opts->verbose)
         fprintf(stderr, "CONFIG += '%s'\n", right);
+
+    if (exe_fd != -1) {
+        unlink(filename);
+        close(exe_fd);
+    }
 
     return out;
 }
