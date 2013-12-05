@@ -385,6 +385,13 @@ void language_c_slib(struct language *l_uncast, struct context *c,
     if (c->shared_target == true)
         func(false, "\\ -o %s", c->link_path);
 
+#ifdef __linux__
+    /* Automatically name all shared libraries -- this is probably
+     * best practice. */
+    if (c->shared_target == true)
+        func(false, "\\ -Wl,-soname,%s\n", c->called_path);
+#endif
+
 #ifdef __APPLE__
     /* In order for OSX to recognize shared libraries we need this
      * special bit of magic -- it's the analog of -soname in Linux. */
@@ -393,6 +400,7 @@ void language_c_slib(struct language *l_uncast, struct context *c,
              c->full_path + strlen(c->lib_dir) + 1);
     }
 #endif
+
 
     TALLOC_FREE(context);
 }

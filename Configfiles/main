@@ -18,7 +18,6 @@ GENERATE    += version-pc.sed
 # Libraries                                                                  #
 ##############################################################################
 LIBRARIES   += libpinclude.so
-LINKOPTS    += -Wl,-soname,libpinclude.so
 SOURCES     += libpinclude/library.c
 
 LIBRARIES   += pkgconfig/pinclude.pc
