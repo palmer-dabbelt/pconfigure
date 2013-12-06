@@ -81,7 +81,7 @@ export TMPDIR=\`mktemp -d /tmp/selfextract.XXXXXX\`
 
 ARCHIVE=\`awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }' \$0\`
 
-tail -n+\$ARCHIVE \$0 | base64 --decode | tar -xJ -C \$TMPDIR
+tail -n+\$ARCHIVE \$0 | base64 --decode | tar -xz -C \$TMPDIR
 
 scala $classpath "\$TMPDIR"/out.jar "\$@"
 out="\$?"
@@ -92,7 +92,7 @@ exit \$out
 
 __ARCHIVE_BELOW__
 EOF
-tar -C "$workdir" -c out.jar | xz | base64 >> "$outfile"
+tar -C "$workdir" -c out.jar | gzip | base64 >> "$outfile"
 chmod +x "$outfile"
 
 # Shared libraries are actually completely different, it's easier to
