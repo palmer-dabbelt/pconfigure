@@ -79,9 +79,11 @@ cd $tempdir
 echo "Running"
 
 valgrind -q $PTEST_BINARY >& test.valgrind
+cat test.valgrind
+
 if [[ "$(cat test.valgrind | wc -l)" != 0 ]]
 then
-    exit 2
+    exit 1
 fi
 
 make
