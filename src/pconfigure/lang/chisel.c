@@ -336,6 +336,7 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
     func(false, "\\ -I%s", c->hdr_dir);
     if (c->shared_target)
         func(false, "\\ -fPIC");
+    func(false, "\\`ppkg-config chisel --cflags`");
     func(false, "\\ -c %s.d/gen/%s.cpp -o %s\n", obj_path, design, obj_path);
 
     /* In order to allow C++ code to build, I have to manually go
