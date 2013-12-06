@@ -296,7 +296,7 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
     }
 
     /* Compile the scala sources */
-    func(false, "pscalac -l chisel\\");
+    func(false, "pscalac `ppkg-config chisel --libs`\\");
     func(false, "\\ -L %s", c->lib_dir);
     last_source = c->full_path;
 
