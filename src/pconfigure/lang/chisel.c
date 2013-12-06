@@ -313,7 +313,7 @@ void language_chisel_build(struct language *l_uncast, struct context *c,
     func(false, "\\ -o %s.d/obj.jar\n", obj_path);
 
     /* Add a flag that tells Scala how to start up */
-    func(false, "pscalald -l chisel\\");
+    func(false, "pscalald `ppkg-config chisel --libs`\\");
     func(false, "\\ -L %s", c->lib_dir);
     func_stringlist_each_cmd_lcont(c->libraries, func);
     func(false, "\\ -o %s.d/obj.bin %s.d/obj.jar\n", obj_path, obj_path);
