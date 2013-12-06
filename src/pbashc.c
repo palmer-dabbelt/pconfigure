@@ -89,6 +89,8 @@ void cat_to_outfile(const char *input)
     char buffer[1024];
 
     infile = fopen(input, "r");
+    if (infile == NULL)
+        abort();
 
     while (fgets(buffer, 1024, infile) != NULL) {
         if (strncmp(buffer, "#include \"", strlen("#include \"")) == 0) {
