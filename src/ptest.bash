@@ -64,6 +64,8 @@ then
         fi
     }
 
+    error="$?"
+
     if [[ "$makeq" != "0" ]]
     then
         echo ""
@@ -72,7 +74,7 @@ then
         echo "*** WARNING: 'make check' is not up to date ***"
     fi
 
-    exit $?
+    exit $error
 fi
 
 # Parse the commandline arguments
