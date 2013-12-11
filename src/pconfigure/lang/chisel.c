@@ -157,6 +157,12 @@ struct language *language_chisel_search(struct language *l_uncast,
                ".jar") == 0)
         return NULL;
 
+    /* Chisel doesn't build binaries whose names end in .flo, those
+     * are DREAMER scripts. */
+    if (strcmp(c->parent->full_path + strlen(c->parent->full_path) - 4,
+               ".flo") == 0)
+        return NULL;
+
     l = talloc_get_type(l_uncast, struct language_chisel);
     if (l == NULL)
         return NULL;
@@ -195,7 +201,7 @@ const char *language_chisel_objname(struct language *l_uncast, void *context,
     /* This should be checked higher up in the stack, but just make sure */
     assert(c->full_path[strlen(c->src_dir)] == '/');
 
-    o = talloc_asprintf(context, "%s/%s/%s-%s-%s.o",
+    o = talloc_asprintf(context, "%s/%s/%s-%s-%s-chisel_c.o",
                         c->obj_dir,
                         c->full_path, compileopts_hash, langopts_hash,
                         c->shared_target ? "shared" : "static");

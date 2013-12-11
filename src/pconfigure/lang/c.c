@@ -401,7 +401,6 @@ void language_c_slib(struct language *l_uncast, struct context *c,
     }
 #endif
 
-
     TALLOC_FREE(context);
 }
 

@@ -29,6 +29,7 @@
 #include "lang/pkgconfig.h"
 #include "lang/perl.h"
 #include "lang/h.h"
+#include "lang/flo.h"
 #include <string.h>
 #include <assert.h>
 
@@ -96,6 +97,8 @@ int languagelist_select(struct languagelist *ll, const char *name)
     if ((l = language_perl_new(o, name)) != NULL)
         l_nonull = l;
     if ((l = language_h_new(o, name)) != NULL)
+        l_nonull = l;
+    if ((l = language_flo_new(o, name)) != NULL)
         l_nonull = l;
 
     /* If no language was found then we have to give up entirely */
