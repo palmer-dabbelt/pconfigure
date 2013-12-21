@@ -84,6 +84,7 @@ struct context
     char *tst_dir;
     char *gen_dir;
     char *prefix;
+    char *libexec_dir;
 
     /* Options specific to this context */
     struct stringlist *compile_opts;
@@ -133,6 +134,9 @@ extern struct context *context_new_fullsrc(struct context *parent,
 extern struct context *context_new_test(struct context *parent,
                                         void *context,
                                         const char *called_path);
+extern struct context *context_new_libexec(struct context *parent,
+                                           void *context,
+                                           const char *called_path);
 
 extern int context_set_prefix(struct context *c, char *opt);
 extern int context_set_srcdir(struct context *c, char *opt);

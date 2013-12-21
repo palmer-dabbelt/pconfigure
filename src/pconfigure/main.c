@@ -71,6 +71,7 @@ static int parsefunc_testdeps(const char *op, const char *right);
 static int parsefunc_hdrdir(const char *op, const char *right);
 static int parsefunc_testdir(const char *op, const char *right);
 static int parsefunc_srcdir(const char *op, const char *right);
+static int parsefunc_libexecs(const char *op, const char *right);
 
 /* This is global data to avoid having really long parsefunc_*
  * function calls. */
@@ -389,6 +390,8 @@ int parse_select(const char *left, const char *op, char *right)
         return parsefunc_testdir(op, right);
     if (strcmp(left, "SRCDIR") == 0)
         return parsefunc_srcdir(op, right);
+    if (strcmp(left, "LIBEXECS") == 0)
+        return parsefunc_libexecs(op, right);
 
     return -2;
 }
@@ -1091,5 +1094,40 @@ int parsefunc_srcdir(const char *op, const char *right)
     }
 
     contextstack_set_default_src_dir(s, right);
+    return 0;
+}
+
+int parsefunc_libexecs(const char *op, const char *right)
+{
+    void *context;
+
+    if (strcmp(op, "+=") != 0) {
+        fprintf(stderr, "We only support += for LIBEXECS\n");
+        return -1;
+    }
+
+    /* If we're searching for a binary and this isn't it then just
+     * give up. */
+    if (o->binname != NULL) {
+        if (strcmp(right, o->binname) == 0)
+            found_binary = true;
+    }
+
+    /* If there's anything left on the stack, then clear everything out */
+    while (!contextstack_isempty(s)) {
+        context = talloc_new(NULL);
+
+        /* We already know that there is an element on the stack, so there
+         * is no need to check for errors. */
+        contextstack_pop(s, context);
+
+        /* That's all we need to do, as free()ing the context will cause it to
+         * be cleaned up and pushed over to  */
+        TALLOC_FREE(context);
+    }
+
+    /* Adds a binary to the stack, using the default compile options.  There is
+     * no need for this to  */
+    contextstack_push_libexec(s, right);
     return 0;
 }

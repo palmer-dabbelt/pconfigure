@@ -304,3 +304,31 @@ void contextstack_set_default_hdr_dir(struct contextstack *s,
     talloc_unlink(s->def, s->def->hdr_dir);
     s->def->hdr_dir = talloc_strdup(s->def, path);
 }
+
+void contextstack_push_libexec(struct contextstack *s,
+                               const char *called_path)
+{
+    struct contextstack_node *cur;
+    struct context *c;
+
+    if (s == NULL)
+        return;
+    if (called_path == NULL)
+        return;
+
+    cur = talloc(s, struct contextstack_node);
+    if (cur == NULL)
+        abort();
+
+    /* Creates a new context, based on the current context */
+    c = context_new_libexec(s->head->data, cur, called_path);
+    if (c == NULL) {
+        TALLOC_FREE(cur);
+        abort();
+    }
+
+    /* This context is the new head. */
+    cur->data = c;
+    cur->next = s->head;
+    s->head = cur;
+}

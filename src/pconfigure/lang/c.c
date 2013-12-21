@@ -149,7 +149,8 @@ const char *language_c_objname(struct language *l_uncast, void *context,
                                struct context *c)
 {
     char *o;
-    const char *compileopts_hash, *langopts_hash, *compiler_hash;
+    const char *compileopts_hash, *langopts_hash, *compiler_hash,
+        *prefix_hash;
     struct language_c *l;
     void *subcontext;
     const char *suffix;
@@ -160,6 +161,7 @@ const char *language_c_objname(struct language *l_uncast, void *context,
 
     subcontext = talloc_new(NULL);
     compiler_hash = string_hashcode(l->l.compile_cmd, subcontext);
+    prefix_hash = string_hashcode(c->prefix, subcontext);
     compileopts_hash = stringlist_hashcode(c->compile_opts, subcontext);
     langopts_hash = stringlist_hashcode(l->l.compile_opts, subcontext);
 
@@ -172,9 +174,10 @@ const char *language_c_objname(struct language *l_uncast, void *context,
     else
         suffix = "o";
 
-    o = talloc_asprintf(context, "%s/%s/%s-%s-%s-%s.%s",
+    o = talloc_asprintf(context, "%s/%s/%s-%s-%s-%s-%s.%s",
                         c->obj_dir, c->full_path,
                         compiler_hash, compileopts_hash, langopts_hash,
+                        prefix_hash,
                         c->shared_target ? "shared" : "static", suffix);
 
     TALLOC_FREE(subcontext);
@@ -293,6 +296,8 @@ void language_c_build(struct language *l_uncast, struct context *c,
     func(false, "\\ -I%s", c->hdr_dir);
     func(false, "\\ -I%s", c->gen_dir);
     func(false, "\\ -D__PCONFIGURE__PREFIX=\\\"%s\\\"", c->prefix);
+    func(false, "\\ -D__PCONFIGURE__LIBEXEC=\\\"%s/%s\\\"",
+         c->prefix, c->libexec_dir);
     func(false, "\\ -c %s -o %s\n", c->full_path, obj_path);
 
     TALLOC_FREE(context);
