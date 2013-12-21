@@ -135,6 +135,7 @@ extern struct context *context_new_test(struct context *parent,
                                         const char *called_path);
 
 extern int context_set_prefix(struct context *c, char *opt);
+extern int context_set_srcdir(struct context *c, char *opt);
 extern int context_set_testdir(struct context *c, char *opt);
 
 extern int context_add_compileopt(struct context *c, const char *opt);

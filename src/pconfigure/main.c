@@ -1076,8 +1076,18 @@ int parsefunc_testdir(const char *op, const char *right)
 int parsefunc_srcdir(const char *op, const char *right)
 {
     if (!contextstack_isempty(s)) {
-        fprintf(stderr, "SRCDIR must be passed at the start\n");
-        return 1;
+        void *context;
+        struct context *c;
+        char *duped;
+        int err;
+
+        context = talloc_new(NULL);
+        c = contextstack_peek(s, context);
+        duped = talloc_strdup(context, right);
+        err = context_set_srcdir(c, duped);
+        TALLOC_FREE(context);
+
+        return err;
     }
 
     contextstack_set_default_src_dir(s, right);

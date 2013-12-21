@@ -833,6 +833,24 @@ int context_set_testdir(struct context *c, char *opt)
     return 0;
 }
 
+int context_set_srcdir(struct context *c, char *opt)
+{
+    if (c == NULL)
+        return -1;
+    if (opt == NULL)
+        return -1;
+
+    assert(c->src_dir != NULL);
+    /* FIXME: This cast is probably bad, is the talloc API broken? */
+    talloc_unlink(c, (char *)c->src_dir);
+    c->src_dir = talloc_reference(c, opt);
+
+    if (c->src_dir == NULL)
+        return -1;
+
+    return 0;
+}
+
 int context_add_compileopt(struct context *c, const char *opt)
 {
     if (c == NULL)
