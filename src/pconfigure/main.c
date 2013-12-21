@@ -795,7 +795,6 @@ int parsefunc_config(const char *op, const char *right)
     }
 
     out = parse_file(filename);
-    TALLOC_FREE(filename);
 
     if (mf->opts->verbose)
         fprintf(stderr, "CONFIG += '%s'\n", right);
@@ -805,6 +804,7 @@ int parsefunc_config(const char *op, const char *right)
         close(exe_fd);
     }
 
+    TALLOC_FREE(filename);
     return out;
 }
 
