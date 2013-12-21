@@ -70,6 +70,7 @@ static int parsefunc_tgenerate(const char *op, const char *right);
 static int parsefunc_testdeps(const char *op, const char *right);
 static int parsefunc_hdrdir(const char *op, const char *right);
 static int parsefunc_testdir(const char *op, const char *right);
+static int parsefunc_srcdir(const char *op, const char *right);
 
 /* This is global data to avoid having really long parsefunc_*
  * function calls. */
@@ -386,6 +387,8 @@ int parse_select(const char *left, const char *op, char *right)
         return parsefunc_hdrdir(op, right);
     if (strcmp(left, "TESTDIR") == 0)
         return parsefunc_testdir(op, right);
+    if (strcmp(left, "SRCDIR") == 0)
+        return parsefunc_srcdir(op, right);
 
     return -2;
 }
@@ -1068,4 +1071,15 @@ int parsefunc_testdir(const char *op, const char *right)
     err = context_set_testdir(c, duped);
     TALLOC_FREE(context);
     return err;
+}
+
+int parsefunc_srcdir(const char *op, const char *right)
+{
+    if (!contextstack_isempty(s)) {
+        fprintf(stderr, "SRCDIR must be passed at the start\n");
+        return 1;
+    }
+
+    contextstack_set_default_src_dir(s, right);
+    return 0;
 }

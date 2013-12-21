@@ -284,6 +284,13 @@ void contextstack_push_test(struct contextstack *s, const char *called_path)
     s->head = cur;
 }
 
+void contextstack_set_default_src_dir(struct contextstack *s,
+                                      const char *path)
+{
+    talloc_unlink(s->def, s->def->lib_dir);
+    s->def->src_dir = talloc_strdup(s->def, path);
+}
+
 void contextstack_set_default_lib_dir(struct contextstack *s,
                                       const char *path)
 {
