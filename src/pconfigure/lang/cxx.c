@@ -50,6 +50,8 @@ struct find_similar_files_args
 };
 static void find_similar_files(void *arg_uncast, const char *format, ...);
 
+extern bool have_loaded_cxx;
+
 struct language *language_cxx_new(struct clopts *o, const char *name)
 {
     struct language_c *l;
@@ -71,6 +73,8 @@ struct language *language_cxx_new(struct clopts *o, const char *name)
     l->l.extras = &language_cxx_extras;
     l->cflags = talloc_strdup(l, "$(CXXFLAGS)");
 
+    have_loaded_cxx = true;
+
     return &(l->l);
 }
 
@@ -87,7 +91,8 @@ struct language *language_cxx_search(struct language *l_uncast,
     if ((strcmp(path + strlen(path) - 4, ".c++") != 0) &&
         (strcmp(path + strlen(path) - 4, ".cxx") != 0) &&
         (strcmp(path + strlen(path) - 4, ".cpp") != 0) &&
-        (strcmp(path + strlen(path) - 3, ".cc") != 0))
+        (strcmp(path + strlen(path) - 3, ".cc") != 0) &&
+        (strcmp(path + strlen(path) - 2, ".c") != 0))
         return NULL;
 
     if (parent == NULL)

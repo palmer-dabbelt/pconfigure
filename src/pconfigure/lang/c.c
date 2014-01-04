@@ -77,8 +77,14 @@ struct find_files_args
     void *context;
     void (*func) (void *arg, const char *);
     void *arg;
+    struct language_c *l;
 };
 static void find_files(void *args_uncast, const char *format, ...);
+
+/* Here's a really nasty block of code: essentially the idea is that
+ * if we haven't yet loaded C++ then we don't want to search for C++
+ * files... */
+bool have_loaded_cxx = false;
 
 struct language_c *language_c_new_uc(struct clopts *o, const char *name)
 {
@@ -418,6 +424,7 @@ void language_c_extras(struct language *l_uncast, struct context *c,
     ffa.context = context;
     ffa.func = func;
     ffa.arg = arg;
+    ffa.l = talloc_get_type(l_uncast, struct language_c);
 
     language_deps(l_uncast, c, &find_files, &ffa);
 }
@@ -555,27 +562,29 @@ void find_files(void *args_uncast, const char *format, ...)
         if (access(sfile, R_OK) == 0)
             func(arg, sfile);
 
-    va_start(args, format);
-    cxxfile = talloc_array(context, char, strlen(cfile) + 20);
-    va_end(args);
+    if (have_loaded_cxx) {
+        va_start(args, format);
+        cxxfile = talloc_array(context, char, strlen(cfile) + 20);
+        va_end(args);
 
-    memset(cxxfile, 0, strlen(cfile) + 10);
-    strncpy(cxxfile, cfile, strlen(cfile) - 2);
-    strcat(cxxfile, ".c++");
-    if (access(cxxfile, R_OK) == 0)
-        func(arg, cxxfile);
+        memset(cxxfile, 0, strlen(cfile) + 10);
+        strncpy(cxxfile, cfile, strlen(cfile) - 2);
+        strcat(cxxfile, ".c++");
+        if (access(cxxfile, R_OK) == 0)
+            func(arg, cxxfile);
 
-    memset(cxxfile, 0, strlen(cfile) + 10);
-    strncpy(cxxfile, cfile, strlen(cfile) - 2);
-    strcat(cxxfile, ".cxx");
-    if (access(cxxfile, R_OK) == 0)
-        func(arg, cxxfile);
+        memset(cxxfile, 0, strlen(cfile) + 10);
+        strncpy(cxxfile, cfile, strlen(cfile) - 2);
+        strcat(cxxfile, ".cxx");
+        if (access(cxxfile, R_OK) == 0)
+            func(arg, cxxfile);
 
-    memset(cxxfile, 0, strlen(cfile) + 10);
-    strncpy(cxxfile, cfile, strlen(cfile) - 2);
-    strcat(cxxfile, ".cpp");
-    if (access(cxxfile, R_OK) == 0)
-        func(arg, cxxfile);
+        memset(cxxfile, 0, strlen(cfile) + 10);
+        strncpy(cxxfile, cfile, strlen(cfile) - 2);
+        strcat(cxxfile, ".cpp");
+        if (access(cxxfile, R_OK) == 0)
+            func(arg, cxxfile);
+    }
 
     TALLOC_FREE(context);
 }
