@@ -992,7 +992,7 @@ int parsefunc_generate(const char *op, const char *right)
     }
 
     ctx = talloc_new(NULL);
-    c = context_new_defaults(o, ctx, mf, ll, s);
+    c = contextstack_peek_default(s, ctx);
     generate(right, c->src_dir, c, mf);
     TALLOC_FREE(ctx);
 
