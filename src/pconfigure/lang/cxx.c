@@ -150,74 +150,86 @@ void find_similar_files(void *args_uncast, const char *format, ...)
     memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 2);
     strcat(cxxfile, ".c++");
-    if (access(cxxfile, R_OK) == 0)
-        func(arg, cxxfile);
+    if (strcmp(cxxfile, cfile) != 0)
+        if (access(cxxfile, R_OK) == 0)
+            func(arg, cxxfile);
 
     memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 2);
     strcat(cxxfile, ".cxx");
-    if (access(cxxfile, R_OK) == 0)
-        func(arg, cxxfile);
+    if (strcmp(cxxfile, cfile) != 0)
+        if (access(cxxfile, R_OK) == 0)
+            func(arg, cxxfile);
 
     memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 2);
     strcat(cxxfile, ".cpp");
-    if (access(cxxfile, R_OK) == 0)
-        func(arg, cxxfile);
+    if (strcmp(cxxfile, cfile) != 0)
+        if (access(cxxfile, R_OK) == 0)
+            func(arg, cxxfile);
 
     memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 2);
     strcat(cxxfile, ".cc");
-    if (access(cxxfile, R_OK) == 0)
-        func(arg, cxxfile);
+    if (strcmp(cxxfile, cfile) != 0)
+        if (access(cxxfile, R_OK) == 0)
+            func(arg, cxxfile);
 
     memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 3);
     strcat(cxxfile, ".c++");
-    if (access(cxxfile, R_OK) == 0)
-        func(arg, cxxfile);
+    if (strcmp(cxxfile, cfile) != 0)
+        if (access(cxxfile, R_OK) == 0)
+            func(arg, cxxfile);
 
     memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 3);
     strcat(cxxfile, ".cxx");
-    if (access(cxxfile, R_OK) == 0)
-        func(arg, cxxfile);
+    if (strcmp(cxxfile, cfile) != 0)
+        if (access(cxxfile, R_OK) == 0)
+            func(arg, cxxfile);
 
     memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 3);
     strcat(cxxfile, ".cpp");
-    if (access(cxxfile, R_OK) == 0)
-        func(arg, cxxfile);
+    if (strcmp(cxxfile, cfile) != 0)
+        if (access(cxxfile, R_OK) == 0)
+            func(arg, cxxfile);
 
     memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 3);
     strcat(cxxfile, ".cc");
-    if (access(cxxfile, R_OK) == 0)
-        func(arg, cxxfile);
+    if (strcmp(cxxfile, cfile) != 0)
+        if (access(cxxfile, R_OK) == 0)
+            func(arg, cxxfile);
 
     memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 4);
     strcat(cxxfile, ".c++");
-    if (access(cxxfile, R_OK) == 0)
-        func(arg, cxxfile);
+    if (strcmp(cxxfile, cfile) != 0)
+        if (access(cxxfile, R_OK) == 0)
+            func(arg, cxxfile);
 
     memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 4);
     strcat(cxxfile, ".cxx");
-    if (access(cxxfile, R_OK) == 0)
-        func(arg, cxxfile);
+    if (strcmp(cxxfile, cfile) != 0)
+        if (access(cxxfile, R_OK) == 0)
+            func(arg, cxxfile);
 
     memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 4);
     strcat(cxxfile, ".cpp");
-    if (access(cxxfile, R_OK) == 0)
-        func(arg, cxxfile);
+    if (strcmp(cxxfile, cfile) != 0)
+        if (access(cxxfile, R_OK) == 0)
+            func(arg, cxxfile);
 
     memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 4);
     strcat(cxxfile, ".cc");
-    if (access(cxxfile, R_OK) == 0)
-        func(arg, cxxfile);
+    if (strcmp(cxxfile, cfile) != 0)
+        if (access(cxxfile, R_OK) == 0)
+            func(arg, cxxfile);
 
     if (strcmp(cfile + strlen(cfile) - 2, ".h") == 0)
         cfile[strlen(cfile) - 1] = 'c';

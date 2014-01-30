@@ -570,20 +570,23 @@ void find_files(void *args_uncast, const char *format, ...)
         memset(cxxfile, 0, strlen(cfile) + 10);
         strncpy(cxxfile, cfile, strlen(cfile) - 2);
         strcat(cxxfile, ".c++");
-        if (access(cxxfile, R_OK) == 0)
-            func(arg, cxxfile);
+        if (strcmp(cxxfile, hfile) != 0)
+            if (access(cxxfile, R_OK) == 0)
+                func(arg, cxxfile);
 
         memset(cxxfile, 0, strlen(cfile) + 10);
         strncpy(cxxfile, cfile, strlen(cfile) - 2);
         strcat(cxxfile, ".cxx");
-        if (access(cxxfile, R_OK) == 0)
-            func(arg, cxxfile);
+        if (strcmp(cxxfile, hfile) != 0)
+            if (access(cxxfile, R_OK) == 0)
+                func(arg, cxxfile);
 
         memset(cxxfile, 0, strlen(cfile) + 10);
         strncpy(cxxfile, cfile, strlen(cfile) - 2);
         strcat(cxxfile, ".cpp");
-        if (access(cxxfile, R_OK) == 0)
-            func(arg, cxxfile);
+        if (strcmp(cxxfile, hfile) != 0)
+            if (access(cxxfile, R_OK) == 0)
+                func(arg, cxxfile);
     }
 
     TALLOC_FREE(context);
