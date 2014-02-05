@@ -8,3 +8,6 @@
 Makefile*
 
 *~
+
+/doc/*.pdf
+/doc/.tek_cache

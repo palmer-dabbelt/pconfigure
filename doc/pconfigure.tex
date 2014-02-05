@@ -1,0 +1,414 @@
+\documentclass{article}
+\usepackage{fullpage}
+\usepackage{multicol}
+\usepackage[pdfusetitle]{hyperref}
+
+\newcommand{\pconfigure}{\texttt{pconfigure}}
+
+\title{An Introduction to \pconfigure}
+\author{Palmer Dabbelt}
+
+\begin{document}
+\maketitle
+\begin{multicols}{2}
+\tableofcontents
+\end{multicols}
+\clearpage
+
+\section{Introduction}
+
+\pconfigure\ is designed to be a replacement for GNU \texttt{autoconf}
+and GNU \texttt{automake}.  \pconfigure\ reads a configuration file
+(called a \texttt{Configfile}, like a \texttt{Makefile}) and generates
+a \texttt{Makefile} that's suitable for processing by GNU
+\texttt{make} -- in other words, \pconfigure\ fits into the same place
+in the toolchain that the combination of \texttt{autoconf},
+\texttt{automake}, and a run of \texttt{./configure} does.
+
+Despite this, \pconfigure\ follows a significantly different design
+philosophy than the GNU tools do: \pconfigure\ is designed to limit
+the flexibility of the build system, while the GNU tools provide full
+shell access at any point during the build configuration.
+\pconfigure\ limits the flexibility of the build system in the hope
+that \pconfigure\ configuration files from all projects will look
+somewhat similar and will therefor be easier to understand for users
+-- contrast this to the GNU tools, where each project's build
+configuration files look very different and are therefor difficult to
+understand.  The general idea is that \pconfigure\ is a build system,
+while the GNU tools are a framework for creating your own,
+project-specific build system.
+
+\subsection{Building a project that uses \pconfigure}
+
+If you're just trying to build a project that uses \pconfigure, you
+should be able to run
+\begin{verbatim}
+$ cd PROJECT_SOURCE_DIRECTORY/
+$ pconfigure
+\end{verbatim}
+and then proceed as if you would when runn the rest of the GNU
+toolchain.  Specifically, running
+\begin{verbatim}
+$ make
+$ make install
+\end{verbatim}
+will build the code and install it to the default installation
+directory.  Additionally, you can run
+\begin{verbatim}
+$ make check
+$ ptest
+\end{verbatim}
+to run the project's test cases and print the results of running those
+test.  If you get errors while running \pconfigure, Section~\ref{err}
+lists some commen errors and may be useful to help with
+troubleshooting.  Additionally, Section~\ref{cl} contains a list of
+command-line options that may be useful to you.
+
+\subsection{Using \pconfigure\ in your project}
+
+In order to use \pconfigure\ in your project you'll need a bit more
+knowledge about how \pconfigure\ works.  The primary means by which
+you'll be interacting with \pconfigure\ is by modifying it's
+configuration file.  By default, \pconfigure\ will read
+\texttt{Configfile} in the current working directory, parse every line
+(until there is an aborting error), and then return.
+\pconfigure\ configuration files are also refered to as
+\texttt{Configfile}s, much the same way as \texttt{make} configuration
+files are referred to as \texttt{Makefiles}s.
+
+A \texttt{Configfile} file is line-oriented, and a \texttt{\#}
+character at the beginning of a line signifies a comment, and blank
+lines are ignored.  All other lines are of the format
+\begin{verbatim}
+COMMAND OPERATION VALUE
+\end{verbatim}
+where \texttt{COMMAND} is one of the options listed in
+Sectien~\ref{cmd}; \texttt{OPERATION} is one of \texttt{-=},
+\texttt{=}, or \texttt{+=}; and \texttt{VALUE} is a free-form text
+value.  If \texttt{value} starts and ends with a \texttt{`} character
+then it is executed as a shell out (the syntax here is just like BASH
+and Ruby).
+
+By default, the following configuration files are loaded in this order
+\begin{verbatim}
+Configfiles/local
+Configfile.local
+Configfiles/main
+Configfile
+\end{verbatim}
+The general idea is that \texttt{*local} are configuration files that
+should not be checked in to revision control because they're local to
+a specific instance.  This is useful for setting things like
+compile-time options that you want and other people don't (debug info,
+for example).  The \texttt{Configfiles} directory is designed for
+complicated projects that may have many configuration files, while
+it's expected that simple projects will just use a singe configuration
+file and call it \texttt{Configfile}.
+
+Note that \pconfigure\ will silently skip any of these files that
+don't exist so you only need to create the ones that make sense for
+your project.  It's not expected that you make either
+\texttt{Configfiles/local} or \texttt{Configfile.local} as these will
+be specific to end-user systems.
+
+\subsection{Writing your first \texttt{Configfile}}
+
+The \texttt{Configfile} format is designed to be as terse as possible.
+In order to achieve this there are a number of implicit rules that
+\pconfigure\ uses to traverse your source tree and attempt to
+determine exactly how you want your code built.  These rules depend on
+exactly which language is currently being used, a list of which can be
+found in Section~\ref{lang}.
+
+\pconfigure\ was originally designed to link C code.  Most of the
+other backends are at least partially based on the C backend which
+makes C a good example for how to use \pconfigure, which is why this
+example is written using C.  The same general structure applies to
+\texttt{Configfile}s for all languages, but each language will handle
+commands slightly differently so it's important to read
+Section~\ref{lang} which will tell you exactly what your language is
+expected to do.
+
+A simple example \texttt{Configfile} for C is shown here
+\begin{verbatim}
+LANGUAGES   += c
+COMPILEOPTS += -Wall
+
+BINARIES    += hello
+SOURCES     += hello.c
+\end{verbatim}
+I'll try to explain each line below.
+
+\section{Command-Line Options \label{cl}}
+
+The set of command-line arguments that \pconfigure\ understands is
+stored in the \texttt{struct clopts} structure and is filled in
+\texttt{clopts\_new()}.
+
+\subsection{\texttt{--config <filename>}}
+
+Loads a configuration file, see Section~\ref{cmd:config} for more
+information.  Calling \texttt{--config <filename>} is exactly the same
+as inserting a \texttt{CONFIG += <filename>} as the first line of your
+\texttt{Configfile}.  Specifically, the configurations will be loaded
+in the following order:
+
+\begin{verbatim}
+Configfiles/local
+Configfile.local
+Files listed by --config
+Configfiles/main
+Configfile
+\end{verbatim}
+
+\subsection{\texttt{--version}}
+
+Prints the version number of \pconfigure\ and exits without touching
+anything else.  Specifically, this doesn't touch the \texttt{Makefile}
+at all.
+
+\subsection{\texttt{--sourcepath <dirname>}}
+
+Allows for the seperation of the source and build directories.  By
+default, \pconfigure\ will place output file in the same directory as
+the rest of your project, this allows them to be seperated.  Running
+\begin{verbatim}
+$ pconfigure --sourcepath $DIRNAME
+\end{verbatim}
+duplicates the functionality of running
+\begin{verbatim}
+$ $DIRNAME/configure
+\end{verbatim}
+in the land of GNU tools.
+
+\subsection{\texttt{--binname}}
+
+See Section~\ref{cl::srcname}, this is hard to describe in isolation.
+
+\subsection{\texttt{--testname}}
+
+See Section~\ref{cl::srcname}, this is hard to describe in isolation.
+
+\subsection{\texttt{--srcname} \label{cl::srcname}}
+
+The tree commands \texttt{--binname}, \texttt{--testname}, and
+\texttt{--srcname} are all related and can only really be described
+together.  The idea behind these is to allow interrogating a running
+\pconfigure\ instance from inside the \texttt{Configfile}.
+
+The general idea is that you can query the full name of an object that
+\pconfigure\ builds.  You must provide either \texttt{--binname} or
+\texttt{--testname} whenever you provide \texttt{--srcname}.  When you
+pass \texttt{--srcname}, rather that outputting a \texttt{Makefile}
+\pconfigure\ will print an object name to \texttt{stdout}.  The binary
+name will coorespond to the object that gets built for the given
+source and target name.
+
+For example, if you have the configuration file
+\begin{verbatim}
+...
+BINARIES += target
+SOURCES  += source.c
+...
+\end{verbatim}
+then running \texttt{pconfigure --binname target --srcname source.c}
+will produce the object that pconfigure links into \texttt{bin/target}
+when it compiles \texttt{src/source.c}.  This could be useful if you
+need to interrogate this output from some script somewhere (for
+example, from a \texttt{GENERATE} script).  Note that you can ask for
+sources that are implicitly included in a binary.  The only difference
+between providing \texttt{--testname} and \texttt{--binname} is that
+\texttt{--testname} cooresponds to \texttt{TESTS} and
+\texttt{--binname} cooresponds to \texttt{BINARIES}.
+
+Note that passing any of these options disables \texttt{Makefile}
+output by redirecting writes to \texttt{/dev/null}).  Additionally,
+providing any of these arguments will disable any future calls to
+shell outs, as otherwise a \texttt{Configfile} could recurse forever.
+
+\section{Commands \label{cmd}}
+
+\subsection{\texttt{CONFIG} \label{cmd:config}}
+
+\subsection{\texttt{LANGUAGES}}
+
+\subsection{\texttt{PREFIX}}
+
+\subsection{\texttt{COMPILEOPTS}}
+
+\subsection{\texttt{LINKOPTS}}
+
+\subsection{\texttt{DEPLIBS}}
+
+\subsection{\texttt{BINARIES}}
+
+\subsection{\texttt{LIBRARIES}}
+
+\subsection{\texttt{HEADERS}}
+
+\subsection{\texttt{SOURCES}}
+
+\subsection{\texttt{COMPILER}}
+
+\subsection{\texttt{LINKER}}
+
+\subsection{\texttt{LIBDIR}}
+
+\subsection{\texttt{TESTS}}
+
+\subsection{\texttt{TESTSRC}}
+
+\subsection{\texttt{GENERATE}}
+
+\subsection{\texttt{TGENERATE}}
+
+\subsection{\texttt{TESTDEPS}}
+
+\subsection{\texttt{HDRDIR}}
+
+\subsection{\texttt{TESTDIR}}
+
+\subsection{\texttt{SRCDIR}}
+
+\subsection{\texttt{LIBEXECS}}
+
+\section{Supported Languages \label{lang}}
+
+A number of \pconfigure\ specifics are determined
+
+\subsection{C}
+
+\subsection{C++}
+
+\subsection{BASH}
+
+\subsection{Perl}
+
+\subsection{\texttt{pkg-config}}
+
+\subsection{Scala}
+
+\subsection{Chisel (C++ backend)}
+
+\subsection{Chisel (Flo backend)}
+
+\section{Common Error Messages \label{err}}
+
+\pconfigure\ will print a number of error messages to \texttt{stderr}.
+Some of these messages are fatal and some aren't.  Fatal errors result
+in the termination of \pconfigure\ without generating a valid
+\texttt{Makefile}, while non-fatal errors are simply printed to
+\texttt{stderr} while \pconfigure\ continues to run.  Note that some
+non-fatal errors may mask or create others, so it's probably best to
+only rely on the first error message (though this hasn't proved to be
+a problem yet, it's a big problem with many other languages). %
+
+\subsection{... failed, which is probably bad}
+
+A shell-out exited with a non-zero exit code.  You should avoid using
+commands that can fail but should instead handle these failures in
+your code (ie, as opposed to your \texttt{Configfile}).
+
+\section{Useful Helper Programs \label{prog}}
+
+The \pconfigure\ distribution includes a number of binaries in
+addition to the \pconfigure\ binary.  What follows is a list of these
+programs along with a short description of their functionality and
+usage.
+
+\subsection{\texttt{pclean}}
+
+\subsection{\texttt{pbashc}}
+
+\subsection{\texttt{pperlc}}
+
+\subsection{\texttt{ppkg-config}}
+
+\subsection{\texttt{pgcc-config}}
+
+\subsection{\texttt{pscalac}}
+
+\subsection{\texttt{pscalald}}
+
+\subsection{\texttt{pnasm}}
+
+\subsection{\texttt{ptest}}
+
+\subsection{\texttt{pinclude}}
+
+\subsection{\texttt{pllvm-config}}
+
+\subsection{\texttt{pwinegcc}}
+
+\section{Odd Behavior (ie, WONTFIX bugs) \label{odd}}
+
+\pconfigure\ has some odd behaviors.  This section attempts to list
+all of those behaviors and provide ana explination for them.  I'd
+consider them all bugs, but fixing most of them will require imposing
+some sort of breakage on some \texttt{Configfile}s, which I try to
+avoid.
+
+\subsection{Can't link C and C++ into one binary}
+
+Building a single binary that consists of both C code compiled by
+\texttt{\$(CC)} and C++ code compiled by \texttt{\$(CXX)} is flaky and
+has a tendency to break between \pconfigure\ releases with pretty much
+no warning.
+
+This exists because the C++ backend allows C code to be built (as some
+projects name their C++ source files \texttt{*.c}).  What this means
+is that the C++ backend can't determine what is a C++ file and what is
+a C file by looking at the filename alone.
+
+The accepted workaround is to just build your C code with the C++
+compiler when you're trying to link it with other C++ code.  This is
+probably the safest thing to do anyway, as it avoids a bunch of
+trouble related to C++ name mangling (though you'll have to fix that
+to build a C library anyway, so it's not a strong argument).  This
+workaround has the unfortunate consequence of requiring that you write
+C code that can compile with a C++ compiler, which isn't always easy.
+
+\subsection{Old Scala classes stick around}
+
+Sometimes old Scala class files end up in the build output.
+
+When you build a Scala binary or library, \pconfigure\ can't actually
+determine which class files will be created.  Thus, it links every
+class file that's in the Scala compiler's output directory into the
+final binary.  If you make a source code change that causes a class
+file to go away, an old version of it will still be in the output
+directory and will therefor get linked in.
+
+The way to fix this is to ``\texttt{make distclean; pconfigure;
+  make}'', which clears out the whole cache.  This isn't ideal, but
+I'd need to write a proper Scala parser to make this bug go away.
+
+Note that this is kind of a regression: I used to run \texttt{strace}
+to figure out which files the Scala compiler touched, but because
+\texttt{zinc} runs in a background daemon I can't use that trick.  I
+decided it'd be better to have \texttt{scalac} and \texttt{zinc}
+produce exactly the same results rather than have \texttt{zinc}
+sometimes break.
+
+\subsection{\texttt{DEPLIBS} triggers a full rebuild}
+
+When you depend on a library that's internal to this project by using
+\texttt{DEPLIBS}, every dependency of that library will be rebuilt
+whenever \pconfigure\ is run.
+
+This is triggered because \pconfigure\ uses the library's short name
+(ie, \texttt{lib/libLIB.so} as a dependency of theh binary when you
+add a \texttt{DEPLIBS} command.  These short names all depend on
+\texttt{Makefile} because of how the compiler flags hanling works.
+
+Fixing this shouldn't actually be difficult: I believe we could just
+depend on the full library name instead of the short library name, but
+the easiest way to implement this would be to make some Configfiles
+re-entrant that otherwise wouldn't be which will start to break things
+in tricky ways.  A better way would be to store the long library names
+for later, but that would require that all \texttt{LIBRARIES} commands
+come before their relevant \texttt{DEPLIBS} commands, which is
+probably the sanest way to do it.
+
+\end{document}
+

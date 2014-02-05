@@ -8,3 +8,6 @@ $ make
 $ make install
 $ make check
 $ ptest
+
+There is documentation in the "doc/" folder.  This documentation is
+written in LaTeX, and can be built using "tek".
