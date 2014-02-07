@@ -228,41 +228,147 @@ shell outs, as otherwise a \texttt{Configfile} could recurse forever.
 
 \section{Commands \label{cmd}}
 
-\subsection{\texttt{CONFIG} \label{cmd:config}}
+\subsection{\texttt{LANGUAGES += \$lang}}
 
-\subsection{\texttt{LANGUAGES}}
+First, this flushes the current target.
 
-\subsection{\texttt{PREFIX}}
+If \texttt{LANGUAGES += \$lang} has not yet been run, then \$lang is
+added to the list of known language backends.
 
-\subsection{\texttt{COMPILEOPTS}}
+\$lang is then set as the last added language.  This is used for two
+distinct reasons: to manage exclusive languages, and to set
+language-global command-line options.
 
-\subsection{\texttt{LINKOPTS}}
+The reason that all languages aren't just added to the language list
+all the time is because some languages interact in odd ways.  An
+example iss the interaction between C and C++ where C++ can build some
+C files and C can build some C++ files: it would be impossible to
+determine which compiler to use.  Another example is Scala and Chisel.
 
-\subsection{\texttt{DEPLIBS}}
+The other use of \texttt{LANGUAGES} is to set the ``last language
+pointer'' so you can modify that language's language-global
+command-line options.  For example, you may have
+\begin{verbatim}
+LANGUAGES += c
+COMPILEOPTS += option1
+...
+LANGUAGES += c
+COMPILEOPTS += option2
+\end{verbatim}
+when you want to build a whole bunch of targets with \texttt{option1},
+and then want to build another set of targets with \texttt{option2}.
+Overloading the whole \texttt{LANGUAGES} target to both add to the
+language list and to set a pointer to the current language allows this
+sort of behavior.
 
 \subsection{\texttt{BINARIES}}
 
-\subsection{\texttt{LIBRARIES}}
+\subsection{\texttt{LIBRARIES += \$name}}
+
+Largely the same as \texttt{BINARIES += \$name} with two major
+differences: the resulting output binary is stored to
+\texttt{\$LIBDIR} instead of \texttt{\$BINDIR} and a library is built
+instead of a stand-alone binary.
+
+Some amount of automatic detection is done in order to decide if a
+shared or a static object should be built.  The hurestic is as
+follows: if \$name ends in the canonical shared object extension on
+Linux for the selected language (\texttt{*.so} on Linux, for example)
+then a shared library will be used, if \$name ends in the canonical
+static archive extension on Linux for the selected language
+(\texttt{*.a} on Linux, for example) then a static archive will be
+used, otherwise a fatal error will be throw.  This mechanism exists to
+allow for cross-platform portability of \texttt{Configfile}s.
+
+Note that \pconfigure\ will automatically determine the necessary
+compiler flags to build shared objects on your platform.  For example,
+Linux and C will result in \texttt{-fPIC} being appended to both the
+compiler and linker flags.
+
+\subsection{\texttt{LIBEXECS += \$name}}
+
+Exactly the same as \texttt{BINARIES += \$name}, except that the
+resulting output binary is stored to \texttt{\$LIBEXECDIR} instead of
+\texttt{\$BINDIR}.
+
+\subsection{\texttt{SOURCES}}
 
 \subsection{\texttt{HEADERS}}
 
-\subsection{\texttt{SOURCES}}
+\subsection{\texttt{COMPILEOPTS += \$opt} \label{cmd:compileopts}}
+
+\texttt{COMPILEOPTS} is used to change the compile-time options.  This
+maps to the \texttt{CFLAGS} variable in the GNU toolchain.
+\texttt{COMPILEOPTS} has different behavior depending on exactly which
+state \pconfigure\ is in:
+
+When \pconfigure\ has a current source, then the list of compile-time
+options for just that source is appended with \texttt{\$opt}.
+
+When \pconfigure\ has no current source but a current target, then the
+list of compile-time options for all sources linked into that target
+(both explicitly and implicitly) is append with \texttt{\$opt}.
+
+When \pconfigure\ has no current source or target, then the list of
+compile-time options for all sources built with the current languages
+is appended with \texttt{\$opt}.
+
+When \pconfigure\ has no current source, target, or language then a
+fatal error is thrown.
+
+\subsection{\texttt{LINKOPTS += \$opt}}
+
+\texttt{LINKOPTS} is just like \texttt{COMPILEOPTS}, but it sets
+linker options instead of compiler options (essentially it's
+\texttt{LDFLAGS} in the GNU toolchain).  See
+Section~\ref{cmd:compileopts} for a description of
+\texttt{COMPILEOPTS}.
+
+Note that some languages (Chisel, for example) have slightly different
+semantics as to what's considered a compile-time option and what is
+considered a link-time option.  Check Section~\ref{lang} for exactly
+how your language interprets these argumuents.
+
+For most languages (those that use standard compile and link
+semantics), setting \texttt{LINKOPTS} for a source won't do anything,
+you should instead set it on the target that source will be linked
+into.
+
+\subsection{\texttt{DEPLIBS += \$libname}}
+
+Adds an internal library dependency to the list of link options.  This
+is essentially the same as calling
+\begin{verbatim}
+LINKOPTS += -l$libname
+\end{verbatim}
+but it also adds a \texttt{Makefile} dependency such that whenever
+\texttt{lib\$libname.so} is rebuilt the target this is attached to
+will also be rebuilt.
+
+\subsection{\texttt{TESTDEPS}}
+
+\subsection{\texttt{TESTS}}
 
 \subsection{\texttt{COMPILER}}
 
 \subsection{\texttt{LINKER}}
 
+\subsection{\texttt{PREFIX = \$prefix}}
+
+Sets the \texttt{\$PREFIX} variable to \$prefix.
+
+This works in the same manner as the \texttt{--prefix=\$prefix}
+argument to GNU's toolchain does: it changes the directory in which
+built files are expected to be installed.  There's no support for
+things like \texttt{--bin-prefix}, instead binaries are installed to
+\texttt{\$PREFIX/\$BINDIR}.  This keeps things consistant between the
+installed image and the build directory's image.
+
+Note that it's probably not sane to have \texttt{PREFIX} in the middle
+of a \texttt{Configfile}.  See Section~\ref{err::prefix} for more
+information.
+
 \subsection{\texttt{LIBDIR}}
-
-\subsection{\texttt{TESTS}}
-
-\subsection{\texttt{TESTSRC}}
-
-\subsection{\texttt{GENERATE}}
-
-\subsection{\texttt{TGENERATE}}
-
-\subsection{\texttt{TESTDEPS}}
 
 \subsection{\texttt{HDRDIR}}
 
@@ -270,7 +376,35 @@ shell outs, as otherwise a \texttt{Configfile} could recurse forever.
 
 \subsection{\texttt{SRCDIR}}
 
-\subsection{\texttt{LIBEXECS}}
+\subsection{\texttt{CONFIG += \$file} \label{cmd:config}}
+
+When \texttt{Configfiles/\$file} exists and is executable, the output
+of that executable is treted as a \texttt{Configfile} and used as
+input for \pconfigure.  When the executable terminates,
+\pconfigure\ resumes parsing the current file at the next line.
+
+When \texttt{Configfiles/\$file} exists and is not executable, that
+file is parsed as a \texttt{Configfile} and used as the input for
+\pconfigure.  When the executable terminates, \pconfigure\ resumes
+parsing the current file at the next line.  This is effectively C's
+\texttt{\#include} but for \pconfigure.
+
+When \texttt{Configfiles/\$file} does not exist, a fatal error occurs.
+
+\subsection{\texttt{TESTSRC += \$name}}
+
+This is just a macro that generates
+\begin{verbatim}
+TESTS   += $name
+SOURCES += $name
+\end{verbatim}
+
+\subsection{\texttt{GENERATE}}
+
+\subsection{\texttt{TGENERATE += \$script}}
+
+Exactly the same as generate, but runs \texttt{\$TESTDIR/\$script}
+instead of running \texttt{\$SRCDIR/\$script}.
 
 \section{Supported Languages \label{lang}}
 
@@ -318,27 +452,109 @@ usage.
 
 \subsection{\texttt{pclean}}
 
-\subsection{\texttt{pbashc}}
-
-\subsection{\texttt{pperlc}}
-
-\subsection{\texttt{ppkg-config}}
-
-\subsection{\texttt{pgcc-config}}
-
-\subsection{\texttt{pscalac}}
-
-\subsection{\texttt{pscalald}}
-
-\subsection{\texttt{pnasm}}
+The simplest helper program: essentially it just performs \texttt{rm
+  *~} recursively.  It's just a small wrapper around \texttt{find}.
 
 \subsection{\texttt{ptest}}
 
+In addition to being used internally by \pconfigure\ to run tests,
+\texttt{ptest} prints the current set of test results to
+\texttt{stdout}.  You will almost certainly just want to run
+\texttt{ptest} with no arguments, which will print the entire current
+set of test results along with a summary.
+
 \subsection{\texttt{pinclude}}
+
+A small command-line tools that exposes \texttt{libpinclude.so},
+\pconfigure's C preprocessor dependency handler, to BASH scripts.
+This probably isn't actually useful because both \texttt{clang} and
+\texttt{GCC} provide a more robust form of this functionality: the
+only reason \texttt{libpinclude.so} exists in the first place is
+because it's significantly faster than either of them.
+
+\subsection{\texttt{ppkg-config}}
+
+A wrapper around \texttt{pkg-config} that adds the following
+command-line options:
+
+\begin{itemize}
+\item \texttt{--optional}: returns success regardless of whether the
+  given \texttt{pkg-config} invocation succeeds or fails.
+\item \texttt{--have \$name}: adds \texttt{-DHAVE\_\$name} to the
+  compile-time arguments if the given \texttt{pkg-config} invocation
+  succeeds, otherwise does nothing.
+\end{itemize}
+
+These two options combine to allow \texttt{pkg-config} to be
+sufficient to do compile-time detection of features based on what is
+currently installed on a system.  For example, the
+\pconfigure\ \texttt{Configfile} uses the following snippit to decide
+whether or not to use the system's talloc library or an internal
+version based on which is availiable.
+
+\begin{verbatim}
+BINARIES    += pconfigure
+COMPILEOPTS += `ppkg-config --optional --have TALLOC talloc --cflags`
+LINKOPTS    += `ppkg-config --optional --have TALLOC talloc --libs`
+SOURCES     += pconfigure/main.c
+\end{verbatim}
+
+\subsection{\texttt{pgcc-config}}
+
+This allows \texttt{Configfile}s to interrogate the installed C
+compilers by version number in an attempt to mask flags that are not
+supported on particular compilers.
 
 \subsection{\texttt{pllvm-config}}
 
+A wrapper around \texttt{llvm-config} that does the same thing as
+\texttt{ppkg-config}.
+
+\subsection{\texttt{pbashc}}
+
+A bash ``compiler'', which really just does the following
+\begin{itemize}
+\item Allows \texttt{\#include} (with the same semantics as in the C
+  compiler) to be used from within BASH files.  This is a way to avoid
+  \texttt{source}ing BASH files, which can be a pain when you don't
+  know where they'll end up installed.
+\item Sets the correct shebang at the beginning of the file
+\item Marks the output as executable
+\end{itemize}
+
+\subsection{\texttt{pperlc}}
+
+Exactly the same as \texttt{pbashc}, but for Perl files.
+
+\subsection{\texttt{pscalac}}
+
+When combined with \texttt{pscalald}, this makes Scala look like a
+regular compiled language.  Specifically this wraps \texttt{scalac} in
+a manner such that it produces a JAR archive, much like GCC produces
+ELF objects.
+
+\subsection{\texttt{pscalald}}
+
+When combined with \texttt{pscalac}, this makes Scala look like a
+regular compiled language.  Specifically, this allows the ``linking''
+together of multiple Scala JAR archives into an ``executable''.  Here
+``linking'' means just merging the ZIP files, and ``executable'' means
+a self-extracting archive that then runs the result of its extraction
+(and then cleans up after itself).
+
+\subsection{\texttt{pnasm}}
+
+A wrapper for NASM that makes it take a command-line argument syntax
+that looks more like what GCC's assembler takes.  If you're looking to
+make NASM a drop-in replacement for GAS in some build script, this may
+be what you're after.
+
 \subsection{\texttt{pwinegcc}}
+
+A wrapper for the Wine project's modified GCC-based toolchain that
+makes it behave in a manner more similar to stock GCC.  If you're
+looking to make \texttt{winegcc} a drop-in replacement for
+\texttt{gcc}, then this may be what you're after.
 
 \section{Odd Behavior (ie, WONTFIX bugs) \label{odd}}
 
@@ -409,6 +625,14 @@ in tricky ways.  A better way would be to store the long library names
 for later, but that would require that all \texttt{LIBRARIES} commands
 come before their relevant \texttt{DEPLIBS} commands, which is
 probably the sanest way to do it.
+
+\subsection{\texttt{PREFIX} must be the first line \label{err::prefix}}
+
+The \texttt{PREFIX} variable is refered to twice: once when the
+linking step is generated (to set \texttt{-rpath}, for example) and
+once when the \texttt{make install} target is generated.  It's really
+best if \texttt{\$PREFIX} is the same at both times, otherwise
+unexpected things may happen.
 
 \end{document}
 
