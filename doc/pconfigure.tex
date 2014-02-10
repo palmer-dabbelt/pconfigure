@@ -191,13 +191,13 @@ in the land of GNU tools.
 
 \subsection{\texttt{--binname}}
 
-See Section~\ref{cl::srcname}, this is hard to describe in isolation.
+See Section~\ref{cl:srcname}, this is hard to describe in isolation.
 
 \subsection{\texttt{--testname}}
 
-See Section~\ref{cl::srcname}, this is hard to describe in isolation.
+See Section~\ref{cl:srcname}, this is hard to describe in isolation.
 
-\subsection{\texttt{--srcname} \label{cl::srcname}}
+\subsection{\texttt{--srcname} \label{cl:srcname}}
 
 The tree commands \texttt{--binname}, \texttt{--testname}, and
 \texttt{--srcname} are all related and can only really be described
@@ -563,7 +563,7 @@ the user to keep this dependency list complete and to ensure that all
 these dependencies are eventually handled by \pconfigure.
 \pconfigure\ provides the \texttt{--binname}, \texttt{--testname}, and
 \texttt{--srcname} arguments to facilitate this, see
-Section~\ref{cmd:srcname} for more information.
+Section~\ref{cl:srcname} for more information.
 
 Calling \texttt{\$SRCDIR\$name.proc --generate} prints the generated
 file to \texttt{/dev/stdout}.  Note that \pconfigure\ may call this
@@ -688,7 +688,7 @@ as a compile option.
 
 pkgconfig supports linking against pkgconfig.
 
-\subsection{\texttt{scala}: Scala}
+\subsection{\texttt{scala}: Scala \label{lang:scala}}
 
 The Scala language uses \texttt{pscalac} (see
 Section~\ref{prog:pscalac}) and \texttt{pscalald} (see
@@ -733,7 +733,7 @@ addition to the \pconfigure\ binary.  What follows is a list of these
 programs along with a short description of their functionality and
 usage.
 
-\subsection{\texttt{pclean}}
+\subsection{\texttt{pclean} \label{prog:pclean}}
 
 The simplest helper program: essentially it just performs \texttt{rm
   *~} recursively.  It's just a small wrapper around \texttt{find}.
@@ -746,7 +746,7 @@ In addition to being used internally by \pconfigure\ to run tests,
 \texttt{ptest} with no arguments, which will print the entire current
 set of test results along with a summary.
 
-\subsection{\texttt{pinclude}}
+\subsection{\texttt{pinclude} \label{prog:pinclude}}
 
 A small command-line tools that exposes \texttt{libpinclude.so},
 \pconfigure's C preprocessor dependency handler, to BASH scripts.
@@ -755,7 +755,7 @@ This probably isn't actually useful because both \texttt{clang} and
 only reason \texttt{libpinclude.so} exists in the first place is
 because it's significantly faster than either of them.
 
-\subsection{\texttt{ppkg-config}}
+\subsection{\texttt{ppkg-config} \label{prog:ppkg-config}}
 
 A wrapper around \texttt{pkg-config} that adds the following
 command-line options:
@@ -782,18 +782,18 @@ LINKOPTS    += `ppkg-config --optional --have TALLOC talloc --libs`
 SOURCES     += pconfigure/main.c
 \end{verbatim}
 
-\subsection{\texttt{pgcc-config}}
+\subsection{\texttt{pgcc-config} \label{prog:pgcc-config}}
 
 This allows \texttt{Configfile}s to interrogate the installed C
 compilers by version number in an attempt to mask flags that are not
 supported on particular compilers.
 
-\subsection{\texttt{pllvm-config}}
+\subsection{\texttt{pllvm-config} \label{prog:pllvm-config}}
 
 A wrapper around \texttt{llvm-config} that does the same thing as
 \texttt{ppkg-config}.
 
-\subsection{\texttt{pbashc}}
+\subsection{\texttt{pbashc} \label{prog:pbashc}}
 
 A bash ``compiler'', which really just does the following
 \begin{itemize}
@@ -805,18 +805,18 @@ A bash ``compiler'', which really just does the following
 \item Marks the output as executable
 \end{itemize}
 
-\subsection{\texttt{pperlc}}
+\subsection{\texttt{pperlc} \label{prog:pperlc}}
 
 Exactly the same as \texttt{pbashc}, but for Perl files.
 
-\subsection{\texttt{pscalac}}
+\subsection{\texttt{pscalac} \label{prog:pscalac}}
 
 When combined with \texttt{pscalald}, this makes Scala look like a
 regular compiled language.  Specifically this wraps \texttt{scalac} in
 a manner such that it produces a JAR archive, much like GCC produces
 ELF objects.
 
-\subsection{\texttt{pscalald}}
+\subsection{\texttt{pscalald} \label{prog:pscalald}}
 
 When combined with \texttt{pscalac}, this makes Scala look like a
 regular compiled language.  Specifically, this allows the ``linking''
@@ -825,14 +825,14 @@ together of multiple Scala JAR archives into an ``executable''.  Here
 a self-extracting archive that then runs the result of its extraction
 (and then cleans up after itself).
 
-\subsection{\texttt{pnasm}}
+\subsection{\texttt{pnasm} \label{prog:pnasm}}
 
 A wrapper for NASM that makes it take a command-line argument syntax
 that looks more like what GCC's assembler takes.  If you're looking to
 make NASM a drop-in replacement for GAS in some build script, this may
 be what you're after.
 
-\subsection{\texttt{pwinegcc}}
+\subsection{\texttt{pwinegcc} \label{prog:pwinegcc}}
 
 A wrapper for the Wine project's modified GCC-based toolchain that
 makes it behave in a manner more similar to stock GCC.  If you're
