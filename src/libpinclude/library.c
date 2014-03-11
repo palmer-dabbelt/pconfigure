@@ -263,8 +263,8 @@ static int _pinclude_list(const char *input, pinclude_callback_t cb,
             }
 
           skip_dirs:
-            err = _pinclude_list(full_path, cb, priv, include_dirs, defined,
-                                 included);
+            _pinclude_list(full_path, cb, priv, include_dirs, defined,
+                           included);
 
           skip_file:
             free(dir_path);
