@@ -48,6 +48,7 @@ int main(int argc, char **argv)
     int i;
     char *chmod;
     int chmod_size;
+    int ret;
 
     input = NULL;
     output = NULL;
@@ -80,7 +81,9 @@ int main(int argc, char **argv)
     chmod_size = strlen("chmod oug+x ") + strlen(output) + 1;
     chmod = malloc(chmod_size);
     snprintf(chmod, chmod_size, "chmod oug+x %s", output);
-    return system(chmod);
+    ret = system(chmod);
+    free(chmod);
+    return ret;
 }
 
 void cat_to_outfile(const char *input)
