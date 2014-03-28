@@ -333,6 +333,13 @@ void language_c_link(struct language *l_uncast, struct context *c,
 
     func(false, "mkdir -p `dirname %s` >& /dev/null || true", link_path);
 
+#ifdef __APPLE__
+    /* Apple's linker throws a warning whenever LIBDIR doesn't exist,
+     * so I just make it here.  This isn't necessary anywhere else
+     * because other compilers don't throw this warning. */
+    func(false, "mkdir -p %s >& /dev/null || true", c->lib_dir);
+#endif
+
     func(false, "\\\t@%s %s", l->l.link_cmd, l->ldflags);
     func(false, "\\ -L%s", c->lib_dir);
     if (should_install == false) {
