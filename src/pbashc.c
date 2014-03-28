@@ -25,14 +25,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef SHEBANG
+#ifndef SHEBANG_PREFIX
+#define SHEBANG_PREFIX ""
+#endif
+
 #if defined(LANG_PERL)
-#define SHEBANG "#!/usr/bin/perl\n"
+#define SHEBANG "#!" SHEBANG_PREFIX "/usr/bin/perl\n"
 #elif defined(LANG_BASH)
-#define SHEBANG "#!/bin/bash\n"
+#define SHEBANG "#!" SHEBANG_PREFIX "/bin/bash\n"
 #else
 #error "No language defined"
-#endif
 #endif
 
 /* The output file is a global file. */
