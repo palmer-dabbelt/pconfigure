@@ -1,3 +1,10 @@
+verbose="false"
+if [[ "$1" == "--verbose" ]]
+then
+    verbose="true"
+    shift
+fi
+
 if [[ "$1" == "" ]]
 then
     make -q check
@@ -41,9 +48,19 @@ then
             then
                 echo -e "* FAIL\t$(echo "$f" | cut -d'/' -f2-)"
                 fail=$(expr $fail + 1)
+
+                if [[ "$verbose" == "true" ]]
+                then
+                    cat "$f"
+                fi
             else
                 echo -e "! EROR\t$(echo "$f" | cut -d'/' -f2-)"
                 error=$(expr $error + 1)
+
+                if [[ "$verbose" == "true" ]]
+                then
+                    cat "$f"
+                fi
             fi
         done
 
