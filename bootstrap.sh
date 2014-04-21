@@ -62,7 +62,10 @@ export PATH="$BOOTSTRAP_DIR:$PATH"
 
 # Check for pconfigure's dependencies
 talloc="$(ppkg-config --optional --have TALLOC talloc --cflags) $(ppkg-config --optional --have TALLOC talloc --libs)"
-clang="$(pllvm-config --optional --have CLANG --cflags) $(pllvm-config --optional --have CLANG --libs)"
+
+# clang is not the default any more
+#clang="$(pllvm-config --optional --have CLANG --cflags) $(pllvm-config --optional --have CLANG --libs)"
+clang=""
 
 # Manually pull in included external libraries where necessary
 extrasrc=""
