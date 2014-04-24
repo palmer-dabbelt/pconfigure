@@ -98,6 +98,7 @@ fi
 test=""
 out=""
 bin=""
+command=""
 while [[ "$1" != "" ]]
 do
     if [[ "$1" == "--test" ]]
@@ -113,6 +114,16 @@ do
     elif [[ "$1" == "--bin" ]]
     then
         bin="$2"
+        shift
+        shift
+    elif [[ "$1" == "--command" ]]
+    then
+        command="$2"
+        shift
+        shift
+    elif [[ "$1" == "--args" ]]
+    then
+        args="$2"
         shift
         shift
     else
@@ -131,8 +142,14 @@ tmpdir=`mktemp -d -t ptest-wrapper.XXXXXXXXXX`
 export PTEST_BINARY="$bin"
 export PTEST_TMPDIR="$tmpdir"
 
-"$test" >&"$tmpdir"/ptest__output
-echo "$?" >"$tmpdir"/ptest__return
+if [[ "$command" == "" ]]
+then
+    "$test" >&"$tmpdir"/ptest__output
+    echo "$?" >"$tmpdir"/ptest__return
+else
+    "$command" "$args" >&"$tmpdir"/ptest__output
+    echo "$?" >"$tmpdir"/ptest__return
+fi
 
 cd $tmpdir
 tar -c * > "$out"
