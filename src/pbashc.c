@@ -94,8 +94,10 @@ void cat_to_outfile(const char *input)
     char buffer[1024];
 
     infile = fopen(input, "r");
-    if (infile == NULL)
+    if (infile == NULL) {
+        fprintf(stderr, "Unable to open file '%s'\n", input);
         abort();
+    }
 
     while (fgets(buffer, 1024, infile) != NULL) {
         if (strncmp(buffer, "#include \"", strlen("#include \"")) == 0) {
