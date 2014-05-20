@@ -49,12 +49,14 @@ SOURCES	    += pclean.bash
 TESTSRC     += simple.bash
 
 BINARIES    += pbashc
+DEPLIBS     += pinclude
 COMPILEOPTS += -DLANG_BASH
 SOURCES	    += pbashc.c
 TESTSRC     += simple.bash
 TESTSRC     += samedir.bash
 
 BINARIES    += pperlc
+DEPLIBS     += pinclude
 COMPILEOPTS += -DLANG_PERL
 SOURCES	    += pbashc.c
 TESTSRC     += simple.bash

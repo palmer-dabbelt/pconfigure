@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pinclude.h>
 
 #ifndef SHEBANG_PREFIX
 #define SHEBANG_PREFIX ""
@@ -40,13 +41,16 @@
 /* The output file is a global file. */
 static FILE *outfile;
 
-/* This cats a single input file to the output file. */
-static void cat_to_outfile(const char *input);
+/* Writes a line out to the output file. */
+static int write_line(const char *line, void *unused);
 
 int main(int argc, char **argv)
 {
     char *input, *output;
     char *last;
+    char **dirs;
+    int dirs_count;
+    char *defs[1];
     int i;
     char *chmod;
     int chmod_size;
@@ -55,6 +59,7 @@ int main(int argc, char **argv)
     input = NULL;
     output = NULL;
     last = NULL;
+    dirs_count = 0;
 
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-o") == 0)
@@ -64,8 +69,21 @@ int main(int argc, char **argv)
         else if (strcmp(last, "-o") == 0) {
             output = argv[i];
             last = NULL;
+        } else if (strncmp(argv[i], "-I", 2) == 0) {
+            dirs_count++;
         }
     }
+
+    dirs = malloc(sizeof(*dirs) * (dirs_count + 1));
+    dirs_count = 0;
+    defs[0] = NULL;
+    for (i = 1; i < argc; i++) {
+        if (strncmp(argv[i], "-I", 2) == 0) {
+            dirs[dirs_count] = argv[i] + 2;
+            dirs_count++;
+        }
+    }
+    dirs[dirs_count] = NULL;
 
     if ((input == NULL) || (output == NULL)) {
         fprintf(stderr, "needs 2 arguments\ninput '%s'\noutput '%s'\n",
@@ -77,7 +95,8 @@ int main(int argc, char **argv)
 
     fprintf(outfile, SHEBANG "\n");
 
-    cat_to_outfile(input);
+    pinclude_lines(input, NULL, NULL, &write_line, NULL, dirs, defs);
+
     fclose(outfile);
 
     chmod_size = strlen("chmod oug+x ") + strlen(output) + 1;
@@ -88,60 +107,8 @@ int main(int argc, char **argv)
     return ret;
 }
 
-void cat_to_outfile(const char *input)
+int write_line(const char *line, void *unused __attribute__ ((unused)))
 {
-    FILE *infile;
-    char buffer[1024];
-
-    infile = fopen(input, "r");
-    if (infile == NULL) {
-        fprintf(stderr, "Unable to open file '%s'\n", input);
-        abort();
-    }
-
-    while (fgets(buffer, 1024, infile) != NULL) {
-        if (strncmp(buffer, "#include \"", strlen("#include \"")) == 0) {
-            size_t i, slash_max;
-
-            char *full_path;
-            char *dir_path;
-            char *filename;
-
-            /* dir_path = dirname(input) */
-            dir_path = strdup(input);
-            slash_max = 0;
-            for (i = 0; i < strlen(dir_path); i++)
-                if (dir_path[i] == '/')
-                    slash_max = i;
-            dir_path[slash_max] = '\0';
-
-            /* Pull FILENAME out of #include "FILENAME" */
-            filename = strdup(buffer + strlen("#include \""));
-            filename[strlen(filename) - 2] = '\0';
-
-            if (strlen(dir_path) == 0) {
-                if (asprintf(&full_path, "%s", filename) < 0)
-                    abort();
-            } else {
-                if (asprintf(&full_path, "%s/%s", dir_path, filename) < 0)
-                    abort();
-            }
-
-            cat_to_outfile(full_path);
-
-            free(dir_path);
-            free(filename);
-            free(full_path);
-
-            /* We want to skip this whole line */
-            continue;
-        }
-
-        if (fputs(buffer, outfile) <= 0)
-            exit(1);
-    }
-
-    fclose(infile);
-
-    return;
+    fputs(line, outfile);
+    return 0;
 }
