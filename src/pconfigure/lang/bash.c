@@ -122,12 +122,13 @@ const char *language_bash_objname(struct language *l_uncast, void *context,
 void language_bash_deps(struct language *l_uncast, struct context *c,
                         void (*func) (void *, const char *, ...), void *arg)
 {
-    char *dirs[1];
+    char *dirs[2];
     char *defs[1];
 
     func(arg, "%s", c->full_path);
 
-    dirs[0] = NULL;
+    dirs[0] = c->gen_dir;
+    dirs[1] = NULL;
     func_pinclude_list_printf(c->full_path, func, arg, dirs, defs);
 }
 
@@ -165,6 +166,8 @@ void language_bash_link(struct language *l_uncast, struct context *c,
     func_stringlist_each_cmd_cont(l->l.link_opts, func);
     func_stringlist_each_cmd_cont(c->link_opts, func);
 
+    func(false, "\\-I%s", c->gen_dir);
+
     /* FIXME: deps() doesn't get called because this isn't compiled
      * code so we need to fake this with extras() instead.  That means
      * every bash script gets set as an object to be linked and
@@ -185,10 +188,11 @@ void language_bash_extras(struct language *l_uncast, struct context *c,
                           void *context,
                           void (*func) (void *, const char *), void *arg)
 {
-    char *dirs[1];
+    char *dirs[2];
     char *defs[1];
 
-    dirs[0] = NULL;
+    dirs[0] = c->gen_dir;
+    dirs[1] = NULL;
     defs[0] = NULL;
     func_pinclude_list_string(c->full_path, func, arg, dirs, defs);
 }
