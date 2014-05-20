@@ -49,9 +49,11 @@
 
 static void str_chomp(char *str);
 
-static int _pinclude_list(const char *input, pinclude_callback_t cb,
-                          void *priv, char **include_dirs, char **defined,
-                          char **included)
+static int _pinclude_lines(const char *input,
+                           pinclude_callback_t per_include,
+                           void *include_priv, pinclude_lineback_t per_line,
+                           void *line_priv, char **include_dirs,
+                           char **defined, char **included)
 {
     int err;
     FILE *infile;
@@ -216,12 +218,14 @@ static int _pinclude_list(const char *input, pinclude_callback_t cb,
                 fprintf(stderr, "inc: '%s'\n", full_path);
 #endif
 
-                if ((err = cb(full_path, priv)) != 0) {
-                    free(dir_path);
-                    free(filename);
-                    free(full_path);
+                if (per_include != NULL) {
+                    if ((err = per_include(full_path, include_priv)) != 0) {
+                        free(dir_path);
+                        free(filename);
+                        free(full_path);
 
-                    return err;
+                        return err;
+                    }
                 }
 
                 goto skip_dirs;
@@ -250,12 +254,14 @@ static int _pinclude_list(const char *input, pinclude_callback_t cb,
                         break;
                     }
 
-                    if ((err = cb(full_path, priv)) != 0) {
-                        free(dir_path);
-                        free(filename);
-                        free(full_path);
+                    if (per_include != NULL) {
+                        if ((err = per_include(full_path, include_priv)) != 0) {
+                            free(dir_path);
+                            free(filename);
+                            free(full_path);
 
-                        return err;
+                            return err;
+                        }
                     }
 
                     goto skip_dirs;
@@ -263,8 +269,10 @@ static int _pinclude_list(const char *input, pinclude_callback_t cb,
             }
 
           skip_dirs:
-            _pinclude_list(full_path, cb, priv, include_dirs, defined,
-                           included);
+            _pinclude_lines(full_path,
+                            per_include, include_priv,
+                            per_line, line_priv,
+                            include_dirs, defined, included);
 
           skip_file:
             free(dir_path);
@@ -284,8 +292,17 @@ static int _pinclude_list(const char *input, pinclude_callback_t cb,
     return 0;
 }
 
-int pinclude_list(const char *input, pinclude_callback_t cb,
-                  void *priv, char **include_dirs, char **defined)
+int pinclude_list(const char *filename, pinclude_callback_t cb, void *priv,
+                  char **include_dirs, char **defined)
+{
+    return pinclude_lines(filename,
+                          cb, priv, NULL, NULL, include_dirs, defined);
+}
+
+int pinclude_lines(const char *filename,
+                   pinclude_callback_t per_include, void *include_priv,
+                   pinclude_lineback_t per_line, void *line_priv,
+                   char **include_dirs, char **defined)
 {
     int err;
     int i;
@@ -294,7 +311,10 @@ int pinclude_list(const char *input, pinclude_callback_t cb,
     for (i = 0; i < LINE_MAX; i++)
         included[i] = NULL;
 
-    err = _pinclude_list(input, cb, priv, include_dirs, defined, included);
+    err = _pinclude_lines(filename,
+                          per_include, include_priv,
+                          per_line, line_priv,
+                          include_dirs, defined, included);
 
     for (i = 0; i < FILE_MAX; i++)
         if (included[i] != NULL)

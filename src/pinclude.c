@@ -22,21 +22,38 @@
 #include <pinclude.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 static int callback(const char *filename, void *unused);
 
 int main(int argc __attribute__ ((unused)),
          char **argv __attribute__ ((unused)))
 {
-    char *dirs[1];
+    int dir_count;
+    char **dirs;
     char *defs[1];
+    char *input;
+    int i;
 
-    if (argc != 2)
-        return 1;
+    for (i = 1; i < argc; i++) {
+        if (strncmp(argv[i], "-I", 2) == 0)
+            dir_count++;
+        else
+            input = argv[i];
+    }
 
-    dirs[0] = NULL;
+    dirs = malloc(sizeof(*dirs) * (dir_count + 1));
+    dir_count = 0;
+    for (i = 1; i < argc; i++) {
+        if (strncmp(argv[i], "-I", 2) == 0) {
+            dirs[dir_count] = argv[i] + 2;
+            dir_count++;
+        }
+    }
+    dirs[dir_count] = NULL;
+
     defs[0] = NULL;
-    return pinclude_list(argv[1], &callback, NULL, dirs, defs);
+    return pinclude_list(input, &callback, NULL, dirs, defs);
 }
 
 int callback(const char *filename, void *unused)
