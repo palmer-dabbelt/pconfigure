@@ -82,6 +82,14 @@ static int _pinclude_lines(const char *input,
         fprintf(stderr, "    %s", buffer);
 #endif
 
+        if (per_line != NULL) {
+            if (strncmp(buffer, "#include", 8) != 0) {
+                if ((err = per_line(buffer, line_priv)) != 0) {
+                    return err;
+                }
+            }
+        }
+
         /* Here's where we handle the #if{,n}def preprocessor
          * directives. */
         if (strncmp(buffer, "#ifdef ", strlen("#ifdef ")) == 0) {
