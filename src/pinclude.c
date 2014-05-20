@@ -35,6 +35,7 @@ int main(int argc __attribute__ ((unused)),
     char *input;
     int i;
 
+    input = NULL;
     for (i = 1; i < argc; i++) {
         if (strncmp(argv[i], "-I", 2) == 0)
             dir_count++;
@@ -51,6 +52,9 @@ int main(int argc __attribute__ ((unused)),
         }
     }
     dirs[dir_count] = NULL;
+
+    if (input == NULL)
+        return 0;
 
     defs[0] = NULL;
     return pinclude_list(input, &callback, NULL, dirs, defs);
