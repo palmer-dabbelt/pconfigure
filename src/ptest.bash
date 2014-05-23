@@ -138,6 +138,7 @@ test="$(pwd)"/"$test"
 
 # This is the regular path where we actually run a test case
 tmpdir=`mktemp -d -t ptest-wrapper.XXXXXXXXXX`
+trap "rm -rf $tmpdir" EXIT
 
 export PTEST_BINARY="$bin"
 export PTEST_TMPDIR="$tmpdir"
