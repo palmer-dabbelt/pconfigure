@@ -176,6 +176,13 @@ void find_similar_files(void *args_uncast, const char *format, ...)
             func(arg, cxxfile);
 
     memset(cxxfile, 0, strlen(cfile) + 10);
+    strncpy(cxxfile, cfile, strlen(cfile) - 2);
+    strcat(cxxfile, ".ll");
+    if (strcmp(cxxfile, cfile) != 0)
+        if (access(cxxfile, R_OK) == 0)
+            func(arg, cxxfile);
+
+    memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 3);
     strcat(cxxfile, ".c++");
     if (strcmp(cxxfile, cfile) != 0)
@@ -204,6 +211,13 @@ void find_similar_files(void *args_uncast, const char *format, ...)
             func(arg, cxxfile);
 
     memset(cxxfile, 0, strlen(cfile) + 10);
+    strncpy(cxxfile, cfile, strlen(cfile) - 3);
+    strcat(cxxfile, ".ll");
+    if (strcmp(cxxfile, cfile) != 0)
+        if (access(cxxfile, R_OK) == 0)
+            func(arg, cxxfile);
+
+    memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 4);
     strcat(cxxfile, ".c++");
     if (strcmp(cxxfile, cfile) != 0)
@@ -227,6 +241,13 @@ void find_similar_files(void *args_uncast, const char *format, ...)
     memset(cxxfile, 0, strlen(cfile) + 10);
     strncpy(cxxfile, cfile, strlen(cfile) - 4);
     strcat(cxxfile, ".cc");
+    if (strcmp(cxxfile, cfile) != 0)
+        if (access(cxxfile, R_OK) == 0)
+            func(arg, cxxfile);
+
+    memset(cxxfile, 0, strlen(cfile) + 10);
+    strncpy(cxxfile, cfile, strlen(cfile) - 4);
+    strcat(cxxfile, ".ll");
     if (strcmp(cxxfile, cfile) != 0)
         if (access(cxxfile, R_OK) == 0)
             func(arg, cxxfile);
