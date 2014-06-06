@@ -41,8 +41,10 @@ fi
 #############################################################################
 ./src/version.h.proc --generate > $BOOTSTRAP_DIR/version.h
 
-gcc --std=gnu99 `find "$SOURCE_PATH"src/pbashc.c -iname "*.c"` \
-    -I$BOOTSTRAP_DIR \
+gcc --std=gnu99 \
+    `find "$SOURCE_PATH"src/pbashc.c -iname "*.c"` \
+    `find "$SOURCE_PATH"src/libpinclude/ -iname "*.c"` \
+    -I$BOOTSTRAP_DIR -Iinclude/ \
     -DLANG_BASH \
     -o "$BOOTSTRAP_DIR/pbashc"
 
