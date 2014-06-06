@@ -36,6 +36,7 @@ int main(int argc __attribute__ ((unused)),
     int i;
 
     input = NULL;
+    dir_count = 0;
     for (i = 1; i < argc; i++) {
         if (strncmp(argv[i], "-I", 2) == 0)
             dir_count++;
