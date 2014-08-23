@@ -90,7 +90,8 @@ struct language *language_h_search(struct language *l_uncast,
         return NULL;
 
     if ((strcmp(path + strlen(path) - 2, ".h") != 0)
-        && (strcmp(path + strlen(path) - 4, ".h++") != 0))
+        && (strcmp(path + strlen(path) - 4, ".h++") != 0)
+	&& (strcmp(path + strlen(path) - 4, ".hpp") != 0))
         return NULL;
 
     if (parent == NULL)
