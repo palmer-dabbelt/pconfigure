@@ -5,6 +5,7 @@ pkgtarget=""
 lastarg=""
 have=""
 args=""
+cmd="pkg-config"
 while [[ "$1" != "" ]]
 do
     if [[ "$1" == "--optional" ]]
@@ -19,6 +20,10 @@ do
     then
 	shift
 	have="$1"
+    elif [[ "$1" == "--ccmd" ]]
+    then
+        shift
+        cmd="$1-config"
     else
 	args="$args $1"
         lastarg="$1"
@@ -28,7 +33,7 @@ do
 done
 
 # Actually runs pkg-config
-stdout=$(pkg-config $args 2> /dev/null)
+stdout=$($cmd $args 2> /dev/null)
 retval="$?"
 
 # If --optional is given then don't panic
