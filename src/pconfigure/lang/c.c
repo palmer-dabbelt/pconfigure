@@ -207,6 +207,13 @@ void language_c_deps(struct language *l_uncast, struct context *c,
         return;
     }
 
+    /* FIXME: This means tests have to be in a single source, which
+     * isn't great. */
+    if (c->parent->type == CONTEXT_TYPE_TEST) {
+        func(arg, "%s", c->full_path);
+        return;
+    }
+
     l = talloc_get_type(l_uncast, struct language_c);
     if (l == NULL)
         return;
