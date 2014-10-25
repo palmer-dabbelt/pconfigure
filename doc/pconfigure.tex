@@ -766,6 +766,11 @@ command-line options:
 \item \texttt{--have \$name}: adds \texttt{-DHAVE\_\$name} to the
   compile-time arguments if the given \texttt{pkg-config} invocation
   succeeds, otherwise does nothing.
+\item \texttt{--ccmd \$command}: runs a different
+  \texttt{pkg-config}-like command.  One example is
+  \texttt{gpgme-config}.  You probably shouldn't be using this to run
+  things like \texttt{gcc-config} or \texttt{llvm-config}, as their
+  arguments are very different.
 \end{itemize}
 
 These two options combine to allow \texttt{pkg-config} to be
