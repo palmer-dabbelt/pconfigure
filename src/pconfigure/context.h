@@ -109,6 +109,10 @@ struct context
 
     /* The directory that test sources come from. */
     const char *testdir;
+
+    /* TRUE if this (and all its children) should automatically handle
+     * dependencies. */
+    bool autodeps;
 };
 
 extern struct context *context_new_defaults(struct clopts *o, void *context,
@@ -146,5 +150,6 @@ extern int context_add_compileopt(struct context *c, const char *opt);
 extern int context_add_linkopt(struct context *c, const char *opt);
 extern int context_add_library(struct context *c, const char *opt);
 extern int context_add_testdep(struct context *c, const char *opt);
+extern int context_set_autodeps(struct context *c, bool opt);
 
 #endif

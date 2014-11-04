@@ -72,6 +72,7 @@ static int parsefunc_hdrdir(const char *op, const char *right);
 static int parsefunc_testdir(const char *op, const char *right);
 static int parsefunc_srcdir(const char *op, const char *right);
 static int parsefunc_libexecs(const char *op, const char *right);
+static int parsefunc_autodeps(const char *op, const char *right);
 
 /* This is global data to avoid having really long parsefunc_*
  * function calls. */
@@ -392,6 +393,8 @@ int parse_select(const char *left, const char *op, char *right)
         return parsefunc_srcdir(op, right);
     if (strcmp(left, "LIBEXECS") == 0)
         return parsefunc_libexecs(op, right);
+    if (strcmp(left, "AUTODEPS") == 0)
+        return parsefunc_autodeps(op, right);
 
     return -2;
 }
@@ -1130,4 +1133,38 @@ int parsefunc_libexecs(const char *op, const char *right)
      * no need for this to  */
     contextstack_push_libexec(s, right);
     return 0;
+}
+
+int parsefunc_autodeps(const char *op, const char *right)
+{
+    struct context *c;
+    void *context;
+    int err;
+
+    if (strcmp(op, "=") != 0) {
+        fprintf(stderr, "We only support = for AUTODEPS\n");
+        return -1;
+    }
+
+    /* If the stack is empty, then add this to the language-specific global
+     * list of options. */
+    if (contextstack_isempty(s)) {
+        fprintf(stderr, "AUTODEPS = called with an empty context\n");
+        return -1;
+    }
+
+    /* The context stack isn't empty, so instead change the options of the
+     * current top-of-stack. */
+    context = talloc_new(NULL);
+    c = contextstack_peek(s, context);
+    if (strcasecmp(right, "true") == 0)
+        err = context_set_autodeps(c, true);
+    else if (strcasecmp(right, "false") == 0)
+        err = context_set_autodeps(c, false);
+    else {
+        fprintf(stderr, "AUTODEPS must be set to a boolean\n");
+        err = -1;
+    }
+    TALLOC_FREE(context);
+    return err;
 }

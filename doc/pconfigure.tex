@@ -473,6 +473,21 @@ whole path (as opposed to \texttt{DEPLIBS}, which just takes the
 library name).  This difference exists so it's possible to depend on
 any sort of target.
 
+\subsection{\texttt{AUTODEPS = bool} \label{cmd:autodeps}}
+
+Allows the automatic dependency generation inside \texttt{pconfigure}
+to be disabled for a particular target.  The general idea here is that
+sometimes this won't work: one example is a project with two shared
+libraries, where one library depends on the other.  You really don't
+want everything to be compiled into the depending shared library, but
+there's no good way to tell \texttt{pconfigure} that.
+
+Luckily that case is simple enough where you really do just want to
+put \textit{everything} inside a single folder into the library, so
+it's easy to write a bash script that generates all the
+\texttt{SOURCES} lines and then disable automatic dependency
+generation all together.
+
 \subsection{\texttt{COMPILER = \$cmd}}
 
 Sets the command used to compile for the current language to

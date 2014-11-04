@@ -166,6 +166,9 @@ void language_slib(struct language *l, struct context *c,
 void language_extras(struct language *l, struct context *c, void *context,
                      void (*func) (void *, const char *), void *arg)
 {
+    if (c->autodeps == false)
+        return;
+
     assert(l != NULL);
     assert(l->extras != NULL);
     l->extras(l, c, context, func, arg);
