@@ -30,12 +30,6 @@ BOOTSTRAP_DIR=bootstrap_bin
 make distclean >& /dev/null || true
 mkdir -p $BOOTSTRAP_DIR
 
-CFLAGS="-Wno-trampolines"
-if [[ "$(uname)" == "Darwin" ]]
-then
-    CFLAGS="-fnested-functions"
-fi
-
 #############################################################################
 # Manually builds some of the utilities                                     #
 #############################################################################
