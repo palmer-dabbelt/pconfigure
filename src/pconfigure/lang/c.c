@@ -400,6 +400,11 @@ void language_c_slib(struct language *l_uncast, struct context *c,
     else
         func(false, "\\\t@${AR} rcs %s", c->link_path);
 
+#ifdef __APPLE__
+    if (c->shared_target == true)
+        func(false, "\\ -undefined dynamic_lookup");
+#endif
+
     if (c->shared_target == true) {
         func_stringlist_each_cmd_cont(l->l.link_opts, func);
         func_stringlist_each_cmd_cont(c->link_opts, func);
