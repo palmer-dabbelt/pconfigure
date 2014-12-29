@@ -52,7 +52,12 @@ struct makefile *makefile_new(struct clopts *o)
     m->uninstall = stringlist_new(m);
     m->state = MAKEFILE_STATE_NONE;
 
+#if defined(__gnu_linux__) || defined(__APPLE__)
     fprintf(m->file, "SHELL=/bin/bash\n");
+#else
+#error "Where does Bash live on this system?"
+#endif
+
     fprintf(m->file,
             ".PHONY: all pconfigure__all clean cleancache distclean "
             "install uninstall all_install " "\n");

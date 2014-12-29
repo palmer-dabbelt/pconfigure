@@ -31,9 +31,21 @@
 #endif
 
 #if defined(LANG_PERL)
+
+#if defined(__gnu_linux__) || defined(__APPLE__)
 #define SHEBANG "#!" SHEBANG_PREFIX "/usr/bin/perl\n"
+#else
+#error "Where does Perl live on this system?"
+#endif
+
 #elif defined(LANG_BASH)
+
+#if defined(__gnu_linux__) || defined(__APPLE__)
 #define SHEBANG "#!" SHEBANG_PREFIX "/bin/bash\n"
+#else
+#error "Where does Bash live on this system?"
+#endif
+
 #else
 #error "No language defined"
 #endif
