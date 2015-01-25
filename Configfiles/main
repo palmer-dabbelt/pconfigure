@@ -112,3 +112,14 @@ COMPILEOPTS += -pedantic
 # into the 21st century!
 BINARIES    += pconfigure++
 SOURCES     += pconfigure++/main.c++
+
+# These command-line tools are technically availiable for external
+# usage, but they're really just for internal tests.
+LIBEXECS    += pconfigure/string_utils-clean_white
+COMPILEOPTS += -DTEST_CLEAN_WHITE
+SOURCES     += pconfigure++/string_utils.c++
+TESTSRC     += no_spaces.bash
+TESTSRC     += internal_space.bash
+TESTSRC     += internal_spaces.bash
+TESTSRC     += leading_spaces.bash
+TESTSRC     += trailing_spaces.bash
