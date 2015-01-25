@@ -60,3 +60,37 @@ int main(int argc, char **argv)
     return 0;
 }
 #endif
+
+std::vector<std::string> string_utils::split_char(const std::string& in,
+                                                  const std::string& delims)
+{
+    std::vector<std::string> out;
+
+    size_t offset = 0;
+    while (offset != std::string::npos) {
+        auto end = in.find_first_of(delims, offset);
+        if (end == std::string::npos)
+            break;
+
+        out.push_back(std::string(in, offset, end - offset));
+        offset = end + 1;
+    }
+
+    if (offset != std::string::npos)
+        out.push_back(std::string(in, offset));
+
+    return out;
+}
+
+#ifdef TEST_STRIP_CHAR
+int main(int argc, char **argv)
+{
+    if (argc != 3)
+        return -1;
+
+    for (const auto& spl: string_utils::split_char(argv[1], argv[2]))
+        printf("%s\n", spl.c_str());
+
+    return 0;
+}
+#endif

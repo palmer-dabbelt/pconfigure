@@ -31,6 +31,12 @@ namespace string_utils {
      * and trailing spaces, and converts any internal whitespace to a
      * single space character. */
     std::string clean_white(const std::string& in);
+
+    /* Splits a string into a number of sub-strings, making a new
+     * sub-string every time any one of the delimiter characters is
+     * found. */
+    std::vector<std::string> split_char(const std::string& in,
+                                        const std::string& delims);
 }
 
 #endif

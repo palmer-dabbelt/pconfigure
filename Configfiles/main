@@ -123,3 +123,8 @@ TESTSRC     += internal_space.bash
 TESTSRC     += internal_spaces.bash
 TESTSRC     += leading_spaces.bash
 TESTSRC     += trailing_spaces.bash
+
+LIBEXECS    += pconfigure/string_utils-strip_char
+COMPILEOPTS += -DTEST_STRIP_CHAR
+SOURCES     += pconfigure++/string_utils.c++
+TESTSRC     += three_parts.bash
