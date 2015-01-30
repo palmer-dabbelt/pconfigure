@@ -123,6 +123,7 @@ TESTSRC     += internal_space.bash
 TESTSRC     += internal_spaces.bash
 TESTSRC     += leading_spaces.bash
 TESTSRC     += trailing_spaces.bash
+TESTSRC     += tab.bash
 
 LIBEXECS    += pconfigure/string_utils-strip_char
 COMPILEOPTS += -DTEST_STRIP_CHAR
