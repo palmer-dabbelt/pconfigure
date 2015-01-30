@@ -23,8 +23,12 @@
 #include <iostream>
 
 command::command(const command_type& type,
+                 const std::string& op,
+                 const std::string& data,
                  const debug_info::ptr& debug_info)
     : _type(type),
+      _op(op),
+      _data(data),
       _debug_info(debug_info)
 {
 }
@@ -45,7 +49,7 @@ command::ptr command::parse(const std::string& str,
 
     try {
         auto cmd = check_command_type(cmdstr);
-        return std::make_shared<command>(cmd, d);
+        return std::make_shared<command>(cmd, op, arg, d);
     } catch (const char *e) {
         std::cerr << "Unable to parse command: '" << e << "'\n";
         return NULL;

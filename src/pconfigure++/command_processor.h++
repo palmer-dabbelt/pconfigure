@@ -22,7 +22,9 @@
 #define COMMAND_PROCESSOR_HXX
 
 #include <memory>
+#include <stack>
 #include "command.h++"
+#include "context.h++"
 
 /* Contains the entire state of the build system.  This processes a
  * list of commands and converts it into a graph of dependencies that
@@ -33,6 +35,13 @@ public:
     typedef std::shared_ptr<command_processor> ptr;
 
 private:
+    /* This is the stack that's visible to the user of pconfigure. */
+    std::stack<context::ptr> _stack;
+
+public:
+    /* Creates a new, mostly empty command processor (there is a
+     * default context on the stack, for example). */
+    command_processor(void);
 
 public:
     /* Processes a single command, performing the action that should

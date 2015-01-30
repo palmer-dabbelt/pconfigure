@@ -31,15 +31,28 @@ public:
     typedef std::shared_ptr<command> ptr;
 
 private:
-    command_type _type;
-    debug_info::ptr _debug_info;
+    const command_type _type;
+    const std::string _op;
+    const std::string _data;
+    const debug_info::ptr _debug_info;
 
 public:
     command(const command_type& type,
+            const std::string& op,
+            const std::string& data,
             const debug_info::ptr& debug_info);
 
 public:
     command_type type(void) const { return _type; }
+    const std::string& operation(void) const { return _op; }
+    const std::string data(void) const { return _data; }
+
+public:
+    /* Checks to make sure that the command's operation is exactly
+     * what is requested and returns TRUE, otherwise returns FALSE. */
+    bool check_operation(const std::string& allowed_op)
+        { return operation() == allowed_op; }
+    
 
 public:
     /* Converts a command string (as stored in the Configfile or as a

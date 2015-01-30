@@ -21,10 +21,64 @@
 #include "command_processor.h++"
 #include <iostream>
 
-void command_processor::process(const command::ptr& cmd __attribute__((unused)))
+command_processor::command_processor(void)
+    : _stack({std::make_shared<context>()})
 {
-    std::cerr << "command_processor::process(const command::ptr&):\n"
-              << "\tUnimplemeted\n";
+}
 
+void command_processor::process(const command::ptr& cmd)
+{
+    auto tos = _stack.top();
+
+    switch (cmd->type()) {
+    case command_type::AUTODEPS:
+    case command_type::BINARIES:
+    case command_type::COMPILEOPTS:
+    case command_type::COMPILER:
+    case command_type::CONFIG:
+    case command_type::DEPLIBS:
+    case command_type::GENERATE:
+    case command_type::HDRDIR:
+    case command_type::HEADERS:
+    case command_type::LANGUAGES:
+    case command_type::LIBDIR:
+    case command_type::LIBEXECS:
+    case command_type::LIBRARIES:
+    case command_type::LINKER:
+    case command_type::LINKOPTS:
+        goto unimplemented;
+
+    case command_type::PREFIX:
+        if (cmd->check_operation("=") != true)
+            goto bad_op_eq;
+
+        tos->prefix = cmd->data();
+
+        return;
+
+    case command_type::SOURCES:
+    case command_type::SRCDIR:
+    case command_type::TESTDEPS:
+    case command_type::TESTDIR:
+    case command_type::TESTS:
+    case command_type::TESTSRC:
+    case command_type::TGENERATE:
+        unimplemented:
+        std::cerr << "Command "
+                  << std::to_string(cmd->type())
+                  << " not implemented\n";
+        abort();
+        break;
+    }
+
+    std::cerr << "Bad command index\n";
+    abort();
+
+bad_op_eq:
+    std::cerr << "Command "
+              << std::to_string(cmd->type())
+              << " only supports '=', but given "
+              << cmd->operation()
+              << "\n";
     abort();
 }
