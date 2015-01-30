@@ -20,6 +20,7 @@
 
 #include "command.h++"
 #include "string_utils.h++"
+#include <iostream>
 
 command::command(const command_type& type,
                  const debug_info::ptr& debug_info)
@@ -33,8 +34,8 @@ command::ptr command::parse(const std::string& str,
 {
     auto split = string_utils::split_char(str, " ");
     if (split.size() < 3) {
-        fprintf(stderr, "split_char() returned %lu\n", split.size());
-        fprintf(stderr, "  original string: '%s'\n", str.c_str());
+        std::cerr << "split_char() returned " << split.size() << "\n"
+                  << "  original string: '" << str << "'\n";
         return NULL;
     }
 
@@ -44,17 +45,15 @@ command::ptr command::parse(const std::string& str,
 
     try {
         auto cmd = check_command_type(cmdstr);
-        fprintf(stderr, "Parsed command: '%s'\n",
-                std::to_string(cmd).c_str());
         return std::make_shared<command>(cmd, d);
     } catch (const char *e) {
-        fprintf(stderr, "Unable to parse command: '%s'\n", e);
+        std::cerr << "Unable to parse command: '" << e << "'\n";
         return NULL;
     }  catch (const std::string& e) {
-        fprintf(stderr, "Unable to parse command: '%s'\n", e.c_str());
+        std::cerr << "Unable to parse command: '" << e << "'\n";
         return NULL;
     } catch(...) {
-        fprintf(stderr, "Unknown exception when parsing command\n");
+        std::cerr << "Unknown exception type when parsing command\n";
         return NULL;
     }
 }

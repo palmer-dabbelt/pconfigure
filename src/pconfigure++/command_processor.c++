@@ -19,12 +19,12 @@
  */
 
 #include "command_processor.h++"
+#include <iostream>
 
 void command_processor::process(const command::ptr& cmd __attribute__((unused)))
 {
-    fprintf(stderr,
-            "command_processor::process(const command::ptr&):\n"
-            "\tUnimplemeted\n"
-        );
+    std::cerr << "command_processor::process(const command::ptr&):\n"
+              << "\tUnimplemeted\n";
+
     abort();
 }

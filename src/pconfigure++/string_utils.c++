@@ -20,6 +20,7 @@
 
 #include "string_utils.h++"
 #include <cstring>
+#include <iostream>
 using namespace string_utils;
 
 std::string string_utils::clean_white(const std::string& in)
@@ -62,7 +63,7 @@ int main(int argc, char **argv)
     if (argc != 2)
         return -1;
 
-    printf("%s\n", string_utils::clean_white(argv[1]).c_str());
+    std::cout << string_utils::clean_white(argv[1]).c_str() << "\n";
     return 0;
 }
 #endif
@@ -95,7 +96,7 @@ int main(int argc, char **argv)
         return -1;
 
     for (const auto& spl: string_utils::split_char(argv[1], argv[2]))
-        printf("%s\n", spl.c_str());
+        std::cout << spl << "\n";
 
     return 0;
 }

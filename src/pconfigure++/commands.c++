@@ -23,6 +23,7 @@
 #include "file_utils.h++"
 #include "string_utils.h++"
 #include <cstdlib>
+#include <iostream>
 
 /* An ordered list of Configfiles that contain the files that should
  * be read by default. */
@@ -45,10 +46,12 @@ std::vector<command::ptr> commands(int argc, const char **argv)
 
         auto cmd = command::parse(argv[i], debug);
         if (cmd == NULL) {
-            fprintf(stderr, "Unable to parse command-line option %d: '%s'\n",
-                    i - 1,
-                    argv[i]
-                );
+            std::cerr << "Unable to parse command-line option "
+                      << (i - 1)
+                      << ": '"
+                      << argv[i]
+                      << "'\n";
+
             abort();
         }
 
@@ -78,11 +81,14 @@ std::vector<command::ptr> commands(int argc, const char **argv)
 
             auto cmd = command::parse(line, debug);
             if (cmd == NULL) {
-                fprintf(stderr, "Unable to parse %s:%lu: '%s'\n",
-                        filename.c_str(),
-                        linenum,
-                        line.c_str()
-                    );
+                std::cerr << "Unable to parse "
+                          << filename
+                          << ":"
+                          << linenum
+                          << ": '"
+                          << line
+                          << "'\n";
+
                 abort();
             }
 
