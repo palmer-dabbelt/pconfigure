@@ -40,11 +40,17 @@ std::string string_utils::clean_white(const std::string& in)
     }
     dup[oi] = '\0';
 
+    /* If the string is of 0 length then there's nothing left to do
+     * here, so just don't worry about it any more. */
+    if (strlen(dup) == 0)
+        goto valid;
+
     /* That last loop can leave a single trailing white space, check
      * for that and remove it here. */
     if (isspace(dup[strlen(dup)-1]))
         dup[strlen(dup)-1] = '\0';
 
+valid:
     std::string out = dup;
     free(dup);
     return out;
