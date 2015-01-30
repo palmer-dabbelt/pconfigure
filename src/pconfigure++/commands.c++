@@ -19,13 +19,31 @@
  */
 
 #include "commands.h++"
+#include "debug_info.h++"
+#include "file_utils.h++"
+#include "string_utils.h++"
+#include <cstdlib>
+
+/* An ordered list of Configfiles that contain the files that should
+ * be read by default. */
+const static std::vector<std::string> filenames =
+{
+    "Configfiles/local",
+    "Configfiles/main",
+    "Configfile.local",
+    "Configfile"
+};
 
 std::vector<command::ptr> commands(int argc, const char **argv)
 {
     std::vector<command::ptr> out;
 
     for (auto i = 1; i < argc; ++i) {
-        auto cmd = command::parse(argv[i]);
+        auto debug = std::make_shared<debug_info>("args",
+                                                  i,
+                                                  argv[i]);
+
+        auto cmd = command::parse(argv[i], debug);
         if (cmd == NULL) {
             fprintf(stderr, "Unable to parse command-line option %d: '%s'\n",
                     i - 1,
@@ -35,6 +53,41 @@ std::vector<command::ptr> commands(int argc, const char **argv)
         }
 
         out.push_back(cmd);
+    }
+
+    for (const auto& filename: filenames) {
+        auto file = std::fopen(filename.c_str(), "r");
+        if (file == NULL)
+            continue;
+
+        for (const auto& ln: file_utils::readlines_and_numbers(file)) {
+            auto line = string_utils::clean_white(ln.line);
+
+            /* Skip empty lines and anything beginning with a '#' --
+             * those are comments. */
+            if (line.size() == 0)
+                continue;
+            if (line[0] == '#')
+                continue;
+
+            auto linenum = ln.number;
+
+            auto debug = std::make_shared<debug_info>(filename,
+                                                      linenum,
+                                                      line);
+
+            auto cmd = command::parse(line, debug);
+            if (cmd == NULL) {
+                fprintf(stderr, "Unable to parse %s:%lu: '%s'\n",
+                        filename.c_str(),
+                        linenum,
+                        line.c_str()
+                    );
+                abort();
+            }
+
+            out.push_back(cmd);
+        }
     }
 
     return out;

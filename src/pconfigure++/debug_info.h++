@@ -18,13 +18,32 @@
  * along with pconfigure.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "command_processor.h++"
+#ifndef DEBUG_INFO_HXX
+#define DEBUG_INFO_HXX
 
-void command_processor::process(const command::ptr& cmd __attribute__((unused)))
-{
-    fprintf(stderr,
-            "command_processor::process(const command::ptr&):\n"
-            "\tUnimplemeted\n"
-        );
-    abort();
-}
+#include <memory>
+
+/* Stores debug info that allows us to figure out where exactly
+ * something came from when we're sitting deep inside command
+ * processing somewhere. */
+class debug_info {
+public:
+    typedef std::shared_ptr<debug_info> ptr;
+
+private:
+    const std::string _filename;
+    const size_t _line_number;
+    const std::string _line;
+
+public:
+    debug_info(const std::string& filename,
+               size_t line_number,
+               const std::string& line);
+
+public:
+    const std::string& filename(void) const { return _filename; }
+    const size_t& line_number(void) const { return _line_number; }
+    const std::string& line(void) const { return _line; }
+};
+
+#endif

@@ -108,6 +108,12 @@ COMPILEOPTS += -Werror
 COMPILEOPTS += -std=c++11
 COMPILEOPTS += -pedantic
 
+LANGUAGES   += c++
+COMPILEOPTS += -g
+LINKOPTS    += -g
+#COMPILEOPTS += -fsanitize=address
+#LINKOPTS    += -fsanitize=address
+
 # A rewrite of pconfigure that's designed to bring the whole system
 # into the 21st century!
 BINARIES    += pconfigure++

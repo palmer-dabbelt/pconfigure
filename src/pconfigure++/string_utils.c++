@@ -35,7 +35,7 @@ std::string string_utils::clean_white(const std::string& in)
         if (white && was_white)
             continue;
 
-        dup[oi] = in.c_str()[ii];
+        dup[oi] = white ? ' ' : in.c_str()[ii];
         oi++;
     }
     dup[oi] = '\0';

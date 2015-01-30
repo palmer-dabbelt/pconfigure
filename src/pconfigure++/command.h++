@@ -22,14 +22,30 @@
 #define COMMAND_HXX
 
 #include <memory>
+#include "command_type.h++"
+#include "debug_info.h++"
 
 /* Represents */
 class command {
 public:
     typedef std::shared_ptr<command> ptr;
 
+private:
+    command_type _type;
+    debug_info::ptr _debug_info;
+
 public:
-    static ptr parse(const std::string& str);
+    command(const command_type& type,
+            const debug_info::ptr& debug_info);
+
+public:
+    command_type type(void) const { return _type; }
+
+public:
+    /* Converts a command string (as stored in the Configfile or as a
+     * command-line argument) into an actual command object that's a
+     * whole lot safer. */
+    static ptr parse(const std::string& str, const debug_info::ptr& d);
 };
 
 #endif

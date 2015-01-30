@@ -18,13 +18,26 @@
  * along with pconfigure.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "command_processor.h++"
+#include "file_utils.h++"
+#include <cstdio>
+using namespace file_utils;
 
-void command_processor::process(const command::ptr& cmd __attribute__((unused)))
+#ifndef LINE_MAX
+#define LINE_MAX 1024
+#endif
+
+std::vector<struct line_and_number> file_utils::readlines_and_numbers(FILE *f)
 {
-    fprintf(stderr,
-            "command_processor::process(const command::ptr&):\n"
-            "\tUnimplemeted\n"
-        );
-    abort();
+    char line[LINE_MAX];
+    size_t num = 1;
+    std::vector<struct line_and_number> out;
+
+    while (std::fgets(line, LINE_MAX, f) != NULL) {
+        struct line_and_number lan;
+        lan.line = line;
+        lan.number = num;
+        out.push_back(lan);
+    }
+
+    return out;
 }

@@ -18,13 +18,13 @@
  * along with pconfigure.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "command_processor.h++"
+#include "debug_info.h++"
 
-void command_processor::process(const command::ptr& cmd __attribute__((unused)))
+debug_info::debug_info(const std::string& filename,
+                       size_t line_number,
+                       const std::string& line)
+    : _filename(filename),
+      _line_number(line_number),
+      _line(line)
 {
-    fprintf(stderr,
-            "command_processor::process(const command::ptr&):\n"
-            "\tUnimplemeted\n"
-        );
-    abort();
 }
