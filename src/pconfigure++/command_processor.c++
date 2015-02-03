@@ -22,7 +22,8 @@
 #include <iostream>
 
 command_processor::command_processor(void)
-    : _stack({std::make_shared<context>()})
+    : _stack({std::make_shared<context>()}),
+      _languages(std::make_shared<language_list>())
 {
 }
 
@@ -40,7 +41,28 @@ void command_processor::process(const command::ptr& cmd)
     case command_type::GENERATE:
     case command_type::HDRDIR:
     case command_type::HEADERS:
+        goto unimplemented;
+
     case command_type::LANGUAGES:
+    {
+        if (_languages->search(cmd->data()) != NULL)
+            return;
+
+        auto new_language = language_list::global_search(cmd->data());
+
+        if (new_language == NULL) {
+            std::cerr << "Unable to find language: '"
+                      << cmd->data()
+                      << "'\n";
+            abort();
+        }
+
+        auto clone = language::ptr(new_language->clone());
+        _languages->add(clone);
+
+        return;
+    }
+
     case command_type::LIBDIR:
     case command_type::LIBEXECS:
     case command_type::LIBRARIES:

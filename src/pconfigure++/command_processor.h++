@@ -25,6 +25,7 @@
 #include <stack>
 #include "command.h++"
 #include "context.h++"
+#include "language_list.h++"
 
 /* Contains the entire state of the build system.  This processes a
  * list of commands and converts it into a graph of dependencies that
@@ -37,6 +38,9 @@ public:
 private:
     /* This is the stack that's visible to the user of pconfigure. */
     std::stack<context::ptr> _stack;
+
+    /* The active language set. */
+    language_list::ptr _languages;
 
 public:
     /* Creates a new, mostly empty command processor (there is a
