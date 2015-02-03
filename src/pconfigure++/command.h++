@@ -46,6 +46,7 @@ public:
     command_type type(void) const { return _type; }
     const std::string& operation(void) const { return _op; }
     const std::string data(void) const { return _data; }
+    const debug_info::ptr& debug(void) const { return _debug_info; }
 
 public:
     /* Checks to make sure that the command's operation is exactly
