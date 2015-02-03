@@ -18,28 +18,32 @@
  * along with pconfigure.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LANGUAGE_HXX
-#define LANGUAGE_HXX
+#ifndef OPTS_TARGET_HXX
+#define OPTS_TARGET_HXX
 
 #include <memory>
-#include "opts_target.h++"
+#include <vector>
+#include <string>
 
-/* Contains a single language. */
-class language: public opts_target {
+/* There's a few things that can be a target for {COMPILE,LINK}OPTS
+ * commands, this provides a unified interface that lets me store a
+ * single pointer to whatever those should target so I don't have to
+ * have special cases floating around everywhere. */
+class opts_target {
 public:
-    typedef std::shared_ptr<language> ptr;
+    typedef std::shared_ptr<opts_target> ptr;
+
+protected:
+    std::vector<std::string> _compile_opts;
+    std::vector<std::string> _link_opts;
 
 public:
-    /* Returns the name of this language, which is used as a unique
-     * key when users refer to it from Configfiles. */
-    virtual std::string name(void) const = 0;
-
-    /* Returns a deep copy of this language, such that modifications
-     * of the returned language will not effect this language.  Note
-     * that this has to return a regular pointer (and not a
-     * shared_ptr) because C++11 doesn't support covariant return
-     * types. */
-    virtual language* clone(void) const = 0;
+    /* These all do pretty much what they say on the tin... */
+    virtual void add_compileopt(const std::string& data)
+        { _compile_opts.push_back(data); }
+    virtual void add_linkopt(const std::string& data)
+        { _link_opts.push_back(data); }
 };
 
 #endif
+

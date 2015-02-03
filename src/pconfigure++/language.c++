@@ -18,28 +18,4 @@
  * along with pconfigure.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LANGUAGE_HXX
-#define LANGUAGE_HXX
-
-#include <memory>
-#include "opts_target.h++"
-
-/* Contains a single language. */
-class language: public opts_target {
-public:
-    typedef std::shared_ptr<language> ptr;
-
-public:
-    /* Returns the name of this language, which is used as a unique
-     * key when users refer to it from Configfiles. */
-    virtual std::string name(void) const = 0;
-
-    /* Returns a deep copy of this language, such that modifications
-     * of the returned language will not effect this language.  Note
-     * that this has to return a regular pointer (and not a
-     * shared_ptr) because C++11 doesn't support covariant return
-     * types. */
-    virtual language* clone(void) const = 0;
-};
-
-#endif
+#include "language.h++"

@@ -26,6 +26,7 @@
 #include "command.h++"
 #include "context.h++"
 #include "language_list.h++"
+#include "opts_target.h++"
 
 /* Contains the entire state of the build system.  This processes a
  * list of commands and converts it into a graph of dependencies that
@@ -41,6 +42,9 @@ private:
 
     /* The active language set. */
     language_list::ptr _languages;
+
+    /* The object that should be touched for {COMPILE,LINK}OPTS. */
+    opts_target::ptr _opts_target;
 
 public:
     /* Creates a new, mostly empty command processor (there is a

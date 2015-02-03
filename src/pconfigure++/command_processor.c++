@@ -23,7 +23,8 @@
 
 command_processor::command_processor(void)
     : _stack({std::make_shared<context>()}),
-      _languages(std::make_shared<language_list>())
+      _languages(std::make_shared<language_list>()),
+      _opts_target(NULL)
 {
 }
 
@@ -34,7 +35,19 @@ void command_processor::process(const command::ptr& cmd)
     switch (cmd->type()) {
     case command_type::AUTODEPS:
     case command_type::BINARIES:
+        goto unimplemented;
+
     case command_type::COMPILEOPTS:
+        if (_opts_target == NULL)
+            goto no_opts_target;
+
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        _opts_target->add_compileopt(cmd->data());
+
+        return;
+
     case command_type::COMPILER:
     case command_type::CONFIG:
     case command_type::DEPLIBS:
@@ -45,8 +58,13 @@ void command_processor::process(const command::ptr& cmd)
 
     case command_type::LANGUAGES:
     {
-        if (_languages->search(cmd->data()) != NULL)
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        if (_languages->search(cmd->data()) != NULL) {
+            _opts_target = _languages->search(cmd->data());
             return;
+        }
 
         auto new_language = language_list::global_search(cmd->data());
 
@@ -59,6 +77,7 @@ void command_processor::process(const command::ptr& cmd)
 
         auto clone = language::ptr(new_language->clone());
         _languages->add(clone);
+        _opts_target = clone;
 
         return;
     }
@@ -67,8 +86,18 @@ void command_processor::process(const command::ptr& cmd)
     case command_type::LIBEXECS:
     case command_type::LIBRARIES:
     case command_type::LINKER:
-    case command_type::LINKOPTS:
         goto unimplemented;
+
+    case command_type::LINKOPTS:
+        if (_opts_target == NULL)
+            goto no_opts_target;
+
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        _opts_target->add_linkopt(cmd->data());
+
+        return;
 
     case command_type::PREFIX:
         if (cmd->check_operation("=") != true)
@@ -93,7 +122,9 @@ void command_processor::process(const command::ptr& cmd)
         break;
     }
 
-    std::cerr << "Bad command index\n";
+    std::cerr << "Bad command index on '"
+              << std::to_string(cmd->debug())
+              << "'\n";
     abort();
 
 bad_op_eq:
@@ -102,5 +133,19 @@ bad_op_eq:
               << " only supports '=', but given "
               << cmd->operation()
               << "\n";
+    abort();
+
+bad_op_pluseq:
+    std::cerr << "Command "
+              << std::to_string(cmd->type())
+              << " only supports '+=', but given "
+              << cmd->operation()
+              << "\n";
+    abort();
+
+no_opts_target:
+    std::cerr << "Command "
+              << std::to_string(cmd->type())
+              << " needs an *OPTS target, but none exists\n";
     abort();
 }
