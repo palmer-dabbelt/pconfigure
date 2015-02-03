@@ -28,3 +28,14 @@ debug_info::debug_info(const std::string& filename,
       _line(line)
 {
 }
+
+std::string std::to_string(const std::shared_ptr<debug_info>& di)
+{
+    return di->filename()
+        + std::string(":")
+        + std::to_string(di->line_number())
+        + std::string(" '")
+        + di->line()
+        + std::string("'");
+}
+

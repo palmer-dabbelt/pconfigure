@@ -46,4 +46,8 @@ public:
     const std::string& line(void) const { return _line; }
 };
 
+namespace std {
+    string to_string(const std::shared_ptr<debug_info>& di);
+}
+
 #endif
