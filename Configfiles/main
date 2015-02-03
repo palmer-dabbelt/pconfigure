@@ -119,6 +119,8 @@ LINKOPTS    += -g
 BINARIES    += pconfigure++
 SOURCES     += pconfigure++/main.c++
 SOURCES     += pconfigure++/languages/c.c++
+SOURCES     += pconfigure++/languages/bash.c++
+SOURCES     += pconfigure++/languages/pkgconfig.c++
 
 # These command-line tools are technically availiable for external
 # usage, but they're really just for internal tests.
