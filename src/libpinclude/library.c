@@ -49,6 +49,8 @@
 
 static void str_chomp(char *str);
 
+static int streqcmp(char *str, char *eq);
+
 static int _pinclude_lines(const char *input,
                            pinclude_callback_t per_include,
                            void *include_priv, pinclude_lineback_t per_line,
@@ -122,7 +124,7 @@ static int _pinclude_lines(const char *input,
 
             matched = false;
             for (i = 0; defined[i] != NULL; i++)
-                if (strcmp(define, defined[i]) == 0)
+                if (streqcmp(define, defined[i]) == 0)
                     matched = true;
 
             state_i++;
@@ -314,9 +316,9 @@ int pinclude_lines(const char *filename,
 {
     int err;
     int i;
-    char *included[LINE_MAX];
+    char *included[FILE_MAX];
 
-    for (i = 0; i < LINE_MAX; i++)
+    for (i = 0; i < FILE_MAX; i++)
         included[i] = NULL;
 
     err = _pinclude_lines(filename,
@@ -335,4 +337,12 @@ void str_chomp(char *str)
 {
     while ((strlen(str) > 0) && isspace(str[strlen(str) - 1]))
         str[strlen(str) - 1] = '\0';
+}
+
+int streqcmp(char *str, char *eq)
+{
+    if (strstr(eq, "=") == NULL)
+        return strcmp(str, eq);
+
+    return strncmp(str, eq, strstr(eq, "=") - eq);
 }
