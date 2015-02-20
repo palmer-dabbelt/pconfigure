@@ -22,6 +22,7 @@
 #define COMMAND_TYPE_HXX
 
 #include <cstring>
+#include <string>
 #include <vector>
 
 /* Commands can consist of a number of different sorts of operations,

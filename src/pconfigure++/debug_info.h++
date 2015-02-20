@@ -22,6 +22,7 @@
 #define DEBUG_INFO_HXX
 
 #include <memory>
+#include <string>
 
 /* Stores debug info that allows us to figure out where exactly
  * something came from when we're sitting deep inside command

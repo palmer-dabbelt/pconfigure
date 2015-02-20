@@ -22,6 +22,7 @@
 #define CONTEXT_HXX
 
 #include <memory>
+#include <string>
 
 /* The super-entry for a context.  There will be one of these contexts
  * for everything the build system knows about.  This pretty much
