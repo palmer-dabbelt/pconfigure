@@ -57,6 +57,7 @@ SOURCES	    += pbashc.c
 TESTSRC     += simple.bash
 TESTSRC     += samedir.bash
 TESTSRC     += define.bash
+TESTSRC     += define2.bash
 
 BINARIES    += pperlc
 DEPLIBS     += pinclude

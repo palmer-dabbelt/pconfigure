@@ -197,9 +197,9 @@ char *replace(const char *line, const char *pair)
             out[oi] = line[ii];
             oi++;
             ii++;
+            out[oi] = '\0';
         }
     }
-    out[oi] = '\0';
 
     free(from);
     return out;
