@@ -117,7 +117,7 @@ LINKOPTS    += -g
 
 # A rewrite of pconfigure that's designed to bring the whole system
 # into the 21st century!
-BINARIES    += pconfigure++
+LIBEXECS    += pconfigure++
 SOURCES     += pconfigure++/main.c++
 SOURCES     += pconfigure++/languages/c.c++
 SOURCES     += pconfigure++/languages/bash.c++
