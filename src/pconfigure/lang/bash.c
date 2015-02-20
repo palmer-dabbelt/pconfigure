@@ -166,7 +166,7 @@ void language_bash_link(struct language *l_uncast, struct context *c,
     func_stringlist_each_cmd_cont(l->l.link_opts, func);
     func_stringlist_each_cmd_cont(c->link_opts, func);
 
-    func(false, "\\-I%s", c->gen_dir);
+    func(false, "\\ -I%s", c->gen_dir);
 
     /* FIXME: deps() doesn't get called because this isn't compiled
      * code so we need to fake this with extras() instead.  That means
