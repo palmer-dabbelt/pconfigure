@@ -56,13 +56,18 @@ static FILE *outfile;
 /* Writes a line out to the output file. */
 static int write_line(const char *line, void *unused);
 
+/* Pretty much does sed, but with a bit of massaging and only
+ * string-to-string. */
+static char *replace(const char *line, const char *pair);
+
 int main(int argc, char **argv)
 {
     char *input, *output;
     char *last;
     char **dirs;
+    char **defs;
     int dirs_count;
-    char *defs[1];
+    int defs_count;
     int i;
     char *chmod;
     int chmod_size;
@@ -72,23 +77,25 @@ int main(int argc, char **argv)
     output = NULL;
     last = NULL;
     dirs_count = 0;
+    defs_count = 0;
 
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-o") == 0)
             last = argv[i];
+        else if (strncmp(argv[i], "-I", 2) == 0)
+            dirs_count++;
+        else if (strncmp(argv[i], "-D", 2) == 0)
+            defs_count++;
         else if (last == NULL)
             input = argv[i];
         else if (strcmp(last, "-o") == 0) {
             output = argv[i];
             last = NULL;
-        } else if (strncmp(argv[i], "-I", 2) == 0) {
-            dirs_count++;
         }
     }
 
     dirs = malloc(sizeof(*dirs) * (dirs_count + 1));
     dirs_count = 0;
-    defs[0] = NULL;
     for (i = 1; i < argc; i++) {
         if (strncmp(argv[i], "-I", 2) == 0) {
             dirs[dirs_count] = argv[i] + 2;
@@ -96,6 +103,16 @@ int main(int argc, char **argv)
         }
     }
     dirs[dirs_count] = NULL;
+
+    defs = malloc(sizeof(*defs) * (defs_count + 1));
+    defs_count = 0;
+    for (i = 1; i < argc; i++) {
+        if (strncmp(argv[i], "-D", 2) == 0) {
+            defs[defs_count] = argv[i] + 2;
+            defs_count++;
+        }
+    }
+    defs[defs_count] = NULL;
 
     if ((input == NULL) || (output == NULL)) {
         fprintf(stderr, "needs 2 arguments\ninput '%s'\noutput '%s'\n",
@@ -107,7 +124,10 @@ int main(int argc, char **argv)
 
     fprintf(outfile, SHEBANG "\n");
 
-    pinclude_lines(input, NULL, NULL, &write_line, NULL, dirs, defs);
+    if (pinclude_lines(input, NULL, NULL, &write_line, defs, dirs, defs) != 0) {
+        fprintf(stderr, "pinclude failed to parse input: '%s'\n", input);
+        abort();
+    }
 
     fclose(outfile);
 
@@ -119,8 +139,68 @@ int main(int argc, char **argv)
     return ret;
 }
 
-int write_line(const char *line, void *unused __attribute__ ((unused)))
+int write_line(const char *line, void *defs_uncast)
 {
-    fputs(line, outfile);
+    const char **defs = defs_uncast;
+    char *new_line = strdup(line);
+    while (*defs != NULL) {
+        char *old_line = new_line;
+        if (strstr(*defs, "=") != NULL) {
+            new_line = replace(old_line, *defs);
+            free(old_line);
+        }
+        defs++;
+    }
+
+    fputs(new_line, outfile);
+    free(new_line);
+
     return 0;
+}
+
+char *replace(const char *line, const char *pair)
+{
+    char *from, *to, *out;
+    int count;
+    size_t ii, oi;
+
+    to = strstr(pair, "=");
+    if (to == NULL)
+        return strdup(line);
+
+    from = strndup(pair, to - pair);
+    to++;
+
+    count = 0;
+    for (ii = 0; ii < strlen(line); ++ii)
+        if (strncmp(line + ii, from, strlen(from)) == 0)
+            count++;
+
+    out = malloc(strlen(line)
+                 + (strlen(to) * count)
+                 - (strlen(from) * count)
+                 + 1);
+    if (out == NULL) {
+        perror("Unable to malloc()");
+        free(from);
+        return NULL;
+    }
+
+    ii = oi = 0;
+    out[0] = '\0';
+    while (ii < strlen(line)) {
+        if (strncmp(line + ii, from, strlen(from)) == 0) {
+            strcat(out + oi, to);
+            ii += strlen(from);
+            oi += strlen(to);
+        } else {
+            out[oi] = line[ii];
+            oi++;
+            ii++;
+        }
+    }
+    out[oi] = '\0';
+
+    free(from);
+    return out;
 }
