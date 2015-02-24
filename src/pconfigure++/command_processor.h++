@@ -50,10 +50,18 @@ private:
      * stack. */
     std::vector<context::ptr> _all_contexts;
 
+    /* A list of every target that needs to be output explicitly. */
+    std::vector<context::ptr> _output_contexts;
+
 public:
     /* Creates a new, mostly empty command processor (there is a
      * default context on the stack, for example). */
     command_processor(void);
+
+public:
+    /* Accessor methods. */
+    const std::vector<context::ptr>& output_contexts(void) const
+        { return _output_contexts; }
 
 public:
     /* Processes a single command, performing the action that should

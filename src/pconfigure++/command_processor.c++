@@ -44,6 +44,7 @@ void command_processor::process(const command::ptr& cmd)
         dup_tos_and_push(context_type::BINARY, cmd);
 
         _opts_target = _stack.top();
+        _output_contexts.push_back(_stack.top());
 
         return;
 
@@ -89,6 +90,7 @@ void command_processor::process(const command::ptr& cmd)
         dup_tos_and_push(context_type::GENERATE, cmd);
 
         _opts_target = _stack.top();
+        _output_contexts.push_back(_stack.top());
 
         return;
 
@@ -135,6 +137,7 @@ void command_processor::process(const command::ptr& cmd)
         _stack.top()->bin_dir = _stack.top()->libexec_dir;
 
         _opts_target = _stack.top();
+        _output_contexts.push_back(_stack.top());
 
         return;
 
@@ -146,6 +149,7 @@ void command_processor::process(const command::ptr& cmd)
         dup_tos_and_push(context_type::LIBRARY, cmd);
 
         _opts_target = _stack.top();
+        _output_contexts.push_back(_stack.top());
 
         return;
 
@@ -215,7 +219,6 @@ void command_processor::process(const command::ptr& cmd)
                     context_type::BINARY,});
         dup_tos_and_push(context_type::TEST, cmd);
         dup_tos_and_push(context_type::SOURCE, cmd);
-
         _opts_target = _stack.top();
 
         return;
