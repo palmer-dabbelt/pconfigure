@@ -19,8 +19,17 @@ then
     then
         echo ".git/$ref"
     else
-        echo ".git/refs/heads/master"
+        if test -f ".git/refs/heads/master"
+        then
+            echo ".git/refs/heads/master"
+        fi
     fi
+
+    if test -f ".git/packed-refs"
+    then
+        echo  ".git/packed-refs"
+    fi
+
     exit 0
 fi
 
