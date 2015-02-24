@@ -187,7 +187,7 @@ void command_processor::process(const command::ptr& cmd)
                     context_type::GENERATE,
                     context_type::LIBRARY,
                     context_type::BINARY,});
-        dup_tos_and_push(context_type::SOURCE, cmd);
+        dup_tos_and_push(context_type::TEST, cmd);
 
         _opts_target = _stack.top();
 
