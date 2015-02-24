@@ -194,6 +194,20 @@ void command_processor::process(const command::ptr& cmd)
         return;
 
     case command_type::TESTSRC:
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        clear_until({context_type::DEFAULT,
+                    context_type::GENERATE,
+                    context_type::LIBRARY,
+                    context_type::BINARY,});
+        dup_tos_and_push(context_type::TEST, cmd);
+        dup_tos_and_push(context_type::SOURCE, cmd);
+
+        _opts_target = _stack.top();
+
+        return;
+
     case command_type::TGENERATE:
         unimplemented:
         std::cerr << "Command "
