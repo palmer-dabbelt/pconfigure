@@ -24,27 +24,29 @@
 static language_list _global;
 
 language_list::language_list(void)
-    : _languages()
+    : _languages_lookup(),
+      _languages_list()
 {
 }
 
 void language_list::add(const language::ptr& lang)
 {
-    auto l = _languages.find(lang->name());
-    if (l != _languages.end()) {
+    auto l = _languages_lookup.find(lang->name());
+    if (l != _languages_lookup.end()) {
         std::cerr << "Language '"
                   << lang->name()
                   << "' added twice\n";
         abort();
     }
 
-    _languages[lang->name()] = lang;
+    _languages_lookup[lang->name()] = lang;
+    _languages_list.push_back(lang);
 }
 
 language::ptr language_list::search(const std::string& name)
 {
-    auto l = _languages.find(name);
-    if (l == _languages.end())
+    auto l = _languages_lookup.find(name);
+    if (l == _languages_lookup.end())
         return NULL;
 
     return l->second;

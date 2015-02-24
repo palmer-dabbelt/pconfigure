@@ -18,23 +18,28 @@
  * along with pconfigure.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LANGUAGES__PKGCONFIG_CXX
-#define LANGUAGES__PKGCONFIG_CXX
+#ifndef LIBMAKEFILE__MAKEFILE_HXX
+#define LIBMAKEFILE__MAKEFILE_HXX
 
-#include "../language.h++"
 #include <memory>
 
-/* PKGCONFIG is the first language I have that doesn't need a compile
- * phase. */
-class language_pkgconfig: public language {
-public:
-    typedef std::shared_ptr<language_pkgconfig> ptr;
+namespace makefile {
+    /* Wraps up the data contained within a Makefile with objects so
+     * you don't have to know too much about the text format of a
+     * Makefile and can instead rely on simply generating some
+     * objects. */
+    class makefile {
+    public:
+        typedef std::shared_ptr<makefile> ptr;
 
-public:
-    /* Virtual methods from language. */
-    virtual std::string name(void) const { return "pkgconfig"; }
-    virtual language_pkgconfig* clone(void) const;
-    virtual bool can_process(const context::ptr& ctx) const;
-};
+    private:
+
+    public:
+        /* Creates a new "empty" Makefile -- note that this actually
+         * contains some about of default targets and such that you
+         * don't want if you're going to be */
+        makefile(void);
+    };
+}
 
 #endif

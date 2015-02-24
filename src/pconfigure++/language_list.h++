@@ -23,7 +23,7 @@
 
 #include <memory>
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include "language.h++"
 
 /* Contains the list of languages that can be supported by  */
@@ -32,7 +32,8 @@ public:
     typedef std::shared_ptr<language_list> ptr;
 
 private:
-    std::map<std::string, language::ptr> _languages;
+    std::unordered_map<std::string, language::ptr> _languages_lookup;
+    std::vector<language::ptr> _languages_list;
 
 public:
     /* Creates a new language list without any languages in it at
@@ -46,6 +47,12 @@ public:
     /* Searches through this language list for a matching item. */
     language::ptr search(const std::string& name);
 
+    /* Allow for range-based for loops. */
+    std::vector<language::ptr>::const_iterator begin(void) const
+        { return std::begin(_languages_list); }
+    std::vector<language::ptr>::const_iterator end(void) const
+        { return std::end(_languages_list); }
+
 public:
     /* There's also a global list of languages, which is where every
      * language in the system ends up registered.  These functions
@@ -53,5 +60,13 @@ public:
     static void global_add(const language::ptr& lang);
     static language::ptr global_search(const std::string& name);
 };
+
+static __inline__
+std::vector<language::ptr>::const_iterator begin(const language_list::ptr& ll)
+{ return ll->begin(); }
+static __inline__
+std::vector<language::ptr>::const_iterator end(const language_list::ptr& ll)
+{ return ll->end(); }
+
 
 #endif

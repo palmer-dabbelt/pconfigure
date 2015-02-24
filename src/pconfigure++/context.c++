@@ -19,6 +19,7 @@
  */
 
 #include "context.h++"
+#include <sstream>
 
 context::context(void)
     : type(context_type::DEFAULT),
@@ -26,7 +27,8 @@ context::context(void)
       gen_dir("obj/proc"),
       bin_dir("bin"),
       libexec_dir("libexec"),
-      cmd(NULL)
+      cmd(NULL),
+      children()
 {
 }
 
@@ -35,25 +37,29 @@ context::context(const context_type& _type,
                  const std::string& _gen_dir,
                  const std::string& _bin_dir,
                  const std::string& _libexec_dir,
-                 const command::ptr& _cmd)
+                 const command::ptr& _cmd,
+                 const std::vector<ptr>& _children)
     : type(_type),
       prefix(_prefix),
       gen_dir(_gen_dir),
       bin_dir(_bin_dir),
       libexec_dir(_libexec_dir),
-      cmd(_cmd)
+      cmd(_cmd),
+      children(_children)
 {
 }
 
 context::ptr context::dup(const context_type& type,
-                          const command::ptr& cmd)
+                          const command::ptr& cmd,
+                          const std::vector<ptr>& children)
 {
     return std::make_shared<context>(type,
                                      this->prefix,
                                      this->gen_dir,
                                      this->bin_dir,
                                      this->libexec_dir,
-                                     cmd);
+                                     cmd,
+                                     children);
 }
 
 bool context::check_type(const std::vector<context_type>& types)
@@ -63,6 +69,21 @@ bool context::check_type(const std::vector<context_type>& types)
             return true;
 
     return false;
+}
+
+std::string context::as_tree_string(const std::string prefix) const
+{
+    std::stringstream ss;
+
+    ss << prefix
+       << "[" << std::to_string(type) << "]" << " "
+       << cmd->data()
+       << "\n";
+
+    for (const auto& child: children)
+        ss << child->as_tree_string(prefix + "  ");
+
+    return ss.str();
 }
 
 void context::add_compileopt(const std::string& data)

@@ -37,6 +37,7 @@ std::vector<struct line_and_number> file_utils::readlines_and_numbers(FILE *f)
         lan.line = line;
         lan.number = num;
         out.push_back(lan);
+        num++;
     }
 
     return out;

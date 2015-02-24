@@ -20,10 +20,48 @@
 
 #include "cxx.h++"
 #include "../language_list.h++"
+#include <iostream>
 
 language_cxx* language_cxx::clone(void) const
 {
     return new language_cxx();
+}
+
+bool language_cxx::can_process(const context::ptr& ctx) const
+{
+    if (language::all_sources_match(ctx,
+                                    {std::regex(".*\\.C"),
+                                     std::regex(".*\\.cxx")})) {
+        return true;
+    }
+
+    /* This works around a C++11 regex bug in GCC versions prior to
+     * 4.9 -- specifically, I can't match the "c++" extension because
+     * the old regex implementation doesn't appear to support escaping
+     * the '+' character. */
+    if (language::all_sources_match(ctx, {std::regex(".*\\.c..")})) {
+        for (const auto& child: ctx->children) {
+            switch (child->type) {
+            case context_type::DEFAULT:
+            case context_type::GENERATE:
+            case context_type::LIBRARY:
+            case context_type::BINARY:
+            case context_type::TEST:
+                break;
+
+            case context_type::SOURCE:
+            {
+                auto file = child->cmd->data();
+                if (file.find(".c++", file.length() - 5) == std::string::npos)
+                    return false;
+            }
+            }
+        }
+
+        return true;
+    }
+
+    return false;
 }
 
 static void install_cxx(void) __attribute__((constructor));

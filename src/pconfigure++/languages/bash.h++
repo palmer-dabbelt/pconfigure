@@ -34,6 +34,7 @@ public:
     /* Virtual methods from language. */
     virtual std::string name(void) const { return "bash"; }
     virtual language_bash* clone(void) const;
+    virtual bool can_process(const context::ptr& ctx) const;
 };
 
 #endif

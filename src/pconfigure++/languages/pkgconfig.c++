@@ -26,6 +26,16 @@ language_pkgconfig* language_pkgconfig::clone(void) const
     return new language_pkgconfig();
 }
 
+bool language_pkgconfig::can_process(const context::ptr& ctx) const
+{
+    return language::all_sources_match(
+        ctx,
+        {
+            std::regex(".*\\.pc"),
+        }
+        );
+}
+
 static void install_pkgconfig(void) __attribute__((constructor));
 void install_pkgconfig(void)
 {

@@ -21,10 +21,15 @@
 #ifndef LANGUAGE_HXX
 #define LANGUAGE_HXX
 
-#include <memory>
+#include "context.h++"
 #include "opts_target.h++"
+#include <memory>
+#include <regex>
 
-/* Contains a single language. */
+/* Contains a single language.  Languages take contexts (which the
+ * Configfile parser understands) and turn them into targets (which
+ * the Makefile generator understands) in a way that's specific to
+ * each source language. */
 class language: public opts_target {
 public:
     typedef std::shared_ptr<language> ptr;
@@ -46,9 +51,25 @@ public:
      * types. */
     virtual language* clone(void) const = 0;
 
+    /* Returns TRUE if this language can process the given context. */
+    virtual bool can_process(const context::ptr& ctx) const = 0;
+
+    /* Returns an arbitrary integer.  When multiple languages are
+     * capable of processing a context then the one of largest
+     * priority will be picked. */
+    virtual int priority(void) const { return 0; }
+
     /* Virtual methods from opts_target. */
     virtual void add_compileopt(const std::string& data);
     virtual void add_linkopt(const std::string& data);
+
+protected:
+    /* Returns TRUE if every source that's a direct child of the given
+     * context has a name that matches any one of the given regular
+     * expressions.  Essentially this is a helper function that allows
+     * a language to check if it can build the given codebase. */
+    static bool all_sources_match(const context::ptr& ctx,
+                                  const std::vector<std::regex>& rxs);
 };
 
 #endif

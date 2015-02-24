@@ -18,23 +18,18 @@
  * along with pconfigure.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LANGUAGES__PKGCONFIG_CXX
-#define LANGUAGES__PKGCONFIG_CXX
+#ifndef TARGET_HXX
+#define TARGET_HXX
 
-#include "../language.h++"
 #include <memory>
 
-/* PKGCONFIG is the first language I have that doesn't need a compile
- * phase. */
-class language_pkgconfig: public language {
+/* Contains a target, which is something that can be passed to "make"
+ * in order to actually generate code. */
+class target {
 public:
-    typedef std::shared_ptr<language_pkgconfig> ptr;
+    typedef std::shared_ptr<target> ptr;
 
-public:
-    /* Virtual methods from language. */
-    virtual std::string name(void) const { return "pkgconfig"; }
-    virtual language_pkgconfig* clone(void) const;
-    virtual bool can_process(const context::ptr& ctx) const;
+private:
 };
 
 #endif

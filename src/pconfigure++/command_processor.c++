@@ -272,6 +272,7 @@ void command_processor::clear_until(const std::vector<context_type>& types)
 void command_processor::dup_tos_and_push(const context_type& type,
                                          const command::ptr& cmd)
 {
-    auto nctx = _stack.top()->dup(type, cmd);
+    auto nctx = _stack.top()->dup(type, cmd, {});
+    _stack.top()->children.push_back(nctx);
     _stack.push(nctx);
 }

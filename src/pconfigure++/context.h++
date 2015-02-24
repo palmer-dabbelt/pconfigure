@@ -74,6 +74,9 @@ public:
      * later. */
     const command::ptr cmd;
 
+    /* The children of this context. */
+    std::vector<ptr> children;
+
 public:
     /* Creates a new context with everything filled in to the default
      * values.  Note that you probably don't want to use this unless
@@ -87,17 +90,24 @@ public:
             const std::string& gen_dir,
             const std::string& bin_dir,
             const std::string& libexec_dir,
-            const command::ptr& cmd);
+            const command::ptr& cmd,
+            const std::vector<ptr>& children);
 
 public:
     /* Duplicates the current context, potentially substituting in
      * some new values. */
     ptr dup(void);
-    ptr dup(const context_type& type, const command::ptr& cmd);
+    ptr dup(const context_type& type,
+            const command::ptr& cmd,
+            const std::vector<ptr>& children);
 
     /* Checks to see if the context matches one of the given types,
      * returning TRUE if it matches, and FALSE if it doesn't. */
     bool check_type(const std::vector<context_type>& types);
+
+    /* Converts this context to a string, dumping the whole tree of
+     * children out with it. */
+    std::string as_tree_string(const std::string prefix = "") const;
 
     /* Virtual methods from opts_target. */
     virtual void add_compileopt(const std::string& data);

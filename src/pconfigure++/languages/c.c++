@@ -20,10 +20,21 @@
 
 #include "c.h++"
 #include "../language_list.h++"
+#include <iostream>
 
 language_c* language_c::clone(void) const
 {
     return new language_c();
+}
+
+bool language_c::can_process(const context::ptr& ctx) const
+{
+    return language::all_sources_match(
+        ctx,
+        {
+            std::regex(".*\\.c"),
+        }
+        );
 }
 
 static void install_c(void) __attribute__((constructor));

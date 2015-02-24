@@ -62,6 +62,8 @@ public:
     /* Accessor methods. */
     const std::vector<context::ptr>& output_contexts(void) const
         { return _output_contexts; }
+    const language_list::ptr& languages(void) const
+        { return _languages; }
 
 public:
     /* Processes a single command, performing the action that should

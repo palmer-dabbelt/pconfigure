@@ -26,6 +26,16 @@ language_bash* language_bash::clone(void) const
     return new language_bash();
 }
 
+bool language_bash::can_process(const context::ptr& ctx) const
+{
+    return language::all_sources_match(
+        ctx,
+        {
+            std::regex(".*\\.bash"),
+        }
+        );
+}
+
 static void install_bash(void) __attribute__((constructor));
 void install_bash(void)
 {

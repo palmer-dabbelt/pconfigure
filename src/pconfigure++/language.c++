@@ -19,6 +19,7 @@
  */
 
 #include "language.h++"
+#include <iostream>
 
 void language::add_compileopt(const std::string& data)
 {
@@ -28,4 +29,35 @@ void language::add_compileopt(const std::string& data)
 void language::add_linkopt(const std::string& data)
 {
     _link_opts.push_back(data);
+}
+
+bool language::all_sources_match(const context::ptr& ctx,
+                                 const std::vector<std::regex>& rxs)
+{
+    for (const auto& child: ctx->children) {
+        switch (child->type) {
+        case context_type::DEFAULT:
+        case context_type::GENERATE:
+        case context_type::LIBRARY:
+        case context_type::BINARY:
+        case context_type::TEST:
+            break;
+
+        case context_type::SOURCE:
+        {
+            size_t matched = 0;
+            for (const auto& rx: rxs) {
+                if (std::regex_match(child->cmd->data(), rx))
+                    matched++;
+            }
+
+            if (matched == 0)
+                return false;
+
+            break;
+        }
+        }
+    }
+
+    return true;
 }
