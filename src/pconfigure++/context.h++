@@ -23,6 +23,9 @@
 
 #include <memory>
 #include <string>
+#include "context_type.h++"
+#include "command.h++"
+#include "opts_target.h++"
 
 /* The super-entry for a context.  There will be one of these contexts
  * for everything the build system knows about.  This pretty much
@@ -30,7 +33,7 @@
  * Configfile language): the state of the system consists of a stack
  * of these contexts, most commands modify the state of that stack
  * (some effect global variables). */
-class context {
+class context: public opts_target {
 public:
     typedef std::shared_ptr<context> ptr;
 
@@ -39,9 +42,24 @@ public:
      * context is just a big structure where anything can change at
      * any time, so it kind of makes sense... */
 
+    /* Identifies what sort of command generated this context. */
+    const context_type type;
+
     /* The location into which the resulting files will be
      * installed. */
     std::string prefix;
+
+    /* The location at which the output from GENERATE commands should
+     * go. */
+    std::string gen_dir;
+
+    /* These implement "opts_target" */
+    std::vector<std::string> compile_opts;
+    std::vector<std::string> link_opts;
+
+    /* The exact command issued, which allows all sorts of debugging
+     * later. */
+    const command::ptr cmd;
 
 public:
     /* Creates a new context with everything filled in to the default
@@ -49,6 +67,22 @@ public:
      * you're creating a new context stack, you really want to
      * clone a context and then modify it. */
     context(void);
+
+    /* Allows every field inside a context to be set. */
+    context(const context_type& type,
+            const std::string& prefix,
+            const std::string& gen_dir,
+            const command::ptr& cmd);
+
+public:
+    /* Duplicates the current context, potentially substituting in
+     * some new values. */
+    ptr dup(void);
+    ptr dup(const context_type& type, const command::ptr& cmd);
+
+    /* Virtual methods from opts_target. */
+    virtual void add_compileopt(const std::string& data);
+    virtual void add_linkopt(const std::string& data);
 };
 
 #endif

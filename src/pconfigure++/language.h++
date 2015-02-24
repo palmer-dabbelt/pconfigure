@@ -29,6 +29,11 @@ class language: public opts_target {
 public:
     typedef std::shared_ptr<language> ptr;
 
+private:
+    /* These implement "opts_target" */
+    std::vector<std::string> _compile_opts;
+    std::vector<std::string> _link_opts;
+
 public:
     /* Returns the name of this language, which is used as a unique
      * key when users refer to it from Configfiles. */
@@ -40,6 +45,10 @@ public:
      * shared_ptr) because C++11 doesn't support covariant return
      * types. */
     virtual language* clone(void) const = 0;
+
+    /* Virtual methods from opts_target. */
+    virtual void add_compileopt(const std::string& data);
+    virtual void add_linkopt(const std::string& data);
 };
 
 #endif

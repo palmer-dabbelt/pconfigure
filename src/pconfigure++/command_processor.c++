@@ -34,8 +34,18 @@ void command_processor::process(const command::ptr& cmd)
 
     switch (cmd->type()) {
     case command_type::AUTODEPS:
-    case command_type::BINARIES:
         goto unimplemented;
+
+    case command_type::BINARIES:
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        clear_until({context_type::DEFAULT});
+        dup_tos_and_push(context_type::BINARY, cmd);
+
+        _opts_target = _stack.top();
+
+        return;
 
     case command_type::COMPILEOPTS:
         if (_opts_target == NULL)
@@ -51,7 +61,19 @@ void command_processor::process(const command::ptr& cmd)
     case command_type::COMPILER:
     case command_type::CONFIG:
     case command_type::DEPLIBS:
+        goto unimplemented;
+
     case command_type::GENERATE:
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        clear_until({context_type::DEFAULT});
+        dup_tos_and_push(context_type::GENERATE, cmd);
+
+        _opts_target = _stack.top();
+
+        return;
+
     case command_type::HDRDIR:
     case command_type::HEADERS:
         goto unimplemented;
@@ -84,7 +106,19 @@ void command_processor::process(const command::ptr& cmd)
 
     case command_type::LIBDIR:
     case command_type::LIBEXECS:
+        goto unimplemented;
+
     case command_type::LIBRARIES:
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        clear_until({context_type::DEFAULT});
+        dup_tos_and_push(context_type::LIBRARY, cmd);
+
+        _opts_target = _stack.top();
+
+        return;
+
     case command_type::LINKER:
         goto unimplemented;
 
@@ -108,10 +142,39 @@ void command_processor::process(const command::ptr& cmd)
         return;
 
     case command_type::SOURCES:
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        clear_until({context_type::DEFAULT,
+                    context_type::GENERATE,
+                    context_type::LIBRARY,
+                    context_type::BINARY,
+                    context_type::TEST});
+        dup_tos_and_push(context_type::SOURCE, cmd);
+
+        _opts_target = _stack.top();
+
+        return;
+
     case command_type::SRCDIR:
     case command_type::TESTDEPS:
     case command_type::TESTDIR:
+        goto unimplemented;
+
     case command_type::TESTS:
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        clear_until({context_type::DEFAULT,
+                    context_type::GENERATE,
+                    context_type::LIBRARY,
+                    context_type::BINARY,});
+        dup_tos_and_push(context_type::SOURCE, cmd);
+
+        _opts_target = _stack.top();
+
+        return;
+
     case command_type::TESTSRC:
     case command_type::TGENERATE:
         unimplemented:
@@ -148,4 +211,24 @@ no_opts_target:
               << std::to_string(cmd->type())
               << " needs an *OPTS target, but none exists\n";
     abort();
+}
+
+void command_processor::clear_until(const std::vector<context_type>& types)
+{
+    do {
+        for (const auto& type: types) 
+            if (_stack.top()->type == type)
+                return;
+
+        auto top = _stack.top();
+        _stack.pop();
+        _all_contexts.push_back(top);
+    } while (_stack.size() > 0);
+}
+
+void command_processor::dup_tos_and_push(const context_type& type,
+                                         const command::ptr& cmd)
+{
+    auto nctx = _stack.top()->dup(type, cmd);
+    _stack.push(nctx);
 }

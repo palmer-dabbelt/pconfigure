@@ -46,6 +46,10 @@ private:
     /* The object that should be touched for {COMPILE,LINK}OPTS. */
     opts_target::ptr _opts_target;
 
+    /* A list of every target that's ever been part of the context
+     * stack. */
+    std::vector<context::ptr> _all_contexts;
+
 public:
     /* Creates a new, mostly empty command processor (there is a
      * default context on the stack, for example). */
@@ -55,6 +59,16 @@ public:
     /* Processes a single command, performing the action that should
      * be associated with that command. */
     void process(const command::ptr& command);
+
+private:
+    /* Clears the stack until it reaches one of the following types of
+     * context, saving every popped context into _all_contexts. */
+    void clear_until(const std::vector<context_type>& types);
+
+    /* Duplicates the TOS, but with a new context type and an
+     * argument, and then pushes it onto the stack. */
+    void dup_tos_and_push(const context_type& type,
+                          const command::ptr& cmd);
 };
 
 #endif

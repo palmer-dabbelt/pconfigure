@@ -33,17 +33,11 @@ class opts_target {
 public:
     typedef std::shared_ptr<opts_target> ptr;
 
-protected:
-    std::vector<std::string> _compile_opts;
-    std::vector<std::string> _link_opts;
-
 public:
-    /* These all do pretty much what they say on the tin... */
-    virtual void add_compileopt(const std::string& data)
-        { _compile_opts.push_back(data); }
-    virtual void add_linkopt(const std::string& data)
-        { _link_opts.push_back(data); }
+    /* These all do pretty much what they say on the tin -- add
+     * something to the relevant options field. */
+    virtual void add_compileopt(const std::string& data) = 0;
+    virtual void add_linkopt(const std::string& data) = 0;
 };
 
 #endif
-

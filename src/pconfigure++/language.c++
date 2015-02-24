@@ -19,3 +19,13 @@
  */
 
 #include "language.h++"
+
+void language::add_compileopt(const std::string& data)
+{
+    _compile_opts.push_back(data);
+}
+
+void language::add_linkopt(const std::string& data)
+{
+    _link_opts.push_back(data);
+}

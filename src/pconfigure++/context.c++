@@ -21,6 +21,39 @@
 #include "context.h++"
 
 context::context(void)
-    : prefix("/usr/local")
+    : type(context_type::DEFAULT),
+      prefix("/usr/local"),
+      gen_dir("obj/proc"),
+      cmd(NULL)
 {
+}
+
+context::context(const context_type& _type,
+                 const std::string& _prefix,
+                 const std::string& _gen_dir,
+                 const command::ptr& _cmd)
+    : type(_type),
+      prefix(_prefix),
+      gen_dir(_gen_dir),
+      cmd(_cmd)
+{
+}
+
+context::ptr context::dup(const context_type& type,
+                          const command::ptr& cmd)
+{
+    return std::make_shared<context>(type,
+                                     this->prefix,
+                                     this->gen_dir,
+                                     cmd);
+}
+
+void context::add_compileopt(const std::string& data)
+{
+    compile_opts.push_back(data);
+}
+
+void context::add_linkopt(const std::string& data)
+{
+    link_opts.push_back(data);
 }
