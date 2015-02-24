@@ -53,6 +53,14 @@ public:
      * go. */
     std::string gen_dir;
 
+    /* The location at which the output from BINARY commands should
+     * go. */
+    std::string bin_dir;
+
+    /* The location at which the output from LIBEXEC commands should
+     * go. */
+    std::string libexec_dir;
+
     /* These implement "opts_target" */
     std::vector<std::string> compile_opts;
     std::vector<std::string> link_opts;
@@ -77,6 +85,8 @@ public:
     context(const context_type& type,
             const std::string& prefix,
             const std::string& gen_dir,
+            const std::string& bin_dir,
+            const std::string& libexec_dir,
             const command::ptr& cmd);
 
 public:

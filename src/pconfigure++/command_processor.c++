@@ -123,8 +123,20 @@ void command_processor::process(const command::ptr& cmd)
     }
 
     case command_type::LIBDIR:
-    case command_type::LIBEXECS:
         goto unimplemented;
+
+    case command_type::LIBEXECS:
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        clear_until({context_type::DEFAULT});
+        dup_tos_and_push(context_type::BINARY, cmd);
+
+        _stack.top()->bin_dir = _stack.top()->libexec_dir;
+
+        _opts_target = _stack.top();
+
+        return;
 
     case command_type::LIBRARIES:
         if (cmd->check_operation("+=") == false)

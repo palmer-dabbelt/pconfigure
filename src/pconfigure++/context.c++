@@ -24,6 +24,8 @@ context::context(void)
     : type(context_type::DEFAULT),
       prefix("/usr/local"),
       gen_dir("obj/proc"),
+      bin_dir("bin"),
+      libexec_dir("libexec"),
       cmd(NULL)
 {
 }
@@ -31,10 +33,14 @@ context::context(void)
 context::context(const context_type& _type,
                  const std::string& _prefix,
                  const std::string& _gen_dir,
+                 const std::string& _bin_dir,
+                 const std::string& _libexec_dir,
                  const command::ptr& _cmd)
     : type(_type),
       prefix(_prefix),
       gen_dir(_gen_dir),
+      bin_dir(_bin_dir),
+      libexec_dir(_libexec_dir),
       cmd(_cmd)
 {
 }
@@ -45,6 +51,8 @@ context::ptr context::dup(const context_type& type,
     return std::make_shared<context>(type,
                                      this->prefix,
                                      this->gen_dir,
+                                     this->bin_dir,
+                                     this->libexec_dir,
                                      cmd);
 }
 
