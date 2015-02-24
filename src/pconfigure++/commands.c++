@@ -94,6 +94,8 @@ std::vector<command::ptr> commands(int argc, const char **argv)
 
             out.push_back(cmd);
         }
+
+        fclose(file);
     }
 
     return out;
