@@ -60,8 +60,26 @@ void command_processor::process(const command::ptr& cmd)
 
     case command_type::COMPILER:
     case command_type::CONFIG:
-    case command_type::DEPLIBS:
         goto unimplemented;
+
+    case command_type::DEPLIBS:
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        if (_stack.top()->check_type({context_type::BINARY,
+                                      context_type::LIBRARY,
+                                      context_type::GENERATE,
+                                      context_type::TEST,}) == false) {
+            std::cerr << "Attempted to add DEPLIB to a "
+                      << std::to_string(_stack.top()->type)
+                      << " context, which isn't supported"
+                      << "\n";
+            abort();
+        }
+
+        _stack.top()->dep_libs.push_back(cmd->data());
+
+        return;
 
     case command_type::GENERATE:
         if (cmd->check_operation("+=") == false)
@@ -215,15 +233,11 @@ no_opts_target:
 
 void command_processor::clear_until(const std::vector<context_type>& types)
 {
-    do {
-        for (const auto& type: types) 
-            if (_stack.top()->type == type)
-                return;
-
+    while ((_stack.size() > 0) && (_stack.top()->check_type(types) == false)) {
         auto top = _stack.top();
         _stack.pop();
         _all_contexts.push_back(top);
-    } while (_stack.size() > 0);
+    }
 }
 
 void command_processor::dup_tos_and_push(const context_type& type,

@@ -57,6 +57,11 @@ public:
     std::vector<std::string> compile_opts;
     std::vector<std::string> link_opts;
 
+    /* The list of internal libraries that this target depends on.
+     * These need to be both linked in at link-time, and trigger a
+     * re-link if they've changed. */
+    std::vector<std::string> dep_libs;
+
     /* The exact command issued, which allows all sorts of debugging
      * later. */
     const command::ptr cmd;
@@ -79,6 +84,10 @@ public:
      * some new values. */
     ptr dup(void);
     ptr dup(const context_type& type, const command::ptr& cmd);
+
+    /* Checks to see if the context matches one of the given types,
+     * returning TRUE if it matches, and FALSE if it doesn't. */
+    bool check_type(const std::vector<context_type>& types);
 
     /* Virtual methods from opts_target. */
     virtual void add_compileopt(const std::string& data);

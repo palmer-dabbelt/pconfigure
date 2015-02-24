@@ -48,6 +48,15 @@ context::ptr context::dup(const context_type& type,
                                      cmd);
 }
 
+bool context::check_type(const std::vector<context_type>& types)
+{
+    for (const auto& type: types)
+        if (this->type == type)
+            return true;
+
+    return false;
+}
+
 void context::add_compileopt(const std::string& data)
 {
     compile_opts.push_back(data);
