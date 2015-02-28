@@ -24,6 +24,7 @@
 #include "ftwfn.h"
 #include "funcs.h"
 #include "scala.h"
+#include "str.h"
 #include <ftw.h>
 #include <string.h>
 #include <unistd.h>
@@ -153,8 +154,8 @@ const char *language_scala_objname(struct language *l_uncast, void *context,
     assert(c->full_path[strlen(c->src_dir)] == '/');
 
     o = talloc_asprintf(context, "%s/%s/%s-%s.jar",
-                        c->obj_dir,
-                        c->full_path, compileopts_hash, langopts_hash);
+                        c->obj_dir, remove_dotdot(subcontext, c->full_path),
+                        compileopts_hash, langopts_hash);
 
     TALLOC_FREE(subcontext);
     return o;

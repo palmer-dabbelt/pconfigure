@@ -24,6 +24,7 @@
 #include "chisel.h"
 #include "ftwfn.h"
 #include "funcs.h"
+#include "str.h"
 #include "../languagelist.h"
 #include <ftw.h>
 #include <string.h>
@@ -202,8 +203,8 @@ const char *language_chisel_objname(struct language *l_uncast, void *context,
     assert(c->full_path[strlen(c->src_dir)] == '/');
 
     o = talloc_asprintf(context, "%s/%s/%s-%s-%s-chisel_c.o",
-                        c->obj_dir,
-                        c->full_path, compileopts_hash, langopts_hash,
+                        c->obj_dir, remove_dotdot(subcontext, c->full_path),
+                        compileopts_hash, langopts_hash,
                         c->shared_target ? "shared" : "static");
 
     TALLOC_FREE(subcontext);

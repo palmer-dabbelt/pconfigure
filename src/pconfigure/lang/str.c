@@ -22,6 +22,12 @@
 #include "str.h"
 #include <string.h>
 
+#ifdef HAVE_TALLOC
+#include <talloc.h>
+#else
+#include "extern/talloc.h"
+#endif
+
 bool str_sta(const char *haystack, const char *needle)
 {
     if (haystack == NULL)
@@ -30,4 +36,20 @@ bool str_sta(const char *haystack, const char *needle)
         return false;
 
     return (strncmp(haystack, needle, strlen(needle)) == 0);
+}
+
+const char *remove_dotdot(void *c, const char *str)
+{
+    char *out;
+    size_t i;
+
+    out = talloc_strdup(c, str);
+    for (i = 0; i < strlen(str); ++i) {
+        if (strncmp(str + i, "..", 2) == 0) {
+            out[i + 0] = '_';
+            out[i + 1] = '_';
+        }
+    }
+
+    return out;
 }

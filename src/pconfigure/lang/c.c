@@ -21,6 +21,7 @@
 
 #include "c.h"
 #include "funcs.h"
+#include "str.h"
 #include <string.h>
 #include <unistd.h>
 
@@ -181,7 +182,7 @@ const char *language_c_objname(struct language *l_uncast, void *context,
         suffix = "o";
 
     o = talloc_asprintf(context, "%s/%s/%s-%s-%s-%s-%s.%s",
-                        c->obj_dir, c->full_path,
+                        c->obj_dir, remove_dotdot(subcontext, c->full_path),
                         compiler_hash, compileopts_hash, langopts_hash,
                         prefix_hash,
                         c->shared_target ? "shared" : "static", suffix);

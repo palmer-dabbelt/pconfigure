@@ -27,4 +27,8 @@
 /* Returns TRUE if "haystack" starts with "needle". */
 bool str_sta(const char *haystack, const char *needle);
 
+/* Replaces all instances of ".." with "__", to remove extra path
+ * specifiers. */
+const char *remove_dotdot(void *c, const char *str);
+
 #endif
