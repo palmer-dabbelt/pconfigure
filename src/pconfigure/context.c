@@ -559,6 +559,7 @@ struct context *context_new_fullsrc(struct context *parent, void *context,
     c->testdeps = stringlist_new(c);
     c->autodeps = parent->autodeps;
 
+    c->called_path = NULL;
     c->full_path = talloc_strdup(c, full_path);
     c->link_path = talloc_strdup(c, "");
     c->link_path_install = talloc_strdup(c, "");
