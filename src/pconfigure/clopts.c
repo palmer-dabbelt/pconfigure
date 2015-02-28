@@ -47,6 +47,7 @@ struct clopts *clopts_new(void *ctx, int argc, char **argv)
 
     o->binname = NULL;
     o->srcname = NULL;
+    o->testname = NULL;
 
     o->infiles = NULL;
     setup_infiles(o);
