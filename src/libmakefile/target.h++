@@ -18,18 +18,21 @@
  * along with pconfigure.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef TARGET_HXX
-#define TARGET_HXX
+#ifndef LIBMAKEFILE__TARGET_HXX
+#define LIBMAKEFILE__TARGET_HXX
 
 #include <memory>
 
-/* Contains a target, which is something that can be passed to "make"
- * in order to actually generate code. */
-class target {
-public:
-    typedef std::shared_ptr<target> ptr;
+namespace makefile {
+    /* A fully-generated Makefile target, which contains a large batch of  */
+    class target {
+    public:
+        typedef std::shared_ptr<target> ptr;
 
-private:
-};
+    private:
+
+    public:
+    };
+}
 
 #endif
