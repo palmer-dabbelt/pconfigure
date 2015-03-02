@@ -36,8 +36,10 @@ private:
     std::vector<language::ptr> _languages_list;
 
 public:
-    /* Creates a new language list without any languages in it at
-     * all! */
+    /* Creates a new language list with only the default set of
+     * languages -- these languages aren't user accessible and exist
+     * solely to emulate the behavior of the old pconfigure in a
+     * slightly simpler manner. */
     language_list(void);
 
 public:

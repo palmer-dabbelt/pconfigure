@@ -92,6 +92,15 @@ void command_processor::process(const command::ptr& cmd)
         _opts_target = _stack.top();
         _output_contexts.push_back(_stack.top());
 
+        dup_tos_and_push(context_type::SOURCE,
+                         std::make_shared<command>(
+                             cmd->type(),
+                             "+=",
+                             cmd->data() + ".proc",
+                             cmd->debug()
+                             )
+            );
+
         return;
 
     case command_type::HDRDIR:

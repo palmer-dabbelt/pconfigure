@@ -19,6 +19,7 @@
  */
 
 #include "language_list.h++"
+#include "languages/gen_proc.h++"
 #include <iostream>
 
 static language_list _global;
@@ -27,6 +28,7 @@ language_list::language_list(void)
     : _languages_lookup(),
       _languages_list()
 {
+    this->add(std::make_shared<language_gen_proc>());
 }
 
 void language_list::add(const language::ptr& lang)
