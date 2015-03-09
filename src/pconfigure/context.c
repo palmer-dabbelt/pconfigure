@@ -324,7 +324,7 @@ int context_library_destructor(struct context *c)
     }
 
 #ifdef DEBUG
-    stringlist_fprintf(c->objects, stderr, "obj: %s\n", obj);
+    stringlist_fprintf(c->objects, stderr, "%s\n");
 #endif
 
     hash_langlinkopts = stringlist_hashcode(c->language->link_opts, context);
