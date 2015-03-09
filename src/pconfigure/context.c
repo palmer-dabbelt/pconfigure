@@ -602,7 +602,7 @@ int context_source_destructor(struct context *c)
 
     /* Try and figure out if the grandparent of this code should be a
      * shared or static library. */
-    {
+    if (l->cares_about_static == true) {
         struct context *lc;
 
         lc = c;

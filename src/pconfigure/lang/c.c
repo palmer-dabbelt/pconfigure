@@ -116,6 +116,7 @@ struct language_c *language_c_new_uc(struct clopts *o, const char *name)
     l->l.a_ext = talloc_strdup(l, "a");
     l->l.a_ext_canon = talloc_strdup(l, "a");
     l->l.compiled = true;
+    l->l.cares_about_static = true;
     l->l.search = &language_c_search;
     l->l.objname = &language_c_objname;
     l->l.deps = &language_c_deps;

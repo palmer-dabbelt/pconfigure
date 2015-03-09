@@ -76,6 +76,7 @@ struct language *language_bash_new(struct clopts *o, const char *name)
     language_init(&(l->l));
     l->l.name = talloc_strdup(l, "bash");
     l->l.compiled = false;
+    l->l.cares_about_static = false;
     l->l.compile_str = talloc_strdup(l, "");
     l->l.compile_cmd = talloc_strdup(l, "");
     l->l.link_str = talloc_strdup(l, "BASHC");

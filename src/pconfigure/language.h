@@ -56,6 +56,10 @@ struct language
 
     bool compiled;
 
+    /* This is TRUE if this language cares about the difference
+     * between shared and static libraries. */
+    bool cares_about_static;
+
     struct language *(*search) (struct language *, struct language *,
                                 const char *, struct context *);
     const char *(*objname) (struct language *, void *, struct context *);
