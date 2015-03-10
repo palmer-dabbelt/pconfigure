@@ -31,6 +31,7 @@
 #include "lang/h.h"
 #include "lang/flo.h"
 #include "lang/llvm.h"
+#include "lang/man.h"
 #include <string.h>
 #include <assert.h>
 
@@ -102,6 +103,8 @@ int languagelist_select(struct languagelist *ll, const char *name)
     if ((l = language_flo_new(o, name)) != NULL)
         l_nonull = l;
     if ((l = language_llvm_new(o, name)) != NULL)
+        l_nonull = l;
+    if ((l = language_man_new(o, name)) != NULL)
         l_nonull = l;
 
     /* If no language was found then we have to give up entirely */
