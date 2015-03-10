@@ -45,6 +45,7 @@ TESTSRC     += c-ifndef.bash
 TESTSRC     += syshdr.bash
 TESTSRC     += autodeps.bash
 TESTSRC     += osx-shared-deps.bash
+TESTSRC     += man.bash
 
 BINARIES    += pclean
 SOURCES	    += pclean.bash
