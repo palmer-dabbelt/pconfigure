@@ -19,7 +19,6 @@
  */
 
 #include "makefile.h++"
-using namespace makefile;
 
 makefile::makefile::makefile(void)
 {
