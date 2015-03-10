@@ -73,6 +73,7 @@ static int parsefunc_testdir(const char *op, const char *right);
 static int parsefunc_srcdir(const char *op, const char *right);
 static int parsefunc_libexecs(const char *op, const char *right);
 static int parsefunc_autodeps(const char *op, const char *right);
+static int parsefunc_share(const char *op, const char *right);
 
 /* This is global data to avoid having really long parsefunc_*
  * function calls. */
@@ -395,6 +396,8 @@ int parse_select(const char *left, const char *op, char *right)
         return parsefunc_libexecs(op, right);
     if (strcmp(left, "AUTODEPS") == 0)
         return parsefunc_autodeps(op, right);
+    if (strcmp(left, "SHARE") == 0)
+        return parsefunc_share(op, right);
 
     return -2;
 }
@@ -1167,4 +1170,32 @@ int parsefunc_autodeps(const char *op, const char *right)
     }
     TALLOC_FREE(context);
     return err;
+}
+
+int parsefunc_share(const char *op, const char *right)
+{
+    void *context;
+
+    if (strcmp(op, "+=") != 0) {
+        fprintf(stderr, "We only support += for SHARE\n");
+        return -1;
+    }
+
+    /* If there's anything left on the stack, then clear everything out */
+    while (!contextstack_isempty(s)) {
+        context = talloc_new(NULL);
+
+        /* We already know that there is an element on the stack, so there
+         * is no need to check for errors. */
+        contextstack_pop(s, context);
+
+        /* That's all we need to do, as free()ing the context will cause it to
+         * be cleaned up and pushed over to  */
+        TALLOC_FREE(context);
+    }
+
+    /* Adds a binary to the stack, using the default compile options.  There is
+     * no need for this to  */
+    contextstack_push_share(s, right);
+    return 0;
 }

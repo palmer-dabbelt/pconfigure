@@ -85,6 +85,7 @@ struct context
     char *gen_dir;
     char *prefix;
     char *libexec_dir;
+    char *share_dir;
 
     /* Options specific to this context */
     struct stringlist *compile_opts;
@@ -139,6 +140,9 @@ extern struct context *context_new_test(struct context *parent,
                                         void *context,
                                         const char *called_path);
 extern struct context *context_new_libexec(struct context *parent,
+                                           void *context,
+                                           const char *called_path);
+extern struct context *context_new_share(struct context *parent,
                                            void *context,
                                            const char *called_path);
 

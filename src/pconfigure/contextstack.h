@@ -72,6 +72,8 @@ extern void contextstack_push_test(struct contextstack *s,
                                    const char *called_path);
 extern void contextstack_push_libexec(struct contextstack *s,
                                       const char *called_path);
+extern void contextstack_push_share(struct contextstack *s,
+                                    const char *called_path);
 
 /* Sets some default options. */
 extern void contextstack_set_default_src_dir(struct contextstack *s,

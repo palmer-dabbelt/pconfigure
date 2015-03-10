@@ -77,6 +77,7 @@ struct context *context_new_defaults(struct clopts *o, void *context,
     c->gen_dir = talloc_strdup(c, "obj/proc");
     c->prefix = talloc_strdup(c, DEFAULT_PREFIX);
     c->libexec_dir = talloc_strdup(c, "libexec");
+    c->share_dir = talloc_strdup(c, "share");
     c->compile_opts = stringlist_new(c);
     c->link_opts = stringlist_new(c);
     c->shared_target = false;
@@ -108,6 +109,7 @@ struct context *context_new_binary(struct context *parent, void *context,
     c->gen_dir = talloc_reference(c, parent->gen_dir);
     c->prefix = talloc_reference(c, parent->prefix);
     c->libexec_dir = talloc_reference(c, parent->libexec_dir);
+    c->share_dir = talloc_reference(c, parent->share_dir);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
     c->shared_target = false;
@@ -253,6 +255,7 @@ struct context *context_new_library(struct context *parent, void *context,
     c->tst_dir = talloc_reference(c, parent->tst_dir);
     c->gen_dir = talloc_reference(c, parent->gen_dir);
     c->libexec_dir = talloc_reference(c, parent->libexec_dir);
+    c->share_dir = talloc_reference(c, parent->share_dir);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
     c->mf = talloc_reference(c, parent->mf);
@@ -432,6 +435,7 @@ struct context *context_new_header(struct context *parent, void *context,
     c->gen_dir = talloc_reference(c, parent->gen_dir);
     c->prefix = talloc_reference(c, parent->prefix);
     c->libexec_dir = talloc_reference(c, parent->libexec_dir);
+    c->share_dir = talloc_reference(c, parent->share_dir);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
     c->shared_target = false;
@@ -506,6 +510,7 @@ struct context *context_new_source(struct context *parent, void *context,
     c->gen_dir = talloc_reference(c, parent->gen_dir);
     c->prefix = talloc_reference(c, parent->prefix);
     c->libexec_dir = talloc_reference(c, parent->libexec_dir);
+    c->share_dir = talloc_reference(c, parent->share_dir);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
     c->shared_target = parent->shared_target;
@@ -547,6 +552,7 @@ struct context *context_new_fullsrc(struct context *parent, void *context,
     c->gen_dir = talloc_reference(c, parent->gen_dir);
     c->prefix = talloc_reference(c, parent->prefix);
     c->libexec_dir = talloc_reference(c, parent->libexec_dir);
+    c->share_dir = talloc_reference(c, parent->share_dir);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
     c->shared_target = parent->shared_target;
@@ -717,6 +723,7 @@ struct context *context_new_test(struct context *parent, void *context,
     c->gen_dir = talloc_reference(c, parent->gen_dir);
     c->prefix = talloc_reference(c, parent->prefix);
     c->libexec_dir = talloc_reference(c, parent->libexec_dir);
+    c->share_dir = talloc_reference(c, parent->share_dir);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
     c->mf = talloc_reference(c, parent->mf);
@@ -831,6 +838,7 @@ struct context *context_new_libexec(struct context *parent,
     c->gen_dir = talloc_reference(c, parent->gen_dir);
     c->prefix = talloc_reference(c, parent->prefix);
     c->libexec_dir = talloc_reference(c, parent->libexec_dir);
+    c->share_dir = talloc_reference(c, parent->share_dir);
     c->compile_opts = stringlist_copy(parent->compile_opts, c);
     c->link_opts = stringlist_copy(parent->link_opts, c);
     c->shared_target = false;
@@ -850,6 +858,49 @@ struct context *context_new_libexec(struct context *parent,
     c->link_path_install = talloc_strdup(c, "");
 
     talloc_set_destructor(c, &context_binary_destructor);
+
+    return c;
+}
+
+struct context *context_new_share(struct context *parent,
+                                  void *context, const char *called_path)
+{
+    struct context *c;
+
+    c = talloc(context, struct context);
+    c->type = CONTEXT_TYPE_LIBRARY;
+    c->parent = c;
+    c->test_parent = NULL;
+    c->bin_dir = talloc_reference(c, parent->bin_dir);
+    c->lib_dir = talloc_reference(c, parent->share_dir);
+    c->hdr_dir = talloc_reference(c, parent->hdr_dir);
+    c->obj_dir = talloc_reference(c, parent->obj_dir);
+    c->src_dir = talloc_reference(c, parent->src_dir);
+    c->chk_dir = talloc_reference(c, parent->chk_dir);
+    c->tst_dir = talloc_reference(c, parent->tst_dir);
+    c->gen_dir = talloc_reference(c, parent->gen_dir);
+    c->prefix = talloc_reference(c, parent->prefix);
+    c->libexec_dir = talloc_reference(c, parent->libexec_dir);
+    c->share_dir = talloc_reference(c, parent->share_dir);
+    c->compile_opts = stringlist_copy(parent->compile_opts, c);
+    c->link_opts = stringlist_copy(parent->link_opts, c);
+    c->shared_target = false;
+    c->mf = talloc_reference(c, parent->mf);
+    c->ll = talloc_reference(c, parent->ll);
+    c->s = parent->s;
+    c->language = NULL;
+    c->objects = stringlist_new(c);
+    c->libraries = stringlist_new(c);
+    c->testdeps = stringlist_new(c);
+    c->testdir = talloc_asprintf(c, "%s/%s", c->tst_dir, called_path);
+    c->autodeps = parent->autodeps;
+
+    c->called_path = talloc_strdup(c, called_path);
+    c->full_path = talloc_asprintf(c, "%s/%s", c->share_dir, called_path);
+    c->link_path = talloc_strdup(c, "");
+    c->link_path_install = talloc_strdup(c, "");
+
+    talloc_set_destructor(c, &context_library_destructor);
 
     return c;
 }
