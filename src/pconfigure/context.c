@@ -297,7 +297,7 @@ int context_library_destructor(struct context *c)
 
     /* Checks if the library name doesn't match and attempts to
      * correct it. */
-    {
+    if (l->cares_about_static == true) {
         char *new_name;
         char *old_name;
         char *ext;
