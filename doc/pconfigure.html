@@ -1,0 +1,1813 @@
+<?xml version="1.0" encoding="iso-8859-1" ?> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1 plus MathML 2.0//EN" 
+"http://www.w3.org/Math/DTD/mathml2/xhtml-math11-f.dtd" > 
+<html xmlns="http://www.w3.org/1999/xhtml"  
+> 
+<head><title>An Introduction to pcon&#xFB01;gure</title> 
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" /> 
+<meta name="generator" content="TeX4ht (http://www.cse.ohio-state.edu/~gurari/TeX4ht/)" /> 
+<meta name="originator" content="TeX4ht (http://www.cse.ohio-state.edu/~gurari/TeX4ht/)" /> 
+<!-- xhtml,mathml,html --> 
+<meta name="src" content="pconfigure.tex-html.tex" /> 
+<meta name="date" content="2015-03-23 15:37:00" /> 
+<link rel="stylesheet" type="text/css" href="pconfigure.tex-html.css" /> 
+</head><body 
+>
+   <div class="maketitle">
+                                                                                         
+                                                                                         
+                                                                                         
+                                                                                         
+
+<h2 class="titleHead">An Introduction to pconfigure</h2>
+<div class="author" ><span 
+class="cmr-12">Palmer Dabbelt</span></div><br />
+<div class="date" ><span 
+class="cmr-12">March 23, 2015</span></div>
+   </div>
+   <table class="multicols" id="multicols-1"><tr><td class="multicol-1">
+   <h3 class="likesectionHead"><a 
+ id="x1-1000"></a><span 
+class="cmr-9">Contents</span></h3>
+   <div class="tableofcontents">
+   <span class="sectionToc" ><span 
+class="cmr-9">1 </span><a 
+href="#x1-20001" id="QQ2-1-2"><span 
+class="cmr-9">Introduction</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">1.1 </span><a 
+href="#x1-30001.1" id="QQ2-1-3"><span 
+class="cmr-9">Building a project that uses </span><span 
+class="cmtt-9">pconfigure</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">1.2 </span><a 
+href="#x1-40001.2" id="QQ2-1-4"><span 
+class="cmr-9">Using </span><span 
+class="cmtt-9">pconfigure </span><span 
+class="cmr-9">in your project</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">1.3 </span><a 
+href="#x1-50001.3" id="QQ2-1-5"><span 
+class="cmr-9">Writing your &#xFB01;rst </span><span 
+class="cmtt-9">Configfile</span></a></span>
+<br />   <span class="sectionToc" ><span 
+class="cmr-9">2 </span><a 
+href="#x1-60002" id="QQ2-1-6"><span 
+class="cmr-9">Command-Line Options </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">2.1 </span><a 
+href="#x1-70002.1" id="QQ2-1-7"><span 
+class="cmtt-9">--config &#x003C;filename&#x003E;</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">2.2 </span><a 
+href="#x1-80002.2" id="QQ2-1-8"><span 
+class="cmtt-9">--version</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">2.3 </span><a 
+href="#x1-90002.3" id="QQ2-1-9"><span 
+class="cmtt-9">--sourcepath &#x003C;dirname&#x003E;</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">2.4 </span><a 
+href="#x1-100002.4" id="QQ2-1-10"><span 
+class="cmtt-9">--binname</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">2.5 </span><a 
+href="#x1-110002.5" id="QQ2-1-11"><span 
+class="cmtt-9">--testname</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">2.6 </span><a 
+href="#x1-120002.6" id="QQ2-1-12"><span 
+class="cmtt-9">--srcname </span></a></span>
+<br />   <span class="sectionToc" ><span 
+class="cmr-9">3 </span><a 
+href="#x1-130003" id="QQ2-1-13"><span 
+class="cmtt-9">make </span><span 
+class="cmr-9">Targets </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">3.1 </span><a 
+href="#x1-140003.1" id="QQ2-1-14"><span 
+class="cmtt-9">make all </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">3.2 </span><a 
+href="#x1-150003.2" id="QQ2-1-15"><span 
+class="cmtt-9">make install </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">3.3 </span><a 
+href="#x1-160003.3" id="QQ2-1-16"><span 
+class="cmtt-9">make check </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">3.4 </span><a 
+href="#x1-170003.4" id="QQ2-1-17"><span 
+class="cmtt-9">make clean</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">3.5 </span><a 
+href="#x1-180003.5" id="QQ2-1-18"><span 
+class="cmtt-9">make depclean</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">3.6 </span><a 
+href="#x1-190003.6" id="QQ2-1-19"><span 
+class="cmtt-9">make uninstall</span></a></span>
+<br />   <span class="sectionToc" ><span 
+class="cmr-9">4 </span><a 
+href="#x1-200004" id="QQ2-1-20"><span 
+class="cmr-9">Commands </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.1 </span><a 
+href="#x1-210004.1" id="QQ2-1-21"><span 
+class="cmtt-9">LANGUAGES += $lang</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.2 </span><a 
+href="#x1-220004.2" id="QQ2-1-22"><span 
+class="cmtt-9">BINARIES += $name </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.3 </span><a 
+href="#x1-230004.3" id="QQ2-1-23"><span 
+class="cmtt-9">LIBRARIES += $name </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.4 </span><a 
+href="#x1-240004.4" id="QQ2-1-24"><span 
+class="cmtt-9">LIBEXECS += $name </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.5 </span><a 
+href="#x1-250004.5" id="QQ2-1-25"><span 
+class="cmtt-9">SOURCES += $name </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.6 </span><a 
+href="#x1-260004.6" id="QQ2-1-26"><span 
+class="cmtt-9">TESTS += $name</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.7 </span><a 
+href="#x1-270004.7" id="QQ2-1-27"><span 
+class="cmtt-9">HEADERS += $name</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.8 </span><a 
+href="#x1-280004.8" id="QQ2-1-28"><span 
+class="cmtt-9">COMPILEOPTS += $opt </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.9 </span><a 
+href="#x1-290004.9" id="QQ2-1-29"><span 
+class="cmtt-9">LINKOPTS += $opt</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.10 </span><a 
+href="#x1-300004.10" id="QQ2-1-30"><span 
+class="cmtt-9">DEPLIBS += $libname </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.11 </span><a 
+href="#x1-310004.11" id="QQ2-1-31"><span 
+class="cmtt-9">TESTDEPS += $path</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.12 </span><a 
+href="#x1-320004.12" id="QQ2-1-32"><span 
+class="cmtt-9">AUTODEPS = bool </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.13 </span><a 
+href="#x1-330004.13" id="QQ2-1-33"><span 
+class="cmtt-9">COMPILER = $cmd</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.14 </span><a 
+href="#x1-340004.14" id="QQ2-1-34"><span 
+class="cmtt-9">LINKER = $cmd</span></a></span>
+                                                                                         
+                                                                                         
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.15 </span><a 
+href="#x1-350004.15" id="QQ2-1-35"><span 
+class="cmtt-9">PREFIX = $prefix</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.16 </span><a 
+href="#x1-360004.16" id="QQ2-1-36"><span 
+class="cmtt-9">LIBDIR = $val</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.17 </span><a 
+href="#x1-370004.17" id="QQ2-1-37"><span 
+class="cmtt-9">HDRDIR = $val</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.18 </span><a 
+href="#x1-380004.18" id="QQ2-1-38"><span 
+class="cmtt-9">TESTDIR = $val</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.19 </span><a 
+href="#x1-390004.19" id="QQ2-1-39"><span 
+class="cmtt-9">SRCDIR = $val</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.20 </span><a 
+href="#x1-400004.20" id="QQ2-1-40"><span 
+class="cmtt-9">CONFIG += $file </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.21 </span><a 
+href="#x1-410004.21" id="QQ2-1-41"><span 
+class="cmtt-9">TESTSRC += $name</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.22 </span><a 
+href="#x1-420004.22" id="QQ2-1-42"><span 
+class="cmtt-9">GENERATE += $name.proc</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">4.23 </span><a 
+href="#x1-430004.23" id="QQ2-1-43"><span 
+class="cmtt-9">TGENERATE += $script</span></a></span>
+<br />   <span class="sectionToc" ><span 
+class="cmr-9">5 </span><a 
+href="#x1-440005" id="QQ2-1-44"><span 
+class="cmr-9">Supported Languages </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">5.1 </span><a 
+href="#x1-450005.1" id="QQ2-1-45"><span 
+class="cmtt-9">asm</span><span 
+class="cmr-9">: Assembly</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">5.2 </span><a 
+href="#x1-460005.2" id="QQ2-1-46"><span 
+class="cmtt-9">bash</span><span 
+class="cmr-9">: BASH &#x0028;</span><span 
+class="cmtt-9">pbashc </span><span 
+class="cmr-9">compiler&#x0029; </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">5.3 </span><a 
+href="#x1-470005.3" id="QQ2-1-47"><span 
+class="cmtt-9">c</span><span 
+class="cmr-9">: C </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">5.4 </span><a 
+href="#x1-480005.4" id="QQ2-1-48"><span 
+class="cmtt-9">chisel</span><span 
+class="cmr-9">: Chisel C++ Backend </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">5.5 </span><a 
+href="#x1-490005.5" id="QQ2-1-49"><span 
+class="cmtt-9">c++</span><span 
+class="cmr-9">: C++</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">5.6 </span><a 
+href="#x1-500005.6" id="QQ2-1-50"><span 
+class="cmtt-9">flo</span><span 
+class="cmr-9">: Chisel Flo Backend</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">5.7 </span><a 
+href="#x1-510005.7" id="QQ2-1-51"><span 
+class="cmtt-9">h</span><span 
+class="cmr-9">: C/C++ Header</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">5.8 </span><a 
+href="#x1-520005.8" id="QQ2-1-52"><span 
+class="cmtt-9">perl</span><span 
+class="cmr-9">: Perl &#x0028;</span><span 
+class="cmtt-9">pperlc </span><span 
+class="cmr-9">compiler&#x0029;</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">5.9 </span><a 
+href="#x1-530005.9" id="QQ2-1-53"><span 
+class="cmtt-9">pkgconfig</span><span 
+class="cmr-9">: </span><span 
+class="cmtt-9">pkg-config</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">5.10 </span><a 
+href="#x1-540005.10" id="QQ2-1-54"><span 
+class="cmtt-9">scala</span><span 
+class="cmr-9">: Scala </span></a></span>
+<br />   <span class="sectionToc" ><span 
+class="cmr-9">6 </span><a 
+href="#x1-550006" id="QQ2-1-55"><span 
+class="cmr-9">Common Error Messages </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">6.1 </span><a 
+href="#x1-560006.1" id="QQ2-1-56"><span 
+class="cmr-9">... failed, which is probably bad</span></a></span>
+<br />   <span class="sectionToc" ><span 
+class="cmr-9">7 </span><a 
+href="#x1-570007" id="QQ2-1-57"><span 
+class="cmr-9">Useful Helper Programs </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">7.1 </span><a 
+href="#x1-580007.1" id="QQ2-1-58"><span 
+class="cmtt-9">pclean </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">7.2 </span><a 
+href="#x1-590007.2" id="QQ2-1-59"><span 
+class="cmtt-9">ptest </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">7.3 </span><a 
+href="#x1-600007.3" id="QQ2-1-60"><span 
+class="cmtt-9">pinclude </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">7.4 </span><a 
+href="#x1-610007.4" id="QQ2-1-61"><span 
+class="cmtt-9">ppkg-config </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">7.5 </span><a 
+href="#x1-620007.5" id="QQ2-1-62"><span 
+class="cmtt-9">pgcc-config </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">7.6 </span><a 
+href="#x1-630007.6" id="QQ2-1-63"><span 
+class="cmtt-9">pllvm-config </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">7.7 </span><a 
+href="#x1-640007.7" id="QQ2-1-64"><span 
+class="cmtt-9">pbashc </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">7.8 </span><a 
+href="#x1-650007.8" id="QQ2-1-65"><span 
+class="cmtt-9">pperlc </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">7.9 </span><a 
+href="#x1-660007.9" id="QQ2-1-66"><span 
+class="cmtt-9">pscalac </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">7.10 </span><a 
+href="#x1-670007.10" id="QQ2-1-67"><span 
+class="cmtt-9">pscalald </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">7.11 </span><a 
+href="#x1-680007.11" id="QQ2-1-68"><span 
+class="cmtt-9">pnasm </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">7.12 </span><a 
+href="#x1-690007.12" id="QQ2-1-69"><span 
+class="cmtt-9">pwinegcc </span></a></span>
+<br />   <span class="sectionToc" ><span 
+class="cmr-9">8 </span><a 
+href="#x1-700008" id="QQ2-1-70"><span 
+class="cmr-9">Odd Behavior &#x0028;ie, WONTFIX bugs&#x0029; </span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">8.1 </span><a 
+href="#x1-710008.1" id="QQ2-1-71"><span 
+class="cmr-9">Can&#x2019;t link C and C++ into one binary</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">8.2 </span><a 
+href="#x1-720008.2" id="QQ2-1-72"><span 
+class="cmr-9">Old Scala classes stick around</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">8.3 </span><a 
+href="#x1-730008.3" id="QQ2-1-73"><span 
+class="cmtt-9">DEPLIBS </span><span 
+class="cmr-9">triggers a full rebuild</span></a></span>
+<br />   <span 
+class="cmr-9">&#x00A0;</span><span class="subsectionToc" ><span 
+class="cmr-9">8.4 </span><a 
+href="#x1-740008.4" id="QQ2-1-74"><span 
+class="cmtt-9">PREFIX </span><span 
+class="cmr-9">must be the &#xFB01;rst line </span></a></span>
+   </div>
+   </td></tr></table>
+                                                                                         
+                                                                                         
+   <h3 class="sectionHead"><span class="titlemark">1   </span> <a 
+ id="x1-20001"></a>Introduction</h3>
+<!--l. 21--><p class="noindent" ><span 
+class="cmtt-10">pconfigure</span>&#x00A0;is designed to be a replacement for GNU <span 
+class="cmtt-10">autoconf </span>and GNU <span 
+class="cmtt-10">automake</span>. <span 
+class="cmtt-10">pconfigure</span>&#x00A0;reads a
+con&#xFB01;guration &#xFB01;le &#x0028;called a <span 
+class="cmtt-10">Configfile</span>, like a <span 
+class="cmtt-10">Makefile</span>&#x0029; and generates a <span 
+class="cmtt-10">Makefile </span>that&#x2019;s suitable for processing by
+GNU <span 
+class="cmtt-10">make </span>&#x2013; in other words, <span 
+class="cmtt-10">pconfigure</span>&#x00A0;&#xFB01;ts into the same place in the toolchain that the combination of
+<span 
+class="cmtt-10">autoconf</span>, <span 
+class="cmtt-10">automake</span>, and a run of <span 
+class="cmtt-10">./configure </span>does.
+</p><!--l. 29--><p class="indent" >   Despite this, <span 
+class="cmtt-10">pconfigure</span>&#x00A0;follows a signi&#xFB01;cantly di&#xFB00;erent design philosophy than the GNU tools do:
+<span 
+class="cmtt-10">pconfigure</span>&#x00A0;is designed to limit the &#xFB02;exibility of the build system, while the GNU tools provide full shell access at
+any point during the build con&#xFB01;guration. <span 
+class="cmtt-10">pconfigure</span>&#x00A0;limits the &#xFB02;exibility of the build system in the hope that
+<span 
+class="cmtt-10">pconfigure</span>&#x00A0;con&#xFB01;guration &#xFB01;les from all projects will look somewhat similar and will therefor be easier to
+understand for users &#x2013; contrast this to the GNU tools, where each project&#x2019;s build con&#xFB01;guration &#xFB01;les
+look very di&#xFB00;erent and are therefor di&#xFB03;cult to understand. The general idea is that <span 
+class="cmtt-10">pconfigure</span>&#x00A0;is
+a build system, while the GNU tools are a framework for creating your own, project-speci&#xFB01;c build
+system.
+</p><!--l. 42--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">1.1   </span> <a 
+ id="x1-30001.1"></a>Building a project that uses <span 
+class="cmtt-10">pconfigure</span></h4>
+<!--l. 44--><p class="noindent" >If you&#x2019;re just trying to build a project that uses <span 
+class="cmtt-10">pconfigure</span>, you should be able to run
+                                                                                         
+                                                                                         
+</p>
+   <div class="verbatim" id="verbatim-1">
+$&#x00A0;cd&#x00A0;PROJECT_SOURCE_DIRECTORY/
+&#x00A0;<br />$&#x00A0;pconfigure
+</div>
+<!--l. 49--><p class="nopar" > and then proceed as if you would when runn the rest of the GNU toolchain. Speci&#xFB01;cally, running
+                                                                                         
+                                                                                         
+</p>
+   <div class="verbatim" id="verbatim-2">
+$&#x00A0;make
+&#x00A0;<br />$&#x00A0;make&#x00A0;install
+</div>
+<!--l. 55--><p class="nopar" > will build the code and install it to the default installation directory. Additionally, you can run
+                                                                                         
+                                                                                         
+</p>
+   <div class="verbatim" id="verbatim-3">
+$&#x00A0;make&#x00A0;check
+&#x00A0;<br />$&#x00A0;ptest
+</div>
+<!--l. 61--><p class="nopar" > to run the project&#x2019;s test cases and print the results of running those test. If you get errors while running
+<span 
+class="cmtt-10">pconfigure</span>, Section&#x00A0;<a 
+href="#x1-550006">6<!--tex4ht:ref: err --></a> lists some commen errors and may be useful to help with troubleshooting. Additionally,
+Section&#x00A0;<a 
+href="#x1-60002">2<!--tex4ht:ref: cl --></a> contains a list of command-line options that may be useful to you. A full list of the generated <span 
+class="cmtt-10">make </span>targets
+is shown in Section&#x00A0;<a 
+href="#x1-130003">3<!--tex4ht:ref: make --></a>.
+</p><!--l. 69--><p class="indent" >   Note that for a properly written <span 
+class="cmtt-10">pconfigure</span>&#x00A0;project it will not be necessary to run <span 
+class="cmtt-10">make install </span>before
+running <span 
+class="cmtt-10">make check</span>. Some buggy projects will silently run old code in this case, so be sure to consult your project&#x2019;s
+documentation before attempting that.
+</p><!--l. 75--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">1.2   </span> <a 
+ id="x1-40001.2"></a>Using <span 
+class="cmtt-10">pconfigure</span>&#x00A0;in your project</h4>
+<!--l. 77--><p class="noindent" >In order to use <span 
+class="cmtt-10">pconfigure</span>&#x00A0;in your project you&#x2019;ll need a bit more knowledge about how <span 
+class="cmtt-10">pconfigure</span>&#x00A0;works. The
+primary means by which you&#x2019;ll be interacting with <span 
+class="cmtt-10">pconfigure</span>&#x00A0;is by modifying it&#x2019;s con&#xFB01;guration &#xFB01;le. By default,
+<span 
+class="cmtt-10">pconfigure</span>&#x00A0;will read <span 
+class="cmtt-10">Configfile </span>in the current working directory, parse every line &#x0028;until there is an aborting
+error&#x0029;, and then return. <span 
+class="cmtt-10">pconfigure</span>&#x00A0;con&#xFB01;guration &#xFB01;les are also refered to as <span 
+class="cmtt-10">Configfile</span>s, much the same way as
+<span 
+class="cmtt-10">make </span>con&#xFB01;guration &#xFB01;les are referred to as <span 
+class="cmtt-10">Makefiles</span>s.
+</p><!--l. 87--><p class="indent" >   A <span 
+class="cmtt-10">Configfile </span>&#xFB01;le is line-oriented, and a <span 
+class="cmtt-10"># </span>character at the beginning of a line signi&#xFB01;es a comment, and blank
+lines are ignored. All other lines are of the format
+                                                                                         
+                                                                                         
+</p>
+   <div class="verbatim" id="verbatim-4">
+COMMAND&#x00A0;OPERATION&#x00A0;VALUE
+</div>
+<!--l. 92--><p class="nopar" > where <span 
+class="cmtt-10">COMMAND </span>is one of the options listed in Sectien&#x00A0;<a 
+href="#x1-200004">4<!--tex4ht:ref: cmd --></a>; <span 
+class="cmtt-10">OPERATION </span>is one of <span 
+class="cmtt-10">-=</span>, <span 
+class="cmtt-10">=</span>, or <span 
+class="cmtt-10">+=</span>; and <span 
+class="cmtt-10">VALUE </span>is a free-form
+text value. If <span 
+class="cmtt-10">value </span>starts and ends with a <span 
+class="cmtt-10">&#x2018; </span>character then it is executed as a shell out &#x0028;the syntax here is just like
+BASH and Ruby&#x0029;.
+</p><!--l. 100--><p class="indent" >   By default, the following con&#xFB01;guration &#xFB01;les are loaded in this order
+                                                                                         
+                                                                                         
+</p>
+   <div class="verbatim" id="verbatim-5">
+Configfiles/local
+&#x00A0;<br />Configfile.local
+&#x00A0;<br />Configfiles/main
+&#x00A0;<br />Configfile
+</div>
+<!--l. 106--><p class="nopar" > The general idea is that <span 
+class="cmtt-10">*local </span>are con&#xFB01;guration &#xFB01;les that should not be checked in to revision control because
+they&#x2019;re local to a speci&#xFB01;c instance. This is useful for setting things like compile-time options that you want and
+other people don&#x2019;t &#x0028;debug info, for example&#x0029;. The <span 
+class="cmtt-10">Configfiles </span>directory is designed for complicated projects that
+may have many con&#xFB01;guration &#xFB01;les, while it&#x2019;s expected that simple projects will just use a singe con&#xFB01;guration &#xFB01;le and
+call it <span 
+class="cmtt-10">Configfile</span>.
+</p><!--l. 116--><p class="indent" >   Note that <span 
+class="cmtt-10">pconfigure</span>&#x00A0;will silently skip any of these &#xFB01;les that don&#x2019;t exist so you only need to create the ones
+that make sense for your project. It&#x2019;s not expected that you make either <span 
+class="cmtt-10">Configfiles/local </span>or <span 
+class="cmtt-10">Configfile.local</span>
+as these will be speci&#xFB01;c to end-user systems.
+</p><!--l. 122--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">1.3   </span> <a 
+ id="x1-50001.3"></a>Writing your &#xFB01;rst <span 
+class="cmtt-10">Configfile</span></h4>
+<!--l. 124--><p class="noindent" >The <span 
+class="cmtt-10">Configfile </span>format is designed to be as terse as possible. In order to achieve this there are a number of implicit
+rules that <span 
+class="cmtt-10">pconfigure</span>&#x00A0;uses to traverse your source tree and attempt to determine exactly how you want your code
+built. These rules depend on exactly which language is currently being used, a list of which can be found in
+Section&#x00A0;<a 
+href="#x1-440005">5<!--tex4ht:ref: lang --></a>.
+</p><!--l. 131--><p class="indent" >   <span 
+class="cmtt-10">pconfigure</span>&#x00A0;was originally designed to link C code. Most of the other backends are at least partially based on
+the C backend which makes C a good example for how to use <span 
+class="cmtt-10">pconfigure</span>, which is why this example is written
+using C. The same general structure applies to <span 
+class="cmtt-10">Configfile</span>s for all languages, but each language will handle
+commands slightly di&#xFB00;erently so it&#x2019;s important to read Section&#x00A0;<a 
+href="#x1-440005">5<!--tex4ht:ref: lang --></a> which will tell you exactly what your language is
+expected to do.
+</p><!--l. 140--><p class="indent" >   A simple example <span 
+class="cmtt-10">Configfile </span>for C is shown here
+                                                                                         
+                                                                                         
+</p>
+   <div class="verbatim" id="verbatim-6">
+LANGUAGES&#x00A0;&#x00A0;&#x00A0;+=&#x00A0;c
+&#x00A0;<br />COMPILEOPTS&#x00A0;+=&#x00A0;-Wall
+&#x00A0;<br />
+&#x00A0;<br />BINARIES&#x00A0;&#x00A0;&#x00A0;&#x00A0;+=&#x00A0;hello
+&#x00A0;<br />SOURCES&#x00A0;&#x00A0;&#x00A0;&#x00A0;&#x00A0;+=&#x00A0;hello.c
+</div>
+<!--l. 147--><p class="nopar" > I&#x2019;ll try to explain each line below.
+</p><!--l. 150--><p class="noindent" >
+</p>
+   <h3 class="sectionHead"><span class="titlemark">2   </span> <a 
+ id="x1-60002"></a>Command-Line Options </h3>
+<!--l. 152--><p class="noindent" >The set of command-line arguments that <span 
+class="cmtt-10">pconfigure</span>&#x00A0;understands is stored in the <span 
+class="cmtt-10">struct clopts </span>structure and is
+&#xFB01;lled in <span 
+class="cmtt-10">clopts</span><span 
+class="cmtt-10">_new&#x0028;&#x0029;</span>.
+</p><!--l. 156--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">2.1   </span> <a 
+ id="x1-70002.1"></a><span 
+class="cmtt-10">--config &#x003C;filename&#x003E;</span></h4>
+<!--l. 158--><p class="noindent" >Loads a con&#xFB01;guration &#xFB01;le, see Section&#x00A0;<a 
+href="#x1-400004.20">4.20<!--tex4ht:ref: cmd:config --></a> for more information. Calling <span 
+class="cmtt-10">--config &#x003C;filename&#x003E; </span>is exactly the same
+as inserting a <span 
+class="cmtt-10">CONFIG += &#x003C;filename&#x003E; </span>as the &#xFB01;rst line of your <span 
+class="cmtt-10">Configfile</span>. Speci&#xFB01;cally, the con&#xFB01;gurations will be
+loaded in the following order:
+                                                                                         
+                                                                                         
+</p>
+   <div class="verbatim" id="verbatim-7">
+Configfiles/local
+&#x00A0;<br />Configfile.local
+&#x00A0;<br />Files&#x00A0;listed&#x00A0;by&#x00A0;--config
+&#x00A0;<br />Configfiles/main
+&#x00A0;<br />Configfile
+</div>
+<!--l. 170--><p class="nopar" >
+</p><!--l. 172--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">2.2   </span> <a 
+ id="x1-80002.2"></a><span 
+class="cmtt-10">--version</span></h4>
+<!--l. 174--><p class="noindent" >Prints the version number of <span 
+class="cmtt-10">pconfigure</span>&#x00A0;and exits without touching anything else. Speci&#xFB01;cally, this doesn&#x2019;t touch
+the <span 
+class="cmtt-10">Makefile </span>at all.
+</p><!--l. 178--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">2.3   </span> <a 
+ id="x1-90002.3"></a><span 
+class="cmtt-10">--sourcepath &#x003C;dirname&#x003E;</span></h4>
+<!--l. 180--><p class="noindent" >Allows for the seperation of the source and build directories. By default, <span 
+class="cmtt-10">pconfigure</span>&#x00A0;will place output &#xFB01;le in the
+same directory as the rest of your project, this allows them to be seperated. Running
+                                                                                         
+                                                                                         
+</p>
+   <div class="verbatim" id="verbatim-8">
+$&#x00A0;pconfigure&#x00A0;--sourcepath&#x00A0;$DIRNAME
+</div>
+<!--l. 185--><p class="nopar" > duplicates the functionality of running
+                                                                                         
+                                                                                         
+</p>
+   <div class="verbatim" id="verbatim-9">
+$&#x00A0;$DIRNAME/configure
+</div>
+<!--l. 189--><p class="nopar" > in the land of GNU tools.
+</p><!--l. 192--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">2.4   </span> <a 
+ id="x1-100002.4"></a><span 
+class="cmtt-10">--binname</span></h4>
+<!--l. 194--><p class="noindent" >See Section&#x00A0;<a 
+href="#x1-120002.6">2.6<!--tex4ht:ref: cl:srcname --></a>, this is hard to describe in isolation.
+</p><!--l. 196--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">2.5   </span> <a 
+ id="x1-110002.5"></a><span 
+class="cmtt-10">--testname</span></h4>
+<!--l. 198--><p class="noindent" >See Section&#x00A0;<a 
+href="#x1-120002.6">2.6<!--tex4ht:ref: cl:srcname --></a>, this is hard to describe in isolation.
+</p><!--l. 200--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">2.6   </span> <a 
+ id="x1-120002.6"></a><span 
+class="cmtt-10">--srcname </span></h4>
+<!--l. 202--><p class="noindent" >The tree commands <span 
+class="cmtt-10">--binname</span>, <span 
+class="cmtt-10">--testname</span>, and <span 
+class="cmtt-10">--srcname </span>are all related and can only really be described
+together. The idea behind these is to allow interrogating a running <span 
+class="cmtt-10">pconfigure</span>&#x00A0;instance from inside the
+<span 
+class="cmtt-10">Configfile</span>.
+</p><!--l. 207--><p class="indent" >   The general idea is that you can query the full name of an object that <span 
+class="cmtt-10">pconfigure</span>&#x00A0;builds. You must provide
+either <span 
+class="cmtt-10">--binname </span>or <span 
+class="cmtt-10">--testname </span>whenever you provide <span 
+class="cmtt-10">--srcname</span>. When you pass <span 
+class="cmtt-10">--srcname</span>, rather that
+outputting a <span 
+class="cmtt-10">Makefile pconfigure</span>&#x00A0;will print an object name to <span 
+class="cmtt-10">stdout</span>. The binary name will coorespond to the
+object that gets built for the given source and target name.
+</p><!--l. 215--><p class="indent" >   For example, if you have the con&#xFB01;guration &#xFB01;le
+                                                                                         
+                                                                                         
+</p>
+   <div class="verbatim" id="verbatim-10">
+...
+&#x00A0;<br />BINARIES&#x00A0;+=&#x00A0;target
+&#x00A0;<br />SOURCES&#x00A0;&#x00A0;+=&#x00A0;source.c
+&#x00A0;<br />...
+</div>
+<!--l. 221--><p class="nopar" > then running <span 
+class="cmtt-10">pconfigure --binname target --srcname source.c </span>will produce the object that
+pcon&#xFB01;gure links into <span 
+class="cmtt-10">bin/target </span>when it compiles <span 
+class="cmtt-10">src/source.c</span>. This could be useful if you need to
+interrogate this output from some script somewhere &#x0028;for example, from a <span 
+class="cmtt-10">GENERATE </span>script&#x0029;. Note that you
+can ask for sources that are implicitly included in a binary. The only di&#xFB00;erence between providing
+<span 
+class="cmtt-10">--testname </span>and <span 
+class="cmtt-10">--binname </span>is that <span 
+class="cmtt-10">--testname </span>cooresponds to <span 
+class="cmtt-10">TESTS </span>and <span 
+class="cmtt-10">--binname </span>cooresponds to
+<span 
+class="cmtt-10">BINARIES</span>.
+</p><!--l. 232--><p class="indent" >   Note that passing any of these options disables <span 
+class="cmtt-10">Makefile </span>output by redirecting writes to <span 
+class="cmtt-10">/dev/null</span>&#x0029;.
+Additionally, providing any of these arguments will disable any future calls to shell outs, as otherwise a <span 
+class="cmtt-10">Configfile</span>
+could recurse forever.
+</p><!--l. 237--><p class="noindent" >
+</p>
+   <h3 class="sectionHead"><span class="titlemark">3   </span> <a 
+ id="x1-130003"></a><span 
+class="cmtt-10">make </span>Targets </h3>
+<!--l. 239--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">3.1   </span> <a 
+ id="x1-140003.1"></a><span 
+class="cmtt-10">make all </span></h4>
+<!--l. 241--><p class="noindent" >Builds every target speci&#xFB01;ed by <span 
+class="cmtt-10">BINARIES</span>, <span 
+class="cmtt-10">LIBRARIES</span>, <span 
+class="cmtt-10">HEADERS</span>, and <span 
+class="cmtt-10">LIBEXECS</span>.
+</p><!--l. 244--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">3.2   </span> <a 
+ id="x1-150003.2"></a><span 
+class="cmtt-10">make install </span></h4>
+<!--l. 246--><p class="noindent" >Installs all targets built by <span 
+class="cmtt-10">make all </span>&#x0028;see Section&#x00A0;<a 
+href="#x1-140003.1">3.1<!--tex4ht:ref: make:all --></a>&#x0029; to the speci&#xFB01;ed <span 
+class="cmtt-10">PREFIX </span>path. Note that this may require
+re-linking some targets in order to deal with something like <span 
+class="cmtt-10">-rpath</span>. Exactly what is rebuilt and how depends on the
+language, see Section&#x00A0;<a 
+href="#x1-440005">5<!--tex4ht:ref: lang --></a> for more information.
+</p><!--l. 252--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">3.3   </span> <a 
+ id="x1-160003.3"></a><span 
+class="cmtt-10">make check </span></h4>
+<!--l. 254--><p class="noindent" >Builds and runs every test speci&#xFB01;ed by the <span 
+class="cmtt-10">Configfile</span>.
+</p><!--l. 256--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">3.4   </span> <a 
+ id="x1-170003.4"></a><span 
+class="cmtt-10">make clean</span></h4>
+<!--l. 258--><p class="noindent" >Removes every target generated by <span 
+class="cmtt-10">make all </span>&#x0028;see Section&#x00A0;<a 
+href="#x1-140003.1">3.1<!--tex4ht:ref: make:all --></a>&#x0029; and by <span 
+class="cmtt-10">make check </span>&#x0028;see Section&#x00A0;<a 
+href="#x1-160003.3">3.3<!--tex4ht:ref: make:check --></a>&#x0029;.
+                                                                                         
+                                                                                         
+</p><!--l. 262--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">3.5   </span> <a 
+ id="x1-180003.5"></a><span 
+class="cmtt-10">make depclean</span></h4>
+<!--l. 264--><p class="noindent" >Recursively removes <span 
+class="cmtt-10">BINDIR</span>, <span 
+class="cmtt-10">OBJDIR</span>, <span 
+class="cmtt-10">LIBDIR</span>, and <span 
+class="cmtt-10">CHECKDIR</span>. This completely removes every &#xFB01;le <span 
+class="cmtt-10">pconfigure</span>&#x00A0;could
+have touched.
+</p><!--l. 268--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">3.6   </span> <a 
+ id="x1-190003.6"></a><span 
+class="cmtt-10">make uninstall</span></h4>
+<!--l. 270--><p class="noindent" >Removes every target created by <span 
+class="cmtt-10">make install </span>&#x0028;see Section&#x00A0;<a 
+href="#x1-150003.2">3.2<!--tex4ht:ref: make:install --></a>&#x0029;.
+</p><!--l. 273--><p class="noindent" >
+</p>
+   <h3 class="sectionHead"><span class="titlemark">4   </span> <a 
+ id="x1-200004"></a>Commands </h3>
+<!--l. 275--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.1   </span> <a 
+ id="x1-210004.1"></a><span 
+class="cmtt-10">LANGUAGES += $lang</span></h4>
+<!--l. 277--><p class="noindent" >First, this &#xFB02;ushes the current target.
+</p><!--l. 279--><p class="indent" >   If <span 
+class="cmtt-10">LANGUAGES += $lang </span>has not yet been run, then $lang is added to the list of known language
+backends.
+</p><!--l. 282--><p class="indent" >   $lang is then set as the last added language. This is used for two distinct reasons: to manage exclusive languages,
+and to set language-global command-line options.
+</p><!--l. 286--><p class="indent" >   The reason that all languages aren&#x2019;t just added to the language list all the time is because some languages
+interact in odd ways. An example iss the interaction between C and C++ where C++ can build some C &#xFB01;les and C
+can build some C++ &#xFB01;les: it would be impossible to determine which compiler to use. Another example is Scala and
+Chisel.
+</p><!--l. 292--><p class="indent" >   The other use of <span 
+class="cmtt-10">LANGUAGES </span>is to set the &#x201C;last language pointer&#x201D; so you can modify that language&#x2019;s
+language-global command-line options. For example, you may have
+                                                                                         
+                                                                                         
+</p>
+   <div class="verbatim" id="verbatim-11">
+LANGUAGES&#x00A0;+=&#x00A0;c
+&#x00A0;<br />COMPILEOPTS&#x00A0;+=&#x00A0;option1
+&#x00A0;<br />...
+&#x00A0;<br />LANGUAGES&#x00A0;+=&#x00A0;c
+&#x00A0;<br />COMPILEOPTS&#x00A0;+=&#x00A0;option2
+</div>
+<!--l. 301--><p class="nopar" > when you want to build a whole bunch of targets with <span 
+class="cmtt-10">option1</span>, and then want to build another set of targets with
+<span 
+class="cmtt-10">option2</span>. Overloading the whole <span 
+class="cmtt-10">LANGUAGES </span>target to both add to the language list and to set a pointer to the
+current language allows this sort of behavior.
+</p><!--l. 308--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.2   </span> <a 
+ id="x1-220004.2"></a><span 
+class="cmtt-10">BINARIES += $name </span></h4>
+<!--l. 310--><p class="noindent" >This &#x0028;and its many variants described below&#x0029; is the mechanism <span 
+class="cmtt-10">pconfigure</span>&#x00A0;uses for tracking targets. When called
+it &#xFB01;rst &#xFB02;ushes any currently existing target and then sets the current target to <span 
+class="cmtt-10">$BINDIR/$name</span>.
+</p><!--l. 315--><p class="indent" >   Note that everything except for the target&#x2019;s name is decided when the target is &#xFB02;ushed. This includes the
+target&#x2019;s linker command, which can only be decided based on the source languages that were attached to that
+target.
+</p><!--l. 320--><p class="indent" >   When a <span 
+class="cmtt-10">BINARIES </span>target is &#xFB02;ushed it will build a staticly-linked executable &#x0028;as opposed to a static or shared
+library&#x0029;.
+</p><!--l. 323--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.3   </span> <a 
+ id="x1-230004.3"></a><span 
+class="cmtt-10">LIBRARIES += $name </span></h4>
+<!--l. 325--><p class="noindent" >Largely the same as <span 
+class="cmtt-10">BINARIES += $name </span>with two major di&#xFB00;erences: the resulting output binary is stored to
+<span 
+class="cmtt-10">$LIBDIR </span>instead of <span 
+class="cmtt-10">$BINDIR </span>and a library is built instead of a stand-alone binary.
+</p><!--l. 330--><p class="indent" >   Some amount of automatic detection is done in order to decide if a shared or a static object should be built. The
+hurestic is as follows: if $name ends in the canonical shared object extension on Linux for the selected language
+&#x0028;<span 
+class="cmtt-10">*.so </span>on Linux, for example&#x0029; then a shared library will be used, if $name ends in the canonical static archive
+extension on Linux for the selected language &#x0028;<span 
+class="cmtt-10">*.a </span>on Linux, for example&#x0029; then a static archive will be used,
+otherwise a fatal error will be throw. This mechanism exists to allow for cross-platform portability of
+<span 
+class="cmtt-10">Configfile</span>s.
+</p><!--l. 340--><p class="indent" >   Note that <span 
+class="cmtt-10">pconfigure</span>&#x00A0;will automatically determine the necessary compiler &#xFB02;ags to build shared objects on your
+platform. For example, Linux and C will result in <span 
+class="cmtt-10">-fPIC </span>being appended to both the compiler and linker
+&#xFB02;ags.
+</p><!--l. 345--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.4   </span> <a 
+ id="x1-240004.4"></a><span 
+class="cmtt-10">LIBEXECS += $name </span></h4>
+<!--l. 347--><p class="noindent" >Exactly the same as <span 
+class="cmtt-10">BINARIES += $name</span>, except that the resulting output binary is stored to <span 
+class="cmtt-10">$LIBEXECDIR </span>instead
+of <span 
+class="cmtt-10">$BINDIR</span>.
+                                                                                         
+                                                                                         
+</p><!--l. 351--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.5   </span> <a 
+ id="x1-250004.5"></a><span 
+class="cmtt-10">SOURCES += $name </span></h4>
+<!--l. 353--><p class="noindent" >Adds a <span 
+class="cmtt-10">$SRCDIR/$name </span>to the list of sources that will be linked into the current target. In addition to that source, a
+number of other sources will be implicitly discovered and linked into the current target. See Section&#x00A0;<a 
+href="#x1-440005">5<!--tex4ht:ref: lang --></a> for a
+discussion of exactly how these dependencies are determined for each language.
+</p><!--l. 359--><p class="indent" >   Note that you can link a single source &#xFB01;le into a target multiple times if it&#x2019;s been compiled with di&#xFB00;erent
+command-line options. For example, the following snippit
+                                                                                         
+                                                                                         
+</p>
+   <div class="verbatim" id="verbatim-12">
+BINARIES&#x00A0;&#x00A0;&#x00A0;&#x00A0;+=&#x00A0;target
+&#x00A0;<br />SOURCES&#x00A0;&#x00A0;&#x00A0;&#x00A0;&#x00A0;+=&#x00A0;main.c
+&#x00A0;<br />COMPILEOPTS&#x00A0;+=&#x00A0;-DTEST
+&#x00A0;<br />SOURCES&#x00A0;&#x00A0;&#x00A0;&#x00A0;&#x00A0;+=&#x00A0;main.c
+</div>
+<!--l. 367--><p class="nopar" > will build <span 
+class="cmtt-10">test.c </span>two times: once with <span 
+class="cmtt-10">-DTEST </span>and once without it. Both of these will be linked into the &#xFB01;nal
+executable. Be sure to take this into account when structuring your <span 
+class="cmtt-10">#define</span>s.
+</p><!--l. 373--><p class="indent" >   Calling <span 
+class="cmtt-10">SOURCES </span>without a target is a fatal error.
+</p><!--l. 375--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.6   </span> <a 
+ id="x1-260004.6"></a><span 
+class="cmtt-10">TESTS += $name</span></h4>
+<!--l. 377--><p class="noindent" ><span 
+class="cmtt-10">TESTS </span>is the same as <span 
+class="cmtt-10">BINARIES </span>&#x0028;see Section&#x00A0;<a 
+href="#x1-220004.2">4.2<!--tex4ht:ref: cmd:binaries --></a>&#x0029;, but the resulting binary is built at <span 
+class="cmtt-10">make all </span>and is not installed
+by <span 
+class="cmtt-10">make install</span>. Instead, it is run at <span 
+class="cmtt-10">make check </span>and the results are collected into <span 
+class="cmtt-10">$CHECKDIR</span>. These results can
+then be listed by running <span 
+class="cmtt-10">ptest </span>&#x0028;see Section&#x00A0;<a 
+href="#x1-590007.2">7.2<!--tex4ht:ref: prog:ptest --></a>&#x0029;.
+</p><!--l. 384--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.7   </span> <a 
+ id="x1-270004.7"></a><span 
+class="cmtt-10">HEADERS += $name</span></h4>
+<!--l. 386--><p class="noindent" >The <span 
+class="cmtt-10">HEADERS </span>command creates a target that&#x2019;s meant for installing, but it&#x2019;s quite di&#xFB00;erent than the <span 
+class="cmtt-10">BINARIES</span>-based
+targets. The idea behind <span 
+class="cmtt-10">HEADERS </span>is to allow libraries to install headers into the system. There are two ways headers
+can be installed: from <span 
+class="cmtt-10">$HDRDIR </span>and from <span 
+class="cmtt-10">$SRCDIR</span>.
+</p><!--l. 392--><p class="indent" >   Standard practice for C is to build a special set of headers that are installed into the system that contain the
+public API for a library. <span 
+class="cmtt-10">pconfigure</span>&#x00A0;facilitates this by allowing these custom headers to simply be built and
+installed. The following command
+                                                                                         
+                                                                                         
+</p>
+   <div class="verbatim" id="verbatim-13">
+HEADERS&#x00A0;+=&#x00A0;libname.h
+</div>
+<!--l. 398--><p class="nopar" > will copy <span 
+class="cmtt-10">$HDRDIR/libname.h </span>into <span 
+class="cmtt-10">$PREFIX/$HDRDIR </span>when <span 
+class="cmtt-10">make install </span>is run, and will do nothing else at any
+other time.
+</p><!--l. 403--><p class="indent" >   C++ ABI compatibility necessitates that exactly the same headers are used when the library is built as when it
+is linked against, which makes writing a custom set of headers pointless. <span 
+class="cmtt-10">pconfigure</span>&#x00A0;facilitates this by allowing
+headers to be copied from other locations at install time. The following snippit
+                                                                                         
+                                                                                         
+</p>
+   <div class="verbatim" id="verbatim-14">
+HEADERS&#x00A0;+=&#x00A0;libname/class.h
+&#x00A0;<br />SOURCES&#x00A0;+=&#x00A0;class.h
+</div>
+<!--l. 411--><p class="nopar" > will copy <span 
+class="cmtt-10">$SRCDIR/class.h </span>to <span 
+class="cmtt-10">$PREFIX/$HDRDIR/libname </span>when <span 
+class="cmtt-10">make install </span>is run. Note that in order for this
+to work you&#x2019;ll have to include the dummy &#x201C;h&#x201D; language, which includes a &#x201C;header compiler&#x201D; that really just copies
+the header.
+</p><!--l. 418--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.8   </span> <a 
+ id="x1-280004.8"></a><span 
+class="cmtt-10">COMPILEOPTS += $opt </span></h4>
+<!--l. 420--><p class="noindent" ><span 
+class="cmtt-10">COMPILEOPTS </span>is used to change the compile-time options. This maps to the <span 
+class="cmtt-10">CFLAGS </span>variable in the
+GNU toolchain. <span 
+class="cmtt-10">COMPILEOPTS </span>has di&#xFB00;erent behavior depending on exactly which state <span 
+class="cmtt-10">pconfigure</span>&#x00A0;is
+in:
+</p><!--l. 425--><p class="indent" >   When <span 
+class="cmtt-10">pconfigure</span>&#x00A0;has a current source, then the list of compile-time options for just that source is appended
+with <span 
+class="cmtt-10">$opt</span>.
+</p><!--l. 428--><p class="indent" >   When <span 
+class="cmtt-10">pconfigure</span>&#x00A0;has no current source but a current target, then the list of compile-time options for all
+sources linked into that target &#x0028;both explicitly and implicitly&#x0029; is append with <span 
+class="cmtt-10">$opt</span>.
+</p><!--l. 432--><p class="indent" >   When <span 
+class="cmtt-10">pconfigure</span>&#x00A0;has no current source or target, then the list of compile-time options for all sources built with
+the current languages is appended with <span 
+class="cmtt-10">$opt</span>.
+</p><!--l. 436--><p class="indent" >   When <span 
+class="cmtt-10">pconfigure</span>&#x00A0;has no current source, target, or language then a fatal error is thrown.
+</p><!--l. 439--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.9   </span> <a 
+ id="x1-290004.9"></a><span 
+class="cmtt-10">LINKOPTS += $opt</span></h4>
+<!--l. 441--><p class="noindent" ><span 
+class="cmtt-10">LINKOPTS </span>is just like <span 
+class="cmtt-10">COMPILEOPTS</span>, but it sets linker options instead of compiler options &#x0028;essentially it&#x2019;s <span 
+class="cmtt-10">LDFLAGS </span>in
+the GNU toolchain&#x0029;. See Section&#x00A0;<a 
+href="#x1-280004.8">4.8<!--tex4ht:ref: cmd:compileopts --></a> for a description of <span 
+class="cmtt-10">COMPILEOPTS</span>.
+</p><!--l. 447--><p class="indent" >   Note that some languages &#x0028;Chisel, for example&#x0029; have slightly di&#xFB00;erent semantics as to what&#x2019;s considered a
+compile-time option and what is considered a link-time option. Check Section&#x00A0;<a 
+href="#x1-440005">5<!--tex4ht:ref: lang --></a> for exactly how your language
+interprets these argumuents.
+</p><!--l. 452--><p class="indent" >   For most languages &#x0028;those that use standard compile and link semantics&#x0029;, setting <span 
+class="cmtt-10">LINKOPTS </span>for a source won&#x2019;t do
+anything, you should instead set it on the target that source will be linked into.
+</p><!--l. 457--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.10   </span> <a 
+ id="x1-300004.10"></a><span 
+class="cmtt-10">DEPLIBS += $libname </span></h4>
+<!--l. 459--><p class="noindent" >Adds an internal library dependency to the list of link options. This is essentially the same as calling
+                                                                                         
+                                                                                         
+</p>
+   <div class="verbatim" id="verbatim-15">
+LINKOPTS&#x00A0;+=&#x00A0;-l$libname
+</div>
+<!--l. 463--><p class="nopar" > but it also adds a <span 
+class="cmtt-10">Makefile </span>dependency such that whenever <span 
+class="cmtt-10">lib$libname.so </span>is rebuilt the target this is attached
+to will also be rebuilt.
+</p><!--l. 468--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.11   </span> <a 
+ id="x1-310004.11"></a><span 
+class="cmtt-10">TESTDEPS += $path</span></h4>
+<!--l. 470--><p class="noindent" >This is similar to <span 
+class="cmtt-10">DEPLIBS</span>, except that it adds an internal test dependency. Note that the format is di&#xFB00;erent: this
+takes a whole path &#x0028;as opposed to <span 
+class="cmtt-10">DEPLIBS</span>, which just takes the library name&#x0029;. This di&#xFB00;erence exists so it&#x2019;s possible
+to depend on any sort of target.
+</p><!--l. 476--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.12   </span> <a 
+ id="x1-320004.12"></a><span 
+class="cmtt-10">AUTODEPS = bool </span></h4>
+<!--l. 478--><p class="noindent" >Allows the automatic dependency generation inside <span 
+class="cmtt-10">pconfigure </span>to be disabled for a particular target. The general
+idea here is that sometimes this won&#x2019;t work: one example is a project with two shared libraries, where one library
+depends on the other. You really don&#x2019;t want everything to be compiled into the depending shared library, but
+there&#x2019;s no good way to tell <span 
+class="cmtt-10">pconfigure </span>that.
+</p><!--l. 485--><p class="indent" >   Luckily that case is simple enough where you really do just want to put <span 
+class="cmti-10">everything </span>inside a single folder into the
+library, so it&#x2019;s easy to write a bash script that generates all the <span 
+class="cmtt-10">SOURCES </span>lines and then disable automatic
+dependency generation all together.
+</p><!--l. 491--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.13   </span> <a 
+ id="x1-330004.13"></a><span 
+class="cmtt-10">COMPILER = $cmd</span></h4>
+<!--l. 493--><p class="noindent" >Sets the command used to compile for the current language to <span 
+class="cmtt-10">$cmd</span>. Calling this without any language set is a fatal
+error.
+</p><!--l. 497--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.14   </span> <a 
+ id="x1-340004.14"></a><span 
+class="cmtt-10">LINKER = $cmd</span></h4>
+<!--l. 499--><p class="noindent" >Sets the command used to link for the current language to <span 
+class="cmtt-10">$cmd</span>. Calling this without any language set is a fatal
+error.
+</p><!--l. 503--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.15   </span> <a 
+ id="x1-350004.15"></a><span 
+class="cmtt-10">PREFIX = $prefix</span></h4>
+<!--l. 505--><p class="noindent" >Sets the <span 
+class="cmtt-10">$PREFIX </span>variable to $pre&#xFB01;x.
+                                                                                         
+                                                                                         
+</p><!--l. 507--><p class="indent" >   This works in the same manner as the <span 
+class="cmtt-10">--prefix=$prefix </span>argument to GNU&#x2019;s toolchain does: it changes the
+directory in which built &#xFB01;les are expected to be installed. There&#x2019;s no support for things like <span 
+class="cmtt-10">--bin-prefix</span>, instead
+binaries are installed to <span 
+class="cmtt-10">$PREFIX/$BINDIR</span>. This keeps things consistant between the installed image and the build
+directory&#x2019;s image.
+</p><!--l. 514--><p class="indent" >   Note that it&#x2019;s probably not sane to have <span 
+class="cmtt-10">PREFIX </span>in the middle of a <span 
+class="cmtt-10">Configfile</span>. See Section&#x00A0;<a 
+href="#x1-740008.4">8.4<!--tex4ht:ref: err::prefix --></a> for more
+information.
+</p><!--l. 518--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.16   </span> <a 
+ id="x1-360004.16"></a><span 
+class="cmtt-10">LIBDIR = $val</span></h4>
+<!--l. 520--><p class="noindent" >Sets the <span 
+class="cmtt-10">LIBDIR </span>variable to <span 
+class="cmtt-10">$val</span>. By default it is set to <span 
+class="cmtt-10">lib</span>.
+</p><!--l. 523--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.17   </span> <a 
+ id="x1-370004.17"></a><span 
+class="cmtt-10">HDRDIR = $val</span></h4>
+<!--l. 525--><p class="noindent" >Sets the <span 
+class="cmtt-10">HDRDIR </span>variable to <span 
+class="cmtt-10">$val</span>. By default it is set to <span 
+class="cmtt-10">include</span>.
+</p><!--l. 528--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.18   </span> <a 
+ id="x1-380004.18"></a><span 
+class="cmtt-10">TESTDIR = $val</span></h4>
+<!--l. 530--><p class="noindent" >Sets the <span 
+class="cmtt-10">TESTDIR </span>variable to <span 
+class="cmtt-10">$val</span>. By default it is set to <span 
+class="cmtt-10">test</span>.
+</p><!--l. 533--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.19   </span> <a 
+ id="x1-390004.19"></a><span 
+class="cmtt-10">SRCDIR = $val</span></h4>
+<!--l. 535--><p class="noindent" >Sets the <span 
+class="cmtt-10">SRCDIR </span>variable to <span 
+class="cmtt-10">$val</span>. By default it is set to <span 
+class="cmtt-10">src</span>.
+</p><!--l. 538--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.20   </span> <a 
+ id="x1-400004.20"></a><span 
+class="cmtt-10">CONFIG += $file </span></h4>
+<!--l. 540--><p class="noindent" >When <span 
+class="cmtt-10">Configfiles/$file </span>exists and is executable, the output of that executable is treted as a <span 
+class="cmtt-10">Configfile </span>and
+used as input for <span 
+class="cmtt-10">pconfigure</span>. When the executable terminates, <span 
+class="cmtt-10">pconfigure</span>&#x00A0;resumes parsing the current &#xFB01;le at the
+next line.
+</p><!--l. 545--><p class="indent" >   When <span 
+class="cmtt-10">Configfiles/$file </span>exists and is not executable, that &#xFB01;le is parsed as a <span 
+class="cmtt-10">Configfile </span>and used as the
+input for <span 
+class="cmtt-10">pconfigure</span>. When the executable terminates, <span 
+class="cmtt-10">pconfigure</span>&#x00A0;resumes parsing the current &#xFB01;le at the next
+line. This is e&#xFB00;ectively C&#x2019;s <span 
+class="cmtt-10">#include </span>but for <span 
+class="cmtt-10">pconfigure</span>.
+</p><!--l. 551--><p class="indent" >   When <span 
+class="cmtt-10">Configfiles/$file </span>does not exist, a fatal error occurs.
+</p><!--l. 553--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.21   </span> <a 
+ id="x1-410004.21"></a><span 
+class="cmtt-10">TESTSRC += $name</span></h4>
+<!--l. 555--><p class="noindent" >This is just a macro that generates
+                                                                                         
+                                                                                         
+</p>
+   <div class="verbatim" id="verbatim-16">
+TESTS&#x00A0;&#x00A0;&#x00A0;+=&#x00A0;$name
+&#x00A0;<br />SOURCES&#x00A0;+=&#x00A0;$name
+</div>
+<!--l. 559--><p class="nopar" >
+</p><!--l. 561--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.22   </span> <a 
+ id="x1-420004.22"></a><span 
+class="cmtt-10">GENERATE += $name.proc</span></h4>
+<!--l. 563--><p class="noindent" >Allows for the generation of arbitrary targets. The &#xFB01;le <span 
+class="cmtt-10">$name </span>will be generated somewhere in <span 
+class="cmtt-10">$OBJDIR</span>. Some
+languages &#x0028;C and C++, for example&#x0029; will place this directory in the global include path, but the exact
+semantics are de&#xFB01;ned by the language. Note that currently it is only legal to call all <span 
+class="cmtt-10">GENERATE </span>commands
+before any other targets, which results in them being placed in a global directory &#x2013; this may change
+in the future such that it is possible to associate <span 
+class="cmtt-10">GENERATE </span>commands with speci&#xFB01;c targets in order
+to keep them seperate. <span 
+class="cmtt-10">$SRCDIR/$name.proc </span>is expected to be an executable that has two calling
+formats:
+</p><!--l. 575--><p class="indent" >   Calling <span 
+class="cmtt-10">$SRCDIR$name.proc --deps </span>prints out the dependencies of <span 
+class="cmtt-10">$name </span>to <span 
+class="cmtt-10">/dev/stdout</span>. It&#x2019;s up to the user to
+keep this dependency list complete and to ensure that all these dependencies are eventually handled by <span 
+class="cmtt-10">pconfigure</span>.
+<span 
+class="cmtt-10">pconfigure</span>&#x00A0;provides the <span 
+class="cmtt-10">--binname</span>, <span 
+class="cmtt-10">--testname</span>, and <span 
+class="cmtt-10">--srcname </span>arguments to facilitate this, see Section&#x00A0;<a 
+href="#x1-120002.6">2.6<!--tex4ht:ref: cl:srcname --></a> for
+more information.
+</p><!--l. 583--><p class="indent" >   Calling <span 
+class="cmtt-10">$SRCDIR$name.proc --generate </span>prints the generated &#xFB01;le to <span 
+class="cmtt-10">/dev/stdout</span>. Note that <span 
+class="cmtt-10">pconfigure</span>&#x00A0;may
+call this when <span 
+class="cmtt-10">pconfigure</span>&#x00A0;is run in addition to when <span 
+class="cmtt-10">make </span>is run, as opposed to <span 
+class="cmtt-10">--deps </span>which will only be called
+when <span 
+class="cmtt-10">pconfigure</span>&#x00A0;is run &#x0028;and never when <span 
+class="cmtt-10">make </span>is run&#x0029;. This means it&#x2019;s possible that the script will be run before its
+dependencies are ready, so plan accordingly!
+</p><!--l. 591--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">4.23   </span> <a 
+ id="x1-430004.23"></a><span 
+class="cmtt-10">TGENERATE += $script</span></h4>
+<!--l. 593--><p class="noindent" >Exactly the same as generate, but runs <span 
+class="cmtt-10">$TESTDIR/$script </span>instead of running <span 
+class="cmtt-10">$SRCDIR/$script</span>.
+</p><!--l. 596--><p class="noindent" >
+</p>
+   <h3 class="sectionHead"><span class="titlemark">5   </span> <a 
+ id="x1-440005"></a>Supported Languages </h3>
+<!--l. 598--><p class="noindent" >A number of <span 
+class="cmtt-10">pconfigure</span>&#x00A0;speci&#xFB01;cs are determined
+</p><!--l. 600--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">5.1   </span> <a 
+ id="x1-450005.1"></a><span 
+class="cmtt-10">asm</span>: Assembly</h4>
+<!--l. 602--><p class="noindent" >This is almost exactly the same as C &#x0028;see Section&#x00A0;<a 
+href="#x1-470005.3">5.3<!--tex4ht:ref: lang:c --></a>&#x0029;, except that it expects source &#xFB01;les are called <span 
+class="cmtt-10">*.S </span>and that it
+compiles using <span 
+class="cmtt-10">cc -xassembly</span>.
+</p><!--l. 606--><p class="indent" >   It&#x2019;s expected that <span 
+class="cmtt-10">cc </span>accepts the same command-line arguments as GCC does. Note that a wrapper for
+<span 
+class="cmtt-10">nasm </span>is provided that adapts it to use the GCC command-line arguments. See Section&#x00A0;<a 
+href="#x1-680007.11">7.11<!--tex4ht:ref: prog:pnasm --></a> for more
+information.
+                                                                                         
+                                                                                         
+</p><!--l. 611--><p class="indent" >   <span 
+class="cmtt-10">asm </span>supports linking against C.
+</p><!--l. 613--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">5.2   </span> <a 
+ id="x1-460005.2"></a><span 
+class="cmtt-10">bash</span>: BASH &#x0028;<span 
+class="cmtt-10">pbashc </span>compiler&#x0029; </h4>
+<!--l. 615--><p class="noindent" >This uses <span 
+class="cmtt-10">pbashc</span>, a dummy BASH compiler to build BASH code. See Section&#x00A0;<a 
+href="#x1-640007.7">7.7<!--tex4ht:ref: prog:pbashc --></a> for more information. BASH
+parses <span 
+class="cmtt-10">pbashc #include </span>directives to discover a list of implicit dependencies.
+</p><!--l. 620--><p class="indent" >   <span 
+class="cmtt-10">bash </span>supports linking against BASH.
+</p><!--l. 622--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">5.3   </span> <a 
+ id="x1-470005.3"></a><span 
+class="cmtt-10">c</span>: C </h4>
+<!--l. 624--><p class="noindent" >This is the canonical language. Implicit dependency resolution is handled by parsing C proprocessor macrcos to
+discover a list of <span 
+class="cmtt-10">#include</span>ed &#xFB01;les. This list is then mapped to a list of <span 
+class="cmtt-10">C </span>source &#xFB01;les, which are then recursively
+added.
+</p><!--l. 629--><p class="indent" >   C supports linking against C.
+</p><!--l. 631--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">5.4   </span> <a 
+ id="x1-480005.4"></a><span 
+class="cmtt-10">chisel</span>: Chisel C++ Backend </h4>
+<!--l. 633--><p class="noindent" >This language builds a set of Scala &#xFB01;les, runs them to procude some C++ code, and then builds that C++ code into
+an object. Additionally, the generated header &#xFB01;le is added to all the other C++ &#xFB01;les built. This means that your
+Chisel code has to come before your C++ code in the <span 
+class="cmtt-10">Configfile</span>.
+</p><!--l. 639--><p class="indent" >   Chisel implicit dependency detection works in the same manner as Scala &#x0028;see Section&#x00A0;<a 
+href="#x1-540005.10">5.10<!--tex4ht:ref: lang:scala --></a>&#x0029;: an entire directory
+of &#xFB01;les is built and linked together.
+</p><!--l. 643--><p class="indent" >   Note that speci&#xFB01;cying a library that ends in <span 
+class="cmtt-10">.so </span>will generate a Chisel library from the generated C++ code, but
+specifying a library that ends in <span 
+class="cmtt-10">.jar </span>will generate a Scala library directly.
+</p><!--l. 648--><p class="indent" >   The Chisel C++ backend supports linking against C &#x0028;for binaries and C++ libraries&#x0029;, and against Scala &#x0028;for
+Scala libraries&#x0029;.
+</p><!--l. 651--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">5.5   </span> <a 
+ id="x1-490005.5"></a><span 
+class="cmtt-10">c++</span>: C++</h4>
+<!--l. 653--><p class="noindent" >C++ is almost exactly the same as C, except that there is a wider set of &#xFB01;le extensions is supported &#x0028;<span 
+class="cmtt-10">.c++</span>, <span 
+class="cmtt-10">.cpp</span>,
+<span 
+class="cmtt-10">.cxx</span>, and <span 
+class="cmtt-10">.c</span>&#x0029; and that the code is linked with <span 
+class="cmtt-10">c++ </span>instead of <span 
+class="cmtt-10">cc</span>.
+</p><!--l. 658--><p class="indent" >   Chisel implicit dependency detection works in the same manner as Scala &#x0028;see Section&#x00A0;<a 
+href="#x1-540005.10">5.10<!--tex4ht:ref: lang:scala --></a>&#x0029;: an entire directory
+of &#xFB01;les is built and linked together.
+</p><!--l. 662--><p class="indent" >   C++ supports linking against C.
+</p><!--l. 664--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">5.6   </span> <a 
+ id="x1-500005.6"></a><span 
+class="cmtt-10">flo</span>: Chisel Flo Backend</h4>
+<!--l. 666--><p class="noindent" >This language is almost exactly the same as the Chisel C++ language &#x0028;see Section&#x00A0;<a 
+href="#x1-480005.4">5.4<!--tex4ht:ref: chisel --></a>&#x0029; but it generates Flo code
+instead of C++ code.
+</p><!--l. 670--><p class="indent" >   The Flo backend supports linking against Flo.
+                                                                                         
+                                                                                         
+</p><!--l. 672--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">5.7   </span> <a 
+ id="x1-510005.7"></a><span 
+class="cmtt-10">h</span>: C/C++ Header</h4>
+<!--l. 674--><p class="noindent" >This is a simple dummy language that just copies header &#xFB01;les for installation.
+</p><!--l. 677--><p class="indent" >   Headers support linking against headers.
+</p><!--l. 679--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">5.8   </span> <a 
+ id="x1-520005.8"></a><span 
+class="cmtt-10">perl</span>: Perl &#x0028;<span 
+class="cmtt-10">pperlc </span>compiler&#x0029;</h4>
+<!--l. 681--><p class="noindent" >This is almost exactly the same as the BASH language &#x0028;see Section&#x00A0;<a 
+href="#x1-460005.2">5.2<!--tex4ht:ref: lang:bash --></a>, but it compiles Perl instead by using
+<span 
+class="cmtt-10">pperlc </span>&#x0028;see Section&#x00A0;<a 
+href="#x1-650007.8">7.8<!--tex4ht:ref: prog:pperlc --></a>&#x0029;.
+</p><!--l. 685--><p class="indent" >   Perl supports linking against perl.
+</p><!--l. 687--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">5.9   </span> <a 
+ id="x1-530005.9"></a><span 
+class="cmtt-10">pkgconfig</span>: <span 
+class="cmtt-10">pkg-config</span></h4>
+<!--l. 689--><p class="noindent" >This generates <span 
+class="cmtt-10">pkg-config </span>&#xFB01;les by passing them through <span 
+class="cmtt-10">sed </span>a number of times. There&#x2019;s a few rules:
+</p>
+     <ul class="itemize1">
+     <li class="itemize">Most <span 
+class="cmtt-10">pconfigure</span>&#x00A0;variables are availiable under the format <span 
+class="cmtt-10">@@pconfigure</span><span 
+class="cmtt-10">_VARIABLE@@</span>
+     </li>
+     <li class="itemize">Passing <span 
+class="cmtt-10">-Sscript </span>as a compile option runs <span 
+class="cmtt-10">sed </span>with the contents of that &#xFB01;le as an argument
+     </li>
+     <li class="itemize">Passing any other string simply runs <span 
+class="cmtt-10">sed </span>with that as an argument</li></ul>
+<!--l. 701--><p class="indent" >   Note that one <span 
+class="cmtt-10">sed </span>process is run for each argument provided as a compile option.
+</p><!--l. 704--><p class="indent" >   pkgcon&#xFB01;g supports linking against pkgcon&#xFB01;g.
+</p><!--l. 706--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">5.10   </span> <a 
+ id="x1-540005.10"></a><span 
+class="cmtt-10">scala</span>: Scala </h4>
+<!--l. 708--><p class="noindent" >The Scala language uses <span 
+class="cmtt-10">pscalac </span>&#x0028;see Section&#x00A0;<a 
+href="#x1-660007.9">7.9<!--tex4ht:ref: prog:pscalac --></a>&#x0029; and <span 
+class="cmtt-10">pscalald </span>&#x0028;see Section&#x00A0;<a 
+href="#x1-670007.10">7.10<!--tex4ht:ref: prog:pscalald --></a>&#x0029; to build Scala in a manner
+that&#x2019;s mostly compatible with a UNIX-style C toolchain.
+</p><!--l. 713--><p class="indent" >   Implicit dependency handling in the Scala language is handled by assuming that whole directory subtrees are all
+interdependent and by allowing the Scala compiler to handle all build dependencies. For example,
+passing
+                                                                                         
+                                                                                         
+</p>
+   <div class="verbatim" id="verbatim-17">
+BINARIES&#x00A0;+=&#x00A0;target
+&#x00A0;<br />SOURCES&#x00A0;+=&#x00A0;dir/file.scala
+</div>
+<!--l. 719--><p class="nopar" > will include every scala &#xFB01;le listed by <span 
+class="cmtt-10">find $SRCNAME/dir -iname *.scala </span>in <span 
+class="cmtt-10">target</span>. Note that this behavior
+leads to some added complexity and should be eventually &#xFB01;xed, but it&#x2019;ll be tough because it&#x2019;s hard to parse Scala
+code in a timely fashion.
+</p><!--l. 725--><p class="indent" >   Scala supports linking against scala.
+</p><!--l. 727--><p class="noindent" >
+</p>
+   <h3 class="sectionHead"><span class="titlemark">6   </span> <a 
+ id="x1-550006"></a>Common Error Messages </h3>
+<!--l. 729--><p class="noindent" ><span 
+class="cmtt-10">pconfigure</span>&#x00A0;will print a number of error messages to <span 
+class="cmtt-10">stderr</span>. Some of these messages are fatal and some aren&#x2019;t.
+Fatal errors result in the termination of <span 
+class="cmtt-10">pconfigure</span>&#x00A0;without generating a valid <span 
+class="cmtt-10">Makefile</span>, while non-fatal errors are
+simply printed to <span 
+class="cmtt-10">stderr </span>while <span 
+class="cmtt-10">pconfigure</span>&#x00A0;continues to run. Note that some non-fatal errors may mask or create
+others, so it&#x2019;s probably best to only rely on the &#xFB01;rst error message &#x0028;though this hasn&#x2019;t proved to be a problem yet,
+it&#x2019;s a big problem with many other languages&#x0029;.
+</p><!--l. 738--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">6.1   </span> <a 
+ id="x1-560006.1"></a>... failed, which is probably bad</h4>
+<!--l. 740--><p class="noindent" >A shell-out exited with a non-zero exit code. You should avoid using commands that can fail but should instead
+handle these failures in your code &#x0028;ie, as opposed to your <span 
+class="cmtt-10">Configfile</span>&#x0029;.
+</p><!--l. 744--><p class="noindent" >
+</p>
+   <h3 class="sectionHead"><span class="titlemark">7   </span> <a 
+ id="x1-570007"></a>Useful Helper Programs </h3>
+<!--l. 746--><p class="noindent" >The <span 
+class="cmtt-10">pconfigure</span>&#x00A0;distribution includes a number of binaries in addition to the <span 
+class="cmtt-10">pconfigure</span>&#x00A0;binary. What follows is a
+list of these programs along with a short description of their functionality and usage.
+</p><!--l. 751--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">7.1   </span> <a 
+ id="x1-580007.1"></a><span 
+class="cmtt-10">pclean </span></h4>
+<!--l. 753--><p class="noindent" >The simplest helper program: essentially it just performs <span 
+class="cmtt-10">rm *</span><span 
+class="cmtt-10">&#x00A0; </span>recursively. It&#x2019;s just a small wrapper around
+<span 
+class="cmtt-10">find</span>.
+</p><!--l. 756--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">7.2   </span> <a 
+ id="x1-590007.2"></a><span 
+class="cmtt-10">ptest </span></h4>
+                                                                                         
+                                                                                         
+<!--l. 758--><p class="noindent" >In addition to being used internally by <span 
+class="cmtt-10">pconfigure</span>&#x00A0;to run tests, <span 
+class="cmtt-10">ptest </span>prints the current set of test results to
+<span 
+class="cmtt-10">stdout</span>. You will almost certainly just want to run <span 
+class="cmtt-10">ptest </span>with no arguments, which will print the entire current set
+of test results along with a summary.
+</p><!--l. 764--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">7.3   </span> <a 
+ id="x1-600007.3"></a><span 
+class="cmtt-10">pinclude </span></h4>
+<!--l. 766--><p class="noindent" >A small command-line tools that exposes <span 
+class="cmtt-10">libpinclude.so</span>, <span 
+class="cmtt-10">pconfigure</span>&#x2019;s C preprocessor dependency handler, to
+BASH scripts. This probably isn&#x2019;t actually useful because both <span 
+class="cmtt-10">clang </span>and <span 
+class="cmtt-10">GCC </span>provide a more robust form of this
+functionality: the only reason <span 
+class="cmtt-10">libpinclude.so </span>exists in the &#xFB01;rst place is because it&#x2019;s signi&#xFB01;cantly faster than either
+of them.
+</p><!--l. 773--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">7.4   </span> <a 
+ id="x1-610007.4"></a><span 
+class="cmtt-10">ppkg-config </span></h4>
+<!--l. 775--><p class="noindent" >A wrapper around <span 
+class="cmtt-10">pkg-config </span>that adds the following command-line options:
+</p>
+     <ul class="itemize1">
+     <li class="itemize"><span 
+class="cmtt-10">--optional</span>: returns success regardless of whether the given <span 
+class="cmtt-10">pkg-config </span>invocation succeeds or fails.
+     </li>
+     <li class="itemize"><span 
+class="cmtt-10">--have $name</span>: adds <span 
+class="cmtt-10">-DHAVE</span><span 
+class="cmtt-10">_$name </span>to the compile-time arguments if the given <span 
+class="cmtt-10">pkg-config </span>invocation
+     succeeds, otherwise does nothing.
+     </li>
+     <li class="itemize"><span 
+class="cmtt-10">--ccmd $command</span>: runs a di&#xFB00;erent <span 
+class="cmtt-10">pkg-config</span>-like command. One example is <span 
+class="cmtt-10">gpgme-config</span>. You
+     probably shouldn&#x2019;t be using this to run things like <span 
+class="cmtt-10">gcc-config </span>or <span 
+class="cmtt-10">llvm-config</span>, as their arguments
+     are very di&#xFB00;erent.</li></ul>
+<!--l. 791--><p class="indent" >   These two options combine to allow <span 
+class="cmtt-10">pkg-config </span>to be su&#xFB03;cient to do compile-time detection of features based
+on what is currently installed on a system. For example, the <span 
+class="cmtt-10">pconfigure</span>&#x00A0;<span 
+class="cmtt-10">Configfile </span>uses the following snippit
+to decide whether or not to use the system&#x2019;s talloc library or an internal version based on which is
+availiable.
+                                                                                         
+                                                                                         
+</p>
+   <div class="verbatim" id="verbatim-18">
+BINARIES&#x00A0;&#x00A0;&#x00A0;&#x00A0;+=&#x00A0;pconfigure
+&#x00A0;<br />COMPILEOPTS&#x00A0;+=&#x00A0;&#x2018;ppkg-config&#x00A0;--optional&#x00A0;--have&#x00A0;TALLOC&#x00A0;talloc&#x00A0;--cflags&#x2018;
+&#x00A0;<br />LINKOPTS&#x00A0;&#x00A0;&#x00A0;&#x00A0;+=&#x00A0;&#x2018;ppkg-config&#x00A0;--optional&#x00A0;--have&#x00A0;TALLOC&#x00A0;talloc&#x00A0;--libs&#x2018;
+&#x00A0;<br />SOURCES&#x00A0;&#x00A0;&#x00A0;&#x00A0;&#x00A0;+=&#x00A0;pconfigure/main.c
+</div>
+<!--l. 803--><p class="nopar" >
+</p><!--l. 805--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">7.5   </span> <a 
+ id="x1-620007.5"></a><span 
+class="cmtt-10">pgcc-config </span></h4>
+<!--l. 807--><p class="noindent" >This allows <span 
+class="cmtt-10">Configfile</span>s to interrogate the installed C compilers by version number in an attempt to mask &#xFB02;ags
+that are not supported on particular compilers.
+</p><!--l. 811--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">7.6   </span> <a 
+ id="x1-630007.6"></a><span 
+class="cmtt-10">pllvm-config </span></h4>
+<!--l. 813--><p class="noindent" >A wrapper around <span 
+class="cmtt-10">llvm-config </span>that does the same thing as <span 
+class="cmtt-10">ppkg-config</span>.
+</p><!--l. 816--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">7.7   </span> <a 
+ id="x1-640007.7"></a><span 
+class="cmtt-10">pbashc </span></h4>
+<!--l. 818--><p class="noindent" >A bash &#x201C;compiler&#x201D;, which really just does the following </p>
+     <ul class="itemize1">
+     <li class="itemize">Allows <span 
+class="cmtt-10">#include </span>&#x0028;with the same semantics as in the C compiler&#x0029; to be used from within BASH &#xFB01;les.
+     This is a way to avoid <span 
+class="cmtt-10">source</span>ing BASH &#xFB01;les, which can be a pain when you don&#x2019;t know where they&#x2019;ll
+     end up installed.
+     </li>
+     <li class="itemize">Sets the correct shebang at the beginning of the &#xFB01;le
+     </li>
+     <li class="itemize">Marks the output as executable</li></ul>
+<!--l. 828--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">7.8   </span> <a 
+ id="x1-650007.8"></a><span 
+class="cmtt-10">pperlc </span></h4>
+<!--l. 830--><p class="noindent" >Exactly the same as <span 
+class="cmtt-10">pbashc</span>, but for Perl &#xFB01;les.
+                                                                                         
+                                                                                         
+</p><!--l. 832--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">7.9   </span> <a 
+ id="x1-660007.9"></a><span 
+class="cmtt-10">pscalac </span></h4>
+<!--l. 834--><p class="noindent" >When combined with <span 
+class="cmtt-10">pscalald</span>, this makes Scala look like a regular compiled language. Speci&#xFB01;cally
+this wraps <span 
+class="cmtt-10">scalac </span>in a manner such that it produces a JAR archive, much like GCC produces ELF
+objects.
+</p><!--l. 839--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">7.10   </span> <a 
+ id="x1-670007.10"></a><span 
+class="cmtt-10">pscalald </span></h4>
+<!--l. 841--><p class="noindent" >When combined with <span 
+class="cmtt-10">pscalac</span>, this makes Scala look like a regular compiled language. Speci&#xFB01;cally, this allows the
+&#x201C;linking&#x201D; together of multiple Scala JAR archives into an &#x201C;executable&#x201D;. Here &#x201C;linking&#x201D; means just merging the ZIP
+&#xFB01;les, and &#x201C;executable&#x201D; means a self-extracting archive that then runs the result of its extraction &#x0028;and then cleans up
+after itself&#x0029;.
+</p><!--l. 848--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">7.11   </span> <a 
+ id="x1-680007.11"></a><span 
+class="cmtt-10">pnasm </span></h4>
+<!--l. 850--><p class="noindent" >A wrapper for NASM that makes it take a command-line argument syntax that looks more like what GCC&#x2019;s
+assembler takes. If you&#x2019;re looking to make NASM a drop-in replacement for GAS in some build script, this may be
+what you&#x2019;re after.
+</p><!--l. 855--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">7.12   </span> <a 
+ id="x1-690007.12"></a><span 
+class="cmtt-10">pwinegcc </span></h4>
+<!--l. 857--><p class="noindent" >A wrapper for the Wine project&#x2019;s modi&#xFB01;ed GCC-based toolchain that makes it behave in a manner more similar to
+stock GCC. If you&#x2019;re looking to make <span 
+class="cmtt-10">winegcc </span>a drop-in replacement for <span 
+class="cmtt-10">gcc</span>, then this may be what you&#x2019;re
+after.
+</p><!--l. 862--><p class="noindent" >
+</p>
+   <h3 class="sectionHead"><span class="titlemark">8   </span> <a 
+ id="x1-700008"></a>Odd Behavior &#x0028;ie, WONTFIX bugs&#x0029; </h3>
+<!--l. 864--><p class="noindent" ><span 
+class="cmtt-10">pconfigure</span>&#x00A0;has some odd behaviors. This section attempts to list all of those behaviors and provide ana
+explination for them. I&#x2019;d consider them all bugs, but &#xFB01;xing most of them will require imposing some sort of breakage
+on some <span 
+class="cmtt-10">Configfile</span>s, which I try to avoid.
+</p><!--l. 870--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">8.1   </span> <a 
+ id="x1-710008.1"></a>Can&#x2019;t link C and C++ into one binary</h4>
+<!--l. 872--><p class="noindent" >Building a single binary that consists of both C code compiled by <span 
+class="cmtt-10">$&#x0028;CC&#x0029; </span>and C++ code compiled
+by <span 
+class="cmtt-10">$&#x0028;CXX&#x0029; </span>is &#xFB02;aky and has a tendency to break between <span 
+class="cmtt-10">pconfigure</span>&#x00A0;releases with pretty much no
+warning.
+</p><!--l. 877--><p class="indent" >   This exists because the C++ backend allows C code to be built &#x0028;as some projects name their C++ source &#xFB01;les
+<span 
+class="cmtt-10">*.c</span>&#x0029;. What this means is that the C++ backend can&#x2019;t determine what is a C++ &#xFB01;le and what is a C &#xFB01;le by looking
+at the &#xFB01;lename alone.
+                                                                                         
+                                                                                         
+</p><!--l. 882--><p class="indent" >   The accepted workaround is to just build your C code with the C++ compiler when you&#x2019;re trying to link it with
+other C++ code. This is probably the safest thing to do anyway, as it avoids a bunch of trouble related to C++
+name mangling &#x0028;though you&#x2019;ll have to &#xFB01;x that to build a C library anyway, so it&#x2019;s not a strong argument&#x0029;. This
+workaround has the unfortunate consequence of requiring that you write C code that can compile with a C++
+compiler, which isn&#x2019;t always easy.
+</p><!--l. 890--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">8.2   </span> <a 
+ id="x1-720008.2"></a>Old Scala classes stick around</h4>
+<!--l. 892--><p class="noindent" >Sometimes old Scala class &#xFB01;les end up in the build output.
+</p><!--l. 894--><p class="indent" >   When you build a Scala binary or library, <span 
+class="cmtt-10">pconfigure</span>&#x00A0;can&#x2019;t actually determine which class &#xFB01;les will be created.
+Thus, it links every class &#xFB01;le that&#x2019;s in the Scala compiler&#x2019;s output directory into the &#xFB01;nal binary. If you make a
+source code change that causes a class &#xFB01;le to go away, an old version of it will still be in the output directory and
+will therefor get linked in.
+</p><!--l. 901--><p class="indent" >   The way to &#xFB01;x this is to &#x201C;<span 
+class="cmtt-10">make distclean; pconfigure; make</span>&#x201D;, which clears out the whole cache. This isn&#x2019;t
+ideal, but I&#x2019;d need to write a proper Scala parser to make this bug go away.
+</p><!--l. 905--><p class="indent" >   Note that this is kind of a regression: I used to run <span 
+class="cmtt-10">strace </span>to &#xFB01;gure out which &#xFB01;les the Scala compiler touched,
+but because <span 
+class="cmtt-10">zinc </span>runs in a background daemon I can&#x2019;t use that trick. I decided it&#x2019;d be better to have <span 
+class="cmtt-10">scalac </span>and
+<span 
+class="cmtt-10">zinc </span>produce exactly the same results rather than have <span 
+class="cmtt-10">zinc </span>sometimes break.
+</p><!--l. 912--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">8.3   </span> <a 
+ id="x1-730008.3"></a><span 
+class="cmtt-10">DEPLIBS </span>triggers a full rebuild</h4>
+<!--l. 914--><p class="noindent" >When you depend on a library that&#x2019;s internal to this project by using <span 
+class="cmtt-10">DEPLIBS</span>, every dependency of that library
+will be rebuilt whenever <span 
+class="cmtt-10">pconfigure</span>&#x00A0;is run.
+</p><!--l. 918--><p class="indent" >   This is triggered because <span 
+class="cmtt-10">pconfigure</span>&#x00A0;uses the library&#x2019;s short name &#x0028;ie, <span 
+class="cmtt-10">lib/libLIB.so </span>as a dependency of theh
+binary when you add a <span 
+class="cmtt-10">DEPLIBS </span>command. These short names all depend on <span 
+class="cmtt-10">Makefile </span>because of how the compiler
+&#xFB02;ags hanling works.
+</p><!--l. 923--><p class="indent" >   Fixing this shouldn&#x2019;t actually be di&#xFB03;cult: I believe we could just depend on the full library name instead of the
+short library name, but the easiest way to implement this would be to make some Con&#xFB01;g&#xFB01;les re-entrant that
+otherwise wouldn&#x2019;t be which will start to break things in tricky ways. A better way would be to store the long
+library names for later, but that would require that all <span 
+class="cmtt-10">LIBRARIES </span>commands come before their relevant <span 
+class="cmtt-10">DEPLIBS</span>
+commands, which is probably the sanest way to do it.
+</p><!--l. 932--><p class="noindent" >
+</p>
+   <h4 class="subsectionHead"><span class="titlemark">8.4   </span> <a 
+ id="x1-740008.4"></a><span 
+class="cmtt-10">PREFIX </span>must be the &#xFB01;rst line </h4>
+<!--l. 934--><p class="noindent" >The <span 
+class="cmtt-10">PREFIX </span>variable is refered to twice: once when the linking step is generated &#x0028;to set <span 
+class="cmtt-10">-rpath</span>, for example&#x0029; and
+once when the <span 
+class="cmtt-10">make install </span>target is generated. It&#x2019;s really best if <span 
+class="cmtt-10">$PREFIX </span>is the same at both times, otherwise
+unexpected things may happen.
+</p>
+    
+</body></html> 
+
+                                                                                         
+
+
+<style type="text/css">
+ 
+/* start css.sty */
+.cmr-5{font-size:50%;}
+.cmr-7{font-size:70%;}
+.cmmi-5{font-size:50%;font-style: italic;}
+.cmmi-7{font-size:70%;font-style: italic;}
+.cmmi-10{font-style: italic;}
+.cmsy-5{font-size:50%;}
+.cmsy-7{font-size:70%;}
+.cmbsy-10{font-weight: bold;}
+.cmbsy-10{font-weight: bold;}
+.cmbsy-10{font-weight: bold;}
+.cmbsy-7{font-size:70%;font-weight: bold;}
+.cmbsy-7{font-weight: bold;}
+.cmbsy-7{font-weight: bold;}
+.cmbsy-5{font-size:50%;font-weight: bold;}
+.cmbsy-5{font-weight: bold;}
+.cmbsy-5{font-weight: bold;}
+.cmr-17{font-size:170%;}
+.cmtt-12x-x-144{font-size:172%;font-family: monospace;}
+.cmtt-12x-x-144{font-family: monospace;}
+.cmtt-12x-x-144{font-family: monospace;}
+.cmr-12{font-size:120%;}
+.cmr-9{font-size:90%;}
+.cmtt-9{font-size:90%;font-family: monospace;}
+.cmtt-9{font-family: monospace;}
+.cmtt-9{font-family: monospace;}
+.cmtt-10{font-family: monospace;}
+.cmtt-10{font-family: monospace;}
+.cmtt-10{font-family: monospace;}
+.cmti-10{ font-style: italic;}
+p.noindent { text-indent: 0em }
+td p.noindent { text-indent: 0em; margin-top:0em; }
+p.nopar { text-indent: 0em; }
+p.indent{ text-indent: 1.5em }
+@media print {div.crosslinks {visibility:hidden;}}
+a img { border-top: 0; border-left: 0; border-right: 0; }
+center { margin-top:1em; margin-bottom:1em; }
+td center { margin-top:0em; margin-bottom:0em; }
+.Canvas { position:relative; }
+math { text-indent: 0em; }
+li p.indent { text-indent: 0em }
+li p:first-child{ margin-top:0em; }
+li p:last-child, li div:last-child { margin-bottom:0.5em; }
+li p~ul:last-child, li p~ol:last-child{ margin-bottom:0.5em; }
+.enumerate1 {list-style-type:decimal;}
+.enumerate2 {list-style-type:lower-alpha;}
+.enumerate3 {list-style-type:lower-roman;}
+.enumerate4 {list-style-type:upper-alpha;}
+div.newtheorem { margin-bottom: 2em; margin-top: 2em;}
+.obeylines-h,.obeylines-v {white-space: nowrap; }
+div.obeylines-v p { margin-top:0; margin-bottom:0; }
+.overline{ text-decoration:overline; }
+.overline img{ border-top: 1px solid black; }
+td.displaylines {text-align:center; white-space:nowrap;}
+.centerline {text-align:center;}
+.rightline {text-align:right;}
+div.verbatim {font-family: monospace; white-space: nowrap; text-align:left; clear:both; }
+.fbox {padding-left:3.0pt; padding-right:3.0pt; text-indent:0pt; border:solid black 0.4pt; }
+div.fbox {display:table}
+div.center div.fbox {text-align:center; clear:both; padding-left:3.0pt; padding-right:3.0pt; text-indent:0pt; border:solid black 0.4pt; }
+div.minipage{width:100%;}
+div.center, div.center div.center {text-align: center; margin-left:1em; margin-right:1em;}
+div.center div {text-align: left;}
+div.flushright, div.flushright div.flushright {text-align: right;}
+div.flushright div {text-align: left;}
+div.flushleft {text-align: left;}
+.underline{ text-decoration:underline; }
+.underline img{ border-bottom: 1px solid black; margin-bottom:1pt; }
+.framebox-c, .framebox-l, .framebox-r { padding-left:3.0pt; padding-right:3.0pt; text-indent:0pt; border:solid black 0.4pt; }
+.framebox-c {text-align:center;}
+.framebox-l {text-align:left;}
+.framebox-r {text-align:right;}
+span.thank-mark{ vertical-align: super }
+span.footnote-mark sup.textsuperscript, span.footnote-mark a sup.textsuperscript{ font-size:80%; }
+div.tabular, div.center div.tabular {text-align: center; margin-top:0.5em; margin-bottom:0.5em; }
+table.tabular td p{margin-top:0em;}
+table.tabular {margin-left: auto; margin-right: auto;}
+td p:first-child{ margin-top:0em; }
+td p:last-child{ margin-bottom:0em; }
+div.td00{ margin-left:0pt; margin-right:0pt; }
+div.td01{ margin-left:0pt; margin-right:5pt; }
+div.td10{ margin-left:5pt; margin-right:0pt; }
+div.td11{ margin-left:5pt; margin-right:5pt; }
+table[rules] {border-left:solid black 0.4pt; border-right:solid black 0.4pt; }
+td.td00{ padding-left:0pt; padding-right:0pt; }
+td.td01{ padding-left:0pt; padding-right:5pt; }
+td.td10{ padding-left:5pt; padding-right:0pt; }
+td.td11{ padding-left:5pt; padding-right:5pt; }
+table[rules] {border-left:solid black 0.4pt; border-right:solid black 0.4pt; }
+.hline hr, .cline hr{ height : 1px; margin:0px; }
+.tabbing-right {text-align:right;}
+span.TEX {letter-spacing: -0.125em; }
+span.TEX span.E{ position:relative;top:0.5ex;left:-0.0417em;}
+a span.TEX span.E {text-decoration: none; }
+span.LATEX span.A{ position:relative; top:-0.5ex; left:-0.4em; font-size:85%;}
+span.LATEX span.TEX{ position:relative; left: -0.4em; }
+div.float, div.figure {margin-left: auto; margin-right: auto;}
+div.float img {text-align:center;}
+div.figure img {text-align:center;}
+.marginpar {width:20%; float:right; text-align:left; margin-left:auto; margin-top:0.5em; font-size:85%; text-decoration:underline;}
+.marginpar p{margin-top:0.4em; margin-bottom:0.4em;}
+.equation td{text-align:center; vertical-align:middle; }
+td.eq-no{ width:5%; }
+table.equation { width:100%; } 
+div.math-display, div.par-math-display{text-align:center;}
+mtr.hline mtd{ border-bottom:black solid 1px; padding-top:2px; padding-bottom:0em; }
+mtr.hline mtd mo{ display:none }
+math .texttt { font-family: monospace; }
+math .textit { font-style: italic; }
+math .textsl { font-style: oblique; }
+math .textsf { font-family: sans-serif; }
+math .textbf { font-weight: bold; }
+mo.MathClass-op + mi{margin-left:0.3em}
+mi + mo.MathClass-op{margin-left:0.3em}
+ math mstyle[mathvariant="bold"] mi { font-weight: bold; font-style: normal; } 
+ math mstyle[mathvariant="normal"] mi { font-weight: normal; font-style: normal; } 
+.partToc a, .partToc, .likepartToc a, .likepartToc {line-height: 200%; font-weight:bold; font-size:110%;}
+.index-item, .index-subitem, .index-subsubitem {display:block}
+div.caption {text-indent:-2em; margin-left:3em; margin-right:1em; text-align:left;}
+div.caption span.id{font-weight: bold; white-space: nowrap; }
+h1.partHead{text-align: center}
+p.bibitem { text-indent: -2em; margin-left: 2em; margin-top:0.6em; margin-bottom:0.6em; }
+p.bibitem-p { text-indent: 0em; margin-left: 2em; margin-top:0.6em; margin-bottom:0.6em; }
+.paragraphHead, .likeparagraphHead { margin-top:2em; font-weight: bold;}
+.subparagraphHead, .likesubparagraphHead { font-weight: bold;}
+.quote {margin-bottom:0.25em; margin-top:0.25em; margin-left:1em; margin-right:1em; text-align:justify;}
+.verse{white-space:nowrap; margin-left:2em}
+div.maketitle {text-align:center;}
+h2.titleHead{text-align:center;}
+div.maketitle{ margin-bottom: 2em; }
+div.author, div.date {text-align:center;}
+div.thanks{text-align:left; margin-left:10%; font-size:85%; font-style:italic; }
+div.author{white-space: nowrap;}
+.quotation {margin-bottom:0.25em; margin-top:0.25em; margin-left:1em; }
+.abstract p {margin-left:5%; margin-right:5%;}
+div.abstract {width:100%;}
+table.multicols { width:100%; margin-left:1em; margin-top:1em; margin-bottom:1em; }
+/* end css.sty */
+
+</style>
