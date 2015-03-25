@@ -20,6 +20,7 @@
  */
 
 #define _BSD_SOURCE
+#define _DEFAULT_SOURCE
 
 #include "clopts.h"
 #include "contextstack.h"
