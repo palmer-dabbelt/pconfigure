@@ -11,4 +11,5 @@ Makefile*
 *~
 
 /doc/*.pdf
+/doc/*.html
 /doc/.tek_cache
