@@ -47,6 +47,9 @@ namespace makefile {
     public:
         /* Adds a target to this makefile. */
         void add_target(const target::ptr& target);
+
+        /* Writes this makefilie out to a text file. */
+        void write_to_file(const std::string& filename);
     };
 }
 

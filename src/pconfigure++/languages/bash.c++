@@ -20,6 +20,7 @@
 
 #include "bash.h++"
 #include "../language_list.h++"
+#include <iostream>
 
 language_bash* language_bash::clone(void) const
 {

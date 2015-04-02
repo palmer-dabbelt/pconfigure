@@ -32,6 +32,11 @@ namespace makefile {
     private:
 
     public:
+
+    public:
+        /* Writes this target (and with its commands) to the given
+         * file. */
+        void write_to_file(FILE *file);
     };
 }
 

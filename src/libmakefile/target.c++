@@ -18,28 +18,9 @@
  * along with pconfigure.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "makefile.h++"
-#include <iostream>
+#include "target.h++"
 
-makefile::makefile::makefile(void)
+void makefile::target::write_to_file(FILE *file __attribute__((unused)))
 {
 }
 
-void makefile::makefile::add_target(const target::ptr& target)
-{
-    _targets.push_back(target);
-}
-
-void makefile::makefile::write_to_file(const std::string& filename)
-{
-    auto file = fopen(filename.c_str(), "w");
-    if (file == NULL) {
-        std::cerr << "Unable to open " << filename << "\n";
-        abort();
-    }
-
-    for (const auto& target: _targets)
-        target->write_to_file(file);
-
-    fclose(file);
-}

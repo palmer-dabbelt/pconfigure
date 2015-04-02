@@ -70,6 +70,8 @@ int main(int argc, const char **argv)
         for (const auto& target: language->targets(context))
             makefile->add_target(target);
     }
+
+    makefile->write_to_file("Makefile++");
     
     return 0;
 }
