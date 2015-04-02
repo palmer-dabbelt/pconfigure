@@ -20,7 +20,35 @@
 
 #include "target.h++"
 
-void makefile::target::write_to_file(FILE *file __attribute__((unused)))
+makefile::target::target(const std::string& name,
+                         const std::vector<target::ptr>& deps,
+                         const std::vector<global_targets>& global,
+                         const std::vector<std::string>& cmds)
+    : _name(name),
+      _deps(deps),
+      _global(global),
+      _cmds(cmds)
 {
 }
 
+makefile::target::target(const std::string& name)
+    : _name(name),
+      _deps(),
+      _global(),
+      _cmds()
+{
+}
+
+void makefile::target::write_to_file(FILE *file) const
+{
+    if ((_deps.size() == 0) && (_global.size() == 0) && (_cmds.size() == 0))
+        return;
+
+    fprintf(file, "%s:", _name.c_str());
+    for (const auto& dep: _deps)
+        fprintf(file, " %s", dep->_name.c_str());
+    fprintf(file, "\n");
+    for (const auto& cmd: _cmds)
+        fprintf(file, "\t%s\n", cmd.c_str());
+    fprintf(file, "\n");
+}

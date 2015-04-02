@@ -20,6 +20,7 @@
 
 #include "bash.h++"
 #include "../language_list.h++"
+#include <assert.h>
 #include <iostream>
 
 language_bash* language_bash::clone(void) const
@@ -35,6 +36,61 @@ bool language_bash::can_process(const context::ptr& ctx) const
             std::regex(".*\\.bash"),
         }
         );
+}
+
+std::vector<makefile::target::ptr>
+language_bash::targets(const context::ptr& ctx) const
+{
+    assert(ctx != NULL);
+
+    switch (ctx->type) {
+    case context_type::DEFAULT:
+    case context_type::GENERATE:
+    case context_type::LIBRARY:
+    case context_type::SOURCE:
+    case context_type::TEST:
+        std::cerr << "Unimplemented context type: "
+                  << std::to_string(ctx->type)
+                  << "\n";
+        std::cerr << ctx->as_tree_string("  ");
+        abort();
+        break;
+
+    case context_type::BINARY:
+    {
+        /* BASH-like languages are designed to be super simple: since
+         * all they do is just link all the sources together at the
+         * end, there's no need for any internal targets at all. */
+        auto target = ctx->bin_dir + "/" + ctx->cmd->data();
+
+        auto sources = std::vector<makefile::target::ptr>();
+        for (const auto& child: ctx->children) {
+            if (child->type == context_type::SOURCE) {
+                auto path = child->src_dir + "/" + child->cmd->data();
+                sources.push_back(std::make_shared<makefile::target>(path));
+            }
+        }
+
+        auto all_targets = std::vector<makefile::global_targets>{
+            makefile::global_targets::ALL
+        };
+
+        auto commands = std::vector<std::string>{
+            "pbashc -i " + sources[0]->name() + " -o " + target
+        };
+
+        auto bin_target = std::make_shared<makefile::target>(target,
+                                                             sources,
+                                                             all_targets,
+                                                             commands);
+
+        return {bin_target};
+        break;
+    }
+    }
+
+    std::cerr << "context type not in switch\n";
+    abort();
 }
 
 static void install_bash(void) __attribute__((constructor));

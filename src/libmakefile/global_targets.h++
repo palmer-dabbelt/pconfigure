@@ -18,24 +18,17 @@
  * along with pconfigure.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LANGUAGES__BASH_CXX
-#define LANGUAGES__BASH_CXX
+#ifndef LIBMAKEFILE__GLOBAL_TARGETS_HXX
+#define LIBMAKEFILE__GLOBAL_TARGETS_HXX
 
-#include "../language.h++"
-#include <memory>
-
-/* BASH is the first language I have that doesn't need a compile
- * phase. */
-class language_bash: public language {
-public:
-    typedef std::shared_ptr<language_bash> ptr;
-
-public:
-    /* Virtual methods from language. */
-    virtual std::string name(void) const { return "bash"; }
-    virtual language_bash* clone(void) const;
-    virtual bool can_process(const context::ptr& ctx) const;
-    virtual std::vector<makefile::target::ptr> targets(const context::ptr& ctx) const;
-};
+namespace makefile {
+    /* This enum just holds all the global targets that this makefile
+     * library understands. */
+    enum class global_targets {
+        ALL,
+        CHECK,
+        CLEAN,
+    };
+}
 
 #endif

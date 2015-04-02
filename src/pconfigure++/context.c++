@@ -27,6 +27,7 @@ context::context(void)
       gen_dir("obj/proc"),
       bin_dir("bin"),
       libexec_dir("libexec"),
+      src_dir("src"),
       cmd(NULL),
       children()
 {
@@ -37,6 +38,7 @@ context::context(const context_type& _type,
                  const std::string& _gen_dir,
                  const std::string& _bin_dir,
                  const std::string& _libexec_dir,
+                 const std::string& _src_dir,
                  const command::ptr& _cmd,
                  const std::vector<ptr>& _children)
     : type(_type),
@@ -44,6 +46,7 @@ context::context(const context_type& _type,
       gen_dir(_gen_dir),
       bin_dir(_bin_dir),
       libexec_dir(_libexec_dir),
+      src_dir(_src_dir),
       cmd(_cmd),
       children(_children)
 {
@@ -58,6 +61,7 @@ context::ptr context::dup(const context_type& type,
                                      this->gen_dir,
                                      this->bin_dir,
                                      this->libexec_dir,
+                                     this->src_dir,
                                      cmd,
                                      children);
 }

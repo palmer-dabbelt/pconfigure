@@ -65,6 +65,10 @@ public:
      * go. */
     std::string libexec_dir;
 
+    /* The location at whith the input from SOURCE commands should be
+     * loaded from. */
+    std::string src_dir;
+
     /* These implement "opts_target" */
     std::vector<std::string> compile_opts;
     std::vector<std::string> link_opts;
@@ -98,6 +102,7 @@ public:
             const std::string& gen_dir,
             const std::string& bin_dir,
             const std::string& libexec_dir,
+            const std::string& src_dir,
             const command::ptr& cmd,
             const std::vector<ptr>& children);
 

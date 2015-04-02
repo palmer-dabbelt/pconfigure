@@ -21,7 +21,9 @@
 #ifndef LIBMAKEFILE__TARGET_HXX
 #define LIBMAKEFILE__TARGET_HXX
 
+#include "global_targets.h++"
 #include <memory>
+#include <vector>
 
 namespace makefile {
     /* A fully-generated Makefile target, which contains a large batch of  */
@@ -30,13 +32,32 @@ namespace makefile {
         typedef std::shared_ptr<target> ptr;
 
     private:
+        const std::string _name;
+        const std::vector<target::ptr> _deps;
+        const std::vector<global_targets> _global;
+        const std::vector<std::string> _cmds;
 
     public:
+        /* Creates a new target fully-fledged target -- this is a
+         * target that the Makefile actually knows how to generate. */
+        target(const std::string& name,
+               const std::vector<target::ptr>& deps,
+               const std::vector<global_targets>& global,
+               const std::vector<std::string>& cmds);
+
+        /* Creates a new target that the Makefile can't generate --
+         * this is something that must exist in the filesystem
+         * already. */
+        target(const std::string& name);
+
+    public:
+        /* Accessor methods. */
+        const std::string& name(void) const { return _name; }
 
     public:
         /* Writes this target (and with its commands) to the given
          * file. */
-        void write_to_file(FILE *file);
+        void write_to_file(FILE *file) const;
     };
 }
 
