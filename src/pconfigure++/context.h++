@@ -42,6 +42,10 @@ public:
      * context is just a big structure where anything can change at
      * any time, so it kind of makes sense... */
 
+    /***************************************************************
+     * Filled in after command_processor::process                  *
+     ***************************************************************/
+
     /* Identifies what sort of command generated this context. */
     const context_type type;
 
@@ -73,6 +77,10 @@ public:
     /* The exact command issued, which allows all sorts of debugging
      * later. */
     const command::ptr cmd;
+
+    /***************************************************************
+     * Filled in after language::find_all_children                 *
+     ***************************************************************/
 
     /* The children of this context. */
     std::vector<ptr> children;

@@ -23,3 +23,8 @@
 makefile::makefile::makefile(void)
 {
 }
+
+void makefile::makefile::add_target(const target::ptr& target)
+{
+    _targets.push_back(target);
+}

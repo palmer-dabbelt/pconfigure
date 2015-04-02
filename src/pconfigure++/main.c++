@@ -62,8 +62,13 @@ int main(int argc, const char **argv)
             std::cerr << "ERROR: Unable to find language for "
                       << std::to_string(context->cmd->debug())
                       << "\n";
+            std::cerr << context->as_tree_string("  ") << "\n";
             abort();
         }
+
+        auto language = valid_languages[0];
+        for (const auto& target: language->targets(context))
+            makefile->add_target(target);
     }
     
     return 0;

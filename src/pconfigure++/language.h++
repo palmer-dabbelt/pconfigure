@@ -23,6 +23,7 @@
 
 #include "context.h++"
 #include "opts_target.h++"
+#include <libmakefile/target.h++>
 #include <memory>
 #include <regex>
 
@@ -38,6 +39,9 @@ private:
     /* These implement "opts_target" */
     std::vector<std::string> _compile_opts;
     std::vector<std::string> _link_opts;
+
+public:
+    language(void);
 
 public:
     /* Returns the name of this language, which is used as a unique
@@ -58,6 +62,11 @@ public:
      * capable of processing a context then the one of largest
      * priority will be picked. */
     virtual int priority(void) const { return 0; }
+
+    /* Returns the targets that this context needs in order to build,
+     * as a flattened list. */
+    virtual
+    std::vector<makefile::target::ptr> targets(const context::ptr& ctx) const;
 
     /* Virtual methods from opts_target. */
     virtual void add_compileopt(const std::string& data);

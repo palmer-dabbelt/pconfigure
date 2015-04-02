@@ -22,6 +22,8 @@
 #define LIBMAKEFILE__MAKEFILE_HXX
 
 #include <memory>
+#include <vector>
+#include "target.h++"
 
 namespace makefile {
     /* Wraps up the data contained within a Makefile with objects so
@@ -32,6 +34,8 @@ namespace makefile {
     public:
         typedef std::shared_ptr<makefile> ptr;
 
+        std::vector<target::ptr> _targets;
+
     private:
 
     public:
@@ -39,6 +43,10 @@ namespace makefile {
          * contains some about of default targets and such that you
          * don't want if you're going to be */
         makefile(void);
+
+    public:
+        /* Adds a target to this makefile. */
+        void add_target(const target::ptr& target);
     };
 }
 

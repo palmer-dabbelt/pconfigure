@@ -21,6 +21,19 @@
 #include "language.h++"
 #include <iostream>
 
+language::language(void)
+    : _compile_opts(),
+      _link_opts()
+{
+}
+
+std::vector<makefile::target::ptr>
+language::targets(const context::ptr& ctx __attribute__((unused))) const
+{
+    return {};
+}
+
+
 void language::add_compileopt(const std::string& data)
 {
     _compile_opts.push_back(data);
