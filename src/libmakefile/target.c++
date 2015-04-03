@@ -41,9 +41,26 @@ makefile::target::target(const std::string& name)
 
 void makefile::target::write_to_file(FILE *file) const
 {
-    if ((_deps.size() == 0) && (_global.size() == 0) && (_cmds.size() == 0))
-        return;
+    /* First write a little header that adds the upcoming target to
+     * any of the global targets that it may have ended up setting. */
+    for (const auto& global_target: _global) {
+        switch (global_target) {
+        case global_targets::ALL:
+            fprintf(file, "all: %s\n", _name.c_str());
+            break;
+        case global_targets::CHECK:
+            fprintf(file, "check: %s\n", _name.c_str());
+            break;
+        case global_targets::CLEAN:
+            fprintf(file, ".PHONY: clean-%s\n", _name.c_str());
+            fprintf(file, "__pconfigure__clean-%s:; rm %s\n",
+                    _name.c_str(), _name.c_str());
+            fprintf(file, "clean: __pconfigure__clean-%s\n", _name.c_str());
+            break;
+        }
+    }
 
+    /* This actually writes out the make rule that's necessary  */
     fprintf(file, "%s:", _name.c_str());
     for (const auto& dep: _deps)
         fprintf(file, " %s", dep->_name.c_str());

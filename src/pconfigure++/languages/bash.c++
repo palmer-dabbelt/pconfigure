@@ -71,8 +71,9 @@ language_bash::targets(const context::ptr& ctx) const
             }
         }
 
-        auto all_targets = std::vector<makefile::global_targets>{
-            makefile::global_targets::ALL
+        auto global_targets = std::vector<makefile::global_targets>{
+            makefile::global_targets::ALL,
+            makefile::global_targets::CLEAN,
         };
 
         auto commands = std::vector<std::string>{
@@ -81,7 +82,7 @@ language_bash::targets(const context::ptr& ctx) const
 
         auto bin_target = std::make_shared<makefile::target>(target,
                                                              sources,
-                                                             all_targets,
+                                                             global_targets,
                                                              commands);
 
         return {bin_target};
