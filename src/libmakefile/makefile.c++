@@ -38,6 +38,7 @@ void makefile::makefile::write_to_file(const std::string& filename)
         abort();
     }
 
+    fprintf(file, "SHELL=/bin/bash\n\n");
     fprintf(file, ".PHONY: all\nall:\n\n");
     fprintf(file, ".PHONY: clean\nclean:\n\n");
     fprintf(file, ".PHONY: check\ncheck:\n\n");
