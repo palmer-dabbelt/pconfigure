@@ -122,6 +122,17 @@ public:
      * children out with it. */
     std::string as_tree_string(const std::string prefix = "") const;
 
+    /* Lists both the compile and link options, for languages that
+     * don't discriminate -- the hope here is that compilers can
+     * optimize when they're available for inlining... */
+    virtual std::vector<std::string> clopts(void) const
+        {
+            auto opt = std::vector<std::string>();
+            opt.insert(opt.end(), compile_opts.begin(), compile_opts.end());
+            opt.insert(opt.end(), link_opts.begin(), link_opts.end());
+            return opt;
+        }
+
     /* Virtual methods from opts_target. */
     virtual void add_compileopt(const std::string& data);
     virtual void add_linkopt(const std::string& data);

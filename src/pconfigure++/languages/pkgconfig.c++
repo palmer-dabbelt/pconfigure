@@ -20,6 +20,8 @@
 
 #include "pkgconfig.h++"
 #include "../language_list.h++"
+#include <assert.h>
+#include <iostream>
 
 language_pkgconfig* language_pkgconfig::clone(void) const
 {
@@ -34,6 +36,77 @@ bool language_pkgconfig::can_process(const context::ptr& ctx) const
             std::regex(".*\\.pc"),
         }
         );
+}
+
+std::vector<makefile::target::ptr>
+language_pkgconfig::targets(const context::ptr& ctx) const
+{
+    assert(ctx != NULL);
+
+    switch (ctx->type) {
+    case context_type::DEFAULT:
+    case context_type::GENERATE:
+    case context_type::BINARY:
+    case context_type::SOURCE:
+    case context_type::TEST:
+        std::cerr << "Unimplemented context type: "
+                  << std::to_string(ctx->type)
+                  << "\n";
+        std::cerr << ctx->as_tree_string("  ");
+        abort();
+        break;
+
+    case context_type::LIBRARY:
+    {
+        /* BASH-like languages are designed to be super simple: since
+         * all they do is just link all the sources together at the
+         * end, there's no need for any internal targets at all. */
+        auto target = ctx->bin_dir + "/" + ctx->cmd->data();
+
+        auto sources = std::vector<makefile::target::ptr>();
+        for (const auto& child: ctx->children) {
+            if (child->type == context_type::SOURCE) {
+                auto path = child->src_dir + "/" + child->cmd->data();
+                sources.push_back(std::make_shared<makefile::target>(path));
+            }
+        }
+
+        auto global_targets = std::vector<makefile::global_targets>{
+            makefile::global_targets::ALL,
+            makefile::global_targets::CLEAN,
+        };
+
+        auto command = std::string();
+        command += "cat " + sources[0]->name();
+        command += " | sed 's^@@pconfigure_prefix@@^" + ctx->prefix + "^g'";
+#if 0
+        /* FIXME: Add these in. */
+        command += " | sed 's^@@pconfigure_libdir@@^" + ctx->lib_dir + "^g'";
+        command += " | sed 's^@@pconfigure_hdrdir@@^" + ctx->hdr_dir + "^g'";
+#endif
+        for (const auto& str: this->clopts(ctx)) {
+            if (strncmp(str.c_str(), "-S", 2) == 0)
+                command += " | sed `cat " + str + "`";
+            else
+                command += " | sed '" + str + "'";
+        }
+
+        command += "> " + target;
+
+        auto commands = std::vector<std::string>{command};
+
+        auto bin_target = std::make_shared<makefile::target>(target,
+                                                             sources,
+                                                             global_targets,
+                                                             commands);
+
+        return {bin_target};
+        break;
+    }
+    }
+
+    std::cerr << "context type not in switch\n";
+    abort();
 }
 
 static void install_pkgconfig(void) __attribute__((constructor));

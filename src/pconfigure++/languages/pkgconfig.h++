@@ -35,6 +35,7 @@ public:
     virtual std::string name(void) const { return "pkgconfig"; }
     virtual language_pkgconfig* clone(void) const;
     virtual bool can_process(const context::ptr& ctx) const;
+    virtual std::vector<makefile::target::ptr> targets(const context::ptr& ctx) const;
 };
 
 #endif

@@ -72,6 +72,25 @@ public:
     virtual void add_compileopt(const std::string& data);
     virtual void add_linkopt(const std::string& data);
 
+    /* Lists both the compile and link options, for languages that
+     * don't discriminate -- the hope here is that compilers can
+     * optimize when they're available for inlining... */
+    virtual std::vector<std::string> clopts(void) const
+        {
+            auto opt = std::vector<std::string>();
+            opt.insert(opt.end(), _compile_opts.begin(), _compile_opts.end());
+            opt.insert(opt.end(), _link_opts.begin(), _link_opts.end());
+            return opt;
+        }
+
+    virtual std::vector<std::string> clopts(const context::ptr& ctx) const
+        {
+            auto opt = clopts();
+            auto lopt = ctx->clopts();
+            opt.insert(opt.end(), lopt.begin(), lopt.end());
+            return opt;
+        }
+
 protected:
     /* Returns TRUE if every source that's a direct child of the given
      * context has a name that matches any one of the given regular
