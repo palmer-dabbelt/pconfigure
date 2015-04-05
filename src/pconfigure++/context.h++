@@ -61,6 +61,10 @@ public:
      * go. */
     std::string bin_dir;
 
+    /* The location at which the output from LIBRARY commands should
+     * go. */
+    std::string lib_dir;
+
     /* The location at which the output from LIBEXEC commands should
      * go. */
     std::string libexec_dir;
@@ -101,6 +105,7 @@ public:
             const std::string& prefix,
             const std::string& gen_dir,
             const std::string& bin_dir,
+            const std::string& lib_dir,
             const std::string& libexec_dir,
             const std::string& src_dir,
             const command::ptr& cmd,
