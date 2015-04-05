@@ -86,14 +86,19 @@ language_pkgconfig::targets(const context::ptr& ctx) const
 #endif
         for (const auto& str: this->clopts(ctx)) {
             if (strncmp(str.c_str(), "-S", 2) == 0)
-                command += " | sed `cat " + str + "`";
+                command += " | sed `cat " + str.substr(2) + "`";
+            else if (strncmp(str.c_str(), "`", 1) == 0)
+                command += " | sed " + str;
             else
                 command += " | sed '" + str + "'";
         }
 
         command += "> " + target;
 
-        auto commands = std::vector<std::string>{command};
+        auto commands = std::vector<std::string>{
+            "mkdir -p " + ctx->lib_dir,
+            command
+        };
 
         auto bin_target = std::make_shared<makefile::target>(target,
                                                              sources,

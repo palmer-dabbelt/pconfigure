@@ -82,7 +82,10 @@ language_bash::targets(const context::ptr& ctx) const
         for (const auto& str: this->clopts(ctx))
             command += " " + str;
 
-        auto commands = std::vector<std::string>{command};
+        auto commands = std::vector<std::string>{
+            "mkdir -p " + ctx->bin_dir,
+            command
+        };
 
         auto bin_target = std::make_shared<makefile::target>(target,
                                                              sources,
