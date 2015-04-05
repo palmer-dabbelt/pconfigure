@@ -76,9 +76,13 @@ language_bash::targets(const context::ptr& ctx) const
             makefile::global_targets::CLEAN,
         };
 
-        auto commands = std::vector<std::string>{
-            "pbashc -i " + sources[0]->name() + " -o " + target
-        };
+        auto command = std::string();
+        command += "pbashc -i " + sources[0]->name() + " -o " + target;
+
+        for (const auto& str: this->clopts(ctx))
+            command += " " + str;
+
+        auto commands = std::vector<std::string>{command};
 
         auto bin_target = std::make_shared<makefile::target>(target,
                                                              sources,
