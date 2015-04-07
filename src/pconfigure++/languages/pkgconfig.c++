@@ -63,6 +63,8 @@ language_pkgconfig::targets(const context::ptr& ctx) const
          * end, there's no need for any internal targets at all. */
         auto target = ctx->lib_dir + "/" + ctx->cmd->data();
 
+        auto short_cmd = "PKGCFG\t" + ctx->cmd->data();
+
         auto sources = std::vector<makefile::target::ptr>();
         for (const auto& child: ctx->children) {
             if (child->type == context_type::SOURCE) {
@@ -101,6 +103,7 @@ language_pkgconfig::targets(const context::ptr& ctx) const
         };
 
         auto bin_target = std::make_shared<makefile::target>(target,
+                                                             short_cmd,
                                                              sources,
                                                              global_targets,
                                                              commands);
