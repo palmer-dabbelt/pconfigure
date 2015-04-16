@@ -68,7 +68,7 @@ void makefile::target::write_to_file(FILE *file) const
     for (const auto& dep: _deps)
         fprintf(file, " %s", dep->_name.c_str());
     fprintf(file, "\n");
-    fprintf(file, "\t@echo\"%s\"", _short_cmd.c_str());
+    fprintf(file, "\t@echo \"%s\"\n", _short_cmd.c_str());
     for (const auto& cmd: _cmds)
         fprintf(file, "\t@%s\n", cmd.c_str());
     fprintf(file, "\n");
