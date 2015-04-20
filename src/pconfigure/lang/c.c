@@ -59,6 +59,7 @@ static void language_c_extras(struct language *l_uncast, struct context *c,
 
 static char *string_strip(const char *in, void *context);
 static char *string_hashcode(const char *string, void *context);
+static size_t count_char(const char *str, char c);
 
 /* This converts from the clang inclusion format into the format
  * required by the pconfigure context support. */
@@ -356,7 +357,21 @@ void language_c_link(struct language *l_uncast, struct context *c,
         func(false, "\\ -Wl,-rpath,`pwd`/%s", c->lib_dir);
 #else
         if (c->parent->type != CONTEXT_TYPE_TEST) {
-            func(false, "\\ -Wl,-rpath,\\$$ORIGIN/../%s", c->lib_dir);
+            switch (count_char(c->full_path, '/')) {
+            case 1:
+                func(false, "\\ -Wl,-rpath,\\$$ORIGIN/../%s", c->lib_dir);
+                break;
+            case 2:
+                func(false, "\\ -Wl,-rpath,\\$$ORIGIN/../../%s", c->lib_dir);
+                break;
+            case 3:
+                func(false, "\\ -Wl,-rpath,\\$$ORIGIN/../../../%s", c->lib_dir);
+                break;
+            default:
+                fprintf(stderr, "Too many /'s in bindir\n");
+                abort();
+                break;
+            }
         } else {
             func(false, "\\ -Wl,-rpath,%s", c->lib_dir);
         }
@@ -611,4 +626,17 @@ void find_files(void *args_uncast, const char *format, ...)
     }
 
     TALLOC_FREE(context);
+}
+
+size_t count_char(const char *str, char c)
+{
+    size_t count;
+
+    count = 0;
+    while (*str != '\0') {
+        if (*str == c)
+            count++;
+        str++;
+    }
+    return count;
 }

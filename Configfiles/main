@@ -46,6 +46,7 @@ TESTSRC     += syshdr.bash
 TESTSRC     += autodeps.bash
 TESTSRC     += osx-shared-deps.bash
 TESTSRC     += man.bash
+TESTSRC     += subdir-rpath.bash
 
 BINARIES    += pclean
 SOURCES	    += pclean.bash
