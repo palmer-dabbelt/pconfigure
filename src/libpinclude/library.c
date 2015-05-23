@@ -94,7 +94,8 @@ static int _pinclude_lines(const char *input,
 
         /* Here's where we handle the #if{,n}def preprocessor
          * directives. */
-        if (strncmp(buffer, "#ifdef ", strlen("#ifdef ")) == 0) {
+        if (strncmp(buffer, "#ifdef ", strlen("#ifdef ")) == 0 ||
+            strncmp(buffer, "#ifdef\t", strlen("#ifdef\t")) == 0) {
             char *define;
             bool matched;
 
@@ -115,7 +116,8 @@ static int _pinclude_lines(const char *input,
 #endif
         }
 
-        if (strncmp(buffer, "#ifndef ", strlen("#ifndef ")) == 0) {
+        if (strncmp(buffer, "#ifndef ", strlen("#ifndef ")) == 0 ||
+            strncmp(buffer, "#ifndef\t", strlen("#ifndef\t")) == 0) {
             char *define;
             bool matched;
 
