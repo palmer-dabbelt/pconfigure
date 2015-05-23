@@ -232,10 +232,6 @@ void language_c_deps(struct language *l_uncast, struct context *c,
         lang_wo = stringlist_without(l->l.compile_opts, context, "-fopenmp");
         ctx_wo = stringlist_without(c->compile_opts, context, "-fopenmp");
 
-        stringlist_add(ctx_wo, talloc_strdup(
-                           l,
-                           "-D__PCONFIGURE__IN_DEPENDENCY_RESOLUTION"
-                           ));
         clang_argc = stringlist_size(lang_wo) + stringlist_size(ctx_wo) + 4;
         clang_argv = talloc_array(context, char *, clang_argc + 1);
         for (i = 0; i <= clang_argc; i++)
@@ -244,8 +240,12 @@ void language_c_deps(struct language *l_uncast, struct context *c,
         clang_argv[0] = talloc_strdup(clang_argv, c->full_path);
         clang_argv[1] = talloc_asprintf(clang_argv, "-I%s", c->hdr_dir);
         clang_argv[2] = talloc_asprintf(clang_argv, "-I%s", c->gen_dir);
+        clang_argv[3] = talloc_asprintf(
+            clang_argv,
+            "-D__PCONFIGURE_IN_DEPENDENCY_RESOLUTION"
+            );
 
-        i = 3;
+        i = 4;
         i = stringlist_to_alloced_array(lang_wo, clang_argv, i);
         i = stringlist_to_alloced_array(ctx_wo, clang_argv, i);
         clang_argv[i] = NULL;
