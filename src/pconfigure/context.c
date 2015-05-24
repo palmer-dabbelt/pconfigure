@@ -190,8 +190,8 @@ int context_binary_destructor(struct context *c)
     makefile_start_deps(c->mf);
 
     makefile_addl_dep(c->mf, c->objects, "%%s");
-    makefile_addl_dep(c->mf, c->libraries, "%s/lib%%s.%s",
-                      c->lib_dir, l->so_ext);
+    makefile_addl_dep(c->mf, c->libraries, "$(LIBDEP__%s%%s)",
+                      c->lib_dir);
 
     makefile_end_deps(c->mf);
 
@@ -205,8 +205,10 @@ int context_binary_destructor(struct context *c)
     makefile_start_deps(c->mf);
 
     makefile_addl_dep(c->mf, c->objects, "%%s");
-    makefile_addl_dep(c->mf, c->libraries, "%s/lib%%s.%s",
+    makefile_addl_dep(c->mf, c->libraries, "$(wildcard %s/lib%%s.%s)",
                       c->lib_dir, l->so_ext);
+    makefile_addl_dep(c->mf, c->libraries, "$(wildcard %s/lib%%s.%s)",
+                      c->lib_dir, l->a_ext);
 
     makefile_end_deps(c->mf);
 
@@ -304,6 +306,7 @@ int context_library_destructor(struct context *c)
         char *new_name;
         char *old_name;
         char *ext;
+        char *without_slash;
 
         old_name = talloc_strdup(context, c->full_path);
 
@@ -320,8 +323,16 @@ int context_library_destructor(struct context *c)
 
         strstr(old_name, ".")[0] = '\0';
 
+        without_slash = old_name;
+        while (strstr(without_slash, "/") != NULL)
+            without_slash = strstr(without_slash, "/") + 1;
+
         ext = c->shared_target ? c->language->so_ext : c->language->a_ext;
         new_name = talloc_asprintf(c, "%s.%s", old_name, ext);
+
+        fprintf(c->mf->file, "LIBDEP__%s := %s.%s\n",
+                without_slash,
+                old_name, ext);
 
         c->full_path = new_name;
     }
