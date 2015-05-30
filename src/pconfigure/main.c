@@ -141,7 +141,6 @@ int main(int argc, char **argv)
     /* Reads every input file in order */
     for (i = 0; i < o->infile_count; i++) {
         if (parse_file(o->infiles[i]) != 0) {
-            TALLOC_FREE(o);
             break;
         }
     }
