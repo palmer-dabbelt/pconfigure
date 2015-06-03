@@ -102,11 +102,19 @@ language_pkgconfig::targets(const context::ptr& ctx) const
             command
         };
 
+        auto filename = ctx->cmd->debug()->filename();
+        auto lineno = ctx->cmd->debug()->line_number();
+        auto comment = std::vector<std::string>{
+            "language_bash::targets()",
+            filename + ":" + std::to_string(lineno)
+        };
+
         auto bin_target = std::make_shared<makefile::target>(target,
                                                              short_cmd,
                                                              sources,
                                                              global_targets,
-                                                             commands);
+                                                             commands,
+                                                             comment);
 
         return {bin_target};
         break;

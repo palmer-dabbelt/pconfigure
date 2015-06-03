@@ -24,12 +24,14 @@ makefile::target::target(const std::string& name,
                          const std::string& short_cmd,
                          const std::vector<target::ptr>& deps,
                          const std::vector<global_targets>& global,
-                         const std::vector<std::string>& cmds)
+                         const std::vector<std::string>& cmds,
+                         const std::vector<std::string>& comment)
     : _name(name),
       _short_cmd(short_cmd),
       _deps(deps),
       _global(global),
-      _cmds(cmds)
+      _cmds(cmds),
+      _comment(comment)
 {
 }
 
@@ -38,7 +40,8 @@ makefile::target::target(const std::string& name)
       _short_cmd(),
       _deps(),
       _global(),
-      _cmds()
+      _cmds(),
+      _comment()
 {
 }
 
@@ -64,6 +67,8 @@ void makefile::target::write_to_file(FILE *file) const
     }
 
     /* This actually writes out the make rule that's necessary  */
+    for (const auto& comment: _comment)
+        fprintf(file, "# %s\n", comment.c_str());
     fprintf(file, "%s:", _name.c_str());
     for (const auto& dep: _deps)
         fprintf(file, " %s", dep->_name.c_str());

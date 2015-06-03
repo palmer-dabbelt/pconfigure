@@ -37,6 +37,7 @@ namespace makefile {
         const std::vector<target::ptr> _deps;
         const std::vector<global_targets> _global;
         const std::vector<std::string> _cmds;
+        const std::vector<std::string> _comment;
 
     public:
         /* Creates a new target fully-fledged target -- this is a
@@ -45,7 +46,8 @@ namespace makefile {
                const std::string& short_cmd,
                const std::vector<target::ptr>& deps,
                const std::vector<global_targets>& global,
-               const std::vector<std::string>& cmds);
+               const std::vector<std::string>& cmds,
+               const std::vector<std::string>& comment);
 
         /* Creates a new target that the Makefile can't generate --
          * this is something that must exist in the filesystem
