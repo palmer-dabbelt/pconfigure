@@ -371,6 +371,12 @@ void language_c_link(struct language *l_uncast, struct context *c,
             case 3:
                 func(false, "\\ -Wl,-rpath,\\$$ORIGIN/../../../%s", c->lib_dir);
                 break;
+            case 4:
+                func(false, "\\ -Wl,-rpath,\\$$ORIGIN/../../../%s", c->lib_dir);
+                break;
+            case 5:
+                func(false, "\\ -Wl,-rpath,\\$$ORIGIN/../../../%s", c->lib_dir);
+                break;
             default:
                 fprintf(stderr, "Too many /'s in bindir\n");
                 abort();
