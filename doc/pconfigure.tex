@@ -272,6 +272,19 @@ Section~\ref{make:install}).
 
 \section{Commands \label{cmd}}
 
+\subsection{\texttt{COMPAT = \$version}}
+
+Asks \pconfigure\ to run in a compatibility mode that matches the
+given version number.  This is currently implemented very poorly and
+shouldn't be used at all, it's really only for internal testing of the
+new implementation of \pconfigure.  If you want to use that new
+implementation, set \texttt{\$version} to
+``\texttt{pconfigure++-0.10}'', otherwise just don't use
+\texttt{COMPAT} at all.
+
+The intent is to allow Gentoo-like atoms here for visioning here, and
+to support all previous major version numbers
+
 \subsection{\texttt{LANGUAGES += \$lang}}
 
 First, this flushes the current target.
