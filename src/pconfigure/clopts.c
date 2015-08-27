@@ -30,7 +30,7 @@
 
 static void setup_infiles(struct clopts *o);
 
-struct clopts *clopts_new(void *ctx, int argc, char **argv)
+struct clopts *clopts_new(void *ctx, int argc, char * const *argv)
 {
     struct clopts *o;
     int i;

@@ -87,7 +87,7 @@ void *root_context;
 /* FIXME: This is needed by lang/chisel.c, which is a huge hack! */
 struct languagelist *ll;
 
-int main(int argc, char **argv)
+int main(int argc, char * const *argv)
 {
     int i;
 
