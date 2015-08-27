@@ -20,6 +20,9 @@
 
 #include "gen_proc.h++"
 #include "../language_list.h++"
+#include "../file_utils.h++"
+#include <assert.h>
+#include <iostream>
 
 language_gen_proc* language_gen_proc::clone(void) const
 {
@@ -34,4 +37,68 @@ bool language_gen_proc::can_process(const context::ptr& ctx) const
             std::regex(".*\\.proc"),
         }
         );
+}
+
+std::vector<makefile::target::ptr>
+language_gen_proc::targets(const context::ptr& ctx) const
+{
+    assert(ctx != NULL);
+
+    switch (ctx->type) {
+    case context_type::DEFAULT:
+    case context_type::BINARY:
+    case context_type::LIBRARY:
+    case context_type::SOURCE:
+    case context_type::TEST:
+        std::cerr << "Unimplemented context type: "
+                  << std::to_string(ctx->type)
+                  << "\n";
+        std::cerr << ctx->as_tree_string("  ");
+        abort();
+        break;
+
+    case context_type::GENERATE:
+    {
+        auto target = ctx->gen_dir + "/" + ctx->cmd->data();
+        auto procfile = ctx->src_dir + "/" + ctx->cmd->data() + ".proc";
+
+        auto sources = std::vector<makefile::target::ptr>{
+            std::make_shared<makefile::target>(procfile)
+        };
+        for (const auto& line: file_utils::execlines(procfile, {"--deps"})) {
+            sources.push_back(std::make_shared<makefile::target>(line));
+        }
+
+        auto global_targets = std::vector<makefile::global_targets>{
+            makefile::global_targets::ALL,
+            makefile::global_targets::CLEAN,
+        };
+
+        auto short_cmd = "GEN\t" + ctx->cmd->data();
+        auto commands = std::vector<std::string>{
+            "mkdir -p " + ctx->gen_dir,
+            ctx->src_dir + "/" + ctx->cmd->data() + ".proc --generate > " + target
+        };
+
+        auto filename = ctx->cmd->debug()->filename();
+        auto lineno = ctx->cmd->debug()->line_number();
+        auto comment = std::vector<std::string>{
+            "language_gen_proc::targets()",
+            filename + ":" + std::to_string(lineno)
+        };
+
+        auto bin_target = std::make_shared<makefile::target>(target,
+                                                             short_cmd,
+                                                             sources,
+                                                             global_targets,
+                                                             commands,
+                                                             comment);
+
+        return {bin_target};
+        break;
+    }
+    }
+
+    std::cerr << "context type not in switch\n";
+    abort();
 }

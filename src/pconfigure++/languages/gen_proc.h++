@@ -35,6 +35,7 @@ public:
     virtual std::string name(void) const { return "gen_proc"; }
     virtual language_gen_proc* clone(void) const;
     virtual bool can_process(const context::ptr& ctx) const;
+    virtual std::vector<makefile::target::ptr> targets(const context::ptr& ctx) const;
 };
 
 #endif
