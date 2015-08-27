@@ -105,7 +105,7 @@ language_pkgconfig::targets(const context::ptr& ctx) const
         auto filename = ctx->cmd->debug()->filename();
         auto lineno = ctx->cmd->debug()->line_number();
         auto comment = std::vector<std::string>{
-            "language_bash::targets()",
+            "language_pkgconfig::targets()",
             filename + ":" + std::to_string(lineno)
         };
 
