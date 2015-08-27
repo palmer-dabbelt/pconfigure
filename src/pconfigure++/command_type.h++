@@ -93,6 +93,8 @@ namespace std {
             return "AUTODEPS";
         case command_type::BINARIES:
             return "BINARIES";
+        case command_type::COMPAT:
+            return "COMPAT";
         case command_type::COMPILEOPTS:
             return "COMPILEOPTS";
         case command_type::COMPILER:

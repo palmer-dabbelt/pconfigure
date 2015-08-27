@@ -75,6 +75,7 @@ static int parsefunc_srcdir(const char *op, const char *right);
 static int parsefunc_libexecs(const char *op, const char *right);
 static int parsefunc_autodeps(const char *op, const char *right);
 static int parsefunc_share(const char *op, const char *right);
+static int parsefunc_compat(const char *op, const char *right);
 
 /* This is global data to avoid having really long parsefunc_*
  * function calls. */
@@ -83,6 +84,8 @@ static struct makefile *mf;
 static struct contextstack *s;
 bool found_binary;
 void *root_context;
+int _global_argc;
+char * const *_global_argv;
 
 /* FIXME: This is needed by lang/chisel.c, which is a huge hack! */
 struct languagelist *ll;
@@ -90,6 +93,9 @@ struct languagelist *ll;
 int main(int argc, char * const *argv)
 {
     int i;
+
+    _global_argc = argc;
+    _global_argv = argv;
 
     /* talloc initialization, needs to come before any talloc calls */
     talloc_enable_leak_report();
@@ -398,6 +404,8 @@ int parse_select(const char *left, const char *op, char *right)
         return parsefunc_autodeps(op, right);
     if (strcmp(left, "SHARE") == 0)
         return parsefunc_share(op, right);
+    if (strcmp(left, "COMPAT") == 0)
+        return parsefunc_compat(op, right);
 
     return -2;
 }
@@ -1197,5 +1205,24 @@ int parsefunc_share(const char *op, const char *right)
     /* Adds a binary to the stack, using the default compile options.  There is
      * no need for this to  */
     contextstack_push_share(s, right);
+    return 0;
+}
+
+int parsefunc_compat(const char *op, const char *right)
+{
+    if (strcmp(op, "=") != 0) {
+        fprintf(stderr, "We only support = for COMPAT\n");
+        return -1;
+    }
+
+    if (strncmp(right, "pconfigure++-", strlen("pconfigure++-")) == 0) {
+        execv(__PCONFIGURE__LIBEXEC "/pconfigure++", _global_argv);
+    }
+
+    if (strncmp(right, "pconfigure-", strlen("pconfigure-")) == 0) {
+        return 0;
+    }
+
+    fprintf(stderr, "WARNING: unsupported COMPAT='%s', trying anyway\n", right);
     return 0;
 }
