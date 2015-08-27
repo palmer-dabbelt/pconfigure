@@ -48,6 +48,12 @@ void command_processor::process(const command::ptr& cmd)
 
         return;
 
+    case command_type::COMPAT:
+        /* FIXME: The only way I currently get here is through a
+         * checked pconfigure command type, but I do eventually need
+         * to do _something_ here... */
+        return;
+
     case command_type::COMPILEOPTS:
         if (_opts_target == NULL)
             goto no_opts_target;

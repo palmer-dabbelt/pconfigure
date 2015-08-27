@@ -32,6 +32,7 @@
 enum class command_type {
     AUTODEPS,
     BINARIES,
+    COMPAT,
     COMPILEOPTS,
     COMPILER,
     CONFIG,
@@ -61,6 +62,7 @@ static const std::vector<command_type> all_command_types =
 {
     command_type::AUTODEPS,
     command_type::BINARIES,
+    command_type::COMPAT,
     command_type::COMPILEOPTS,
     command_type::COMPILER,
     command_type::CONFIG,
