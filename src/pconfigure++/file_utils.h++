@@ -39,6 +39,13 @@ namespace file_utils {
         size_t number;
     };
     std::vector<struct line_and_number> readlines_and_numbers(FILE *f);
+
+    /* Like readlines(), but executes the input file with the given
+     * argument list. */
+    std::vector<std::string> execlines(
+        std::string path,
+        std::vector<std::string> args = std::vector<std::string>()
+        );
 }
 
 #endif

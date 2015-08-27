@@ -20,6 +20,7 @@
 
 #include "file_utils.h++"
 #include <cstdio>
+#include <sstream>
 using namespace file_utils;
 
 #ifndef LINE_MAX
@@ -39,6 +40,31 @@ std::vector<struct line_and_number> file_utils::readlines_and_numbers(FILE *f)
         out.push_back(lan);
         num++;
     }
+
+    return out;
+}
+
+std::vector<std::string>
+file_utils::execlines(std::string path, std::vector<std::string> args)
+{
+    std::ostringstream cmd;
+    cmd << "\"" + path + "\"" + " ";
+    for (const auto& arg: args)
+        cmd << "\"" << arg << "\"" << " ";
+
+    std::vector<std::string> out;
+    auto file = popen(cmd.str().c_str(), "r");
+    char *lineptr = NULL;
+    size_t n = 0;
+    while (getline(&lineptr, &n, file) > 0) {
+        auto line = std::string(lineptr);
+        line = line.substr(0, line.size()-1);
+        out.push_back(line);
+    }
+
+    free(lineptr);
+    if (pclose(file) != 0)
+        abort();
 
     return out;
 }
