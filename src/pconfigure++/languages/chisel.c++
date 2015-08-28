@@ -35,12 +35,12 @@ static std::unordered_map<std::string, bool> already_generated;
  * selected. */
 enum class chisel_phase {
     COMPILE,
-    ELABORATE,
+    RTL,
 };
 
 static const std::vector<chisel_phase> all_chisel_phases = {
     chisel_phase::COMPILE,
-    chisel_phase::ELABORATE,
+    chisel_phase::RTL,
 };
 
 namespace std {
@@ -49,8 +49,8 @@ namespace std {
         switch (cmd) {
         case chisel_phase::COMPILE:
             return "COMPILE";
-        case chisel_phase::ELABORATE:
-            return "ELABORATE";
+        case chisel_phase::RTL:
+            return "RTL";
         }
 
         throw "Unable to convert " + to_string(static_cast<int>(cmd)) + " to string";
@@ -222,9 +222,9 @@ language_chisel::targets(const context::ptr& ctx) const
         }();
 
     /* Elaborates the Scala code into a Verilog file. */
-    auto target_elaborate = [&]() -> makefile::target::ptr
+    auto target_rtl = [&]() -> makefile::target::ptr
         {
-            auto phase = chisel_phase::ELABORATE;
+            auto phase = chisel_phase::RTL;
             auto workdir = obj_dir + "/scalac";
 
             std::vector<makefile::target::ptr> sources = {
@@ -256,7 +256,7 @@ language_chisel::targets(const context::ptr& ctx) const
             };
 
             std::vector<std::string> comments = {
-                "language_chisel::targets()/elaborate " + ctx->cmd->data()
+                "language_chisel::targets()/rtl " + ctx->cmd->data()
             };
 
             return std::make_shared<makefile::target>(
@@ -272,11 +272,11 @@ language_chisel::targets(const context::ptr& ctx) const
     /* Copy the elaborated Verilog file to the bin directory. */
     auto target_copy = [&]() -> makefile::target::ptr
         {
-            auto phase = chisel_phase::ELABORATE;
+            auto phase = chisel_phase::RTL;
             auto workdir = obj_dir + "/scalac";
 
             std::vector<makefile::target::ptr> sources = {
-                target_elaborate
+                target_rtl
             };
 
             auto top = std::string("Main");
@@ -297,7 +297,7 @@ language_chisel::targets(const context::ptr& ctx) const
             };
 
             std::vector<std::string> comments = {
-                "language_chisel::targets()/elaborate " + ctx->cmd->data()
+                "language_chisel::targets()/copy " + ctx->cmd->data()
             };
 
             return std::make_shared<makefile::target>(
@@ -313,7 +313,7 @@ language_chisel::targets(const context::ptr& ctx) const
     /* Filter the list of targets so only the new ones get emitted. */
     auto all_targets = std::vector<makefile::target::ptr> {
         target_scalac,
-        target_elaborate,
+        target_rtl,
         target_copy
     };
 
