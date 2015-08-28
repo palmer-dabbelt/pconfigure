@@ -69,6 +69,10 @@ public:
      * go. */
     std::string libexec_dir;
 
+    /* The location at which the output of intermediate build steps
+     * goes. */
+    std::string obj_dir;
+
     /* The location at whith the input from SOURCE commands should be
      * loaded from. */
     std::string src_dir;
@@ -107,6 +111,7 @@ public:
             const std::string& bin_dir,
             const std::string& lib_dir,
             const std::string& libexec_dir,
+            const std::string& obj_dir,
             const std::string& src_dir,
             const command::ptr& cmd,
             const std::vector<ptr>& children);
