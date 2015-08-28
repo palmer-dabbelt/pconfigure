@@ -228,10 +228,15 @@ language_chisel::targets(const context::ptr& ctx) const
             };
 
             auto top = std::string("Main");
+            auto top_args = std::vector<std::string>();
             for (const auto& pair: map_util::equal_range(phase_args, phase)) {
                 if (pair.second.key() == "top")
                     top = pair.second.value();
+                if (pair.second.key() == "topArg")
+                    top_args.push_back(pair.second.value());
             }
+
+            auto target_dir = obj_dir + "/chisel/" + string_utils::hash(top_args);
 
             auto global_targets = std::vector<makefile::global_targets>{
                 makefile::global_targets::CLEAN,
@@ -242,7 +247,7 @@ language_chisel::targets(const context::ptr& ctx) const
                 "scala " + std::string("")
                   + "-classpath /usr/lib/libchisel.jar:" + workdir + " "
                   + top + std::string(" ")
-                  + "--targetDir " + obj_dir + std::string("/chisel ")
+                  + "--targetDir " + target_dir + " "
                   + std::string("--backend v")
             };
 
@@ -251,7 +256,7 @@ language_chisel::targets(const context::ptr& ctx) const
             };
 
             return std::make_shared<makefile::target>(
-                obj_dir + "/chisel/" + top + ".v",
+                target_dir + "/" + top + ".v",
                 "CH-ELAB\t" + ctx->cmd->data(),
                 sources,
                 global_targets,
