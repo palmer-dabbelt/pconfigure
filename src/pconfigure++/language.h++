@@ -23,6 +23,7 @@
 
 #include "context.h++"
 #include "opts_target.h++"
+#include "vector_util.h++"
 #include <libmakefile/target.h++>
 #include <memory>
 #include <regex>
@@ -79,37 +80,18 @@ public:
      * don't discriminate -- the hope here is that compilers can
      * optimize when they're available for inlining... */
     std::vector<std::string> clopts(void) const
-        {
-            auto opt = std::vector<std::string>();
-            opt.insert(opt.end(), _compile_opts.begin(), _compile_opts.end());
-            opt.insert(opt.end(), _link_opts.begin(), _link_opts.end());
-            return opt;
-        }
+        { return compile_opts() + link_opts(); }
 
     std::vector<std::string> clopts(const context::ptr& ctx) const
-        {
-            auto opt = clopts();
-            auto lopt = ctx->clopts();
-            opt.insert(opt.end(), lopt.begin(), lopt.end());
-            return opt;
-        }
+        { return compile_opts(ctx) + link_opts(ctx); }
 
     /* Combines {compile,link}-time options of this language with
      * those of a particular context. */
     std::vector<std::string> compile_opts(const context::ptr& ctx) const
-        {
-            std::vector<std::string> out;
-            out.insert(out.end(), _compile_opts.begin(), _compile_opts.end());
-            out.insert(out.end(), ctx->compile_opts.begin(), ctx->compile_opts.end());
-            return out;
-        }
+        { return _compile_opts + ctx->compile_opts; }
+
     std::vector<std::string> link_opts(const context::ptr& ctx) const
-        {
-            std::vector<std::string> out;
-            out.insert(out.end(), _link_opts.begin(), _link_opts.end());
-            out.insert(out.end(), ctx->link_opts.begin(), ctx->link_opts.end());
-            return out;
-        }
+        { return _link_opts + ctx->link_opts; }
 
     /* Virtual methods from opts_target. */
 public:
