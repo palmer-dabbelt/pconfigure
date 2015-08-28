@@ -143,11 +143,23 @@ language_chisel::targets(const context::ptr& ctx) const
      * argument lists that should be passed to each phase of
      * compilation. */
     std::multimap<chisel_phase, phase_argument> phase_args;
+    auto target_phase = chisel_phase::RTL;
     for (const auto& opt: this->compile_opts(ctx)) {
         if (std::regex_match(opt, std::regex("-Wdriver,.*"))) {
             /* "-Wdriver,*" is sent to all phases. */
+            auto arg = phase_argument(opt.substr(9));
             for (const auto& phase: all_chisel_phases)
-                phase_args.insert({phase, opt.substr(9)});
+                phase_args.insert({phase, arg});
+
+            try {
+                if (arg.key() == "target")
+                    target_phase = check_chisel_phase(arg.value());
+            } catch(...) {
+                std::cerr << "Unknown target name " << arg.value() << "\n";
+                std::cerr << "  This probably came from a -Wdriver,-target\n";
+                std::cerr << ctx->as_tree_string("  ");
+                abort();
+            }
         } else if (std::regex_match(opt, std::regex("-W.*,.*"))) {
             /* "-W*,*,*" is sent to only a single phase. */
             auto comma = opt.find(',');
@@ -167,11 +179,19 @@ language_chisel::targets(const context::ptr& ctx) const
      * once. */
     auto obj_dir = ctx->obj_dir + "/" + ctx->src_dir;
 
+    /* The whole point of this is to go  */
+    auto all_targets = std::vector<makefile::target::ptr>();
+    auto add_to_all = [&](makefile::target::ptr i)
+        {
+            all_targets.push_back(i);
+            return i;
+        };
+
     /* This target builds the source code into a directory somewhere
      * in the temporary directory.  Note that this doesn't actually
      * depend on any flags, and builds everything in the source
      * directory that's listed. */
-    auto target_scalac = [&]() -> makefile::target::ptr
+    auto target_scalac = add_to_all([&]() -> makefile::target::ptr
         {
             auto workdir = obj_dir + "/scalac";
             auto stampdir = workdir + "/" + ctx->bin_dir + "/" + ctx->cmd->data();
@@ -219,10 +239,10 @@ language_chisel::targets(const context::ptr& ctx) const
                 commands,
                 comments
                 );
-        }();
+        }());
 
     /* Elaborates the Scala code into a Verilog file. */
-    auto target_rtl = [&]() -> makefile::target::ptr
+    auto target_rtl = add_to_all([&]() -> makefile::target::ptr
         {
             auto phase = chisel_phase::RTL;
             auto workdir = obj_dir + "/scalac";
@@ -267,23 +287,21 @@ language_chisel::targets(const context::ptr& ctx) const
                 commands,
                 comments
                 );
-        }();
+        }());
 
+    if (target_phase == chisel_phase::RTL)
+        goto emit_target;
+
+emit_target:
     /* Copy the elaborated Verilog file to the bin directory. */
-    auto target_copy = [&]() -> makefile::target::ptr
+    auto target_copy = add_to_all([&]() -> makefile::target::ptr
         {
-            auto phase = chisel_phase::RTL;
-            auto workdir = obj_dir + "/scalac";
+            auto last_target = all_targets[all_targets.size()-1];
 
             std::vector<makefile::target::ptr> sources = {
-                target_rtl
+                last_target
             };
 
-            auto top = std::string("Main");
-            for (const auto& pair: map_util::equal_range(phase_args, phase)) {
-                if (pair.second.key() == "top")
-                    top = pair.second.value();
-            }
             auto dest = ctx->lib_dir + "/" + ctx->cmd->data();
 
             auto global_targets = std::vector<makefile::global_targets>{
@@ -308,15 +326,9 @@ language_chisel::targets(const context::ptr& ctx) const
                 commands,
                 comments
                 );
-        }();
+        }());
 
     /* Filter the list of targets so only the new ones get emitted. */
-    auto all_targets = std::vector<makefile::target::ptr> {
-        target_scalac,
-        target_rtl,
-        target_copy
-    };
-
     auto new_targets = vector_util::filter(
         all_targets,
         [&](const makefile::target::ptr& target) -> bool
