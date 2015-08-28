@@ -310,7 +310,7 @@ language_chisel::targets(const context::ptr& ctx) const
                 );
         }();
 
-    /* Filter the list of targets */
+    /* Filter the list of targets so only the new ones get emitted. */
     auto all_targets = std::vector<makefile::target::ptr> {
         target_scalac,
         target_elaborate,
