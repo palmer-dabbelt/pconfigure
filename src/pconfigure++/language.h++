@@ -44,6 +44,13 @@ public:
     language(void);
 
 public:
+    /* Accessor functions. */
+    const std::vector<std::string>& compile_opts(void) const
+        { return _compile_opts; }
+    const std::vector<std::string>& link_opts(void) const
+        { return _link_opts; }
+
+public:
     /* Returns the name of this language, which is used as a unique
      * key when users refer to it from Configfiles. */
     virtual std::string name(void) const = 0;
@@ -85,6 +92,23 @@ public:
             auto lopt = ctx->clopts();
             opt.insert(opt.end(), lopt.begin(), lopt.end());
             return opt;
+        }
+
+    /* Combines {compile,link}-time options of this language with
+     * those of a particular context. */
+    std::vector<std::string> compile_opts(const context::ptr& ctx) const
+        {
+            std::vector<std::string> out;
+            out.insert(out.end(), _compile_opts.begin(), _compile_opts.end());
+            out.insert(out.end(), ctx->compile_opts.begin(), ctx->compile_opts.end());
+            return out;
+        }
+    std::vector<std::string> link_opts(const context::ptr& ctx) const
+        {
+            std::vector<std::string> out;
+            out.insert(out.end(), _link_opts.begin(), _link_opts.end());
+            out.insert(out.end(), ctx->link_opts.begin(), ctx->link_opts.end());
+            return out;
         }
 
     /* Virtual methods from opts_target. */
