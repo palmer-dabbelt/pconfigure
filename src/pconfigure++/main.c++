@@ -71,7 +71,7 @@ int main(int argc, const char **argv)
             makefile->add_target(target);
     }
 
-    makefile->write_to_file("Makefile++");
+    makefile->write_to_file("Makefile");
     
     return 0;
 }
