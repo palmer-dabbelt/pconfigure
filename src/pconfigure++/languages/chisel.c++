@@ -27,6 +27,10 @@
 #include <iostream>
 #include <map>
 
+/* Contains a list of Chisel targets that have already been generated,
+ * to avoid the need to generate any more. */
+static std::unordered_map<std::string, bool> already_generated;
+
 /* Chisel has a number of phases, each of which can be individually
  * selected. */
 enum class chisel_phase {
@@ -306,11 +310,23 @@ language_chisel::targets(const context::ptr& ctx) const
                 );
         }();
 
-    return {
+    /* Filter the list of targets */
+    auto all_targets = std::vector<makefile::target::ptr> {
         target_scalac,
         target_elaborate,
         target_copy
     };
+
+    auto new_targets = vector_util::filter(
+        all_targets,
+        [&](const makefile::target::ptr& target) -> bool
+        { return map_util::true_map(already_generated, target->name()); }
+        );
+
+    for (const auto& target: new_targets)
+        already_generated.insert({target->name(), true});
+
+    return new_targets;
 }
 
 static void install_chisel(void) __attribute__((constructor));
