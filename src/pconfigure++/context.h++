@@ -135,7 +135,7 @@ public:
     /* Lists both the compile and link options, for languages that
      * don't discriminate -- the hope here is that compilers can
      * optimize when they're available for inlining... */
-    virtual std::vector<std::string> clopts(void) const
+    std::vector<std::string> clopts(void) const
         {
             auto opt = std::vector<std::string>();
             opt.insert(opt.end(), compile_opts.begin(), compile_opts.end());
@@ -144,8 +144,8 @@ public:
         }
 
     /* Virtual methods from opts_target. */
-    virtual void add_compileopt(const std::string& data);
-    virtual void add_linkopt(const std::string& data);
+    void add_compileopt(const std::string& data);
+    void add_linkopt(const std::string& data);
 };
 
 #endif
