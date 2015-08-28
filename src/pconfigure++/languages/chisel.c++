@@ -179,7 +179,7 @@ language_chisel::targets(const context::ptr& ctx) const
      * once. */
     auto obj_dir = ctx->obj_dir + "/" + ctx->src_dir;
 
-    /* The whole point of this is to go  */
+    /* The whole point of this is to go and generate some targets. */
     auto all_targets = std::vector<makefile::target::ptr>();
     auto add_to_all = [&](makefile::target::ptr i)
         {
