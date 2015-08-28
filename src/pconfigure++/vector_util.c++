@@ -18,32 +18,26 @@
  * along with pconfigure.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef VECTOR_UTIL_HXX
-#define VECTOR_UTIL_HXX
+#include "vector_util.h++"
 
-#include <algorithm>
-#include <vector>
-
-template<class T>
-static inline
-std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b)
+int func(int i)
 {
-    auto o = std::vector<T>();
-    move(a.begin(), a.end(), std::back_inserter(o));
-    move(b.begin(), b.end(), std::back_inserter(o));
-    return o;
+    return i+1;
 }
 
-namespace vector_util {
-    template<typename V, typename F>
-    static inline
-    auto map(const V& v, F f)
-        -> std::vector<decltype(f(std::declval<typename V::value_type>()))>
-    {
-        std::vector<decltype(f(std::declval<typename V::value_type>()))> o;
-        std::transform(v.begin(), v.end(), std::back_inserter(o), f);
-        return o;
-    }
-}
+#ifdef TEST_MAP
+int main()
+{
+    std::vector<int> in{1, 2, 3};
+    std::vector<int> out = vector_util::map(in, &func);
 
+    for (size_t i = 0; i < std::min(in.size(), out.size()); ++i)
+        if (in[i]+1 != out[i])
+            return 2;
+
+    if (in.size() != out.size())
+        return 3;
+
+    return 0;
+}
 #endif

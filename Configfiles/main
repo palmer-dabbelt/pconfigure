@@ -149,3 +149,8 @@ LIBEXECS    += pconfigure/string_utils-strip_char
 COMPILEOPTS += -DTEST_STRIP_CHAR
 SOURCES     += pconfigure++/string_utils.c++
 TESTSRC     += three_parts.bash
+
+LIBEXECS    += pconfigure/vector_util-map
+COMPILEOPTS += -DTEST_MAP
+SOURCES     += pconfigure++/vector_util.c++
+TESTSRC     += builtin.bash
