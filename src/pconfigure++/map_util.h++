@@ -54,6 +54,17 @@ namespace map_util {
     {
         return to_range(map.equal_range(l));
     }
+
+    /* Sometimes I want to store true/false in a map, where "false" is
+     * returned when there isn't a match. */
+    template<typename M, typename K>
+    bool true_map(const M& m, const K& k)
+    {
+        auto l = m.find(k);
+        if (l == m.end())
+            return false;
+        return l->second;
+    }
 }
 
 #endif
