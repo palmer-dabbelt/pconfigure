@@ -332,7 +332,7 @@ emit_target:
     auto new_targets = vector_util::filter(
         all_targets,
         [&](const makefile::target::ptr& target) -> bool
-        { return map_util::true_map(already_generated, target->name()); }
+        { return map_util::true_map(already_generated, target->name()) == false; }
         );
 
     for (const auto& target: new_targets)
