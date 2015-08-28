@@ -281,7 +281,7 @@ language_chisel::targets(const context::ptr& ctx) const
 
             return std::make_shared<makefile::target>(
                 target_dir + "/" + top + ".v",
-                "CH-ELAB\t" + ctx->cmd->data(),
+                "CH-RTL\t" + ctx->cmd->data(),
                 sources,
                 global_targets,
                 commands,
