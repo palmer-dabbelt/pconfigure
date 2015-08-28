@@ -42,6 +42,9 @@ namespace string_utils {
      * elements. */
     std::string join(const std::vector<std::string>& in,
                      const std::string& delim = "");
+
+    /* Computes a simple hash code for a vector of strings. */
+    std::string hash(const std::vector<std::string>& in);
 }
 
 #endif

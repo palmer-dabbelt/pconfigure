@@ -114,3 +114,15 @@ std::string string_utils::join(const std::vector<std::string>& in,
     }
     return ss.str();
 }
+
+/* Computes a simple hash code for a vector of strings. */
+std::string string_utils::hash(const std::vector<std::string>& in)
+{
+    unsigned long hash = 5381;
+
+    for (const auto& str: in)
+        for (const auto& chr: str)
+            hash = ((hash << 5) + hash) + chr;
+
+    return std::to_string(hash);
+}
