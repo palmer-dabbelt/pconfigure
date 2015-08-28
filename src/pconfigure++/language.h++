@@ -68,10 +68,6 @@ public:
     virtual
     std::vector<makefile::target::ptr> targets(const context::ptr& ctx) const;
 
-    /* Virtual methods from opts_target. */
-    virtual void add_compileopt(const std::string& data);
-    virtual void add_linkopt(const std::string& data);
-
     /* Lists both the compile and link options, for languages that
      * don't discriminate -- the hope here is that compilers can
      * optimize when they're available for inlining... */
@@ -90,6 +86,11 @@ public:
             opt.insert(opt.end(), lopt.begin(), lopt.end());
             return opt;
         }
+
+    /* Virtual methods from opts_target. */
+public:
+    virtual void add_compileopt(const std::string& data);
+    virtual void add_linkopt(const std::string& data);
 
 protected:
     /* Returns TRUE if every source that's a direct child of the given
