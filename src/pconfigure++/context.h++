@@ -144,6 +144,7 @@ public:
         }
 
     /* Virtual methods from opts_target. */
+public:
     void add_compileopt(const std::string& data);
     void add_linkopt(const std::string& data);
 };
