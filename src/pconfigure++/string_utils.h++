@@ -37,6 +37,11 @@ namespace string_utils {
      * found. */
     std::vector<std::string> split_char(const std::string& in,
                                         const std::string& delims);
+
+    /* Joins the string using delim as the separator between
+     * elements. */
+    std::string join(const std::vector<std::string>& in,
+                     const std::string& delim = "");
 }
 
 #endif

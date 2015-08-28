@@ -21,6 +21,7 @@
 #include "string_utils.h++"
 #include <cstring>
 #include <iostream>
+#include <sstream>
 using namespace string_utils;
 
 std::string string_utils::clean_white(const std::string& in)
@@ -101,3 +102,15 @@ int main(int argc, char **argv)
     return 0;
 }
 #endif
+
+std::string string_utils::join(const std::vector<std::string>& in,
+                               const std::string& delim)
+{
+    std::ostringstream ss;
+    for(auto i = in.size()*0; i < in.size(); ++i) {
+        if (i != 0)
+            ss << delim;
+        ss << in[i];
+    }
+    return ss.str();
+}
