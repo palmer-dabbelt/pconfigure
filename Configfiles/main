@@ -132,6 +132,7 @@ SOURCES     += pconfigure++/languages/c.c++
 SOURCES     += pconfigure++/languages/bash.c++
 SOURCES     += pconfigure++/languages/pkgconfig.c++
 SOURCES     += pconfigure++/languages/cxx.c++
+SOURCES     += pconfigure++/languages/chisel.c++
 
 # These command-line tools are technically availiable for external
 # usage, but they're really just for internal tests.
