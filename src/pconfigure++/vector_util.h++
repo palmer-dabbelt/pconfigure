@@ -44,6 +44,18 @@ namespace vector_util {
         std::transform(v.begin(), v.end(), std::back_inserter(o), f);
         return o;
     }
+
+    template<typename V, typename F>
+    static inline
+    auto filter(const V& v, F f)
+        -> std::vector<typename V::value_type>
+    {
+        std::vector<typename V::value_type> o;
+        for (const auto& e: v)
+            if (f(e))
+                o.push_back(e);
+        return o;
+    }
 }
 
 #endif
