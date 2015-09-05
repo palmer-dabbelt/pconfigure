@@ -30,7 +30,7 @@ void generate(const char *filename, const char *dirname,
     proc_name = talloc_asprintf(ctx, "%s/%s.proc", dirname, filename);
     target = talloc_asprintf(ctx, "%s/%s", c->gen_dir, filename);
 
-    cmd = talloc_asprintf(ctx, "mkdir -p %s", c->gen_dir);
+    cmd = talloc_asprintf(ctx, "mkdir -p `dirname %s`", target);
     if (system(cmd) != 0)
         abort();
 
