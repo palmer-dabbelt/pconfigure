@@ -453,14 +453,6 @@ int parsefunc_languages(const char *op, const char *right)
         return -1;
     }
 
-    if (strcmp(op, "+=") == 0) {
-        err = languagelist_select(ll, right);
-        if (err != 0) {
-            fprintf(stderr, "Unable to select language '%s'\n", right);
-            return -1;
-        }
-    }
-
     /* If there's anything left on the stack, then clear everything out */
     while (!contextstack_isempty(s)) {
         context = talloc_new(NULL);
@@ -472,6 +464,17 @@ int parsefunc_languages(const char *op, const char *right)
         /* That's all we need to do, as free()ing the context will cause it to
          * be cleaned up and pushed over to  */
         TALLOC_FREE(context);
+    }
+
+    /* We have to add the language AFTER flushing the context stack,
+     * otherwise whatever language this is may end up attached to the
+     * above language. */
+    if (strcmp(op, "+=") == 0) {
+        err = languagelist_select(ll, right);
+        if (err != 0) {
+            fprintf(stderr, "Unable to select language '%s'\n", right);
+            return -1;
+        }
     }
 
     if (strcmp(op, "-=") == 0) {
