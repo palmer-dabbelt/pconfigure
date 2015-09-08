@@ -85,6 +85,7 @@ gcc --std=gnu99 -Wall -Werror -g $CFLAGS \
     $extrasrc $talloc $clang \
     -Isrc/extern/ -Iinclude/ $extrahdr \
     -I$BOOTSTRAP_DIR \
+    -D__PCONFIGURE__LIBEXEC=\"$BOOTSTRAP_DIR/../libexec\" \
     -o "$BOOTSTRAP_DIR/pconfigure" || exit $?
 
 # Runs pconfigure in order to build itself
