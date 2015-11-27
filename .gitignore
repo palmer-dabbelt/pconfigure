@@ -9,6 +9,7 @@
 Makefile*
 
 *~
+*.swp
 
 /doc/*.pdf
 /doc/*.html
