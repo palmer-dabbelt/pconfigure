@@ -85,6 +85,14 @@ namespace vector_util {
             out << sep << v[i];
         return out.str();
     }
+
+    /* Creates a vector of one element, without the need for any types. */
+    template<typename E>
+    static inline
+    std::vector<E> make(const E& e)
+    {
+        return std::vector<E>{e};
+    }
 }
 
 #endif
