@@ -60,6 +60,16 @@ namespace vector_util {
                 o.push_back(e);
         return o;
     }
+
+    /* Forces a cast between vectors of two different sub-types.  This relies
+     * on an implicit conversion existing between the two types stored within
+     * the vector. */
+    template<typename T, typename F>
+    static inline
+    std::vector<T> cast(const std::vector<F>& in)
+    {
+        return map(in, [](F f) -> T { return f; });
+    }
 }
 
 #endif
