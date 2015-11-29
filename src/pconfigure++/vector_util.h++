@@ -35,6 +35,8 @@ std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b)
 }
 
 namespace vector_util {
+    /* A functional map: returns a vector with the given function called for
+     * every element. */
     template<typename V, typename F>
     static inline
     auto map(const V& v, F f)
@@ -45,6 +47,8 @@ namespace vector_util {
         return o;
     }
 
+    /* A functional filter: returns the elements for which the given function
+     * returns true. */
     template<typename V, typename F>
     static inline
     auto filter(const V& v, F f)
