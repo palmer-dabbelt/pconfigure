@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <vector>
+#include <sstream>
 
 template<class T>
 static inline
@@ -69,6 +70,20 @@ namespace vector_util {
     std::vector<T> cast(const std::vector<F>& in)
     {
         return map(in, [](F f) -> T { return f; });
+    }
+
+    /* Joins a vector together. */
+    static inline
+    std::string join(const std::vector<std::string>& v, std::string sep = " ")
+    {
+        if (v.size() == 0)
+            return "";
+
+        std::stringstream out;
+        out << v[0];
+        for (size_t i = 0; i < v.size(); ++i)
+            out << sep << v[i];
+        return out.str();
     }
 }
 
