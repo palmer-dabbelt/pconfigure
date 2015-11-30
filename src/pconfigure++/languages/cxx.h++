@@ -36,6 +36,92 @@ public:
     virtual std::string name(void) const { return "c++"; }
     virtual language_cxx* clone(void) const;
     virtual bool can_process(const context::ptr& ctx) const;
+    virtual std::vector<makefile::target::ptr> targets(const context::ptr& ctx) const;
+
+private:
+    /* This helper function returns TRUE if the context should generated shared
+     * targets. */
+    enum class shared_target {
+        FALSE,
+        TRUE,
+    };
+    shared_target is_shared_target(const context::ptr& ctx) const;
+
+    /* Passed to target generation functions to indicate if this target should
+     * be built for installation, or should be built for local usage. */
+    enum class install_target {
+        FALSE,
+        TRUE,
+    };
+
+    /* Hashes the link options that are relevant to this command's linking
+     * (or compiling) phase. */
+    std::string hash_link_options(const context::ptr& ctx) const;
+    std::string hash_compile_options(const context::ptr& ctx) const;
+    std::string hash_options(const std::vector<std::string>& opts) const;
+
+protected:
+    /* The sub-class that represents a C++ specific target. */
+    class target {
+    public:
+        typedef std::shared_ptr<target> ptr;
+
+    public:
+        virtual makefile::target::ptr generate_makefile_target(void) const = 0;
+        virtual std::string path(void) const = 0;
+    };
+
+    /* This sort of target links together a bunch of object files, producing a
+     * binary. */
+    class link_target: public target {
+    private:
+        const std::string _target_path;
+        const std::vector<target::ptr> _objects;
+        const install_target _install;
+        const shared_target _shared;
+        const std::vector<std::string> _comments;
+        const context::ptr _ctx;
+
+    public:
+        link_target(const std::string& target_path,
+                    const std::vector<target::ptr>& objects,
+                    const install_target& install,
+                    const shared_target& shared,
+                    const std::vector<std::string>& comments,
+                    const context::ptr& ctx);
+
+    public:
+        /* target virtual functions */
+        virtual makefile::target::ptr generate_makefile_target(void) const;
+        virtual std::string path(void) const { return _target_path; }
+    };
+
+    /* This sort of target just copies from the source to the destination. */
+    class cp_target: public target {
+    private:
+        const std::string _target_path;
+        const target::ptr _source;
+        const install_target _install;
+        const std::vector<std::string> _comments;
+
+    public:
+        cp_target(const std::string& target_path,
+                  const target::ptr& source,
+                  const install_target& install,
+                  const std::vector<std::string> comments);
+
+    public:
+        /* target virtual functions */
+        virtual makefile::target::ptr generate_makefile_target(void) const;
+        virtual std::string path(void) const { return _target_path; }
+    };
+
+    /* Links together a bunch of object files into the target binary or
+     * library. */
+    std::vector<target::ptr> link_objects(const context::ptr& ctx,
+                                          const std::vector<target::ptr>& objects)
+                                          const;
+                                          
 };
 
 #endif

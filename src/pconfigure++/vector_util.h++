@@ -71,7 +71,7 @@ namespace vector_util {
     {
         return map(in, [](F f) -> T { return f; });
     }
-
+    
     /* Joins a vector together. */
     static inline
     std::string join(const std::vector<std::string>& v, std::string sep = " ")

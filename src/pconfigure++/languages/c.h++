@@ -21,11 +21,11 @@
 #ifndef LANGUAGES__C_CXX
 #define LANGUAGES__C_CXX
 
-#include "../language.h++"
+#include "cxx.h++"
 #include <memory>
 
 /* The simplest language I support: C. */
-class language_c: public language {
+class language_c: public language_cxx {
 public:
     typedef std::shared_ptr<language_c> ptr;
 

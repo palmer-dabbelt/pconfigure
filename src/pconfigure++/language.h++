@@ -74,7 +74,8 @@ public:
     /* Returns the targets that this context needs in order to build,
      * as a flattened list. */
     virtual
-    std::vector<makefile::target::ptr> targets(const context::ptr& ctx) const;
+    std::vector<makefile::target::ptr> targets(const context::ptr& ctx)
+    const = 0;
 
     /* Lists both the compile and link options, for languages that
      * don't discriminate -- the hope here is that compilers can

@@ -28,6 +28,8 @@ namespace makefile {
         ALL,
         CHECK,
         CLEAN,
+        INSTALL,
+        UNINSTALL,
     };
 }
 

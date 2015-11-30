@@ -149,4 +149,8 @@ public:
     void add_linkopt(const std::string& data);
 };
 
+namespace std {
+    std::string to_string(const ::context::ptr& ctx);
+}
+
 #endif

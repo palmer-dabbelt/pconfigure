@@ -107,3 +107,11 @@ void context::add_linkopt(const std::string& data)
 {
     link_opts.push_back(data);
 }
+
+std::string std::to_string(const context::ptr& ctx)
+{
+    return std::string("{")
+        + "type: " + std::to_string(ctx->type)
+        + " cmd: " + std::to_string(ctx->cmd->debug())
+        + "}";
+}

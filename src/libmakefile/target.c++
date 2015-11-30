@@ -58,12 +58,21 @@ void makefile::target::write_to_file(FILE *file) const
             fprintf(file, "check: %s\n", _name.c_str());
             break;
         case global_targets::CLEAN:
-            fprintf(file, ".PHONY: clean-%s\n", _name.c_str());
-            fprintf(file, "__pconfigure__clean-%s:; rm %s\n",
+            fprintf(file, ".PHONY: __pconfigure__clean-%s\n", _name.c_str());
+            fprintf(file, "__pconfigure__clean-%s:; rm -f %s\n",
                     _name.c_str(), _name.c_str());
             fprintf(file, "clean: __pconfigure__clean-%s\n", _name.c_str());
             break;
-        }
+        case global_targets::INSTALL:
+            fprintf(file, "install: %s\n", _name.c_str());
+            break;
+        case global_targets::UNINSTALL:
+            fprintf(file, ".PHONY: __pconfigure__uninstall-%s\n", _name.c_str());
+            fprintf(file, "__pconfigure__uninstall-%s:; rm -f %s\n",
+                    _name.c_str(), _name.c_str());
+            fprintf(file, "uninstall: __pconfigure__uninstall-%s\n", _name.c_str());
+            break;
+         }
     }
 
     /* This actually writes out the make rule that's necessary  */
