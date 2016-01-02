@@ -183,12 +183,26 @@ language_cxx::link_target::generate_makefile_target(void) const
                                  });
     auto target2name = [](const target::ptr& t){ return t->path(); };
 
+    auto shared = [&](void) -> std::string
+        {
+            switch (_shared) {
+            case shared_target::TRUE:
+                return " -shared";
+            case shared_target::FALSE:
+                return "";
+            }
+
+            abort();
+            return "";
+        }();
+
     auto cmds = std::vector<std::string>{
         "mkdir -p $(dir $@)",
         _linker
           + " -o" + _target_path
           + " " + vector_util::join(vector_util::map(_objects, target2name), " ")
           + " " + vector_util::join(_opts, " ")
+          + shared
     };
 
     auto global = std::vector<makefile::global_targets>{
