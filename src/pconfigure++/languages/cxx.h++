@@ -95,6 +95,7 @@ protected:
         const std::vector<std::string> _comments;
         const std::vector<std::string> _opts;
         const context::ptr _ctx;
+        const std::string _linker;
 
     public:
         link_target(const std::string& target_path,
@@ -103,7 +104,8 @@ protected:
                     const shared_target& shared,
                     const std::vector<std::string>& comments,
                     const std::vector<std::string>& opts,
-                    const context::ptr& ctx);
+                    const context::ptr& ctx,
+                    const std::string linker);
 
     public:
         /* target virtual functions */
@@ -120,6 +122,7 @@ protected:
         const std::vector<std::string> _comments;
         const std::vector<std::string> _opts;
         const context::ptr _ctx;
+        const std::string _compiler;
 
     public:
         compile_target(const std::string& target_path,
@@ -127,7 +130,8 @@ protected:
                        const shared_target& shared,
                        const std::vector<std::string>& comments,
                        const std::vector<std::string>& opts,
-                       const context::ptr& ctx);
+                       const context::ptr& ctx,
+                       const std::string compiler);
 
     public:
         /* target virtual functions */

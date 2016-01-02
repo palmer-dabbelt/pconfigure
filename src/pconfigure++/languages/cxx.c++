@@ -146,14 +146,16 @@ language_cxx::link_target::link_target(const std::string& target_path,
                                        const shared_target& shared,
                                        const std::vector<std::string>& comments,
                                        const std::vector<std::string>& opts,
-                                       const context::ptr& ctx)
+                                       const context::ptr& ctx,
+                                       const std::string linker)
 : _target_path(target_path),
   _objects(objects),
   _install(install),
   _shared(shared),
   _comments(comments),
   _opts(opts),
-  _ctx(ctx)
+  _ctx(ctx),
+  _linker(linker)
 {
 }
 
@@ -168,7 +170,7 @@ language_cxx::link_target::generate_makefile_target(void) const
 
     auto cmds = std::vector<std::string>{
         "mkdir -p $(dir $@)",
-        std::string("$(CXX)")
+        _linker
           + " -o" + _target_path
           + " " + vector_util::join(vector_util::map(_objects, target2name), " ")
           + " " + vector_util::join(_opts, " ")
@@ -192,13 +194,15 @@ language_cxx::compile_target::compile_target(const std::string& target_path,
                                              const shared_target& shared,
                                              const std::vector<std::string>& comments,
                                              const std::vector<std::string>& opts,
-                                             const context::ptr& ctx)
+                                             const context::ptr& ctx,
+                                             const std::string compiler)
 : _target_path(target_path),
   _main_source(main_source),
   _shared(shared),
   _comments(comments),
   _opts(opts),
-  _ctx(ctx)
+  _ctx(ctx),
+  _compiler(compiler)
 {
 }
 
@@ -224,7 +228,7 @@ language_cxx::compile_target::generate_makefile_target(void) const
 
     auto cmds = std::vector<std::string>{
         "mkdir -p $(dir $@)",
-        std::string("$(CXX)")
+        _compiler
           + " " + _main_source
           + " -o" + _target_path
           + " " + vector_util::join(_opts, " ")
@@ -335,7 +339,8 @@ language_cxx::link_objects(const context::ptr& ctx,
         is_shared_target(ctx),
         shared_comments + std::vector<std::string>{"install_target"},
         link_opts() + ctx->link_opts,
-        ctx
+        ctx,
+        _linker
     );
 
     auto local_target = std::make_shared<link_target>(
@@ -345,7 +350,8 @@ language_cxx::link_objects(const context::ptr& ctx,
         is_shared_target(ctx),
         shared_comments + std::vector<std::string>{"local_target"},
         link_opts() + ctx->link_opts,
-        ctx
+        ctx,
+        _linker
     );
 
     /* In order to keep the local and install targets consistant with the
@@ -399,7 +405,8 @@ language_cxx::compile_source(const context::ptr& ctx,
         language_cxx::shared_target::FALSE,
         shared_comments + std::vector<std::string>{"static_target"},
         compile_opts() + child->compile_opts,
-        child
+        child,
+        _compiler
     );
 
     auto shared_target = std::make_shared<compile_target>(
@@ -408,7 +415,8 @@ language_cxx::compile_source(const context::ptr& ctx,
         language_cxx::shared_target::TRUE,
         shared_comments + std::vector<std::string>{"shared_target"},
         compile_opts() + child->compile_opts,
-        child
+        child,
+        _compiler
     );
 
     return {shared_target, static_target};
