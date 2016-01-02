@@ -205,13 +205,14 @@ language_cxx::link_target::generate_makefile_target(void) const
           + shared
     };
 
+
     auto global = std::vector<makefile::global_targets>{
         makefile::global_targets::CLEAN,
     };
 
     return std::make_shared<makefile::target>(
         _target_path,
-        std::string("LD++\t") + _ctx->cmd->data(),
+        _linker + "\t" + _ctx->cmd->data(),
         deps,
         global,
         cmds,
@@ -270,7 +271,7 @@ language_cxx::compile_target::generate_makefile_target(void) const
 
     return std::make_shared<makefile::target>(
         _target_path,
-        std::string("C++\t") + _ctx->cmd->data(),
+        _compiler + "\t" + _ctx->cmd->data(),
         deps,
         global,
         cmds,
