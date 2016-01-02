@@ -259,10 +259,10 @@ language_cxx::compile_target::generate_makefile_target(void) const
     auto cmds = std::vector<std::string>{
         "mkdir -p $(dir $@)",
         _compiler
-          + " " + _main_source
-          + " -o" + _target_path
+          + " -c " + _main_source
+          + " -o " + _target_path
           + " " + vector_util::join(_opts, " ")
-          +  pic
+          + pic
     };
 
     auto global = std::vector<makefile::global_targets>{
