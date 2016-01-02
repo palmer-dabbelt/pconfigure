@@ -24,7 +24,8 @@
 
 language_c* language_c::clone(void) const
 {
-    return new language_c();
+    return new language_c(_compiler,
+                          _linker);
 }
 
 bool language_c::can_process(const context::ptr& ctx) const
@@ -40,5 +41,10 @@ bool language_c::can_process(const context::ptr& ctx) const
 static void install_c(void) __attribute__((constructor));
 void install_c(void)
 {
-    language_list::global_add(std::make_shared<language_c>());
+    language_list::global_add(
+        std::make_shared<language_c>(
+            "$(CC)",
+            "$(CC)"
+        )
+    );
 }

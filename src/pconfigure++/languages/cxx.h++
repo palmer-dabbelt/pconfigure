@@ -31,6 +31,19 @@ class language_cxx: public language {
 public:
     typedef std::shared_ptr<language_cxx> ptr;
 
+protected:
+    /* The compiler and linker that should be used. */
+    const std::string _compiler;
+    const std::string _linker;
+
+public:
+    /* Creates a new C++ language object,  */
+    language_cxx(const std::string& compiler,
+                 const std::string& linker)
+    : _compiler(compiler),
+      _linker(linker)
+    {}
+
 public:
     /* Virtual methods from language. */
     virtual std::string name(void) const { return "c++"; }

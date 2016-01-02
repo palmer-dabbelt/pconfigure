@@ -25,7 +25,10 @@
 
 language_cxx* language_cxx::clone(void) const
 {
-    return new language_cxx();
+    return new language_cxx(
+        _compiler,
+        _linker
+    );
 }
 
 bool language_cxx::can_process(const context::ptr& ctx) const
@@ -416,5 +419,10 @@ language_cxx::compile_source(const context::ptr& ctx,
 static void install_cxx(void) __attribute__((constructor));
 void install_cxx(void)
 {
-    language_list::global_add(std::make_shared<language_cxx>());
+    language_list::global_add(
+        std::make_shared<language_cxx>(
+            "$(CXX)",
+            "$(CXX)"
+        )
+    );
 }

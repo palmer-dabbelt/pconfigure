@@ -30,6 +30,12 @@ public:
     typedef std::shared_ptr<language_c> ptr;
 
 public:
+    language_c(const std::string compiler,
+               const std::string& linker)
+    : language_cxx(compiler, linker)
+    {}
+
+public:
     /* Virtual methods from language. */
     virtual std::string name(void) const { return "c"; }
     virtual language_c* clone(void) const;
