@@ -104,8 +104,6 @@ std::string language_cxx::hash_options(const std::vector<std::string>& opts) con
 
 std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx) const
 {
-    std::cerr << "language_c++::targets(" << std::to_string(ctx) << ")" << std::endl;
-
     /* We can only support some sorts of targets, it doesn't make sense to do a
      * top-level build for any others. */
     switch (ctx->type) {
