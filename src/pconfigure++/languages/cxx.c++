@@ -320,7 +320,7 @@ language_cxx::cp_target::generate_makefile_target(void) const
 
     return std::make_shared<makefile::target>(
         _target_path,
-        std::string("CP ") + _target_path,
+        std::string("CP\t") + _target_path,
         deps,
         global,
         cmds,
