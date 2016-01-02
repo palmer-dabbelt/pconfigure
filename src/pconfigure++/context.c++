@@ -30,6 +30,7 @@ context::context(void)
       libexec_dir("libexec"),
       obj_dir("obj"),
       src_dir("src"),
+      hdr_dir("include"),
       cmd(NULL),
       children()
 {
@@ -43,6 +44,7 @@ context::context(const context_type& _type,
                  const std::string& _libexec_dir,
                  const std::string& _obj_dir,
                  const std::string& _src_dir,
+                 const std::string& _hdr_dir,
                  const command::ptr& _cmd,
                  const std::vector<ptr>& _children)
     : type(_type),
@@ -53,6 +55,7 @@ context::context(const context_type& _type,
       libexec_dir(_libexec_dir),
       obj_dir(_obj_dir),
       src_dir(_src_dir),
+      hdr_dir(_hdr_dir),
       cmd(_cmd),
       children(_children)
 {
@@ -70,6 +73,7 @@ context::ptr context::dup(const context_type& type,
                                      this->libexec_dir,
                                      this->obj_dir,
                                      this->src_dir,
+                                     this->hdr_dir,
                                      cmd,
                                      children);
 }

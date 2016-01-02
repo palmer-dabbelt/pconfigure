@@ -397,6 +397,11 @@ language_cxx::compile_source(const context::ptr& ctx,
 
     auto source_path = child->src_dir + "/" + child->cmd->data();
 
+    auto compile_opts = this->compile_opts() + child->compile_opts +
+        std::vector<std::string>{
+            "-I" + child->hdr_dir
+        };
+
     /* There's two targets here: one for staticly linked programs, and ony for
      * dynamically linked ones. */
     auto static_target = std::make_shared<compile_target>(
@@ -404,7 +409,7 @@ language_cxx::compile_source(const context::ptr& ctx,
         source_path,
         language_cxx::shared_target::FALSE,
         shared_comments + std::vector<std::string>{"static_target"},
-        compile_opts() + child->compile_opts,
+        compile_opts,
         child,
         _compiler
     );
@@ -414,7 +419,7 @@ language_cxx::compile_source(const context::ptr& ctx,
         source_path,
         language_cxx::shared_target::TRUE,
         shared_comments + std::vector<std::string>{"shared_target"},
-        compile_opts() + child->compile_opts,
+        compile_opts,
         child,
         _compiler
     );

@@ -77,6 +77,10 @@ public:
      * loaded from. */
     std::string src_dir;
 
+    /* The location at which HEADER commands are sourced from (unless they have
+     * a SOURCES command). */
+    std::string hdr_dir;
+
     /* These implement "opts_target" */
     std::vector<std::string> compile_opts;
     std::vector<std::string> link_opts;
@@ -113,6 +117,7 @@ public:
             const std::string& libexec_dir,
             const std::string& obj_dir,
             const std::string& src_dir,
+            const std::string& hdr_dir,
             const command::ptr& cmd,
             const std::vector<ptr>& children);
 
