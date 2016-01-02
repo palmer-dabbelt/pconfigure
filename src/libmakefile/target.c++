@@ -59,7 +59,7 @@ void makefile::target::write_to_file(FILE *file) const
             break;
         case global_targets::CLEAN:
             fprintf(file, ".PHONY: __pconfigure__clean-%s\n", _name.c_str());
-            fprintf(file, "__pconfigure__clean-%s:; rm -f %s\n",
+            fprintf(file, "__pconfigure__clean-%s:; @rm -fr %s\n",
                     _name.c_str(), _name.c_str());
             fprintf(file, "clean: __pconfigure__clean-%s\n", _name.c_str());
             break;
@@ -68,7 +68,7 @@ void makefile::target::write_to_file(FILE *file) const
             break;
         case global_targets::UNINSTALL:
             fprintf(file, ".PHONY: __pconfigure__uninstall-%s\n", _name.c_str());
-            fprintf(file, "__pconfigure__uninstall-%s:; rm -f %s\n",
+            fprintf(file, "__pconfigure__uninstall-%s:; @rm -f %s\n",
                     _name.c_str(), _name.c_str());
             fprintf(file, "uninstall: __pconfigure__uninstall-%s\n", _name.c_str());
             break;
