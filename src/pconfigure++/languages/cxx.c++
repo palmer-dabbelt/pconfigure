@@ -111,7 +111,7 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
         {
             auto objects = std::vector<target::ptr>();
             for (const auto& child: ctx->children)
-                objects = objects + 
+                objects = objects + compile_source(ctx, child, objects);
 
             auto link = link_objects(ctx, objects);
             return vector_util::map(objects + link,
@@ -139,19 +139,19 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
     return {};
 }
 
-
-
 language_cxx::link_target::link_target(const std::string& target_path, 
                                        const std::vector<target::ptr>& objects,
                                        const install_target& install,
                                        const shared_target& shared,
                                        const std::vector<std::string>& comments,
+                                       const std::vector<std::string>& opts,
                                        const context::ptr& ctx)
 : _target_path(target_path),
   _objects(objects),
   _install(install),
   _shared(shared),
   _comments(comments),
+  _opts(opts),
   _ctx(ctx)
 {
 }
@@ -170,7 +170,7 @@ language_cxx::link_target::generate_makefile_target(void) const
         std::string("$(CXX)")
           + " -o" + _target_path
           + " " + vector_util::join(vector_util::map(_objects, target2name), " ")
-          + " " + vector_util::join(_ctx->link_opts, " ")
+          + " " + vector_util::join(_opts, " ")
     };
 
     auto global = std::vector<makefile::global_targets>{
@@ -180,6 +180,63 @@ language_cxx::link_target::generate_makefile_target(void) const
     return std::make_shared<makefile::target>(
         _target_path,
         std::string("LD++\t") + _ctx->cmd->data(),
+        deps,
+        global,
+        cmds,
+        _comments);
+}
+
+language_cxx::compile_target::compile_target(const std::string& target_path,
+                                             const std::string& main_source,
+                                             const shared_target& shared,
+                                             const std::vector<std::string>& comments,
+                                             const std::vector<std::string>& opts,
+                                             const context::ptr& ctx)
+: _target_path(target_path),
+  _main_source(main_source),
+  _shared(shared),
+  _comments(comments),
+  _opts(opts),
+  _ctx(ctx)
+{
+}
+
+makefile::target::ptr
+language_cxx::compile_target::generate_makefile_target(void) const
+{
+    auto deps = std::vector<makefile::target::ptr>{
+      std::make_shared<makefile::target>(_main_source)
+    };
+
+    auto pic = [&]() -> std::string
+        {
+            switch (_shared) {
+                case shared_target::FALSE:
+                    return "";
+                case shared_target::TRUE:
+                    return " -fPIC";
+            }
+
+            abort();
+            return "";
+        }();
+
+    auto cmds = std::vector<std::string>{
+        "mkdir -p $(dir $@)",
+        std::string("$(CXX)")
+          + " " + _main_source
+          + " -o" + _target_path
+          + " " + vector_util::join(_opts, " ")
+          +  pic
+    };
+
+    auto global = std::vector<makefile::global_targets>{
+        makefile::global_targets::CLEAN,
+    };
+
+    return std::make_shared<makefile::target>(
+        _target_path,
+        std::string("C++\t") + _ctx->cmd->data(),
         deps,
         global,
         cmds,
@@ -276,6 +333,7 @@ language_cxx::link_objects(const context::ptr& ctx,
         language_cxx::install_target::TRUE,
         is_shared_target(ctx),
         shared_comments + std::vector<std::string>{"install_target"},
+        link_opts() + ctx->link_opts,
         ctx
     );
 
@@ -285,6 +343,7 @@ language_cxx::link_objects(const context::ptr& ctx,
         language_cxx::install_target::FALSE,
         is_shared_target(ctx),
         shared_comments + std::vector<std::string>{"local_target"},
+        link_opts() + ctx->link_opts,
         ctx
     );
 
@@ -309,6 +368,49 @@ language_cxx::link_objects(const context::ptr& ctx,
      * linking step: that doesn't include the objects, they're expected to be
      * used elsewhere. */
     return {install_target, local_target, cp_install_target, cp_local_target};
+}
+
+
+std::vector<language_cxx::target::ptr>
+language_cxx::compile_source(const context::ptr& ctx,
+                             const context::ptr& child,
+                             const std::vector<target::ptr>& already_built __attribute__((unused)))
+                             const
+{
+    auto shared_comments = std::vector<std::string>{
+        std::to_string(child->cmd->debug()),
+        "language_cxx::compile_source()",
+    };
+
+    auto shared_link_dir =
+        child->obj_dir
+        + "/" + ctx->cmd->data()
+        + "/" + hash_link_options(ctx)
+        + "/";
+
+    auto source_path = child->src_dir + "/" + child->cmd->data();
+
+    /* There's two targets here: one for staticly linked programs, and ony for
+     * dynamically linked ones. */
+    auto static_target = std::make_shared<compile_target>(
+        ctx->obj_dir + "/" + ctx->cmd->data() + "/static.o",
+        source_path,
+        language_cxx::shared_target::FALSE,
+        shared_comments + std::vector<std::string>{"static_target"},
+        compile_opts() + child->compile_opts,
+        child
+    );
+
+    auto shared_target = std::make_shared<compile_target>(
+        ctx->obj_dir + "/" + ctx->cmd->data() + "/shared.o",
+        source_path,
+        language_cxx::shared_target::TRUE,
+        shared_comments + std::vector<std::string>{"shared_target"},
+        compile_opts() + child->compile_opts,
+        child
+    );
+
+    return {shared_target, static_target};
 }
 
 static void install_cxx(void) __attribute__((constructor));

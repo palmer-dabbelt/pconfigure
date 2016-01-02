@@ -80,6 +80,7 @@ protected:
         const install_target _install;
         const shared_target _shared;
         const std::vector<std::string> _comments;
+        const std::vector<std::string> _opts;
         const context::ptr _ctx;
 
     public:
@@ -88,7 +89,32 @@ protected:
                     const install_target& install,
                     const shared_target& shared,
                     const std::vector<std::string>& comments,
+                    const std::vector<std::string>& opts,
                     const context::ptr& ctx);
+
+    public:
+        /* target virtual functions */
+        virtual makefile::target::ptr generate_makefile_target(void) const;
+        virtual std::string path(void) const { return _target_path; }
+    };
+
+    /* This sort of target compiles a single file, producing  */
+    class compile_target: public target {
+    private:
+        const std::string _target_path;
+        const std::string _main_source;
+        const shared_target _shared;
+        const std::vector<std::string> _comments;
+        const std::vector<std::string> _opts;
+        const context::ptr _ctx;
+
+    public:
+        compile_target(const std::string& target_path,
+                       const std::string& _main_source,
+                       const shared_target& shared,
+                       const std::vector<std::string>& comments,
+                       const std::vector<std::string>& opts,
+                       const context::ptr& ctx);
 
     public:
         /* target virtual functions */
@@ -118,10 +144,22 @@ protected:
 
     /* Links together a bunch of object files into the target binary or
      * library. */
-    std::vector<target::ptr> link_objects(const context::ptr& ctx,
-                                          const std::vector<target::ptr>& objects)
-                                          const;
-                                          
+    std::vector<target::ptr> link_objects(
+        const context::ptr& ctx,
+        const std::vector<target::ptr>& objects
+    ) const;
+
+    /* Compiles a source file into an object, returns the compiled target
+     * along with all dependencies of this target.  "already_built" is a list
+     * of the targets that have already been built and shouldn't be
+     * duplicated. */
+    /* FIXME: "already_built" shouldn't be a std::vector, and shouldn't come
+     * from just this single build. */
+    std::vector<target::ptr> compile_source(
+        const context::ptr& ctx,
+        const context::ptr& child,
+        const std::vector<target::ptr>& already_built
+    ) const;
 };
 
 #endif
