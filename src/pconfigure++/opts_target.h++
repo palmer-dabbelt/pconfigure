@@ -38,6 +38,12 @@ public:
      * something to the relevant options field. */
     virtual void add_compileopt(const std::string& data) = 0;
     virtual void add_linkopt(const std::string& data) = 0;
+
+    /* These produce the current set of compile or link opts for this target,
+     * which does enforce that some amount of implementation on the users of
+     * this class.. */
+    virtual const std::vector<std::string>& list_compile_opts(void) const = 0;
+    virtual const std::vector<std::string>& list_link_opts(void) const = 0;
 };
 
 #endif

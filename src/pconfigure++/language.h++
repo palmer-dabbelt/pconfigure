@@ -98,6 +98,10 @@ public:
 public:
     void add_compileopt(const std::string& data);
     void add_linkopt(const std::string& data);
+    const std::vector<std::string>& list_compile_opts(void) const
+        { return _compile_opts; }
+    const std::vector<std::string>& list_link_opts(void) const
+        { return _link_opts; }
 
 protected:
     /* Returns TRUE if every source that's a direct child of the given
