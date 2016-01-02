@@ -81,7 +81,7 @@ namespace vector_util {
 
         std::stringstream out;
         out << v[0];
-        for (size_t i = 0; i < v.size(); ++i)
+        for (size_t i = 1; i < v.size(); ++i)
             out << sep << v[i];
         return out.str();
     }
