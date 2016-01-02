@@ -93,6 +93,11 @@ std::string language_cxx::hash_link_options(const context::ptr& ctx) const
     return hash_options(ctx->clopts());
 }
 
+std::string language_cxx::hash_compile_options(const context::ptr& ctx) const
+{
+    return hash_options(ctx->list_compile_opts());
+}
+
 std::string language_cxx::hash_options(const std::vector<std::string>& opts) const
 {
     std::hash<std::string> hash_fn;
@@ -402,10 +407,15 @@ language_cxx::compile_source(const context::ptr& ctx,
             "-I" + child->hdr_dir
         };
 
+    auto base_out_name =
+        child->obj_dir
+        + "/" + child->cmd->data()
+        + "/" + hash_compile_options(child);
+
     /* There's two targets here: one for staticly linked programs, and ony for
      * dynamically linked ones. */
     auto static_target = std::make_shared<compile_target>(
-        ctx->obj_dir + "/" + ctx->cmd->data() + "/static.o",
+        base_out_name + "-static.o",
         source_path,
         language_cxx::shared_target::FALSE,
         shared_comments + std::vector<std::string>{"static_target"},
@@ -415,7 +425,7 @@ language_cxx::compile_source(const context::ptr& ctx,
     );
 
     auto shared_target = std::make_shared<compile_target>(
-        ctx->obj_dir + "/" + ctx->cmd->data() + "/shared.o",
+        base_out_name + "-shared.o",
         source_path,
         language_cxx::shared_target::TRUE,
         shared_comments + std::vector<std::string>{"shared_target"},
