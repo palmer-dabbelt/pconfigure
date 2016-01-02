@@ -175,7 +175,8 @@ protected:
     std::vector<target::ptr> compile_source(
         const context::ptr& ctx,
         const context::ptr& child,
-        const std::vector<target::ptr>& already_built
+        const std::vector<target::ptr>& already_built,
+        const shared_target& is_shared
     ) const;
 };
 

@@ -116,8 +116,18 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
         case context_type::BINARY:
         {
             auto objects = std::vector<target::ptr>();
-            for (const auto& child: ctx->children)
-                objects = objects + compile_source(ctx, child, objects);
+            for (const auto& child: ctx->children) {
+                auto is_shared = (ctx->type == context_type::BINARY)
+                        ? shared_target::FALSE
+                        : shared_target::TRUE;
+
+                auto all_objects = compile_source(ctx,
+                                                  child,
+                                                  objects,
+                                                  is_shared);
+
+                objects = objects + all_objects;
+            }
 
             auto link = link_objects(ctx, objects);
             return vector_util::map(objects + link,
@@ -386,7 +396,8 @@ language_cxx::link_objects(const context::ptr& ctx,
 std::vector<language_cxx::target::ptr>
 language_cxx::compile_source(const context::ptr& ctx,
                              const context::ptr& child,
-                             const std::vector<target::ptr>& already_built __attribute__((unused)))
+                             const std::vector<target::ptr>& already_built __attribute__((unused)),
+                             const shared_target& is_shared)
                              const
 {
     auto shared_comments = std::vector<std::string>{
@@ -414,7 +425,7 @@ language_cxx::compile_source(const context::ptr& ctx,
 
     /* There's two targets here: one for staticly linked programs, and ony for
      * dynamically linked ones. */
-    auto static_target = std::make_shared<compile_target>(
+    auto static_ctarget = std::make_shared<compile_target>(
         base_out_name + "-static.o",
         source_path,
         language_cxx::shared_target::FALSE,
@@ -424,7 +435,7 @@ language_cxx::compile_source(const context::ptr& ctx,
         _compiler
     );
 
-    auto shared_target = std::make_shared<compile_target>(
+    auto shared_ctarget = std::make_shared<compile_target>(
         base_out_name + "-shared.o",
         source_path,
         language_cxx::shared_target::TRUE,
@@ -434,7 +445,15 @@ language_cxx::compile_source(const context::ptr& ctx,
         _compiler
     );
 
-    return {shared_target, static_target};
+    switch (is_shared) {
+    case shared_target::TRUE:
+        return {shared_ctarget};
+    case shared_target::FALSE:
+        return {static_ctarget};
+    };
+
+    abort();
+    return {};
 }
 
 static void install_cxx(void) __attribute__((constructor));
