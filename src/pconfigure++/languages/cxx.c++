@@ -435,6 +435,7 @@ language_cxx::compile_source(const context::ptr& ctx,
 
     auto base_out_name =
         child->obj_dir
+        + "/" + child->src_dir
         + "/" + child->cmd->data()
         + "/" + hash_compile_options(child);
 
