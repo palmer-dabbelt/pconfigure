@@ -395,7 +395,7 @@ language_cxx::link_objects(const context::ptr& ctx,
     );
 
      auto cp_local_target = std::make_shared<cp_target>(
-        ctx->obj_dir + "/" + bin_dir + "/" + ctx->cmd->data(),
+        bin_dir + "/" + ctx->cmd->data(),
         local_target,
         language_cxx::install_target::FALSE,
         shared_comments + std::vector<std::string>{"cp_local_target"}
