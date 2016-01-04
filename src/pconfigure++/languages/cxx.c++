@@ -259,9 +259,9 @@ language_cxx::compile_target::generate_makefile_target(void) const
     auto cmds = std::vector<std::string>{
         "mkdir -p $(dir $@)",
         _compiler
+          + " " + vector_util::join(_opts, " ")
           + " -c " + _main_source
           + " -o " + _target_path
-          + " " + vector_util::join(_opts, " ")
           + pic
     };
 
