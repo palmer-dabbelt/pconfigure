@@ -31,7 +31,16 @@ int main(int argc, const char **argv)
     for (const auto& command: commands(argc, argv))
         processor->process(command);
 
-    auto makefile = std::make_shared<makefile::makefile>();
+    /* FIXME: If any target is verbose, then all are. */
+    bool verbose = [&](void) -> bool {
+        for (const auto& context: processor->output_contexts())
+            if (context->verbose == true)
+                return true;
+
+        return false;
+        }();
+
+    auto makefile = std::make_shared<makefile::makefile>(verbose);
 
     for (const auto& context: processor->output_contexts()) {
         auto valid_languages = std::vector<language::ptr>();

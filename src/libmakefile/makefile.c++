@@ -21,7 +21,8 @@
 #include "makefile.h++"
 #include <iostream>
 
-makefile::makefile::makefile(void)
+makefile::makefile::makefile(bool verbose)
+: _verbose(verbose)
 {
 }
 
@@ -47,7 +48,7 @@ void makefile::makefile::write_to_file(const std::string& filename)
     fprintf(file, "all:\n\n");
 
     for (const auto& target: _targets)
-        target->write_to_file(file);
+        target->write_to_file(file, _verbose);
 
     fclose(file);
 }

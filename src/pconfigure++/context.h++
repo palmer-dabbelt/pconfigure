@@ -94,6 +94,9 @@ public:
      * later. */
     const command::ptr cmd;
 
+    /* This is TRUE when this target should be built in VERBOSE mode. */
+    bool verbose;
+
     /***************************************************************
      * Filled in after language::find_all_children                 *
      ***************************************************************/
@@ -119,6 +122,7 @@ public:
             const std::string& src_dir,
             const std::string& hdr_dir,
             const command::ptr& cmd,
+            bool verbose,
             const std::vector<ptr>& children);
 
 public:

@@ -45,7 +45,7 @@ makefile::target::target(const std::string& name)
 {
 }
 
-void makefile::target::write_to_file(FILE *file) const
+void makefile::target::write_to_file(FILE *file, bool verbose) const
 {
     /* First write a little header that adds the upcoming target to
      * any of the global targets that it may have ended up setting. */
@@ -82,8 +82,14 @@ void makefile::target::write_to_file(FILE *file) const
     for (const auto& dep: _deps)
         fprintf(file, " %s", dep->_name.c_str());
     fprintf(file, "\n");
-    fprintf(file, "\t@echo \"%s\"\n", _short_cmd.c_str());
-    for (const auto& cmd: _cmds)
-        fprintf(file, "\t@%s\n", cmd.c_str());
+    if (verbose == false) {
+        fprintf(file, "\t@echo \"%s\"\n", _short_cmd.c_str());
+        for (const auto& cmd: _cmds)
+            fprintf(file, "\t@%s\n", cmd.c_str());
+    } else {
+        fprintf(file, "\techo \"%s\"\n", _short_cmd.c_str());
+        for (const auto& cmd: _cmds)
+            fprintf(file, "\t%s\n", cmd.c_str());
+    }
     fprintf(file, "\n");
 }

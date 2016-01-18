@@ -36,6 +36,9 @@ command::command(const command_type& type,
 command::ptr command::parse(const std::string& str,
                             const debug_info::ptr& d)
 {
+    if (str == "--verbose")
+        return std::make_shared<command>(command_type::VERBOSE, "=", "true", d);
+
     auto split = string_utils::split_char(str, " ");
     if (split.size() < 3) {
         std::cerr << "split_char() returned " << split.size() << "\n"

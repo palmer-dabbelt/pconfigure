@@ -54,6 +54,7 @@ enum class command_type {
     TESTS,
     TESTSRC,
     TGENERATE,
+    VERBOSE,
 };
 
 /* A utility function that allows one to iterate through all the
@@ -84,6 +85,7 @@ static const std::vector<command_type> all_command_types =
     command_type::TESTS,
     command_type::TESTSRC,
     command_type::TGENERATE,
+    command_type::VERBOSE,
 };
 
 /* Converts a command_type to a string, in the standard C++11 way. */
@@ -139,6 +141,8 @@ namespace std {
             return "TESTSRC";
         case command_type::TGENERATE:
             return "TGENERATE";
+        case command_type::VERBOSE:
+            return "VERBOSE";
         }
 
         throw "Unable to convert " + to_string(static_cast<int>(cmd)) + " to string";

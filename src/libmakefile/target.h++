@@ -61,7 +61,7 @@ namespace makefile {
     public:
         /* Writes this target (and with its commands) to the given
          * file. */
-        void write_to_file(FILE *file) const;
+        void write_to_file(FILE *file, bool verbose) const;
     };
 }
 

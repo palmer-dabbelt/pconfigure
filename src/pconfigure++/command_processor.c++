@@ -245,6 +245,10 @@ void command_processor::process(const command::ptr& cmd)
                   << " not implemented\n";
         abort();
         break;
+
+    case command_type::VERBOSE:
+        _stack.top()->verbose = true;
+        return;
     }
 
     std::cerr << "Bad command index on '"

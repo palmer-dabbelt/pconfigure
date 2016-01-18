@@ -32,6 +32,7 @@ context::context(void)
       src_dir("src"),
       hdr_dir("include"),
       cmd(NULL),
+      verbose(false),
       children()
 {
 }
@@ -46,6 +47,7 @@ context::context(const context_type& _type,
                  const std::string& _src_dir,
                  const std::string& _hdr_dir,
                  const command::ptr& _cmd,
+                 bool _verbose,
                  const std::vector<ptr>& _children)
     : type(_type),
       prefix(_prefix),
@@ -57,6 +59,7 @@ context::context(const context_type& _type,
       src_dir(_src_dir),
       hdr_dir(_hdr_dir),
       cmd(_cmd),
+      verbose(_verbose),
       children(_children)
 {
 }
@@ -75,6 +78,7 @@ context::ptr context::dup(const context_type& type,
                                      this->src_dir,
                                      this->hdr_dir,
                                      cmd,
+                                     this->verbose,
                                      children);
 }
 

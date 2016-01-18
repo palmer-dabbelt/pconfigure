@@ -37,12 +37,13 @@ namespace makefile {
         std::vector<target::ptr> _targets;
 
     private:
+	    const bool _verbose;
 
     public:
         /* Creates a new "empty" Makefile -- note that this actually
          * contains some about of default targets and such that you
          * don't want if you're going to be */
-        makefile(void);
+        makefile(bool verbose = false);
 
     public:
         /* Adds a target to this makefile. */
