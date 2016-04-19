@@ -415,11 +415,6 @@ language_cxx::compile_source(const context::ptr& ctx,
                              const shared_target& is_shared)
                              const
 {
-    auto shared_comments = std::vector<std::string>{
-        std::to_string(child->cmd->debug()),
-        "language_cxx::compile_source()",
-    };
-
     auto shared_link_dir =
         child->obj_dir
         + "/" + ctx->cmd->data()
@@ -432,6 +427,12 @@ language_cxx::compile_source(const context::ptr& ctx,
         std::vector<std::string>{
             "-I" + child->hdr_dir
         };
+
+    auto shared_comments = std::vector<std::string>{
+        std::to_string(child->cmd->debug()),
+        "language_cxx::compile_source()",
+        "compile_opts: " + vector_util::join(compile_opts, " ")
+    };
 
     auto base_out_name =
         child->obj_dir
