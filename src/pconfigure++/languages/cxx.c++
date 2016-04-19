@@ -423,9 +423,12 @@ language_cxx::compile_source(const context::ptr& ctx,
 
     auto source_path = child->src_dir + "/" + child->cmd->data();
 
+    auto full_libexec_path = child->prefix + "/" + child->libexec_dir;
+
     auto compile_opts = this->compile_opts() + child->compile_opts +
         std::vector<std::string>{
-            "-I" + child->hdr_dir
+            "-I" + child->hdr_dir,
+            "-D__PCONFIGURE__LIBEXEC=\\\"" + full_libexec_path + "\\\""
         };
 
     auto shared_comments = std::vector<std::string>{
