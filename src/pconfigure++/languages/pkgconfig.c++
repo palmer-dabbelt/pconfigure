@@ -108,7 +108,7 @@ language_pkgconfig::targets(const context::ptr& ctx) const
         command += "> " + target;
 
         auto commands = std::vector<std::string>{
-            "mkdir -p " + ctx->lib_dir,
+            "mkdir -p $(dir $@)",
             command
         };
 
