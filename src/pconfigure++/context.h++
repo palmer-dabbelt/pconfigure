@@ -121,6 +121,8 @@ public:
             const std::string& obj_dir,
             const std::string& src_dir,
             const std::string& hdr_dir,
+            const std::vector<std::string>& compile_opts,
+            const std::vector<std::string>& link_opts,
             const command::ptr& cmd,
             bool verbose,
             const std::vector<ptr>& children);
