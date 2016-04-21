@@ -22,6 +22,8 @@
 #include "../language_list.h++"
 #include "../vector_util.h++"
 #include <pinclude.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <iostream>
 
 struct pinclude_priv {
@@ -182,6 +184,32 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
     std::cerr << "language_cxx::targets(): Unknown context type\n" << std::endl;
     abort();
     return {};
+}
+
+std::vector<std::string>
+language_cxx::find_files_for_header(const std::string& full_header_path) const
+{
+    std::vector<std::string> out;
+
+    std::vector<std::regex> remove_patterns = {
+        std::regex("(.*)\\.h"),
+        std::regex("(.*)\\.h++")
+    };
+
+    std::vector<std::string> add_patterns = {
+        "$1.c++",
+        "$1.c"
+    };
+
+    for (const auto& remove: remove_patterns) {
+        for (const auto& add: add_patterns) {
+            std::string f = std::regex_replace(full_header_path, remove, add);
+            if (access(f.c_str(), R_OK) == 0)
+                out.push_back(f);
+        }
+    }
+
+    return out;
 }
 
 language_cxx::link_target::link_target(const std::string& target_path, 
@@ -495,45 +523,23 @@ language_cxx::compile_source(const context::ptr& ctx,
 
     /* Recursively walks the list of targets. */
     std::vector<target::ptr> deps;
-    for (const auto& dep: dependencies(source_path,
-                                       is_shared,
-                                       compile_opts)) {
-        auto base_out_name =
-            child->obj_dir
-            + "/" + dep
-            + "/" + hash_compile_options(child);
+    for (const auto& header_dep: dependencies(source_path,
+                                              is_shared,
+                                              compile_opts)) {
+        for (const auto& dep: find_files_for_header(header_dep)) {
+            auto dep_out_name =
+                child->obj_dir
+                + "/" + dep
+                + "/" + hash_compile_options(child);
 
-        auto shared_dep = std::make_shared<compile_target>(
-            base_out_name + "-shared.o",
-            dep,
-            language_cxx::shared_target::TRUE,
-            shared_comments + std::vector<std::string>{
-                "dependency: " + dep
-            },
-            compile_opts,
-            child,
-            _compiler
-        );
+            std::string stripped_dep = dep.c_str() + child->src_dir.size() + 1;
+            auto cmd = std::make_shared<command>(command_type::SOURCES,
+                                                 "+=",
+                                                 stripped_dep,
+                                                 child->cmd->debug());
+            auto dep_ctx = child->dup(context_type::SOURCE, cmd, {});
 
-        auto static_dep = std::make_shared<compile_target>(
-            base_out_name + "-static.o",
-            dep,
-            language_cxx::shared_target::FALSE,
-            shared_comments + std::vector<std::string>{
-                "dependency: " + dep
-            },
-            compile_opts,
-            child,
-            _compiler
-        );
-
-        switch (is_shared) {
-        case shared_target::TRUE:
-            deps = deps + std::vector<compile_target::ptr>{shared_dep};
-            break;
-        case shared_target::FALSE:
-            deps = deps + std::vector<compile_target::ptr>{static_dep};
-            break;
+            deps = deps + compile_source(ctx, dep_ctx, processed, is_shared);
         }
     }
 

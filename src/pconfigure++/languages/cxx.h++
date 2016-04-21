@@ -51,6 +51,14 @@ public:
     virtual bool can_process(const context::ptr& ctx) const;
     virtual std::vector<makefile::target::ptr> targets(const context::ptr& ctx) const;
 
+protected:
+    /* This function allows subclasses to override dependency handling: it
+     * takes the full path to a header file, and produces the full path to any
+     * source files that might need to be compiled and linked as part of that.
+     * */
+    virtual std::vector<std::string>
+    find_files_for_header(const std::string& full_header_path) const;
+
 private:
     /* This helper function returns TRUE if the context should generated shared
      * targets. */
