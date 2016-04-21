@@ -194,6 +194,7 @@ protected:
     std::vector<target::ptr> compile_source(
         const context::ptr& ctx,
         const context::ptr& child,
+        std::vector<std::string>& already_processed,
         const shared_target& is_shared
     ) const;
 

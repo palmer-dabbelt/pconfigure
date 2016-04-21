@@ -124,6 +124,7 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
         case context_type::BINARY:
         {
             auto objects = std::vector<target::ptr>();
+            auto already_processed = std::vector<std::string>();
             for (const auto& child: ctx->children) {
                 auto is_shared = (ctx->type == context_type::BINARY)
                         ? shared_target::FALSE
@@ -134,6 +135,7 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
 
                 auto all_objects = compile_source(ctx,
                                                   child,
+                                                  already_processed,
                                                   is_shared);
 
                 /* Checks for duplicate objects, to avoid double linking. */
@@ -479,6 +481,7 @@ language_cxx::link_objects(const context::ptr& ctx,
 std::vector<language_cxx::target::ptr>
 language_cxx::compile_source(const context::ptr& ctx,
                              const context::ptr& child,
+                             std::vector<std::string>& processed,
                              const shared_target& is_shared)
                              const
 {
@@ -549,6 +552,14 @@ language_cxx::compile_source(const context::ptr& ctx,
                 child->obj_dir
                 + "/" + dep
                 + "/" + hash_compile_options(child);
+
+            bool should_process = true;
+            for (const auto& p: processed)
+                if (strcmp(p.c_str(), dep_out_name.c_str()) == 0)
+                    should_process = false;
+            if (should_process == false)
+                continue;
+            processed.push_back(dep_out_name);
 
             std::string stripped_dep = dep.c_str() + child->src_dir.size() + 1;
             auto cmd = std::make_shared<command>(command_type::SOURCES,
