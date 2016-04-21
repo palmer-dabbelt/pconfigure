@@ -124,7 +124,7 @@ int main(int argc, char **argv)
 
     fprintf(outfile, SHEBANG "\n");
 
-    if (pinclude_lines(input, NULL, NULL, &write_line, defs, dirs, defs) != 0) {
+    if (pinclude_lines(input, NULL, NULL, &write_line, defs, (const char **)dirs, (const char **)defs) != 0) {
         fprintf(stderr, "pinclude failed to parse input: '%s'\n", input);
         abort();
     }

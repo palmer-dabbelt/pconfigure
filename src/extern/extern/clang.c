@@ -115,7 +115,7 @@ void clang_getInclusions(CXTranslationUnit tu,
         defs[i] = tu->defines[i];
     defs[i] = NULL;
 
-    pinclude_list(tu->filename, &pinclude_visitor, &args, dirs, defs);
+    pinclude_list(tu->filename, &pinclude_visitor, &args, (const char **)dirs, (const char **)defs);
 }
 
 static int pinclude_visitor(const char *filename, void *priv)

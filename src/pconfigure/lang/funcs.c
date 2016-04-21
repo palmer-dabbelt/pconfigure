@@ -64,7 +64,7 @@ void func_pinclude_list_printf(const char *full_path,
     struct func_printf f;
     f.func = func;
     f.arg = arg;
-    pinclude_list(full_path, &printf_wrap_str, &f, dirs, defines);
+    pinclude_list(full_path, &printf_wrap_str, &f, (const char **)dirs, (const char **)defines);
 }
 
 void func_pinclude_list_string(const char *full_path,
@@ -74,7 +74,7 @@ void func_pinclude_list_string(const char *full_path,
     struct func_string f;
     f.func = func;
     f.arg = arg;
-    pinclude_list(full_path, &string_wrap_str, &f, dirs, defines);
+    pinclude_list(full_path, &string_wrap_str, &f, (const char **)dirs, (const char **)defines);
 }
 
 void func_stringlist_each_cmd_cont(struct stringlist *sl,

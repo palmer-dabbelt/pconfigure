@@ -1,6 +1,6 @@
 
 /*
- * Copyright (C) 2013 Palmer Dabbelt
+ * Copyright (C) 2013,2016 Palmer Dabbelt
  *   <palmer@dabbelt.com>
  *
  * This file is part of pconfigure.
@@ -49,13 +49,13 @@
 
 static void str_chomp(char *str);
 
-static int streqcmp(char *str, char *eq);
+static int streqcmp(const char *str, const char *eq);
 
 static int _pinclude_lines(const char *input,
                            pinclude_callback_t per_include,
                            void *include_priv, pinclude_lineback_t per_line,
-                           void *line_priv, char **include_dirs,
-                           char **defined, char **included)
+                           void *line_priv, const char **include_dirs,
+                           const char **defined, char **included)
 {
     int err;
     FILE *infile;
@@ -305,7 +305,7 @@ static int _pinclude_lines(const char *input,
 }
 
 int pinclude_list(const char *filename, pinclude_callback_t cb, void *priv,
-                  char **include_dirs, char **defined)
+                  const char **include_dirs, const char **defined)
 {
     return pinclude_lines(filename,
                           cb, priv, NULL, NULL, include_dirs, defined);
@@ -314,7 +314,7 @@ int pinclude_list(const char *filename, pinclude_callback_t cb, void *priv,
 int pinclude_lines(const char *filename,
                    pinclude_callback_t per_include, void *include_priv,
                    pinclude_lineback_t per_line, void *line_priv,
-                   char **include_dirs, char **defined)
+                   const char **include_dirs, const char **defined)
 {
     int err;
     int i;
@@ -341,7 +341,7 @@ void str_chomp(char *str)
         str[strlen(str) - 1] = '\0';
 }
 
-int streqcmp(char *str, char *eq)
+int streqcmp(const char *str, const char *eq)
 {
     if (strstr(eq, "=") == NULL)
         return strcmp(str, eq);
