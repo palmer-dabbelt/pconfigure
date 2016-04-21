@@ -211,6 +211,7 @@ void command_processor::process(const command::ptr& cmd)
         goto unimplemented;
 
     case command_type::TESTS:
+    {
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
@@ -218,13 +219,18 @@ void command_processor::process(const command::ptr& cmd)
                     context_type::GENERATE,
                     context_type::LIBRARY,
                     context_type::BINARY,});
+        auto parent = _stack.top();
         dup_tos_and_push(context_type::TEST, cmd);
+        auto child = _stack.top();
+        child->src_dir = parent->test_dir + "/" + parent->cmd->data();
 
         _opts_target = _stack.top();
 
         return;
+    }
 
     case command_type::TESTSRC:
+    {
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
@@ -232,11 +238,16 @@ void command_processor::process(const command::ptr& cmd)
                     context_type::GENERATE,
                     context_type::LIBRARY,
                     context_type::BINARY,});
+        auto parent = _stack.top();
         dup_tos_and_push(context_type::TEST, cmd);
+        auto child = _stack.top();
+        child->src_dir = parent->test_dir + "/" + parent->cmd->data();
+
         dup_tos_and_push(context_type::SOURCE, cmd);
         _opts_target = _stack.top();
 
         return;
+    }
 
     case command_type::TGENERATE:
         unimplemented:
