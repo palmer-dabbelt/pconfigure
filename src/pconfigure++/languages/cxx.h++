@@ -90,7 +90,7 @@ protected:
     private:
         const std::string _target_path;
         const std::vector<target::ptr> _objects;
-        const install_target _install;
+        const install_target _install __attribute__((unused));
         const shared_target _shared;
         const std::vector<std::string> _comments;
         const std::vector<std::string> _opts;
