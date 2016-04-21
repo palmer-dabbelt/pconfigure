@@ -81,6 +81,9 @@ public:
      * a SOURCES command). */
     std::string hdr_dir;
 
+    /* The location at which TEST source file are stored. */
+    std::string test_dir;
+
     /* These implement "opts_target" */
     std::vector<std::string> compile_opts;
     std::vector<std::string> link_opts;
@@ -121,6 +124,7 @@ public:
             const std::string& obj_dir,
             const std::string& src_dir,
             const std::string& hdr_dir,
+            const std::string& test_dir,
             const std::vector<std::string>& compile_opts,
             const std::vector<std::string>& link_opts,
             const command::ptr& cmd,
