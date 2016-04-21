@@ -621,7 +621,13 @@ std::vector<std::string> language_cxx::dependencies(
 int pinclude_callback(const char *filename, void *priv_uncast)
 {
     struct pinclude_priv *priv = (struct pinclude_priv *)priv_uncast;
-    priv->all_files.push_back(filename);
+
+    std::string filtered = filename;
+    auto dirs = std::regex("(.+)/.+/\\.\\./(.+)");
+    while (std::regex_match(filtered, dirs))
+        filtered = std::regex_replace(filtered, dirs, "$1/$2");
+
+    priv->all_files.push_back(filtered);
     return 0;
 }
 
