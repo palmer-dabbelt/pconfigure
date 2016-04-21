@@ -22,6 +22,10 @@
 #ifndef PINCLUDE_H
 #define PINCLUDE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Lists the files included by a given source file. */
 typedef int (*pinclude_callback_t) (const char *filename, void *priv);
 int pinclude_list(const char *filename, pinclude_callback_t cb, void *priv,
@@ -32,5 +36,9 @@ int pinclude_lines(const char *filename,
                    pinclude_callback_t per_include, void *include_priv,
                    pinclude_lineback_t per_line, void *line_priv,
                    const char **include_dirs, const char **defined);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
