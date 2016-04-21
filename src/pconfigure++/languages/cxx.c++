@@ -121,6 +121,9 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
                         ? shared_target::FALSE
                         : shared_target::TRUE;
 
+                if (child->type != context_type::SOURCE)
+                    continue;
+
                 auto all_objects = compile_source(ctx,
                                                   child,
                                                   objects,
