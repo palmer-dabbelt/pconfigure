@@ -167,16 +167,18 @@ protected:
     ) const;
 
     /* Compiles a source file into an object, returns the compiled target
-     * along with all dependencies of this target.  "already_built" is a list
-     * of the targets that have already been built and shouldn't be
-     * duplicated. */
-    /* FIXME: "already_built" shouldn't be a std::vector, and shouldn't come
-     * from just this single build. */
+     * along with all dependencies of this target. */
     std::vector<target::ptr> compile_source(
         const context::ptr& ctx,
         const context::ptr& child,
-        const std::vector<target::ptr>& already_built,
         const shared_target& is_shared
+    ) const;
+
+    /* Lists the dependencies of a since source file. */
+    std::vector<std::string> dependencies(
+        const std::string& filename,
+        const shared_target& is_shared,
+        const std::vector<std::string>& compile_opts
     ) const;
 };
 

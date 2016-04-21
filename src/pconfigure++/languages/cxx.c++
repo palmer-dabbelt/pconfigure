@@ -21,7 +21,13 @@
 #include "cxx.h++"
 #include "../language_list.h++"
 #include "../vector_util.h++"
+#include <pinclude.h>
 #include <iostream>
+
+struct pinclude_priv {
+    std::vector<std::string> all_files;
+};
+static int pinclude_callback(const char *filename, void *priv_uncase);
 
 language_cxx* language_cxx::clone(void) const
 {
@@ -126,10 +132,30 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
 
                 auto all_objects = compile_source(ctx,
                                                   child,
-                                                  objects,
                                                   is_shared);
 
-                objects = objects + all_objects;
+                /* Checks for duplicate objects, to avoid double linking. */
+                auto compare_object = [](const target::ptr& a, const target::ptr& b) {
+                    if (strcmp(a->path().c_str(), b->path().c_str()) != 0)
+                        return false;
+
+                    /* FIXME: We shouldn't just compare hashes to ensure these
+                     * are the same object, but should instead go and make sure
+                     * they're exactly the same by comparing all the passed
+                     * arguments. */
+                    return true;
+                };
+
+                auto find_in_objects = [&](const target::ptr& object) {
+                    for (const auto& in_objects: objects)
+                        if (compare_object(in_objects, object) == true)
+                            return true;
+                    return false;
+                };
+
+                for (const auto& object: all_objects)
+                    if (find_in_objects(object) == false)
+                        objects = objects + std::vector<target::ptr>{object};
             }
 
             auto link = link_objects(ctx, objects);
@@ -414,7 +440,6 @@ language_cxx::link_objects(const context::ptr& ctx,
 std::vector<language_cxx::target::ptr>
 language_cxx::compile_source(const context::ptr& ctx,
                              const context::ptr& child,
-                             const std::vector<target::ptr>& already_built __attribute__((unused)),
                              const shared_target& is_shared)
                              const
 {
@@ -468,15 +493,100 @@ language_cxx::compile_source(const context::ptr& ctx,
         _compiler
     );
 
+    /* Recursively walks the list of targets. */
+    std::vector<target::ptr> deps;
+    for (const auto& dep: dependencies(source_path,
+                                       is_shared,
+                                       compile_opts)) {
+        auto base_out_name =
+            child->obj_dir
+            + "/" + dep
+            + "/" + hash_compile_options(child);
+
+        auto shared_dep = std::make_shared<compile_target>(
+            base_out_name + "-shared.o",
+            dep,
+            language_cxx::shared_target::TRUE,
+            shared_comments + std::vector<std::string>{
+                "dependency: " + dep
+            },
+            compile_opts,
+            child,
+            _compiler
+        );
+
+        auto static_dep = std::make_shared<compile_target>(
+            base_out_name + "-static.o",
+            dep,
+            language_cxx::shared_target::FALSE,
+            shared_comments + std::vector<std::string>{
+                "dependency: " + dep
+            },
+            compile_opts,
+            child,
+            _compiler
+        );
+
+        switch (is_shared) {
+        case shared_target::TRUE:
+            deps = deps + std::vector<compile_target::ptr>{shared_dep};
+            break;
+        case shared_target::FALSE:
+            deps = deps + std::vector<compile_target::ptr>{static_dep};
+            break;
+        }
+    }
+
     switch (is_shared) {
     case shared_target::TRUE:
-        return {shared_ctarget};
+        deps = deps + std::vector<compile_target::ptr>{shared_ctarget};
+        break;
     case shared_target::FALSE:
-        return {static_ctarget};
+        deps = deps + std::vector<compile_target::ptr>{static_ctarget};
+        break;
     };
 
-    abort();
-    return {};
+    return deps;
+}
+
+std::vector<std::string> language_cxx::dependencies(
+    const std::string& filename,
+    const shared_target& is_shared __attribute__((unused)),
+    const std::vector<std::string>& compile_opts) const
+{
+    size_t defined_i = 0;
+    const char **defined = new const char*[compile_opts.size()];
+    size_t include_dirs_i = 0;
+    const char **include_dirs = new const char*[compile_opts.size()];
+
+    for (const auto& opt: compile_opts) {
+        if (strncmp(opt.c_str(), "-D", 2) == 0)
+            defined[defined_i++] = opt.c_str() + 2;
+        if (strncmp(opt.c_str(), "-I", 2) == 0)
+            include_dirs[include_dirs_i++] = opt.c_str() + 2;
+    }
+
+    defined[defined_i] = nullptr;
+    include_dirs[include_dirs_i] = nullptr;
+
+    struct pinclude_priv priv;
+    pinclude_list(filename.c_str(),
+                  &pinclude_callback,
+                  &priv,
+                  &defined[0],
+                  &include_dirs[0]);
+
+    delete[] defined;
+    delete[] include_dirs;
+
+    return priv.all_files;
+}
+
+int pinclude_callback(const char *filename, void *priv_uncast)
+{
+    struct pinclude_priv *priv = (struct pinclude_priv *)priv_uncast;
+    priv->all_files.push_back(filename);
+    return 0;
 }
 
 static void install_cxx(void) __attribute__((constructor));
