@@ -167,6 +167,21 @@ protected:
         virtual std::string path(void) const { return _target_path; }
     };
 
+    /* This sort of target actually does _nothing_, it just serves as a standin
+     * for dependencies that already exist. */
+    class header_target: public target {
+    private:
+        const std::string _path;
+
+    public:
+        header_target(const std::string& path);
+
+    public:
+        /* target virtual functions */
+        virtual makefile::target::ptr generate_makefile_target(void) const;
+        virtual std::string path(void) const { return _path; }
+    };
+
     /* Links together a bunch of object files into the target binary or
      * library. */
     std::vector<target::ptr> link_objects(

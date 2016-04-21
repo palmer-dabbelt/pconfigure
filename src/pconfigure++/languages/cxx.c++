@@ -384,6 +384,17 @@ language_cxx::cp_target::generate_makefile_target(void) const
         _comments);
 }
 
+language_cxx::header_target::header_target(const std::string& path)
+: _path(path)
+{
+}
+
+makefile::target::ptr
+language_cxx::header_target::generate_makefile_target(void) const
+{
+    return std::make_shared<makefile::target>(_path);
+}
+
 std::vector<language_cxx::target::ptr>
 language_cxx::link_objects(const context::ptr& ctx,
                            const std::vector<language_cxx::target::ptr>& objects)
@@ -526,6 +537,13 @@ language_cxx::compile_source(const context::ptr& ctx,
     for (const auto& header_dep: dependencies(source_path,
                                               is_shared,
                                               compile_opts)) {
+#if 0
+        {
+            auto t = std::make_shared<header_target>(header_dep);
+            deps = deps + std::vector<header_target::ptr>{t};
+        }
+#endif
+
         for (const auto& dep: find_files_for_header(header_dep)) {
             auto dep_out_name =
                 child->obj_dir
