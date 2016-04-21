@@ -498,6 +498,7 @@ language_cxx::compile_source(const context::ptr& ctx,
     auto compile_opts = this->compile_opts() + child->compile_opts +
         std::vector<std::string>{
             "-I" + child->hdr_dir,
+            "-I" + child->obj_dir + "/proc",
             "-D__PCONFIGURE__LIBEXEC=\\\"" + full_libexec_path + "\\\""
         };
 
