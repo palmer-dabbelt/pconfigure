@@ -429,6 +429,11 @@ language_cxx::link_objects(const context::ptr& ctx,
         + "/" + hash_link_options(ctx)
         + "/";
 
+    auto all_opts = link_opts() + ctx->link_opts +
+        std::vector<std::string>{
+            "-L" + ctx->lib_dir,
+        } + vector_util::map(ctx->dep_libs, [](const auto& dl){ return "-l" + dl; });
+
     /* There's actually two proper targets here: one which generates the link
      * that's targeted for installation, and one that generates the link that's
      * targeted for actual compulation. */
@@ -438,7 +443,7 @@ language_cxx::link_objects(const context::ptr& ctx,
         language_cxx::install_target::TRUE,
         is_shared_target(ctx),
         shared_comments + std::vector<std::string>{"install_target"},
-        link_opts() + ctx->link_opts,
+        all_opts,
         ctx,
         _linker
     );
@@ -449,7 +454,7 @@ language_cxx::link_objects(const context::ptr& ctx,
         language_cxx::install_target::FALSE,
         is_shared_target(ctx),
         shared_comments + std::vector<std::string>{"local_target"},
-        link_opts() + ctx->link_opts,
+        all_opts,
         ctx,
         _linker
     );
