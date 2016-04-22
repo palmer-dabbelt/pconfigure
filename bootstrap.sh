@@ -56,34 +56,12 @@ $BOOTSTRAP_DIR/pbashc "$SOURCE_PATH"src/pgcc-config.bash \
 
 export PATH="$BOOTSTRAP_DIR:$PATH"
 
-# Check for pconfigure's dependencies
-talloc="$(ppkg-config --optional --have TALLOC talloc --cflags) $(ppkg-config --optional --have TALLOC talloc --libs)"
-
-# clang is not the default any more
-#clang="$(pllvm-config --optional --have CLANG --cflags) $(pllvm-config --optional --have CLANG --libs)"
-clang=""
-
-# Manually pull in included external libraries where necessary
-extrasrc=""
-extrahdr=""
-if [[ "$(echo "$talloc" | grep HAVE_TALLOC)" == "" ]]
-then
-    echo "WARN: Using internal talloc"
-    extrasrc="$extrasrc src/extern/extern/talloc.c"
-    extrahdr="$extrahdr -Isrc/extern/extern/"
-fi
-if [[ "$(echo "$clang" | grep HAVE_CLANG)" == "" ]]
-then
-    echo "WARN: Using internal clang"
-    extrasrc="$extrasrc src/extern/extern/clang.c"
-fi
-
 # Actually build pconfigure here, this is the simple part :)
-gcc --std=gnu99 -Wall -Werror -g $CFLAGS \
-    `find "$SOURCE_PATH"src/pconfigure/ -iname "*.c"` \
+g++ --std=c++14 -Wall -Werror -g $CFLAGS \
+    `find "$SOURCE_PATH"src/pconfigure++/ -iname "*.c++"` \
+    `find "$SOURCE_PATH"src/libmakefile/ -iname "*.c++"` \
     `find "$SOURCE_PATH"src/libpinclude/ -iname "*.c"` \
-    $extrasrc $talloc $clang \
-    -Isrc/extern/ -Iinclude/ $extrahdr \
+    -Iinclude -Isrc \
     -I$BOOTSTRAP_DIR \
     -D__PCONFIGURE__LIBEXEC=\"$BOOTSTRAP_DIR/../libexec\" \
     -o "$BOOTSTRAP_DIR/pconfigure" || exit $?
@@ -104,7 +82,6 @@ fi
 
 # Actually builds itself
 make || exit $?
-make all_install || exit $?
 
 # Cleans up from the bootstrap process
 rm -rf $BOOTSTRAP_DIR

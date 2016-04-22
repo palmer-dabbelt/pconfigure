@@ -6,6 +6,9 @@ COMPILEOPTS += -Wno-unused-parameter
 COMPILEOPTS += -ansi
 COMPILEOPTS += -pedantic
 
+COMPILEOPTS += -O2 -march=native
+LINKOPTS    += -O3 -march=native
+
 LANGUAGES   += bash
 
 LANGUAGES   += pkgconfig
@@ -26,11 +29,8 @@ SOURCES     += libpinclude/pinclude.pc
 
 ##############################################################################
 # Binaries                                                                   #
-##############################################################################
-BINARIES    += pconfigure
-# The default is now no NOT use libclang, as it's just to slow
-#LINKOPTS    += `pllvm-config --optional --have CLANG --libs`
-#COMPILEOPTS += `pllvm-config --optional --have CLANG --cflags`
+#############################################################################
+LIBEXECS    += pconfigure-legacy
 LINKOPTS    += `ppkg-config  --optional --have TALLOC talloc --libs`
 COMPILEOPTS += `ppkg-config  --optional --have TALLOC talloc --cflags`
 COMPILEOPTS += -Isrc/extern
@@ -115,8 +115,10 @@ COMPILEOPTS += -pedantic
 LANGUAGES   += c++
 COMPILEOPTS += -g
 LINKOPTS    += -g
-#COMPILEOPTS += -fsanitize=address
-#LINKOPTS    += -fsanitize=address
+COMPILEOPTS += -fsanitize=address
+LINKOPTS    += -fsanitize=address
+COMPILEOPTS += -O3 -march=native
+LINKOPTS    += -O3 -march=native
 
 # Allows me to staticly link my internal C++ library dependencies --
 # note that this isn't just an optimization, it's actually necessary
@@ -126,7 +128,7 @@ COMPILEOPTS += -Isrc
 
 # A rewrite of pconfigure that's designed to bring the whole system
 # into the 21st century!
-LIBEXECS    += pconfigure++
+BINARIES    += pconfigure
 DEPLIBS     += pinclude
 SOURCES     += pconfigure++/main.c++
 SOURCES     += pconfigure++/languages/c.c++
