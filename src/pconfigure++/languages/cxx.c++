@@ -609,8 +609,8 @@ std::vector<std::string> language_cxx::dependencies(
     pinclude_list(filename.c_str(),
                   &pinclude_callback,
                   &priv,
-                  &defined[0],
-                  &include_dirs[0]);
+                  &include_dirs[0],
+                  &defined[0]);
 
     delete[] defined;
     delete[] include_dirs;
