@@ -136,6 +136,17 @@ SOURCES     += pconfigure++/languages/bash.c++
 SOURCES     += pconfigure++/languages/pkgconfig.c++
 SOURCES     += pconfigure++/languages/cxx.c++
 SOURCES     += pconfigure++/languages/chisel.c++
+#TESTSRC     += version.bash
+TESTSRC     += simple-c.bash
+#TESTSRC     += tek.bash
+#TESTSRC     += bash-deps.bash
+TESTSRC     += c-cxx.bash
+TESTSRC     += c-ifndef.bash
+#TESTSRC     += syshdr.bash
+#TESTSRC     += autodeps.bash
+#TESTSRC     += osx-shared-deps.bash
+TESTSRC     += man.bash
+#TESTSRC     += subdir-rpath.bash
 
 # These command-line tools are technically availiable for external
 # usage, but they're really just for internal tests.
