@@ -20,6 +20,7 @@
 
 #include "commands.h++"
 #include "command_processor.h++"
+#include "pick_language.h++"
 #include <libmakefile/makefile.h++>
 #include <algorithm>
 #include <iostream>
@@ -43,39 +44,7 @@ int main(int argc, const char **argv)
     auto makefile = std::make_shared<makefile::makefile>(verbose);
 
     for (const auto& context: processor->output_contexts()) {
-        auto valid_languages = std::vector<language::ptr>();
-
-        for (const auto& language: processor->languages())
-            if (language->can_process(context))
-                valid_languages.push_back(language);
-
-        std::stable_sort(begin(valid_languages),
-                         end(valid_languages),
-                         [](const language::ptr& a, const language::ptr& b)
-                         {
-                             return a->priority() < b->priority();
-                         }
-            );
-
-        if (valid_languages.size() >= 2) {
-            if (valid_languages[0]->priority() == valid_languages[1]->priority()) {
-                std::cerr << "WARNING: Multiple valid languages for\n  "
-                          << std::to_string(context->cmd->debug())
-                          << "\nselecting the first one: "
-                          << valid_languages[0]->name()
-                          << "\n\n";
-            }
-        }
-
-        if (valid_languages.size() == 0) {
-            std::cerr << "ERROR: Unable to find language for "
-                      << std::to_string(context->cmd->debug())
-                      << "\n";
-            std::cerr << context->as_tree_string("  ") << "\n";
-            abort();
-        }
-
-        auto language = valid_languages[0];
+        auto language = pick_language(processor, context);
         for (const auto& target: language->targets(context))
             makefile->add_target(target);
     }
