@@ -432,7 +432,7 @@ language_cxx::link_objects(const context::ptr& ctx,
     auto all_opts = link_opts() + ctx->link_opts +
         std::vector<std::string>{
             "-L" + ctx->lib_dir,
-        } + vector_util::map(ctx->dep_libs, [](const auto& dl){ return "-l" + dl; });
+        } + vector_util::map(ctx->dep_libs, [](std::string dl){ return "-l" + dl; });
 
     /* There's actually two proper targets here: one which generates the link
      * that's targeted for installation, and one that generates the link that's
