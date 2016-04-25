@@ -9,5 +9,6 @@ $ make install
 $ make check
 $ ptest
 
-There is documentation in the "doc/" folder.  This documentation is
-written in LaTeX, and can be built using "tek".
+Pre-compiled documention can be found at
+<http://palmer-dabbelt.github.io/pconfigure/>.  The source lives in doc/, and
+can be compiled using "tek".
