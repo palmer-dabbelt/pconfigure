@@ -57,7 +57,7 @@ $BOOTSTRAP_DIR/pbashc "$SOURCE_PATH"src/pgcc-config.bash \
 export PATH="$BOOTSTRAP_DIR:$PATH"
 
 # Actually build pconfigure here, this is the simple part :)
-g++ --std=c++14 -Wall -Werror -g $CFLAGS \
+g++ --std=c++0x -Wall -Werror -g $CFLAGS \
     `find "$SOURCE_PATH"src/pconfigure++/ -iname "*.c++"` \
     `find "$SOURCE_PATH"src/libmakefile/ -iname "*.c++"` \
     `find "$SOURCE_PATH"src/libpinclude/ -iname "*.c"` \
