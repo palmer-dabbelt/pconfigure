@@ -255,13 +255,35 @@ language_cxx::link_target::generate_makefile_target(void) const
             return "";
         }();
 
+    auto dotdot = [](std::string path) -> std::string
+        {
+            auto out = std::string("../");
+            for (const auto& c: path)
+                if (c == '/')
+                    out = out + "../";
+            return out;
+        };
+    auto rpath = [&](void) -> std::string
+        {
+            switch (_install) {
+            case install_target::TRUE:
+                return "-Wl,-rpath," + _ctx->prefix + "/" + _ctx->lib_dir;
+            case install_target::FALSE:
+                return "-Wl,-rpath,\\$$ORIGIN/" + dotdot(_ctx->bin_dir) + _ctx->lib_dir;
+            }
+
+            abort();
+            return "";
+        }();
+
     auto cmds = std::vector<std::string>{
         "mkdir -p $(dir $@)",
         _linker
           + " -o" + _target_path
           + " " + vector_util::join(vector_util::map(_objects, target2name), " ")
           + " " + vector_util::join(_opts, " ")
-          + shared
+          + " " + shared
+          + " " + rpath
     };
 
 
