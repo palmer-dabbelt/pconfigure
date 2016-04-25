@@ -1,4 +1,15 @@
 language: c++
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - build-essential
+      - gcc-4.8
+      - g++-4.8
+before_install:
+  - export CXX=g++-4.8
+  - export CC=gcc-4.8
 script:
   - ./bootstrap.sh
   - make check

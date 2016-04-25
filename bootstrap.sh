@@ -30,12 +30,21 @@ BOOTSTRAP_DIR=bootstrap_bin
 make distclean >& /dev/null || true
 mkdir -p $BOOTSTRAP_DIR
 
+if [[ "$CC" == "" ]]
+then
+  CC="gcc"
+fi
+if [[ "$CXX" == "" ]]
+then
+  CXX="g++"
+fi
+
 #############################################################################
 # Manually builds some of the utilities                                     #
 #############################################################################
 ./src/version.h.proc --generate > $BOOTSTRAP_DIR/version.h
 
-gcc --std=gnu99 \
+$CC --std=gnu99 \
     `find "$SOURCE_PATH"src/pbashc.c -iname "*.c"` \
     `find "$SOURCE_PATH"src/libpinclude/ -iname "*.c"` \
     -I$BOOTSTRAP_DIR -Iinclude/ \
@@ -57,7 +66,7 @@ $BOOTSTRAP_DIR/pbashc "$SOURCE_PATH"src/pgcc-config.bash \
 export PATH="$BOOTSTRAP_DIR:$PATH"
 
 # Actually build pconfigure here, this is the simple part :)
-g++ --std=c++0x -Wall -Werror -g $CFLAGS \
+$CXX --std=c++0x -Wall -Werror -g $CFLAGS \
     `find "$SOURCE_PATH"src/pconfigure++/ -iname "*.c++"` \
     `find "$SOURCE_PATH"src/libmakefile/ -iname "*.c++"` \
     `find "$SOURCE_PATH"src/libpinclude/ -iname "*.c"` \
