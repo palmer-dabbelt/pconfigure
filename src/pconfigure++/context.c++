@@ -19,6 +19,7 @@
  */
 
 #include "context.h++"
+#include "language_list.h++"
 #include <sstream>
 
 context::context(void)
@@ -36,6 +37,7 @@ context::context(void)
       link_opts(),
       cmd(NULL),
       verbose(false),
+      languages(language_list::global()),
       children()
 {
 }
@@ -54,6 +56,7 @@ context::context(const context_type& _type,
                  const std::vector<std::string>& _link_opts,
                  const command::ptr& _cmd,
                  bool _verbose,
+                 const language_list::ptr& _languages,
                  const std::vector<ptr>& _children)
     : type(_type),
       prefix(_prefix),
@@ -69,6 +72,7 @@ context::context(const context_type& _type,
       link_opts(_link_opts),
       cmd(_cmd),
       verbose(_verbose),
+      languages(_languages),
       children(_children)
 {
 }
@@ -91,6 +95,7 @@ context::ptr context::dup(const context_type& type,
                                      this->link_opts,
                                      cmd,
                                      this->verbose,
+                                     this->languages,
                                      children);
 }
 

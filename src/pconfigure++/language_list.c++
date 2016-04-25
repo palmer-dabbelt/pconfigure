@@ -22,7 +22,7 @@
 #include "languages/gen_proc.h++"
 #include <iostream>
 
-static language_list _global;
+static std::shared_ptr<language_list> _global = nullptr;
 
 language_list::language_list(void)
     : _languages_lookup(),
@@ -54,12 +54,19 @@ language::ptr language_list::search(const std::string& name)
     return l->second;
 }
 
+const language_list::ptr& language_list::global(void)
+{
+    return _global;
+}
+
 void language_list::global_add(const language::ptr& lang)
 {
-    return _global.add(lang);
+    if (_global == nullptr) _global = std::make_shared<language_list>();
+    return _global->add(lang);
 }
 
 language::ptr language_list::global_search(const std::string& name)
 {
-    return _global.search(name);
+    if (_global == nullptr) _global = std::make_shared<language_list>();
+    return _global->search(name);
 }

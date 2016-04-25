@@ -59,6 +59,7 @@ public:
     /* There's also a global list of languages, which is where every
      * language in the system ends up registered.  These functions
      * just redirect to that global list. */
+    static const ptr& global(void);
     static void global_add(const language::ptr& lang);
     static language::ptr global_search(const std::string& name);
 };

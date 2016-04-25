@@ -27,6 +27,8 @@
 #include "command.h++"
 #include "opts_target.h++"
 
+class language_list;
+
 /* The super-entry for a context.  There will be one of these contexts
  * for everything the build system knows about.  This pretty much
  * duplicates the design of the original C code (and therefor the
@@ -100,6 +102,10 @@ public:
     /* This is TRUE when this target should be built in VERBOSE mode. */
     bool verbose;
 
+    /* The list of languages that are availiable to be used when trying to link
+     * sub-objects and tests and such. */
+    const std::shared_ptr<language_list> languages;
+
     /***************************************************************
      * Filled in after language::find_all_children                 *
      ***************************************************************/
@@ -129,6 +135,7 @@ public:
             const std::vector<std::string>& link_opts,
             const command::ptr& cmd,
             bool verbose,
+            const std::shared_ptr<language_list>& languages,
             const std::vector<ptr>& children);
 
 public:
