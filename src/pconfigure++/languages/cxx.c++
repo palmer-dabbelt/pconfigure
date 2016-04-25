@@ -652,7 +652,7 @@ int pinclude_callback(const char *filename, void *priv_uncast)
     std::string filtered = filename;
     auto dirs = std::regex("(.+)/.+/\\.\\./(.+)");
     while (std::regex_match(filtered, dirs))
-        filtered = std::regex_replace(filtered, dirs, "$1/$2");
+        filtered = std::regex_replace(filtered, dirs, std::string("$1/$2"));
 
     priv->all_files.push_back(filtered);
     return 0;
