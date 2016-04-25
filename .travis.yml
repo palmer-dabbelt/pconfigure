@@ -1,1 +1,4 @@
 language: c++
+script:
+  ./bootstrap.sh
+  make check
