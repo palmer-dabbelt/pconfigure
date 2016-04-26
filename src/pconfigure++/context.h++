@@ -151,6 +151,7 @@ public:
     /* Duplicates the current context, potentially substituting in
      * some new values. */
     ptr dup(void);
+    ptr dup(const context_type& type);
     ptr dup(const context_type& type,
             const command::ptr& cmd,
             const std::vector<ptr>& children);

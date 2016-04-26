@@ -83,6 +83,11 @@ context::context(const context_type& _type,
 {
 }
 
+context::ptr context::dup(const context_type& type)
+{
+    return dup(type, this->cmd, this->children);
+}
+
 context::ptr context::dup(const context_type& type,
                           const command::ptr& cmd,
                           const std::vector<ptr>& children)
