@@ -329,6 +329,7 @@ language_cxx::compile_target::compile_target(const std::string& target_path,
                                              const std::vector<std::string>& comments,
                                              const std::vector<std::string>& opts,
                                              const context::ptr& ctx,
+                                             const std::vector<target::ptr>& hd,
                                              const std::string compiler_command,
                                              const std::string compiler_pretty)
 : _target_path(target_path),
@@ -337,6 +338,7 @@ language_cxx::compile_target::compile_target(const std::string& target_path,
   _comments(comments),
   _opts(opts),
   _ctx(ctx),
+  _header_deps(hd),
   _compiler_command(compiler_command),
   _compiler_pretty(compiler_pretty)
 {
@@ -347,7 +349,11 @@ language_cxx::compile_target::generate_makefile_target(void) const
 {
     auto deps = std::vector<makefile::target::ptr>{
       std::make_shared<makefile::target>(_main_source)
-    };
+    } + vector_util::map(_header_deps,
+                         [](target::ptr t)
+                         {
+                             return t->generate_makefile_target();
+                         });
 
     auto pic = [&]() -> std::string
         {
@@ -568,41 +574,16 @@ language_cxx::compile_source(const context::ptr& ctx,
         + "/" + child->cmd->data()
         + "/" + hash_compile_options(child);
 
-    /* There's two targets here: one for staticly linked programs, and ony for
-     * dynamically linked ones. */
-    auto static_ctarget = std::make_shared<compile_target>(
-        base_out_name + "-static.o",
-        source_path,
-        language_cxx::shared_target::FALSE,
-        shared_comments + std::vector<std::string>{"static_target"},
-        compile_opts,
-        child,
-        this->compiler_command(),
-        this->compiler_pretty()
-    );
-
-    auto shared_ctarget = std::make_shared<compile_target>(
-        base_out_name + "-shared.o",
-        source_path,
-        language_cxx::shared_target::TRUE,
-        shared_comments + std::vector<std::string>{"shared_target"},
-        compile_opts,
-        child,
-        this->compiler_command(),
-        this->compiler_pretty()
-    );
-
     /* Recursively walks the list of targets. */
     std::vector<target::ptr> deps;
+    std::vector<target::ptr> header_deps;
     for (const auto& header_dep: dependencies(source_path,
                                               is_shared,
                                               compile_opts)) {
-#if 0
         {
             auto t = std::make_shared<header_target>(header_dep);
-            deps = deps + std::vector<header_target::ptr>{t};
+            header_deps = header_deps + std::vector<header_target::ptr>{t};
         }
-#endif
 
         for (const auto& dep: find_files_for_header(header_dep)) {
             auto dep_out_name =
@@ -628,6 +609,32 @@ language_cxx::compile_source(const context::ptr& ctx,
             deps = deps + compile_source(ctx, dep_ctx, processed, is_shared);
         }
     }
+
+    /* There's two targets here: one for staticly linked programs, and ony for
+     * dynamically linked ones. */
+    auto static_ctarget = std::make_shared<compile_target>(
+        base_out_name + "-static.o",
+        source_path,
+        language_cxx::shared_target::FALSE,
+        shared_comments + std::vector<std::string>{"static_target"},
+        compile_opts,
+        child,
+        header_deps,
+        this->compiler_command(),
+        this->compiler_pretty()
+    );
+
+    auto shared_ctarget = std::make_shared<compile_target>(
+        base_out_name + "-shared.o",
+        source_path,
+        language_cxx::shared_target::TRUE,
+        shared_comments + std::vector<std::string>{"shared_target"},
+        compile_opts,
+        child,
+        header_deps,
+        this->compiler_command(),
+        this->compiler_pretty()
+    );
 
     switch (is_shared) {
     case shared_target::TRUE:

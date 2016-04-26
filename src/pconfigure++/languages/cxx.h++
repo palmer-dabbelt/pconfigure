@@ -127,6 +127,7 @@ protected:
         const std::vector<std::string> _comments;
         const std::vector<std::string> _opts;
         const context::ptr _ctx;
+        const std::vector<target::ptr> _header_deps;
         const std::string _compiler_command;
         const std::string _compiler_pretty;
 
@@ -137,6 +138,7 @@ protected:
                        const std::vector<std::string>& comments,
                        const std::vector<std::string>& opts,
                        const context::ptr& ctx,
+                       const std::vector<target::ptr>& header_deps,
                        const std::string compiler_command,
                        const std::string compiler_pretty);
 
