@@ -37,6 +37,10 @@ public:
     virtual std::string compiler_command(void) const { return "pbashc"; }
     virtual std::string compiler_pretty(void) const { return "BASH"; }
 
+    /* Lists all the dependencies of a bash-like file -- these can be any sort
+     * of makefile target because they might have dependencies themselves. */
+    virtual std::vector<makefile::target::ptr> dependencies(const std::string& path) const;
+
 public:
     /* Virtual methods from language. */
     virtual std::string name(void) const { return "bash"; }

@@ -20,6 +20,7 @@
 
 #include "bash.h++"
 #include "../language_list.h++"
+#include <pinclude.h++>
 #include <assert.h>
 #include <iostream>
 
@@ -65,10 +66,12 @@ language_bash::targets(const context::ptr& ctx) const
         auto short_cmd = this->compiler_pretty() + "\t" + ctx->cmd->data();
 
         auto sources = std::vector<makefile::target::ptr>();
+        auto deps = std::vector<makefile::target::ptr>();
         for (const auto& child: ctx->children) {
             if (child->type == context_type::SOURCE) {
                 auto path = child->src_dir + "/" + child->cmd->data();
                 sources.push_back(std::make_shared<makefile::target>(path));
+                deps = deps + dependencies(path);
             }
         }
 
@@ -101,7 +104,7 @@ language_bash::targets(const context::ptr& ctx) const
 
         auto bin_target = std::make_shared<makefile::target>(target,
                                                              short_cmd,
-                                                             sources,
+                                                             sources + deps,
                                                              global_targets,
                                                              commands,
                                                              comment);
@@ -147,6 +150,18 @@ language_bash::targets(const context::ptr& ctx) const
 
     std::cerr << "context type not in switch\n";
     abort();
+}
+
+std::vector<makefile::target::ptr> language_bash::dependencies(const std::string& path) const
+{
+    std::vector<makefile::target::ptr> out;
+    pinclude::list(path, {}, {},
+                   [&](std::string p) {
+                       auto t = std::make_shared<makefile::target>(p);
+                       out.push_back(t);
+                       return 0;
+                   });
+    return out;
 }
 
 static void install_bash(void) __attribute__((constructor));
