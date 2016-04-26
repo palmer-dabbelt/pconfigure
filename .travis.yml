@@ -12,4 +12,4 @@ before_install:
   - export CC=gcc-4.9
 script:
   - ./bootstrap.sh
-  - PATH="$(pwd)/bin" make check
+  - PATH="$(pwd)/bin:$PATH" make check
