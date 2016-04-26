@@ -59,6 +59,10 @@ namespace makefile {
         const std::string& name(void) const { return _name; }
 
     public:
+        /* Returns a copy of this target without the given global target. */
+        ptr without(global_targets g);
+
+    public:
         /* Writes this target (and with its commands) to the given
          * file. */
         void write_to_file(FILE *file, bool verbose) const;

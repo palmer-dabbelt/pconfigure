@@ -45,6 +45,21 @@ makefile::target::target(const std::string& name)
 {
 }
 
+makefile::target::ptr makefile::target::without(makefile::global_targets mask)
+{
+    auto global = std::vector<global_targets>();
+    for (const auto g: _global)
+        if (g != mask)
+            global.push_back(g);
+
+    return std::make_shared<target>(_name,
+                                    _short_cmd,
+                                    _deps,
+                                    global,
+                                    _cmds,
+                                    _comment);
+}
+
 void makefile::target::write_to_file(FILE *file, bool verbose) const
 {
     /* First write a little header that adds the upcoming target to
