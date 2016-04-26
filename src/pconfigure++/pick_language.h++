@@ -24,10 +24,11 @@
 #include "command_processor.h++"
 #include "context.h++"
 #include "language.h++"
+#include "language_list.h++"
 
 /* Picks the language that will be used to compile a context.  This gets used
  * in multiple places (main and in the TESTS language support, for example). */
-language::ptr pick_language(const command_processor::ptr& processor,
+language::ptr pick_language(const language_list::ptr& languages,
                             const context::ptr& context);
 
 #endif

@@ -44,7 +44,7 @@ int main(int argc, const char **argv)
     auto makefile = std::make_shared<makefile::makefile>(verbose);
 
     for (const auto& context: processor->output_contexts()) {
-        auto language = pick_language(processor, context);
+        auto language = pick_language(processor->languages(), context);
         for (const auto& target: language->targets(context))
             makefile->add_target(target);
     }

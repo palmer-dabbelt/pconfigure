@@ -21,12 +21,12 @@
 #include "pick_language.h++"
 #include <iostream>
 
-language::ptr pick_language(const command_processor::ptr& processor,
+language::ptr pick_language(const language_list::ptr& languages,
                             const context::ptr& context)
 {
     auto valid_languages = std::vector<language::ptr>();
 
-    for (const auto& language: processor->languages())
+    for (const auto& language: languages)
         if (language->can_process(context))
             valid_languages.push_back(language);
 
