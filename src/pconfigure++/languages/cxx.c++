@@ -21,6 +21,7 @@
 #include "cxx.h++"
 #include "../language_list.h++"
 #include "../vector_util.h++"
+#include "../pick_language.h++"
 #include <pinclude.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -125,41 +126,63 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
         {
             auto objects = std::vector<target::ptr>();
             auto already_processed = std::vector<std::string>();
+            auto tests = std::vector<makefile::target::ptr>();
             for (const auto& child: ctx->children) {
                 auto is_shared = (ctx->type == context_type::BINARY)
                         ? shared_target::FALSE
                         : shared_target::TRUE;
 
+                switch (child->type) {
+                case context_type::SOURCE:
+                {
+                    auto all_objects = compile_source(ctx,
+                                                      child,
+                                                      already_processed,
+                                                      is_shared);
+
+                    /* Checks for duplicate objects, to avoid double linking. */
+                    auto compare_object = [](const target::ptr& a, const target::ptr& b) {
+                        if (strcmp(a->path().c_str(), b->path().c_str()) != 0)
+                            return false;
+
+                        /* FIXME: We shouldn't just compare hashes to ensure these
+                         * are the same object, but should instead go and make sure
+                         * they're exactly the same by comparing all the passed
+                         * arguments. */
+                        return true;
+                    };
+
+                    auto find_in_objects = [&](const target::ptr& object) {
+                        for (const auto& in_objects: objects)
+                            if (compare_object(in_objects, object) == true)
+                                return true;
+                        return false;
+                    };
+
+                    for (const auto& object: all_objects)
+                        if (find_in_objects(object) == false)
+                            objects = objects + std::vector<target::ptr>{object};
+                    break;
+                }
+
+                case context_type::TEST:
+                {
+                    auto l = pick_language(ctx->languages, child);
+                    tests = tests + l->targets(child);
+                    break;
+                }
+
+                case context_type::DEFAULT:
+                case context_type::BINARY:
+                case context_type::LIBRARY:
+                case context_type::GENERATE:
+                    std::cerr << "Unable to process " << ctx->cmd->debug() << "\n";
+                    abort();
+                    break;
+                }
+
                 if (child->type != context_type::SOURCE)
                     continue;
-
-                auto all_objects = compile_source(ctx,
-                                                  child,
-                                                  already_processed,
-                                                  is_shared);
-
-                /* Checks for duplicate objects, to avoid double linking. */
-                auto compare_object = [](const target::ptr& a, const target::ptr& b) {
-                    if (strcmp(a->path().c_str(), b->path().c_str()) != 0)
-                        return false;
-
-                    /* FIXME: We shouldn't just compare hashes to ensure these
-                     * are the same object, but should instead go and make sure
-                     * they're exactly the same by comparing all the passed
-                     * arguments. */
-                    return true;
-                };
-
-                auto find_in_objects = [&](const target::ptr& object) {
-                    for (const auto& in_objects: objects)
-                        if (compare_object(in_objects, object) == true)
-                            return true;
-                    return false;
-                };
-
-                for (const auto& object: all_objects)
-                    if (find_in_objects(object) == false)
-                        objects = objects + std::vector<target::ptr>{object};
             }
 
             auto link = link_objects(ctx, objects);
@@ -167,7 +190,8 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
                                     [](const target::ptr& t) -> makefile::target::ptr
                                     {
                                         return t->generate_makefile_target();
-                                    });
+                                    })
+                   + tests;
         }
 
         case context_type::TEST:
