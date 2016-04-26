@@ -48,7 +48,6 @@ language_bash::targets(const context::ptr& ctx) const
     case context_type::GENERATE:
     case context_type::LIBRARY:
     case context_type::SOURCE:
-    case context_type::TEST:
         std::cerr << "Unimplemented context type: "
                   << std::to_string(ctx->type)
                   << "\n";
@@ -92,7 +91,7 @@ language_bash::targets(const context::ptr& ctx) const
         auto filename = ctx->cmd->debug()->filename();
         auto lineno = ctx->cmd->debug()->line_number();
         auto comment = std::vector<std::string>{
-            "language_bash::targets()",
+            "language_bash::targets() BINARY",
             filename + ":" + std::to_string(lineno)
         };
 
@@ -104,7 +103,41 @@ language_bash::targets(const context::ptr& ctx) const
                                                              comment);
 
         return {bin_target};
-        break;
+    }
+
+    case context_type::TEST:
+    {
+        auto child_ctx = ctx->dup(context_type::BINARY);
+        child_ctx->bin_dir = ctx->obj_dir + "/" + ctx->check_dir;
+        auto bin_targets = vector_util::map(targets(child_ctx),
+                                            [](const makefile::target::ptr& t)
+                                            {
+                                                return t->without(makefile::global_targets::ALL);
+                                            });
+
+        auto target_name = ctx->check_dir + "/" + ctx->cmd->data();
+        auto short_cmd = "CHECK\t" + ctx->cmd->data();
+        auto global_targets = std::vector<makefile::global_targets>{
+            makefile::global_targets::CHECK,
+            makefile::global_targets::CLEAN
+        };
+        auto test_name = ctx->obj_dir + "/" + ctx->check_dir + "/" + ctx->cmd->data();
+        auto bin_name = ctx->test_binary;
+        auto commands = std::vector<std::string>{
+            "mkdir -p " + ctx->check_dir,
+            "ptest --test " + test_name + " --out " + target_name + " --bin " + bin_name
+        };
+        auto comment = std::vector<std::string>{
+            "language_bash::targets() CHECK"
+        };
+        auto check_target = std::make_shared<makefile::target>(target_name,
+                                                               short_cmd,
+                                                               bin_targets,
+                                                               global_targets,
+                                                               commands,
+                                                               comment);
+
+        return bin_targets + std::vector<makefile::target::ptr>{check_target};
     }
     }
 
