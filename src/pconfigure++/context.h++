@@ -89,6 +89,10 @@ public:
     /* The location at which "make check" targets are stored. */
     std::string check_dir;
 
+    /* If a binary should be tested, then this is the full context that was
+     * used to build it. */
+    std::string test_binary;
+
     /* These implement "opts_target" */
     std::vector<std::string> compile_opts;
     std::vector<std::string> link_opts;
@@ -135,6 +139,7 @@ public:
             const std::string& hdr_dir,
             const std::string& test_dir,
             const std::string& check_dir,
+            const std::string& test_binary,
             const std::vector<std::string>& compile_opts,
             const std::vector<std::string>& link_opts,
             const command::ptr& cmd,

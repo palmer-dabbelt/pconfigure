@@ -37,6 +37,7 @@ void command_processor::process(const command::ptr& cmd)
         goto unimplemented;
 
     case command_type::BINARIES:
+    {
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
@@ -46,7 +47,11 @@ void command_processor::process(const command::ptr& cmd)
         _opts_target = _stack.top();
         _output_contexts.push_back(_stack.top());
 
+        auto ctx = _stack.top();
+        ctx->test_binary = ctx->bin_dir + "/" + ctx->cmd->data();
+
         return;
+    }
 
     case command_type::COMPAT:
         /* FIXME: The only way I currently get here is through a
@@ -143,6 +148,7 @@ void command_processor::process(const command::ptr& cmd)
         goto unimplemented;
 
     case command_type::LIBEXECS:
+    {
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
@@ -154,9 +160,14 @@ void command_processor::process(const command::ptr& cmd)
         _opts_target = _stack.top();
         _output_contexts.push_back(_stack.top());
 
+        auto ctx = _stack.top();
+        ctx->test_binary = ctx->bin_dir + "/" + ctx->cmd->data();
+
         return;
+    }
 
     case command_type::LIBRARIES:
+    {
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
@@ -166,7 +177,11 @@ void command_processor::process(const command::ptr& cmd)
         _opts_target = _stack.top();
         _output_contexts.push_back(_stack.top());
 
+        auto ctx = _stack.top();
+        ctx->test_binary = ctx->bin_dir + "/" + ctx->cmd->data();
+
         return;
+    }
 
     case command_type::LINKER:
         goto unimplemented;
