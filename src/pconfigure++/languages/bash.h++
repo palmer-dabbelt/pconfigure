@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Palmer Dabbelt
+ * Copyright (C) 2015,2016 Palmer Dabbelt
  *   <palmer@dabbelt.com>
  *
  * This file is part of pconfigure.
@@ -29,6 +29,13 @@
 class language_bash: public language {
 public:
     typedef std::shared_ptr<language_bash> ptr;
+
+public:
+    /* language_bash is the parent of all the base-like languages, these
+     * arguments allow children to override some internal functionality so they
+     * can compile slightly differently. */
+    virtual std::string compiler_command(void) const { return "pbashc"; }
+    virtual std::string compiler_pretty(void) const { return "BASH"; }
 
 public:
     /* Virtual methods from language. */

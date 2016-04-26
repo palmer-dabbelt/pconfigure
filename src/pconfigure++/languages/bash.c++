@@ -62,7 +62,7 @@ language_bash::targets(const context::ptr& ctx) const
          * end, there's no need for any internal targets at all. */
         auto target = ctx->bin_dir + "/" + ctx->cmd->data();
 
-        auto short_cmd = "BASHC\t" + ctx->cmd->data();
+        auto short_cmd = this->compiler_pretty() + "\t" + ctx->cmd->data();
 
         auto sources = std::vector<makefile::target::ptr>();
         for (const auto& child: ctx->children) {
@@ -78,7 +78,11 @@ language_bash::targets(const context::ptr& ctx) const
         };
 
         auto command = std::string();
-        command += "pbashc -i " + sources[0]->name() + " -o " + target;
+        command += this->compiler_command()
+                   + " -i "
+                   + sources[0]->name()
+                   + " -o "
+                   + target;
 
         for (const auto& str: this->clopts(ctx))
             command += " " + str;
