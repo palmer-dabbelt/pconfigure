@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Palmer Dabbelt
+ * Copyright (C) 2015,2016 Palmer Dabbelt
  *   <palmer@dabbelt.com>
  *
  * This file is part of pconfigure.
@@ -24,8 +24,7 @@
 
 language_c* language_c::clone(void) const
 {
-    return new language_c(_compiler,
-                          _linker);
+    return new language_c();
 }
 
 bool language_c::can_process(const context::ptr& ctx) const
@@ -43,8 +42,6 @@ void install_c(void)
 {
     language_list::global_add(
         std::make_shared<language_c>(
-            "$(CC)",
-            "$(CC)"
         )
     );
 }

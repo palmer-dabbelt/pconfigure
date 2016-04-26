@@ -31,18 +31,13 @@ class language_cxx: public language {
 public:
     typedef std::shared_ptr<language_cxx> ptr;
 
-protected:
-    /* The compiler and linker that should be used. */
-    const std::string _compiler;
-    const std::string _linker;
-
 public:
-    /* Creates a new C++ language object,  */
-    language_cxx(const std::string& compiler,
-                 const std::string& linker)
-    : _compiler(compiler),
-      _linker(linker)
-    {}
+    /* Allows sub-classes of this language to override the compiler and linker
+     * strings. */
+    virtual std::string compiler_command(void) const { return "${CXX}"; }
+    virtual std::string compiler_pretty (void) const { return "C++";    }
+    virtual std::string linker_command  (void) const { return "${CXX}"; }
+    virtual std::string linker_pretty   (void) const { return "LD++";   }
 
 public:
     /* Virtual methods from language. */
@@ -103,7 +98,8 @@ protected:
         const std::vector<std::string> _comments;
         const std::vector<std::string> _opts;
         const context::ptr _ctx;
-        const std::string _linker;
+        const std::string _linker_command;
+        const std::string _linker_pretty;
 
     public:
         link_target(const std::string& target_path,
@@ -113,7 +109,8 @@ protected:
                     const std::vector<std::string>& comments,
                     const std::vector<std::string>& opts,
                     const context::ptr& ctx,
-                    const std::string linker);
+                    const std::string linker_command,
+                    const std::string linker_pretty);
 
     public:
         /* target virtual functions */
@@ -130,7 +127,8 @@ protected:
         const std::vector<std::string> _comments;
         const std::vector<std::string> _opts;
         const context::ptr _ctx;
-        const std::string _compiler;
+        const std::string _compiler_command;
+        const std::string _compiler_pretty;
 
     public:
         compile_target(const std::string& target_path,
@@ -139,7 +137,8 @@ protected:
                        const std::vector<std::string>& comments,
                        const std::vector<std::string>& opts,
                        const context::ptr& ctx,
-                       const std::string compiler);
+                       const std::string compiler_command,
+                       const std::string compiler_pretty);
 
     public:
         /* target virtual functions */

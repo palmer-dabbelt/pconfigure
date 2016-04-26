@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Palmer Dabbelt
+ * Copyright (C) 2015,2016 Palmer Dabbelt
  *   <palmer@dabbelt.com>
  *
  * This file is part of pconfigure.
@@ -30,12 +30,12 @@ public:
     typedef std::shared_ptr<language_c> ptr;
 
 public:
-    language_c(const std::string compiler,
-               const std::string& linker)
-    : language_cxx(compiler, linker)
-    {}
+    /* Virtual methods from language_cxx. */
+    virtual std::string compiler_command(void) const { return "${CC}";  }
+    virtual std::string compiler_pretty (void) const { return "CC";     }
+    virtual std::string linker_command  (void) const { return "${CC}";  }
+    virtual std::string linker_pretty   (void) const { return "LD";     }
 
-public:
     /* Virtual methods from language. */
     virtual std::string name(void) const { return "c"; }
     virtual language_c* clone(void) const;
