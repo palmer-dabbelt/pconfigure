@@ -40,6 +40,7 @@ context::context(void)
       cmd(NULL),
       verbose(false),
       languages(language_list::global()),
+      autodeps(true),
       children()
 {
 }
@@ -61,6 +62,7 @@ context::context(const context_type& _type,
                  const command::ptr& _cmd,
                  bool _verbose,
                  const language_list::ptr& _languages,
+                 bool _autodeps,
                  const std::vector<ptr>& _children)
     : type(_type),
       prefix(_prefix),
@@ -79,6 +81,7 @@ context::context(const context_type& _type,
       cmd(_cmd),
       verbose(_verbose),
       languages(_languages),
+      autodeps(_autodeps),
       children(_children)
 {
 }
@@ -109,6 +112,7 @@ context::ptr context::dup(const context_type& type,
                                      cmd,
                                      this->verbose,
                                      this->languages,
+                                     this->autodeps,
                                      children);
 }
 

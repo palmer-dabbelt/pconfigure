@@ -113,6 +113,9 @@ public:
      * sub-objects and tests and such. */
     const std::shared_ptr<language_list> languages;
 
+    /* Should automatic dependency resolution be enabled for this target?. */
+    bool autodeps;
+
     /***************************************************************
      * Filled in after language::find_all_children                 *
      ***************************************************************/
@@ -145,6 +148,7 @@ public:
             const command::ptr& cmd,
             bool verbose,
             const std::shared_ptr<language_list>& languages,
+            bool autodeps,
             const std::vector<ptr>& children);
 
 public:

@@ -577,36 +577,38 @@ language_cxx::compile_source(const context::ptr& ctx,
     /* Recursively walks the list of targets. */
     std::vector<target::ptr> deps;
     std::vector<target::ptr> header_deps;
-    for (const auto& header_dep: dependencies(source_path,
-                                              is_shared,
-                                              compile_opts)) {
-        {
-            auto t = std::make_shared<header_target>(header_dep);
-            header_deps = header_deps + std::vector<header_target::ptr>{t};
-        }
+    if (ctx->autodeps == true) {
+        for (const auto& header_dep: dependencies(source_path,
+                                                  is_shared,
+                                                  compile_opts)) {
+            {
+                auto t = std::make_shared<header_target>(header_dep);
+                header_deps = header_deps + std::vector<header_target::ptr>{t};
+            }
 
-        for (const auto& dep: find_files_for_header(header_dep)) {
-            auto dep_out_name =
-                child->obj_dir
-                + "/" + dep
-                + "/" + hash_compile_options(child);
+            for (const auto& dep: find_files_for_header(header_dep)) {
+                auto dep_out_name =
+                    child->obj_dir
+                    + "/" + dep
+                    + "/" + hash_compile_options(child);
 
-            bool should_process = true;
-            for (const auto& p: processed)
-                if (strcmp(p.c_str(), dep_out_name.c_str()) == 0)
-                    should_process = false;
-            if (should_process == false)
-                continue;
-            processed.push_back(dep_out_name);
+                bool should_process = true;
+                for (const auto& p: processed)
+                    if (strcmp(p.c_str(), dep_out_name.c_str()) == 0)
+                        should_process = false;
+                if (should_process == false)
+                    continue;
+                processed.push_back(dep_out_name);
 
-            std::string stripped_dep = dep.c_str() + child->src_dir.size() + 1;
-            auto cmd = std::make_shared<command>(command_type::SOURCES,
-                                                 "+=",
-                                                 stripped_dep,
-                                                 child->cmd->debug());
-            auto dep_ctx = child->dup(context_type::SOURCE, cmd, {});
+                std::string stripped_dep = dep.c_str() + child->src_dir.size() + 1;
+                auto cmd = std::make_shared<command>(command_type::SOURCES,
+                                                     "+=",
+                                                     stripped_dep,
+                                                     child->cmd->debug());
+                auto dep_ctx = child->dup(context_type::SOURCE, cmd, {});
 
-            deps = deps + compile_source(ctx, dep_ctx, processed, is_shared);
+                deps = deps + compile_source(ctx, dep_ctx, processed, is_shared);
+            }
         }
     }
 

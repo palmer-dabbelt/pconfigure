@@ -71,7 +71,8 @@ language_bash::targets(const context::ptr& ctx) const
             if (child->type == context_type::SOURCE) {
                 auto path = child->src_dir + "/" + child->cmd->data();
                 sources.push_back(std::make_shared<makefile::target>(path));
-                deps = deps + dependencies(path);
+                if (ctx->autodeps == true)
+                    deps = deps + dependencies(path);
             }
         }
 

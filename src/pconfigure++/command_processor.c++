@@ -35,7 +35,24 @@ void command_processor::process(const command::ptr& cmd)
 
     switch (cmd->type()) {
     case command_type::AUTODEPS:
-        goto unimplemented;
+    {
+        if (cmd->check_operation("=") == false)
+            goto bad_op_eq;
+
+        if (cmd->data() == "true") {
+            tos->autodeps = true;
+            return;
+        }
+
+        if (cmd->data() == "false") {
+            tos->autodeps = false;
+            return;
+        }
+
+        std::cerr << cmd->data() << " is not boolean\n";
+        abort();
+        return;
+    }
 
     case command_type::BINARIES:
     {
