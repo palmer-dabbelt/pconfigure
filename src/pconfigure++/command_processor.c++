@@ -223,6 +223,7 @@ void command_processor::process(const command::ptr& cmd)
         dup_tos_and_push(context_type::TEST, cmd);
         auto child = _stack.top();
         child->src_dir = parent->test_dir + "/" + parent->cmd->data();
+        child->check_dir = parent->check_dir + "/" + parent->cmd->data();
 
         _opts_target = _stack.top();
 
@@ -242,6 +243,7 @@ void command_processor::process(const command::ptr& cmd)
         dup_tos_and_push(context_type::TEST, cmd);
         auto child = _stack.top();
         child->src_dir = parent->test_dir + "/" + parent->cmd->data();
+        child->check_dir = parent->check_dir + "/" + parent->cmd->data();
 
         dup_tos_and_push(context_type::SOURCE, cmd);
         _opts_target = _stack.top();

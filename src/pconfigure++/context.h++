@@ -86,6 +86,9 @@ public:
     /* The location at which TEST source file are stored. */
     std::string test_dir;
 
+    /* The location at which "make check" targets are stored. */
+    std::string check_dir;
+
     /* These implement "opts_target" */
     std::vector<std::string> compile_opts;
     std::vector<std::string> link_opts;
@@ -131,6 +134,7 @@ public:
             const std::string& src_dir,
             const std::string& hdr_dir,
             const std::string& test_dir,
+            const std::string& check_dir,
             const std::vector<std::string>& compile_opts,
             const std::vector<std::string>& link_opts,
             const command::ptr& cmd,
