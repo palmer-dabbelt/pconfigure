@@ -24,7 +24,8 @@
 command_processor::command_processor(void)
     : _stack({std::make_shared<context>()}),
       _languages(std::make_shared<language_list>()),
-      _opts_target(NULL)
+      _opts_target(NULL),
+      _given_version_command(false)
 {
 }
 
@@ -276,6 +277,10 @@ void command_processor::process(const command::ptr& cmd)
 
     case command_type::VERBOSE:
         _stack.top()->verbose = true;
+        return;
+
+    case command_type::VERSION:
+        this->_given_version_command = true;
         return;
     }
 

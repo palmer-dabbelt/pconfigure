@@ -38,6 +38,8 @@ command::ptr command::parse(const std::string& str,
 {
     if (str == "--verbose")
         return std::make_shared<command>(command_type::VERBOSE, "=", "true", d);
+    if (str == "--version")
+        return std::make_shared<command>(command_type::VERSION, "=", "true", d);
 
     auto split = string_utils::split_char(str, " ");
     if (split.size() < 3) {

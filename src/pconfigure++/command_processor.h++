@@ -53,6 +53,9 @@ private:
     /* A list of every target that needs to be output explicitly. */
     std::vector<context::ptr> _output_contexts;
 
+    /* This is set to TRUE if a "--version" command was given. */
+    bool _given_version_command;
+
 public:
     /* Creates a new, mostly empty command processor (there is a
      * default context on the stack, for example). */
@@ -64,6 +67,8 @@ public:
         { return _output_contexts; }
     const language_list::ptr& languages(void) const
         { return _languages; }
+    const bool& given_version_command(void) const
+        { return _given_version_command; }
 
 public:
     /* Processes a single command, performing the action that should

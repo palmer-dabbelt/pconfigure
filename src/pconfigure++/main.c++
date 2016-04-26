@@ -21,6 +21,7 @@
 #include "commands.h++"
 #include "command_processor.h++"
 #include "pick_language.h++"
+#include "version.h"
 #include <libmakefile/makefile.h++>
 #include <algorithm>
 #include <iostream>
@@ -31,6 +32,11 @@ int main(int argc, const char **argv)
 
     for (const auto& command: commands(argc, argv))
         processor->process(command);
+
+    if (processor->given_version_command()) {
+        std::cout << "pconfigure " << PCONFIGURE_VERSION << std::endl;
+        return 0;
+    }
 
     /* FIXME: If any target is verbose, then all are. */
     bool verbose = [&](void) -> bool {
