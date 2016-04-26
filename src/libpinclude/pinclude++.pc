@@ -1,0 +1,12 @@
+prefix=@@pconfigure_prefix@@
+exec_prefix=@@pconfigure_prefix@@
+libdir=${prefix}/@@pconfigure_libdir@@
+includedir=${prefix}/@@pconfigure_hdrdir@@
+
+Name: pinclude++
+Description: C++ wrapper for pinclude
+Version: @@pinclude_version@@
+Requires: pinclude
+Libs: -Wl,-rpath,${libdir} -L${libdir} -lpinclude++
+Cflags: -I${includedir} 
+URL: http://dabbelt.com/~palmer/software/pconfigure/
