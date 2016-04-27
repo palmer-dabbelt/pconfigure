@@ -159,6 +159,7 @@ TESTSRC     += autodeps.bash
 TESTSRC     += osx-shared-deps.bash
 TESTSRC     += man.bash
 TESTSRC     += subdir-rpath.bash
+TESTSRC     += config.bash
 
 # These command-line tools are technically availiable for external
 # usage, but they're really just for internal tests.

@@ -25,16 +25,6 @@
 #include <cstdlib>
 #include <iostream>
 
-/* An ordered list of Configfiles that contain the files that should
- * be read by default. */
-const static std::vector<std::string> filenames =
-{
-    "Configfiles/local",
-    "Configfiles/main",
-    "Configfile.local",
-    "Configfile"
-};
-
 std::vector<command::ptr> commands(int argc, const char **argv)
 {
     std::vector<command::ptr> out;
@@ -58,45 +48,86 @@ std::vector<command::ptr> commands(int argc, const char **argv)
         out.push_back(cmd);
     }
 
+    for (const auto& command: commands())
+        out.push_back(command);
+
+    return out;
+}
+
+std::vector<command::ptr> commands(const std::string& prefix,
+                                   const std::string& suffix)
+{
+    auto filenames = std::vector<std::string>{
+        prefix + "s/" + suffix,
+        prefix + "." + suffix
+    };
+
+    std::vector<command::ptr> out;
     for (const auto& filename: filenames) {
-        auto file = std::fopen(filename.c_str(), "r");
-        if (file == NULL)
+        auto cmds = commands(filename);
+        out.insert(out.end(), cmds.begin(), cmds.end());
+    }
+    return out;
+}
+
+std::vector<command::ptr> commands(void)
+{
+    auto filenames = std::vector<std::string>{
+        "Configfiles/local",
+        "Configfile.local",
+        "Configfiles/main",
+        "Configfile"
+    };
+
+    std::vector<command::ptr> out;
+    for (const auto& filename: filenames) {
+        auto cmds = commands(filename);
+        out.insert(out.end(), cmds.begin(), cmds.end());
+    }
+    return out;
+}
+
+std::vector<command::ptr> commands(const std::string& filename)
+{
+    auto out = std::vector<command::ptr>();
+
+    auto file = std::fopen(filename.c_str(), "r");
+    if (file == NULL)
+        return out;
+
+    for (const auto& ln: file_utils::readlines_and_numbers(file)) {
+        auto line = string_utils::clean_white(ln.line);
+
+        /* Skip empty lines and anything beginning with a '#' --
+         * those are comments. */
+        if (line.size() == 0)
+            continue;
+        if (line[0] == '#')
             continue;
 
-        for (const auto& ln: file_utils::readlines_and_numbers(file)) {
-            auto line = string_utils::clean_white(ln.line);
+        auto linenum = ln.number;
 
-            /* Skip empty lines and anything beginning with a '#' --
-             * those are comments. */
-            if (line.size() == 0)
-                continue;
-            if (line[0] == '#')
-                continue;
+        auto debug = std::make_shared<debug_info>(filename,
+                                                  linenum,
+                                                  line);
 
-            auto linenum = ln.number;
+        auto cmd = command::parse(line, debug);
+        if (cmd == NULL) {
+            std::cerr << "Unable to parse "
+                      << filename
+                      << ":"
+                      << linenum
+                      << ": '"
+                      << line
+                      << "'\n";
 
-            auto debug = std::make_shared<debug_info>(filename,
-                                                      linenum,
-                                                      line);
-
-            auto cmd = command::parse(line, debug);
-            if (cmd == NULL) {
-                std::cerr << "Unable to parse "
-                          << filename
-                          << ":"
-                          << linenum
-                          << ": '"
-                          << line
-                          << "'\n";
-
-                abort();
-            }
-
-            out.push_back(cmd);
+            abort();
         }
 
-        fclose(file);
+        out.push_back(cmd);
     }
+
+    fclose(file);
 
     return out;
 }

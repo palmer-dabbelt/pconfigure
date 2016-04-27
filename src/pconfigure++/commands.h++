@@ -31,4 +31,14 @@
  * the system. */
 std::vector<command::ptr> commands(int argc, const char **argv);
 
+/* Produces a list of commands that come from a file with the given suffix. */
+std::vector<command::ptr> commands(const std::string& prefix,
+                                   const std::string& suffix);
+
+/* Produces a list of commands that come from the default Configfile. */
+std::vector<command::ptr> commands(void);
+
+/* Produces a list of commands that come from a file with exactly this name. */
+std::vector<command::ptr> commands(const std::string& filename);
+
 #endif

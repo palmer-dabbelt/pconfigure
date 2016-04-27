@@ -19,6 +19,7 @@
  */
 
 #include "command_processor.h++"
+#include "commands.h++"
 #include <iostream>
 
 command_processor::command_processor(void)
@@ -89,8 +90,18 @@ void command_processor::process(const command::ptr& cmd)
         return;
 
     case command_type::COMPILER:
-    case command_type::CONFIG:
         goto unimplemented;
+
+    case command_type::CONFIG:
+    {
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        for (const auto& command: commands("Configfile", cmd->data()))
+            process(command);
+
+        return;
+    }
 
     case command_type::DEPLIBS:
         if (cmd->check_operation("+=") == false)
