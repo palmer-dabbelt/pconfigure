@@ -23,11 +23,6 @@
 #include <assert.h>
 #include <iostream>
 
-language_perl* language_perl::clone(void) const
-{
-    return new language_perl();
-}
-
 bool language_perl::can_process(const context::ptr& ctx) const
 {
     return language::all_sources_match(

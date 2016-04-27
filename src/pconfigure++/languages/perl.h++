@@ -29,13 +29,18 @@ public:
     typedef std::shared_ptr<language_perl> ptr;
 
 public:
+    language_perl(const std::vector<std::string>& compile_opts,
+                  const std::vector<std::string>& link_opts)
+    : language_bash(compile_opts, link_opts)
+    {}
+
+public:
     /* Virtual methods from language_bash. */
     virtual std::string compiler_command(void) const { return "pperlc"; }
     virtual std::string compiler_pretty(void) const { return "PERL"; }
 
     /* Virtual methods from language. */
     virtual std::string name(void) const { return "perl"; }
-    virtual language_perl* clone(void) const;
     virtual bool can_process(const context::ptr& ctx) const;
 };
 
