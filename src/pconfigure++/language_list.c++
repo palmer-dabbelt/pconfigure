@@ -26,7 +26,7 @@ language_list::language_list(void)
     : _languages_lookup(),
       _languages_list()
 {
-    this->add(std::make_shared<language_gen_proc>());
+    this->add(std::make_shared<language_gen_proc>(std::vector<std::string>{}, std::vector<std::string>{}));
 }
 
 void language_list::add(const language::ptr& lang)

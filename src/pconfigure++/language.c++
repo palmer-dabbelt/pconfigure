@@ -21,9 +21,10 @@
 #include "language.h++"
 #include <iostream>
 
-language::language(void)
-    : _compile_opts(),
-      _link_opts()
+language::language(const std::vector<std::string>& compile_opts,
+                   const std::vector<std::string>& link_opts)
+: _compile_opts(compile_opts),
+  _link_opts(link_opts)
 {
 }
 

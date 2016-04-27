@@ -32,6 +32,12 @@ public:
     typedef std::shared_ptr<language_cxx> ptr;
 
 public:
+    language_cxx(const std::vector<std::string>& compile_opts,
+                 const std::vector<std::string>& link_opts)
+    : language(compile_opts, link_opts)
+    {}
+
+public:
     /* Allows sub-classes of this language to override the compiler and linker
      * strings. */
     virtual std::string compiler_command(void) const { return "${CXX}"; }

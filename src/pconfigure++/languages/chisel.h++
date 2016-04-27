@@ -32,6 +32,12 @@ public:
     typedef std::shared_ptr<language_chisel> ptr;
 
 public:
+    language_chisel(const std::vector<std::string>& compile_opts,
+                    const std::vector<std::string>& link_opts)
+    : language(compile_opts, link_opts)
+    {}
+
+public:
     /* Virtual methods from language. */
     virtual std::string name(void) const { return "chisel"; }
     virtual language_chisel* clone(void) const;

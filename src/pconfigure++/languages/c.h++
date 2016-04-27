@@ -30,6 +30,12 @@ public:
     typedef std::shared_ptr<language_c> ptr;
 
 public:
+    language_c(const std::vector<std::string>& compile_opts,
+               const std::vector<std::string>& link_opts)
+    : language_cxx(compile_opts, link_opts)
+    {}
+
+public:
     /* Virtual methods from language_cxx. */
     virtual std::string compiler_command(void) const { return "${CC}";  }
     virtual std::string compiler_pretty (void) const { return "CC";     }

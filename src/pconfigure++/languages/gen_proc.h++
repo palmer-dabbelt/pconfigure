@@ -31,6 +31,12 @@ public:
     typedef std::shared_ptr<language_gen_proc> ptr;
 
 public:
+    language_gen_proc(const std::vector<std::string>& compile_opts,
+                      const std::vector<std::string>& link_opts)
+    : language(compile_opts, link_opts)
+    {}
+
+public:
     /* Virtual methods from language. */
     virtual std::string name(void) const { return "gen_proc"; }
     virtual language_gen_proc* clone(void) const;

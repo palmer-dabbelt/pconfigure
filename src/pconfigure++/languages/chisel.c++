@@ -87,7 +87,8 @@ public:
  * really meant to be much since it's simply  */
 language_chisel* language_chisel::clone(void) const
 {
-    return new language_chisel();
+    return new language_chisel(this->list_compile_opts(),
+                               this->list_link_opts());
 }
 
 bool language_chisel::can_process(const context::ptr& ctx) const
@@ -344,5 +345,10 @@ emit_target:
 static void install_chisel(void) __attribute__((constructor));
 void install_chisel(void)
 {
-    language_list::global_add(std::make_shared<language_chisel>());
+    language_list::global_add(
+        std::make_shared<language_chisel>(
+            std::vector<std::string>{},
+            std::vector<std::string>{}
+        )
+    );
 }

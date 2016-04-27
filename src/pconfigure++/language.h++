@@ -42,7 +42,8 @@ private:
     std::vector<std::string> _link_opts;
 
 public:
-    language(void);
+    language(const std::vector<std::string>& compile_opts,
+             const std::vector<std::string>& link_opts);
 
 public:
     /* Accessor functions. */

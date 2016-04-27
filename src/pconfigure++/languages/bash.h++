@@ -31,6 +31,12 @@ public:
     typedef std::shared_ptr<language_bash> ptr;
 
 public:
+    language_bash(const std::vector<std::string>& compile_opts,
+                  const std::vector<std::string>& link_opts)
+    : language(compile_opts, link_opts)
+    {}
+
+public:
     /* language_bash is the parent of all the base-like languages, these
      * arguments allow children to override some internal functionality so they
      * can compile slightly differently. */

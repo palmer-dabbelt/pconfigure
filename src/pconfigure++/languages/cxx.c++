@@ -34,7 +34,8 @@ static int pinclude_callback(const char *filename, void *priv_uncase);
 
 language_cxx* language_cxx::clone(void) const
 {
-    return new language_cxx();
+    return new language_cxx(this->list_compile_opts(),
+                            this->list_link_opts());
 }
 
 bool language_cxx::can_process(const context::ptr& ctx) const
@@ -701,6 +702,8 @@ void install_cxx(void)
 {
     language_list::global_add(
         std::make_shared<language_cxx>(
+            std::vector<std::string>{},
+            std::vector<std::string>{}
         )
     );
 }

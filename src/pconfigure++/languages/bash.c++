@@ -26,7 +26,8 @@
 
 language_bash* language_bash::clone(void) const
 {
-    return new language_bash();
+    return new language_bash(this->list_compile_opts(),
+                             this->list_link_opts());
 }
 
 bool language_bash::can_process(const context::ptr& ctx) const
@@ -171,5 +172,10 @@ std::vector<makefile::target::ptr> language_bash::dependencies(const std::string
 static void install_bash(void) __attribute__((constructor));
 void install_bash(void)
 {
-    language_list::global_add(std::make_shared<language_bash>());
+    language_list::global_add(
+        std::make_shared<language_bash>(
+            std::vector<std::string>{},
+            std::vector<std::string>{}
+        )
+    );
 }

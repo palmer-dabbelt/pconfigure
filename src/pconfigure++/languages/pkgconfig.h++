@@ -31,6 +31,12 @@ public:
     typedef std::shared_ptr<language_pkgconfig> ptr;
 
 public:
+    language_pkgconfig(const std::vector<std::string>& compile_opts,
+                       const std::vector<std::string>& link_opts)
+    : language(compile_opts, link_opts)
+    {}
+
+public:
     /* Virtual methods from language. */
     virtual std::string name(void) const { return "pkgconfig"; }
     virtual language_pkgconfig* clone(void) const;

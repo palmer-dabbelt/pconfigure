@@ -36,5 +36,10 @@ bool language_perl::can_process(const context::ptr& ctx) const
 static void install_perl(void) __attribute__((constructor));
 void install_perl(void)
 {
-    language_list::global_add(std::make_shared<language_perl>());
+    language_list::global_add(
+        std::make_shared<language_perl>(
+            std::vector<std::string>{},
+            std::vector<std::string>{}
+        )
+    );
 }

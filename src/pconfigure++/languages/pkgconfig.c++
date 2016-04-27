@@ -25,7 +25,8 @@
 
 language_pkgconfig* language_pkgconfig::clone(void) const
 {
-    return new language_pkgconfig();
+    return new language_pkgconfig(this->list_compile_opts(),
+                                  this->list_link_opts());
 }
 
 bool language_pkgconfig::can_process(const context::ptr& ctx) const
@@ -138,5 +139,10 @@ language_pkgconfig::targets(const context::ptr& ctx) const
 static void install_pkgconfig(void) __attribute__((constructor));
 void install_pkgconfig(void)
 {
-    language_list::global_add(std::make_shared<language_pkgconfig>());
+    language_list::global_add(
+        std::make_shared<language_pkgconfig>(
+            std::vector<std::string>{},
+            std::vector<std::string>{}
+        )
+    );
 }

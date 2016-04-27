@@ -37,6 +37,8 @@ void install_c(void)
 {
     language_list::global_add(
         std::make_shared<language_c>(
+            std::vector<std::string>{},
+            std::vector<std::string>{}
         )
     );
 }

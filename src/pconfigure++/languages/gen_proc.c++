@@ -26,7 +26,8 @@
 
 language_gen_proc* language_gen_proc::clone(void) const
 {
-    return new language_gen_proc();
+    return new language_gen_proc(this->list_compile_opts(),
+                                 this->list_link_opts());
 }
 
 bool language_gen_proc::can_process(const context::ptr& ctx) const
