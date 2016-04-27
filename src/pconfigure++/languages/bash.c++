@@ -117,11 +117,15 @@ language_bash::targets(const context::ptr& ctx) const
     {
         auto child_ctx = ctx->dup(context_type::BINARY);
         child_ctx->bin_dir = ctx->obj_dir + "/" + ctx->check_dir;
+        auto bin_name = ctx->test_binary;
         auto bin_targets = vector_util::map(targets(child_ctx),
                                             [](const makefile::target::ptr& t)
                                             {
                                                 return t->without(makefile::global_targets::ALL);
                                             });
+        auto deps = std::vector<makefile::target::ptr>{
+                        std::make_shared<makefile::target>(bin_name)
+                    } + bin_targets;
 
         auto target_name = ctx->check_dir + "/" + ctx->cmd->data();
         auto short_cmd = "CHECK\t" + ctx->cmd->data();
@@ -130,7 +134,6 @@ language_bash::targets(const context::ptr& ctx) const
             makefile::global_targets::CLEAN
         };
         auto test_name = ctx->obj_dir + "/" + ctx->check_dir + "/" + ctx->cmd->data();
-        auto bin_name = ctx->test_binary;
         auto commands = std::vector<std::string>{
             "mkdir -p " + ctx->check_dir,
             "ptest --test " + test_name + " --out " + target_name + " --bin " + bin_name
@@ -140,7 +143,7 @@ language_bash::targets(const context::ptr& ctx) const
         };
         auto check_target = std::make_shared<makefile::target>(target_name,
                                                                short_cmd,
-                                                               bin_targets,
+                                                               deps,
                                                                global_targets,
                                                                commands,
                                                                comment);
