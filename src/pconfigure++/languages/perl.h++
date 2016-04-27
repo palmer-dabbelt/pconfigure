@@ -41,6 +41,7 @@ public:
 
     /* Virtual methods from language. */
     virtual std::string name(void) const { return "perl"; }
+    virtual language_perl* clone(void) const;
     virtual bool can_process(const context::ptr& ctx) const;
 };
 

@@ -22,6 +22,12 @@
 #include "../language_list.h++"
 #include <iostream>
 
+language_c* language_c::clone(void) const
+{
+    return new language_c(this->list_compile_opts(),
+                          this->list_link_opts());
+}
+
 bool language_c::can_process(const context::ptr& ctx) const
 {
     return language::all_sources_match(
