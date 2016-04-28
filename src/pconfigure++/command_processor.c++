@@ -159,6 +159,7 @@ void command_processor::process(const command::ptr& cmd)
             goto bad_op_pluseq;
 
         clear_until({context_type::DEFAULT});
+        tos = _stack.top();
 
         if (tos->languages->search(cmd->data()) != NULL) {
             _opts_target = tos->languages->search(cmd->data());

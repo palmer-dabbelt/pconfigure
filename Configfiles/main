@@ -150,6 +150,7 @@ TESTSRC     += man.bash
 TESTSRC     += subdir-rpath.bash
 TESTSRC     += config.bash
 TESTSRC     += compileopts-in-language.bash
+TESTSRC     += language-after-binary.bash
 
 # These command-line tools are technically availiable for external
 # usage, but they're really just for internal tests.
