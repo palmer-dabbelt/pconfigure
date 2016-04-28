@@ -64,6 +64,6 @@ int pinclude::list(std::string filename,
 
 int pinclude_callback(const char *path, void *args_uncast)
 {
-    auto args = (struct pinclude_args*)args_uncast;
+    auto args = (class pinclude_args*)args_uncast;
     return args->func(path);
 }
