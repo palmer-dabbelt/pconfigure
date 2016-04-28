@@ -86,7 +86,12 @@ context::context(const context_type& _type,
 {
 }
 
-context::ptr context::dup(const context_type& type)
+context::ptr context::dup(void) const
+{
+    return dup(this->type);
+}
+
+context::ptr context::dup(const context_type& type) const
 {
     return dup(type, this->cmd, this->children);
 }
@@ -94,6 +99,7 @@ context::ptr context::dup(const context_type& type)
 context::ptr context::dup(const context_type& type,
                           const command::ptr& cmd,
                           const std::vector<ptr>& children)
+                          const
 {
     return std::make_shared<context>(type,
                                      this->prefix,

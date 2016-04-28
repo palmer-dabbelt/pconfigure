@@ -166,7 +166,14 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
                 case context_type::TEST:
                 {
                     auto l = pick_language(ctx->languages, child);
-                    tests = tests + l->targets(child);
+                    auto filtered_child = [&]()
+                        {
+                            if (l->name() == this->name())
+                                return child;
+
+                            return child->without_clopts();
+                        }();
+                    tests = tests + l->targets(filtered_child);
                     break;
                 }
 

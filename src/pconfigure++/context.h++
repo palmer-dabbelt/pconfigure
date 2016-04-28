@@ -154,11 +154,21 @@ public:
 public:
     /* Duplicates the current context, potentially substituting in
      * some new values. */
-    ptr dup(void);
-    ptr dup(const context_type& type);
+    ptr dup(void) const;
+    ptr dup(const context_type& type) const;
     ptr dup(const context_type& type,
             const command::ptr& cmd,
-            const std::vector<ptr>& children);
+            const std::vector<ptr>& children)
+            const;
+
+    /* Duplicates this context, dropping the compile and link options. */
+    ptr without_clopts(void) const
+    {
+        auto o = this->dup();
+        o->compile_opts = std::vector<std::string>();
+        o->link_opts = std::vector<std::string>();
+        return o;
+    }
 
     /* Checks to see if the context matches one of the given types,
      * returning TRUE if it matches, and FALSE if it doesn't. */
