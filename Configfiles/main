@@ -6,9 +6,6 @@ COMPILEOPTS += -Wno-unused-parameter
 COMPILEOPTS += -ansi
 COMPILEOPTS += -pedantic
 
-COMPILEOPTS += -O2 -march=native
-LINKOPTS    += -O3 -march=native
-
 LANGUAGES   += bash
 
 LANGUAGES   += pkgconfig
@@ -118,13 +115,6 @@ SOURCES	    += pwinegcc.bash
 ##############################################################################
 # Rewrite-Related Libraries                                                  #
 ##############################################################################
-LANGUAGES   += c++
-COMPILEOPTS += -g
-LINKOPTS    += -g
-COMPILEOPTS += -fsanitize=address
-LINKOPTS    += -fsanitize=address
-COMPILEOPTS += -O3 -march=native
-LINKOPTS    += -O3 -march=native
 # A C++ frontend to pinclude, which has a bunch of nasty C-isms in it.
 LIBRARIES   += libpinclude++.so
 SOURCES     += libpinclude/library.c++

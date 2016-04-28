@@ -1,0 +1,7 @@
+LANGUAGES   += c
+COMPILEOPTS += -O3 -march=native
+LINKOPTS    += -O3 -march=native
+
+LANGUAGES   += c++
+COMPILEOPTS += -O3 -march=native
+LINKOPTS    += -O3 -march=native
