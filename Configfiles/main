@@ -154,6 +154,7 @@ TESTSRC     += compileopts-in-language.bash
 TESTSRC     += language-after-binary.bash
 TESTSRC     += bash-test-opts.bash
 TESTSRC     += h.bash
+TESTSRC     += exec-config.bash
 
 # These command-line tools are technically availiable for external
 # usage, but they're really just for internal tests.

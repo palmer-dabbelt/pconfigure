@@ -22,6 +22,8 @@
 #include "debug_info.h++"
 #include "file_utils.h++"
 #include "string_utils.h++"
+#include <unistd.h>
+#include <fcntl.h>
 #include <cstdlib>
 #include <iostream>
 
@@ -91,7 +93,13 @@ std::vector<command::ptr> commands(const std::string& filename)
 {
     auto out = std::vector<command::ptr>();
 
-    auto file = std::fopen(filename.c_str(), "r");
+    auto file = [&]()
+        {
+            if (access(filename.c_str(), X_OK) == 0)
+                return popen(("./" + filename).c_str(), "r");
+            else
+                return fopen(filename.c_str(), "r");
+        }();
     if (file == NULL)
         return out;
 
@@ -127,7 +135,10 @@ std::vector<command::ptr> commands(const std::string& filename)
         out.push_back(cmd);
     }
 
-    fclose(file);
+    if (access(filename.c_str(), X_OK) == 0)
+        pclose(file);
+    else
+        fclose(file);
 
     return out;
 }
