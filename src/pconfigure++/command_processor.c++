@@ -355,6 +355,11 @@ void command_processor::clear_until(const std::vector<context_type>& types)
         _stack.pop();
         _all_contexts.push_back(top);
     }
+
+    if (_stack.size() == 0) {
+        std::cerr << "Interal error: empty stack\n";
+        abort();
+    }
 }
 
 void command_processor::dup_tos_and_push(const context_type& type,
