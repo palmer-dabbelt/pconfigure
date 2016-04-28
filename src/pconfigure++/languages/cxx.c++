@@ -567,7 +567,8 @@ language_cxx::compile_source(const context::ptr& ctx,
         std::vector<std::string>{
             "-I" + child->hdr_dir,
             "-I" + child->obj_dir + "/proc",
-            "-D__PCONFIGURE__LIBEXEC=\\\"" + full_libexec_path + "\\\""
+            "-D__PCONFIGURE__LIBEXEC=\\\"" + full_libexec_path + "\\\"",
+            "-D__PCONFIGURE__PREFIX=\\\"" + ctx->prefix + "\\\""
         };
 
     auto shared_comments = std::vector<std::string>{
