@@ -53,6 +53,9 @@ language::ptr pick_language(const language_list::ptr& languages,
                   << std::to_string(context->cmd->debug())
                   << "\n";
         std::cerr << context->as_tree_string("  ") << "\n";
+        std::cerr << "Language Set:\n";
+        for (const auto& language: languages)
+            std::cerr << "  " << language->name() << "\n";
         abort();
     }
 

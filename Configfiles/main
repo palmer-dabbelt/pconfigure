@@ -14,6 +14,19 @@ LANGUAGES   += bash
 LANGUAGES   += pkgconfig
 LINKOPTS    += -Sobj/proc/version-pc.sed
 
+LANGUAGES   += c++
+COMPILEOPTS += -Wall
+COMPILEOPTS += -Wextra
+COMPILEOPTS += -Werror
+COMPILEOPTS += -std=c++11
+COMPILEOPTS += -pedantic
+
+# Allows me to staticly link my internal C++ library dependencies --
+# note that this isn't just an optimization, it's actually necessary
+# because of how I handle C++ header files.
+LANGUAGES   += c++
+COMPILEOPTS += -Isrc
+
 GENERATE    += version.h
 GENERATE    += version-pc.sed
 
@@ -106,20 +119,12 @@ SOURCES	    += pwinegcc.bash
 # Rewrite-Related Libraries                                                  #
 ##############################################################################
 LANGUAGES   += c++
-COMPILEOPTS += -Wall
-COMPILEOPTS += -Wextra
-COMPILEOPTS += -Werror
-COMPILEOPTS += -std=c++0x
-COMPILEOPTS += -pedantic
-
-LANGUAGES   += c++
 COMPILEOPTS += -g
 LINKOPTS    += -g
 COMPILEOPTS += -fsanitize=address
 LINKOPTS    += -fsanitize=address
 COMPILEOPTS += -O3 -march=native
 LINKOPTS    += -O3 -march=native
-
 # A C++ frontend to pinclude, which has a bunch of nasty C-isms in it.
 LIBRARIES   += libpinclude++.so
 SOURCES     += libpinclude/library.c++
@@ -130,12 +135,6 @@ SOURCES     += libpinclude/pinclude++.pc
 ##############################################################################
 # Rewrite-Related Binaries                                                   #
 ##############################################################################
-# Allows me to staticly link my internal C++ library dependencies --
-# note that this isn't just an optimization, it's actually necessary
-# because of how I handle C++ header files.
-LANGUAGES   += c++
-COMPILEOPTS += -Isrc
-
 # A rewrite of pconfigure that's designed to bring the whole system
 # into the 21st century!
 BINARIES    += pconfigure
@@ -160,6 +159,7 @@ TESTSRC     += osx-shared-deps.bash
 TESTSRC     += man.bash
 TESTSRC     += subdir-rpath.bash
 TESTSRC     += config.bash
+TESTSRC     += compileopts-in-language.bash
 
 # These command-line tools are technically availiable for external
 # usage, but they're really just for internal tests.

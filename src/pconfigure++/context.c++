@@ -39,7 +39,7 @@ context::context(void)
       link_opts(),
       cmd(NULL),
       verbose(false),
-      languages(language_list::global()),
+      languages(std::make_shared<language_list>()),
       autodeps(true),
       children()
 {
@@ -111,7 +111,7 @@ context::ptr context::dup(const context_type& type,
                                      this->link_opts,
                                      cmd,
                                      this->verbose,
-                                     this->languages,
+                                     this->languages->dup(),
                                      this->autodeps,
                                      children);
 }

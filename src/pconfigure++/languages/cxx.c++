@@ -97,12 +97,12 @@ language_cxx::shared_target language_cxx::is_shared_target(const context::ptr& c
 
 std::string language_cxx::hash_link_options(const context::ptr& ctx) const
 {
-    return hash_options(ctx->clopts());
+    return hash_options(this->clopts() + ctx->clopts());
 }
 
 std::string language_cxx::hash_compile_options(const context::ptr& ctx) const
 {
-    return hash_options(ctx->list_compile_opts());
+    return hash_options(this->compile_opts() + ctx->list_compile_opts());
 }
 
 std::string language_cxx::hash_options(const std::vector<std::string>& opts) const

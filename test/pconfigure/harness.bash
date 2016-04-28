@@ -18,8 +18,10 @@ CDIR=`pwd`
 cd $tempdir
 echo "Running"
 
+cat Configfile
 $PTEST_BINARY
 
+cat Makefile
 make
 
 if test -x ./update

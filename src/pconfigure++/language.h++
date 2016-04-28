@@ -64,6 +64,8 @@ public:
      * types. */
     virtual language* clone(void) const = 0;
 
+    ptr dup(void) const { return std::shared_ptr<language>(clone()); }
+
     /* Returns TRUE if this language can process the given context. */
     virtual bool can_process(const context::ptr& ctx) const = 0;
 

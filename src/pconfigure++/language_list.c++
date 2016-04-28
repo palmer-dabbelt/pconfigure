@@ -19,14 +19,12 @@
  */
 
 #include "language_list.h++"
-#include "languages/gen_proc.h++"
 #include <iostream>
 
 language_list::language_list(void)
     : _languages_lookup(),
       _languages_list()
 {
-    this->add(std::make_shared<language_gen_proc>(std::vector<std::string>{}, std::vector<std::string>{}));
 }
 
 void language_list::add(const language::ptr& lang)
@@ -52,10 +50,20 @@ language::ptr language_list::search(const std::string& name)
     return l->second;
 }
 
+language_list::ptr language_list::dup(void) const
+{
+    auto out = std::make_shared<language_list>();
+    for (const auto& language: *this)
+        out->add(language->dup());
+    return out;
+}
+
 const language_list::ptr& language_list::global(void)
 {
     static language_list::ptr _global;
-    if (_global == nullptr) _global = std::make_shared<language_list>();
+    if (_global == nullptr)
+        _global = std::make_shared<language_list>();
+
     return _global;
 }
 

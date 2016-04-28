@@ -20,14 +20,20 @@
 
 #include "command_processor.h++"
 #include "commands.h++"
+#include "languages/gen_proc.h++"
 #include <iostream>
 
 command_processor::command_processor(void)
-    : _stack({std::make_shared<context>()}),
-      _languages(std::make_shared<language_list>()),
+    : _stack(),
       _opts_target(NULL),
       _given_version_command(false)
 {
+    _stack.push(std::make_shared<context>());
+    auto tos = _stack.top();
+    tos->languages->add(std::make_shared<language_gen_proc>(
+        std::vector<std::string>{},
+        std::vector<std::string>{}
+    ));
 }
 
 void command_processor::process(const command::ptr& cmd)
@@ -152,8 +158,10 @@ void command_processor::process(const command::ptr& cmd)
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
-        if (_languages->search(cmd->data()) != NULL) {
-            _opts_target = _languages->search(cmd->data());
+        clear_until({context_type::DEFAULT});
+
+        if (tos->languages->search(cmd->data()) != NULL) {
+            _opts_target = tos->languages->search(cmd->data());
             return;
         }
 
@@ -167,7 +175,7 @@ void command_processor::process(const command::ptr& cmd)
         }
 
         auto clone = language::ptr(new_language->clone());
-        _languages->add(clone);
+        tos->languages->add(clone);
         _opts_target = clone;
 
         return;

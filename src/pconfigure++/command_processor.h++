@@ -40,9 +40,6 @@ private:
     /* This is the stack that's visible to the user of pconfigure. */
     std::stack<context::ptr> _stack;
 
-    /* The active language set. */
-    language_list::ptr _languages;
-
     /* The object that should be touched for {COMPILE,LINK}OPTS. */
     opts_target::ptr _opts_target;
 
@@ -65,8 +62,6 @@ public:
     /* Accessor methods. */
     const std::vector<context::ptr>& output_contexts(void) const
         { return _output_contexts; }
-    const language_list::ptr& languages(void) const
-        { return _languages; }
     const bool& given_version_command(void) const
         { return _given_version_command; }
 

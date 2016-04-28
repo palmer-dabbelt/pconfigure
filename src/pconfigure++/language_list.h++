@@ -55,6 +55,9 @@ public:
     std::vector<language::ptr>::const_iterator end(void) const
         { return std::end(_languages_list); }
 
+    /* Deep copy this language list. */
+    ptr dup(void) const;
+
 public:
     /* There's also a global list of languages, which is where every
      * language in the system ends up registered.  These functions
