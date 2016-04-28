@@ -137,6 +137,7 @@ SOURCES     += pconfigure++/languages/pkgconfig.c++
 SOURCES     += pconfigure++/languages/cxx.c++
 SOURCES     += pconfigure++/languages/chisel.c++
 SOURCES     += pconfigure++/languages/perl.c++
+SOURCES     += pconfigure++/languages/h.c++
 TESTSRC     += version.bash
 TESTSRC     += simple-c.bash
 TESTSRC     += tek.bash
@@ -152,6 +153,7 @@ TESTSRC     += config.bash
 TESTSRC     += compileopts-in-language.bash
 TESTSRC     += language-after-binary.bash
 TESTSRC     += bash-test-opts.bash
+TESTSRC     += h.bash
 
 # These command-line tools are technically availiable for external
 # usage, but they're really just for internal tests.
@@ -174,3 +176,6 @@ LIBEXECS    += pconfigure/vector_util-map
 COMPILEOPTS += -DTEST_MAP
 SOURCES     += pconfigure++/vector_util.c++
 TESTSRC     += builtin.bash
+
+BINARIES    += phc
+SOURCES     += phc.bash

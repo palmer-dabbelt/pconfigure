@@ -150,8 +150,23 @@ void command_processor::process(const command::ptr& cmd)
         return;
 
     case command_type::HDRDIR:
-    case command_type::HEADERS:
         goto unimplemented;
+
+    case command_type::HEADERS:
+    {
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        clear_until({context_type::DEFAULT});
+        dup_tos_and_push(context_type::BINARY, cmd);
+
+        _stack.top()->bin_dir = _stack.top()->hdr_dir;
+
+        _opts_target = _stack.top();
+        _output_contexts.push_back(_stack.top());
+
+        return;
+    }
 
     case command_type::LANGUAGES:
     {
