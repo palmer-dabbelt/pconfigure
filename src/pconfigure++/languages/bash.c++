@@ -93,7 +93,7 @@ language_bash::targets(const context::ptr& ctx) const
             command += " " + str;
 
         auto commands = std::vector<std::string>{
-            "mkdir -p " + ctx->bin_dir,
+            "mkdir -p $(dir $@)",
             command
         };
 
@@ -111,7 +111,25 @@ language_bash::targets(const context::ptr& ctx) const
                                                              commands,
                                                              comment);
 
-        return {bin_target};
+        auto install_path = ctx->prefix + "/" + target;
+
+        auto global_install_targets = std::vector<makefile::global_targets>{
+            makefile::global_targets::INSTALL,
+        };
+
+        auto install_commands = std::vector<std::string>{
+            "mkdir -p $(dir $@)",
+            "cp --reflink=auto -f " + target + " " + install_path
+        };
+
+        auto install_target = std::make_shared<makefile::target>(install_path,
+                                                                short_cmd,
+                                                                std::vector<makefile::target::ptr>{bin_target},
+                                                                global_install_targets,
+                                                                install_commands,
+                                                                comment);
+
+        return {bin_target, install_target};
     }
 
     case context_type::TEST:
@@ -122,7 +140,8 @@ language_bash::targets(const context::ptr& ctx) const
         auto bin_targets = vector_util::map(targets(child_ctx),
                                             [](const makefile::target::ptr& t)
                                             {
-                                                return t->without(makefile::global_targets::ALL);
+                                                return t->without(makefile::global_targets::ALL)
+                                                        ->without(makefile::global_targets::INSTALL);
                                             });
         auto deps = std::vector<makefile::target::ptr>{
                         std::make_shared<makefile::target>(bin_name)
