@@ -32,6 +32,9 @@ then
     make
 fi
 
+make check
+ptest || exit 1
+
 ./bin/test > test.out
 
 out="$(diff -u test.out test.gold)"

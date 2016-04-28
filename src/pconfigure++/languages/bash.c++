@@ -140,9 +140,9 @@ language_bash::targets(const context::ptr& ctx) const
         auto bin_targets = vector_util::map(targets(child_ctx),
                                             [](const makefile::target::ptr& t)
                                             {
-                                                return t->without(makefile::global_targets::ALL)
-                                                        ->without(makefile::global_targets::INSTALL);
+                                                return t->without(makefile::global_targets::ALL);
                                             });
+        bin_targets = std::vector<makefile::target::ptr>{bin_targets[0]};
         auto deps = std::vector<makefile::target::ptr>{
                         std::make_shared<makefile::target>(bin_name)
                     } + bin_targets;
