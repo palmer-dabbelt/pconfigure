@@ -25,6 +25,7 @@
 #include <libmakefile/makefile.h++>
 #include <algorithm>
 #include <iostream>
+#include <map>
 
 int main(int argc, const char **argv)
 {
@@ -49,10 +50,37 @@ int main(int argc, const char **argv)
 
     auto makefile = std::make_shared<makefile::makefile>(verbose);
 
+    auto distcleaned = std::map<std::string, bool>();
     for (const auto& context: processor->output_contexts()) {
         auto language = pick_language(context->languages, context);
         for (const auto& target: language->targets(context))
             makefile->add_target(target);
+
+        auto to_distclean = std::vector<std::string>{
+            context->bin_dir,
+            context->check_dir,
+            context->obj_dir
+        };
+        for (const auto& dir: to_distclean)
+            distcleaned[dir] = true;
+    }
+
+    {
+        auto distclean_commands = std::vector<std::string>();
+        for (const auto& pair: distcleaned)
+            distclean_commands.push_back("rm -rf " + pair.first);
+        distclean_commands.push_back("rm -rf Makefile");
+
+        auto target = std::make_shared<makefile::target>(
+            "distclean",
+            "DISTCLEAN",
+            std::vector<makefile::target::ptr>{},
+            std::vector<makefile::global_targets>{},
+            distclean_commands,
+            std::vector<std::string>{"distclean"}
+        );
+
+        makefile->add_target(target);
     }
 
     makefile->write_to_file("Makefile");
