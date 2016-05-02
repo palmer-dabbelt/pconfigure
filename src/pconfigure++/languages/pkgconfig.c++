@@ -31,12 +31,28 @@ language_pkgconfig* language_pkgconfig::clone(void) const
 
 bool language_pkgconfig::can_process(const context::ptr& ctx) const
 {
-    return language::all_sources_match(
-        ctx,
-        {
-            std::regex(".*\\.pc"),
-        }
-        );
+    switch (ctx->type) {
+    case context_type::DEFAULT:
+    case context_type::GENERATE:
+    case context_type::HEADER:
+    case context_type::BINARY:
+    case context_type::SOURCE:
+    case context_type::TEST:
+        return false;
+
+    case context_type::LIBRARY:
+        return language::all_sources_match(
+            ctx,
+            {
+                std::regex(".*\\.pc"),
+            }
+            );
+    }
+
+    std::cerr << "Internal error: bad context type "
+              << std::to_string(ctx->type)
+              << "\n";
+    abort();
 }
 
 std::vector<makefile::target::ptr>
