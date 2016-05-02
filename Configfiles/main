@@ -138,6 +138,7 @@ SOURCES     += pconfigure++/languages/cxx.c++
 SOURCES     += pconfigure++/languages/chisel.c++
 SOURCES     += pconfigure++/languages/perl.c++
 SOURCES     += pconfigure++/languages/h.c++
+SOURCES     += pconfigure++/languages/implicit_h.c++
 TESTSRC     += version.bash
 TESTSRC     += simple-c.bash
 TESTSRC     += tek.bash
@@ -156,6 +157,7 @@ TESTSRC     += bash-test-opts.bash
 TESTSRC     += h.bash
 TESTSRC     += exec-config.bash
 TESTSRC     += prefix.bash
+TESTSRC     += implicit_h.bash
 
 # These command-line tools are technically availiable for external
 # usage, but they're really just for internal tests.

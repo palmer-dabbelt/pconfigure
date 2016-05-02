@@ -21,6 +21,7 @@
 #include "command_processor.h++"
 #include "commands.h++"
 #include "languages/gen_proc.h++"
+#include "languages/implicit_h.h++"
 #include <iostream>
 
 command_processor::command_processor(void)
@@ -31,6 +32,10 @@ command_processor::command_processor(void)
     _stack.push(std::make_shared<context>());
     auto tos = _stack.top();
     tos->languages->add(std::make_shared<language_gen_proc>(
+        std::vector<std::string>{},
+        std::vector<std::string>{}
+    ));
+    tos->languages->add(std::make_shared<language_implicit_h>(
         std::vector<std::string>{},
         std::vector<std::string>{}
     ));
