@@ -45,7 +45,7 @@ makefile::target::target(const std::string& name)
 {
 }
 
-makefile::target::ptr makefile::target::without(makefile::global_targets mask)
+makefile::target::ptr makefile::target::without(makefile::global_targets mask) const
 {
     auto global = std::vector<global_targets>();
     for (const auto g: _global)

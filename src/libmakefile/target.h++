@@ -60,7 +60,7 @@ namespace makefile {
 
     public:
         /* Returns a copy of this target without the given global target. */
-        ptr without(global_targets g);
+        ptr without(global_targets g) const;
 
     public:
         /* Writes this target (and with its commands) to the given
