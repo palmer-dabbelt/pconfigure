@@ -1,3 +1,7 @@
 LANGUAGES   += c
 COMPILEOPTS += -g
 LINKOPTS    += -g
+
+LANGUAGES   += c++
+COMPILEOPTS += -g
+LINKOPTS    += -g

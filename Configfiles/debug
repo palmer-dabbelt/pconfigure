@@ -1,4 +1,7 @@
+CONFIG += debugsym
+
 LANGUAGES   += c
-COMPILEOPTS += -g
-LINKOPTS    += -g
+COMPILEOPTS += -DDEBUG
+
+LANGUAGES   += c++
 COMPILEOPTS += -DDEBUG
