@@ -158,6 +158,7 @@ TESTSRC     += h.bash
 TESTSRC     += exec-config.bash
 TESTSRC     += prefix.bash
 TESTSRC     += implicit_h.bash
+TESTSRC     += c-test.bash
 
 # These command-line tools are technically availiable for external
 # usage, but they're really just for internal tests.

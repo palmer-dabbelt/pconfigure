@@ -62,6 +62,10 @@ namespace makefile {
         /* Returns a copy of this target without the given global target. */
         ptr without(global_targets g) const;
 
+        /* Returns TRUE if this target is a dependency of the given global
+         * target. */
+        bool has_global_target(const global_targets& g) const;
+
     public:
         /* Writes this target (and with its commands) to the given
          * file. */

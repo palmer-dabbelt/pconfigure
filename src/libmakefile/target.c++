@@ -60,6 +60,15 @@ makefile::target::ptr makefile::target::without(makefile::global_targets mask) c
                                     _comment);
 }
 
+bool makefile::target::has_global_target(const global_targets& g) const
+{
+    for (const auto& myg: _global)
+        if (myg == g)
+            return true;
+
+    return false;
+}
+
 void makefile::target::write_to_file(FILE *file, bool verbose) const
 {
     /* First write a little header that adds the upcoming target to

@@ -203,6 +203,49 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
         }
 
         case context_type::TEST:
+        {
+            auto child_ctx = ctx->dup(context_type::BINARY);
+            child_ctx->bin_dir = ctx->obj_dir + "/" + ctx->check_dir;
+            auto bin_targets =
+                vector_util::filter(
+                    vector_util::map(targets(child_ctx),
+                                     [](const makefile::target::ptr& t)
+                                     {
+                                         return t->without(makefile::global_targets::ALL);
+                                     }),
+                    [](const makefile::target::ptr& t)
+                    {
+                        return !t->has_global_target(makefile::global_targets::INSTALL);
+                    });
+            auto bin_name = ctx->type == context_type::BINARY ? ctx->test_binary : bin_targets[0]->name();
+            auto deps = std::vector<makefile::target::ptr>{
+                            std::make_shared<makefile::target>(bin_name)
+                        } + bin_targets;
+
+            auto target_name = ctx->check_dir + "/" + ctx->cmd->data();
+            auto short_cmd = "CHECK\t" + ctx->cmd->data();
+            auto global_targets = std::vector<makefile::global_targets>{
+                makefile::global_targets::CHECK,
+                makefile::global_targets::CLEAN
+            };
+            auto test_name = ctx->obj_dir + "/" + ctx->check_dir + "/" + ctx->cmd->data();
+            auto commands = std::vector<std::string>{
+                "mkdir -p " + ctx->check_dir,
+                "ptest --test " + test_name + " --out " + target_name + " --bin " + bin_name
+            };
+            auto comment = std::vector<std::string>{
+                "language_cxx::targets() CHECK"
+            };
+            auto check_target = std::make_shared<makefile::target>(target_name,
+                                                                   short_cmd,
+                                                                   deps,
+                                                                   global_targets,
+                                                                   commands,
+                                                                   comment);
+
+            return bin_targets + std::vector<makefile::target::ptr>{check_target};
+        }
+
         case context_type::DEFAULT:
         case context_type::GENERATE:
         case context_type::SOURCE:
