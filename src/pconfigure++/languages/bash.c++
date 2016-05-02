@@ -32,12 +32,28 @@ language_bash* language_bash::clone(void) const
 
 bool language_bash::can_process(const context::ptr& ctx) const
 {
+    switch (ctx->type) {
+    case context_type::DEFAULT:
+    case context_type::LIBRARY:
+    case context_type::GENERATE:
+    case context_type::HEADER:
+        return false;
+
+    case context_type::BINARY:
+    case context_type::SOURCE:
+    case context_type::TEST:
     return language::all_sources_match(
         ctx,
         {
             std::regex(".*\\.bash"),
         }
         );
+    }
+
+    std::cerr << "Internal error: bad context type "
+              << std::to_string(ctx->type)
+              << "\n";
+    abort();
 }
 
 std::vector<makefile::target::ptr>
@@ -57,6 +73,7 @@ language_bash::targets(const context::ptr& ctx) const
         abort();
         break;
 
+    case context_type::HEADER:
     case context_type::BINARY:
     {
         /* BASH-like languages are designed to be super simple: since

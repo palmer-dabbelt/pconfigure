@@ -32,12 +32,28 @@ language_gen_proc* language_gen_proc::clone(void) const
 
 bool language_gen_proc::can_process(const context::ptr& ctx) const
 {
-    return language::all_sources_match(
-        ctx,
-        {
-            std::regex(".*\\.proc"),
-        }
-        );
+    switch (ctx->type) {
+    case context_type::DEFAULT:
+    case context_type::BINARY:
+    case context_type::LIBRARY:
+    case context_type::SOURCE:
+    case context_type::TEST:
+    case context_type::HEADER:
+        return false;
+
+    case context_type::GENERATE:
+        return language::all_sources_match(
+            ctx,
+            {
+                std::regex(".*\\.proc"),
+            }
+            );
+    }
+
+    std::cerr << "Internal error: bad context type "
+              << std::to_string(ctx->type)
+              << "\n";
+    abort();
 }
 
 std::vector<makefile::target::ptr>
@@ -51,6 +67,7 @@ language_gen_proc::targets(const context::ptr& ctx) const
     case context_type::LIBRARY:
     case context_type::SOURCE:
     case context_type::TEST:
+    case context_type::HEADER:
         std::cerr << "Unimplemented context type: "
                   << std::to_string(ctx->type)
                   << "\n";

@@ -120,6 +120,7 @@ language_chisel::targets(const context::ptr& ctx) const
             case context_type::GENERATE:
             case context_type::SOURCE:
             case context_type::TEST:
+            case context_type::HEADER:
             std::cerr << "Unimplemented context type: "
             << std::to_string(ctx->type)
             << "\n";

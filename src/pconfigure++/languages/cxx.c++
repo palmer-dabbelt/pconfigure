@@ -58,6 +58,7 @@ bool language_cxx::can_process(const context::ptr& ctx) const
             case context_type::LIBRARY:
             case context_type::BINARY:
             case context_type::TEST:
+            case context_type::HEADER:
                 break;
 
             case context_type::SOURCE:
@@ -88,6 +89,7 @@ language_cxx::shared_target language_cxx::is_shared_target(const context::ptr& c
         case context_type::GENERATE:
         case context_type::SOURCE:
         case context_type::TEST:
+        case context_type::HEADER:
             break;
     }
 
@@ -181,6 +183,7 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
                 case context_type::BINARY:
                 case context_type::LIBRARY:
                 case context_type::GENERATE:
+                case context_type::HEADER:
                     std::cerr << "Unable to process " << ctx->cmd->debug() << "\n";
                     abort();
                     break;
@@ -203,6 +206,7 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
         case context_type::DEFAULT:
         case context_type::GENERATE:
         case context_type::SOURCE:
+        case context_type::HEADER:
             std::cerr
                 << "Unable to build C++ for unsupported context type "
                 << std::to_string(ctx->type)

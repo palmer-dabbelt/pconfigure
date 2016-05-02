@@ -158,7 +158,7 @@ void command_processor::process(const command::ptr& cmd)
             goto bad_op_pluseq;
 
         clear_until({context_type::DEFAULT});
-        dup_tos_and_push(context_type::BINARY, cmd);
+        dup_tos_and_push(context_type::HEADER, cmd);
 
         _stack.top()->bin_dir = _stack.top()->hdr_dir;
 
@@ -266,7 +266,8 @@ void command_processor::process(const command::ptr& cmd)
                     context_type::GENERATE,
                     context_type::LIBRARY,
                     context_type::BINARY,
-                    context_type::TEST});
+                    context_type::TEST,
+                    context_type::HEADER,});
         dup_tos_and_push(context_type::SOURCE, cmd);
 
         _opts_target = _stack.top();
@@ -286,7 +287,8 @@ void command_processor::process(const command::ptr& cmd)
         clear_until({context_type::DEFAULT,
                     context_type::GENERATE,
                     context_type::LIBRARY,
-                    context_type::BINARY,});
+                    context_type::BINARY,
+                    context_type::HEADER,});
         auto parent = _stack.top();
         dup_tos_and_push(context_type::TEST, cmd);
         auto child = _stack.top();

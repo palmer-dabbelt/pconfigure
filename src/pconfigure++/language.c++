@@ -50,6 +50,7 @@ bool language::all_sources_match(const context::ptr& ctx,
         case context_type::TEST:
             break;
 
+        case context_type::HEADER:
         case context_type::SOURCE:
         {
             size_t matched = 0;

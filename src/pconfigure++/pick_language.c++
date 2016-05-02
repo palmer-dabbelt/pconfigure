@@ -44,7 +44,12 @@ language::ptr pick_language(const language_list::ptr& languages,
                       << std::to_string(context->cmd->debug())
                       << "\nselecting the first one: "
                       << valid_languages[0]->name()
-                      << "\n\n";
+                      << "\n";
+            std::cerr << "Possible Languages:\n";
+            for (const auto& l: valid_languages)
+                if (l->priority() == valid_languages[0]->priority())
+                    std::cerr << "  " << l->name() << "\n";
+            std::cerr << "\n";
         }
     }
 
