@@ -157,6 +157,7 @@ TESTSRC     += bash-test-opts.bash
 TESTSRC     += h.bash
 TESTSRC     += exec-config.bash
 TESTSRC     += prefix.bash
+TESTSRC     += gitdate.bash
 TESTSRC     += implicit_h.bash
 TESTSRC     += c-test.bash
 TESTSRC     += c-deplib-test.bash
