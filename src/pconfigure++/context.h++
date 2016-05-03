@@ -145,6 +145,7 @@ public:
             const std::string& test_binary,
             const std::vector<std::string>& compile_opts,
             const std::vector<std::string>& link_opts,
+            const std::vector<std::string>& dep_libs,
             const command::ptr& cmd,
             bool verbose,
             const std::shared_ptr<language_list>& languages,
