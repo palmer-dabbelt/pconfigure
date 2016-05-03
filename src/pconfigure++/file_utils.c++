@@ -19,6 +19,7 @@
  */
 
 #include "file_utils.h++"
+#include "vector_util.h++"
 #include <cstdio>
 #include <sstream>
 using namespace file_utils;
@@ -42,6 +43,15 @@ std::vector<struct line_and_number> file_utils::readlines_and_numbers(FILE *f)
     }
 
     return out;
+}
+
+std::vector<std::string> file_utils::readlines(FILE *f)
+{
+    return vector_util::map(readlines_and_numbers(f),
+                            [](struct line_and_number ln)
+                            {
+                                return ln.line;
+                            });
 }
 
 std::vector<std::string>

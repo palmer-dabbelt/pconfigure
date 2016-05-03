@@ -26,6 +26,9 @@
 #include <fcntl.h>
 #include <cstdlib>
 #include <iostream>
+#include <sstream>
+
+static std::string execute(std::string line);
 
 std::vector<command::ptr> commands(int argc, const char **argv)
 {
@@ -104,7 +107,7 @@ std::vector<command::ptr> commands(const std::string& filename)
         return out;
 
     for (const auto& ln: file_utils::readlines_and_numbers(file)) {
-        auto line = string_utils::clean_white(ln.line);
+        auto line = execute(string_utils::clean_white(ln.line));
 
         /* Skip empty lines and anything beginning with a '#' --
          * those are comments. */
@@ -142,3 +145,32 @@ std::vector<command::ptr> commands(const std::string& filename)
 
     return out;
 }
+
+std::string execute(std::string line)
+{
+    if (line.find('`') == std::string::npos)
+        return line;
+
+    std::ostringstream executed;
+    std::ostringstream command;
+    bool in_command = false;
+    for (const auto& c: line) {
+        if (in_command == true && c == '`') {
+            auto f = popen(command.str().c_str(), "r");
+            for (const auto& l: file_utils::readlines(f))
+                executed << string_utils::clean_white(l);
+            pclose(f);
+        } else if (in_command == true) {
+            command << c;
+        } else if (c == '`') {
+            in_command = true;
+            command.str("");
+            command.clear(); 
+        } else {
+            executed << c;
+        }
+    }
+
+    return executed.str();
+}
+
