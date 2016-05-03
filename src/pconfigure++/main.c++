@@ -59,6 +59,7 @@ int main(int argc, const char **argv)
         auto to_distclean = std::vector<std::string>{
             context->bin_dir,
             context->check_dir,
+            context->lib_dir,
             context->obj_dir
         };
         for (const auto& dir: to_distclean)
