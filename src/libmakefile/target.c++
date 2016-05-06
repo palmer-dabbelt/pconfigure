@@ -117,3 +117,15 @@ void makefile::target::write_to_file(FILE *file, bool verbose) const
     }
     fprintf(file, "\n");
 }
+
+bool makefile::same_recipe(const target::ptr& a, const target::ptr& b)
+{
+    if (a->_cmds.size() != b->_cmds.size())
+        return false;
+
+    for (size_t i = 0; i < a->_cmds.size() && i < b->_cmds.size(); ++i)
+        if (a->_cmds[i] != b->_cmds[i])
+            return false;
+
+    return true;
+}

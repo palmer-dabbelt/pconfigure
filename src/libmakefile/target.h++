@@ -30,6 +30,7 @@ namespace makefile {
     class target {
     public:
         typedef std::shared_ptr<target> ptr;
+        friend bool same_recipe(const target::ptr& a, const target::ptr& b);
 
     private:
         const std::string _name;
@@ -71,6 +72,12 @@ namespace makefile {
          * file. */
         void write_to_file(FILE *file, bool verbose) const;
     };
+
+    /* Returns TRUE if two targets have equivilant recipes.  Note that you
+     * can't rely on this doing anything between a perfect equivilance match
+     * and a string comparison, since it currently does string compare but I
+     * might have to extend it. */
+    bool same_recipe(const target::ptr& a, const target::ptr& b);
 }
 
 #endif

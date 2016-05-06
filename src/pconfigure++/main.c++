@@ -30,6 +30,7 @@
 int main(int argc, const char **argv)
 {
     auto processor = std::make_shared<command_processor>();
+    auto targets = std::map<std::string, makefile::target::ptr>();
 
     for (const auto& command: commands(argc, argv))
         processor->process(command);
@@ -53,8 +54,15 @@ int main(int argc, const char **argv)
     auto distcleaned = std::map<std::string, bool>();
     for (const auto& context: processor->output_contexts()) {
         auto language = pick_language(context->languages, context);
-        for (const auto& target: language->targets(context))
-            makefile->add_target(target);
+        for (const auto& target: language->targets(context)) {
+            if (targets.find(target->name()) == targets.end()) {
+                makefile->add_target(target);
+            } else if (!same_recipe(targets.find(target->name())->second, target)) {
+                std::cout << "Mismatched recipe for targets with same name\n";
+                abort();
+            }
+            targets[target->name()] = target;
+        }
 
         auto to_distclean = std::vector<std::string>{
             context->bin_dir,
