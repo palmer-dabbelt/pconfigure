@@ -189,51 +189,6 @@ $ $DIRNAME/configure
 \end{verbatim}
 in the land of GNU tools.
 
-\subsection{\texttt{--binname}}
-
-See Section~\ref{cl:srcname}, this is hard to describe in isolation.
-
-\subsection{\texttt{--testname}}
-
-See Section~\ref{cl:srcname}, this is hard to describe in isolation.
-
-\subsection{\texttt{--srcname} \label{cl:srcname}}
-
-The tree commands \texttt{--binname}, \texttt{--testname}, and
-\texttt{--srcname} are all related and can only really be described
-together.  The idea behind these is to allow interrogating a running
-\pconfigure\ instance from inside the \texttt{Configfile}.
-
-The general idea is that you can query the full name of an object that
-\pconfigure\ builds.  You must provide either \texttt{--binname} or
-\texttt{--testname} whenever you provide \texttt{--srcname}.  When you
-pass \texttt{--srcname}, rather that outputting a \texttt{Makefile}
-\pconfigure\ will print an object name to \texttt{stdout}.  The binary
-name will coorespond to the object that gets built for the given
-source and target name.
-
-For example, if you have the configuration file
-\begin{verbatim}
-...
-BINARIES += target
-SOURCES  += source.c
-...
-\end{verbatim}
-then running \texttt{pconfigure --binname target --srcname source.c}
-will produce the object that pconfigure links into \texttt{bin/target}
-when it compiles \texttt{src/source.c}.  This could be useful if you
-need to interrogate this output from some script somewhere (for
-example, from a \texttt{GENERATE} script).  Note that you can ask for
-sources that are implicitly included in a binary.  The only difference
-between providing \texttt{--testname} and \texttt{--binname} is that
-\texttt{--testname} cooresponds to \texttt{TESTS} and
-\texttt{--binname} cooresponds to \texttt{BINARIES}.
-
-Note that passing any of these options disables \texttt{Makefile}
-output by redirecting writes to \texttt{/dev/null}).  Additionally,
-providing any of these arguments will disable any future calls to
-shell outs, as otherwise a \texttt{Configfile} could recurse forever.
-
 \section{\texttt{make} Targets \label{make}}
 
 \subsection{\texttt{make all} \label{make:all}}
