@@ -155,16 +155,16 @@ stored in the \texttt{struct clopts} structure and is filled in
 
 \subsection{\texttt{--config <filename>}}
 
-Loads a configuration file, see Section~\ref{cmd:config} for more
-information.  Calling \texttt{--config <filename>} is exactly the same
-as inserting a \texttt{CONFIG += <filename>} as the first line of your
-\texttt{Configfile}.  Specifically, the configurations will be loaded
-in the following order:
+Loads a configuration file, see Section~\ref{cmd:config} for more information.
+Calling \texttt{--config <filename>} is exactly the same as inserting a
+\texttt{CONFIG += <filename>} before any file-based configurations are
+specified..  Specifically, the configurations will be loaded in the following
+order:
 
 \begin{verbatim}
+Files listed by --config
 Configfiles/local
 Configfile.local
-Files listed by --config
 Configfiles/main
 Configfile
 \end{verbatim}
