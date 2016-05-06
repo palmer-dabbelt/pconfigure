@@ -28,6 +28,9 @@
 #include <iostream>
 #include <sstream>
 
+/* FIXME: This is a hack, it's set from command.c++ */
+std::string srcpath = ".";
+
 static std::string execute(std::string line);
 
 std::vector<command::ptr> commands(int argc, const char **argv)
@@ -73,8 +76,8 @@ std::vector<command::ptr> commands(const std::string& prefix,
                                    const std::string& suffix)
 {
     auto filenames = std::vector<std::string>{
-        prefix + "s/" + suffix,
-        prefix + "." + suffix
+        srcpath + "/" + prefix + "s/" + suffix,
+        srcpath + "/" + prefix + "." + suffix
     };
 
     std::vector<command::ptr> out;
@@ -88,10 +91,10 @@ std::vector<command::ptr> commands(const std::string& prefix,
 std::vector<command::ptr> commands(void)
 {
     auto filenames = std::vector<std::string>{
-        "Configfiles/local",
-        "Configfile.local",
-        "Configfiles/main",
-        "Configfile"
+        srcpath + "/Configfiles/local",
+        srcpath + "/Configfile.local",
+        srcpath + "/Configfiles/main",
+        srcpath + "/Configfile"
     };
 
     std::vector<command::ptr> out;

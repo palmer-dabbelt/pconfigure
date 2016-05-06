@@ -22,6 +22,8 @@
 #include "string_utils.h++"
 #include <iostream>
 
+extern std::string srcpath;
+
 command::command(const command_type& type,
                  const std::string& op,
                  const std::string& data,
@@ -32,6 +34,8 @@ command::command(const command_type& type,
       _debug_info(debug_info),
       _needs_data(false)
 {
+    if (type == command_type::SRCPATH)
+        srcpath = data;
 }
 
 command::command(const command_type& type,
@@ -54,6 +58,8 @@ command::ptr command::parse(const std::string& str,
         return std::make_shared<command>(command_type::VERSION, "=", "true", d);
     if (str == "--config")
         return std::make_shared<command>(command_type::CONFIG, "+=", d);
+    if (str == "--srcpath")
+        return std::make_shared<command>(command_type::SRCPATH, "=", d);
 
     auto split = string_utils::split_char(str, " ");
     if (split.size() < 3) {

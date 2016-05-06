@@ -341,6 +341,14 @@ void command_processor::process(const command::ptr& cmd)
     case command_type::VERSION:
         this->_given_version_command = true;
         return;
+
+    case command_type::SRCPATH:
+        if (cmd->check_operation("=") == false)
+            goto bad_op_eq;
+
+        tos->src_dir = cmd->data() + "/" + tos->src_dir;
+        tos->test_dir = cmd->data() + "/" + tos->test_dir;
+        return;
     }
 
     std::cerr << "Bad command index on '"

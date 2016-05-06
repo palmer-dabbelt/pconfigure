@@ -165,6 +165,7 @@ TESTSRC     += multi-language-build.bash
 TESTSRC     += execute-line.bash
 TESTSRC     += multi-static-link.bash
 TESTSRC     += dashdash-config.bash
+TESTSRC     += srcpath.bash
 
 # These command-line tools are technically availiable for external
 # usage, but they're really just for internal tests.

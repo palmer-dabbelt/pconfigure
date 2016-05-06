@@ -18,7 +18,7 @@ CDIR=`pwd`
 cd $tempdir
 echo "Running"
 
-cat Configfile
+find -name "Configfile" | xargs cat
 $PTEST_BINARY $ARGS
 
 cat Makefile
