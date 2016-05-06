@@ -128,7 +128,7 @@ language_bash::targets(const context::ptr& ctx) const
                                                              commands,
                                                              comment);
 
-        auto install_path = ctx->prefix + "/" + target;
+        auto install_path = "$(DESTDIR)/" + ctx->prefix + "/" + target;
 
         auto global_install_targets = std::vector<makefile::global_targets>{
             makefile::global_targets::INSTALL,

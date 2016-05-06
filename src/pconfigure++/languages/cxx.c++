@@ -581,7 +581,7 @@ language_cxx::link_objects(const context::ptr& ctx,
      * Makefile, we build the "copy" targets that depend on the generated
      * Makefile. */
     auto cp_install_target = std::make_shared<cp_target>(
-        ctx->prefix + "/" + bin_dir + "/" + ctx->cmd->data(),
+        "$(DESTDIR)/" + ctx->prefix + "/" + bin_dir + "/" + ctx->cmd->data(),
         install_target,
         language_cxx::install_target::TRUE,
         shared_comments + std::vector<std::string>{"cp_install_target"}

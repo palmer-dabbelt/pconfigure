@@ -63,7 +63,7 @@ language_implicit_h::targets(const context::ptr& ctx) const
             abort();
         }
 
-        auto install_path = ctx->prefix + "/" + ctx->hdr_dir + ctx->cmd->data();
+        auto install_path = "$(DESTDIR)/" + ctx->prefix + "/" + ctx->hdr_dir + ctx->cmd->data();
         auto header_path = ctx->hdr_dir + "/" + ctx->cmd->data();
         
         auto global_install_targets = std::vector<makefile::global_targets>{
