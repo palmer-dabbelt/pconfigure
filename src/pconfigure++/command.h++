@@ -26,7 +26,8 @@
 #include "debug_info.h++"
 
 /* Represents */
-class command {
+class command;
+class command: public std::enable_shared_from_this<command> {
 public:
     typedef std::shared_ptr<command> ptr;
 
@@ -35,11 +36,15 @@ private:
     const std::string _op;
     const std::string _data;
     const debug_info::ptr _debug_info;
+    const bool _needs_data;
 
 public:
     command(const command_type& type,
             const std::string& op,
             const std::string& data,
+            const debug_info::ptr& debug_info);
+    command(const command_type& type,
+            const std::string& op,
             const debug_info::ptr& debug_info);
 
 public:
@@ -47,6 +52,9 @@ public:
     const std::string& operation(void) const { return _op; }
     const std::string data(void) const { return _data; }
     const debug_info::ptr& debug(void) const { return _debug_info; }
+
+public:
+    ptr consume_extra_arguments(int& i, int argc, const char **argv);
 
 public:
     /* Checks to make sure that the command's operation is exactly

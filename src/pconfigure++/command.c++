@@ -29,7 +29,19 @@ command::command(const command_type& type,
     : _type(type),
       _op(op),
       _data(data),
-      _debug_info(debug_info)
+      _debug_info(debug_info),
+      _needs_data(false)
+{
+}
+
+command::command(const command_type& type,
+                 const std::string& op,
+                 const debug_info::ptr& debug_info)
+    : _type(type),
+      _op(op),
+      _data(),
+      _debug_info(debug_info),
+      _needs_data(true)
 {
 }
 
@@ -40,6 +52,8 @@ command::ptr command::parse(const std::string& str,
         return std::make_shared<command>(command_type::VERBOSE, "=", "true", d);
     if (str == "--version")
         return std::make_shared<command>(command_type::VERSION, "=", "true", d);
+    if (str == "--config")
+        return std::make_shared<command>(command_type::CONFIG, "+=", d);
 
     auto split = string_utils::split_char(str, " ");
     if (split.size() < 3) {
@@ -65,4 +79,21 @@ command::ptr command::parse(const std::string& str,
         std::cerr << "Unknown exception type when parsing command\n";
         return NULL;
     }
+}
+
+command::ptr command::consume_extra_arguments(int& i, int argc,
+                                              const char **argv)
+{
+    if (_needs_data == false)
+        return shared_from_this();
+
+    if (i >= argc)
+        return nullptr;
+
+    return std::make_shared<command>(
+        this->_type,
+        this->_op,
+        argv[++i],
+        this->_debug_info
+    );
 }

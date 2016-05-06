@@ -49,8 +49,18 @@ std::vector<command::ptr> commands(int argc, const char **argv)
 
             abort();
         }
+        auto ecmd = cmd->consume_extra_arguments(i, argc, argv);
+        if (cmd == NULL) {
+            std::cerr << "Unable to parse extra arguments "
+                      << (i - 1)
+                      << ": '"
+                      << argv[i]
+                      << "'\n";
 
-        out.push_back(cmd);
+            abort();
+        }
+
+        out.push_back(ecmd);
     }
 
     for (const auto& command: commands())

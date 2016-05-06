@@ -19,7 +19,7 @@ cd $tempdir
 echo "Running"
 
 cat Configfile
-$PTEST_BINARY
+$PTEST_BINARY $ARGS
 
 cat Makefile
 make
