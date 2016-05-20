@@ -49,6 +49,21 @@ command::command(const command_type& type,
 {
 }
 
+command::ptr command::with_type(const command_type& type)
+{
+    if (this->_needs_data)
+        return std::make_shared<command>(
+            type,
+            this->_op,
+            this->_debug_info);
+    else
+        return std::make_shared<command>(
+            type,
+            this->_op,
+            this->_data,
+            this->_debug_info);
+}
+
 command::ptr command::parse(const std::string& str,
                             const debug_info::ptr& d)
 {

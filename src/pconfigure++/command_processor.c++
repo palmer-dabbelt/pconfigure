@@ -306,25 +306,9 @@ void command_processor::process(const command::ptr& cmd)
     }
 
     case command_type::TESTSRC:
-    {
-        if (cmd->check_operation("+=") == false)
-            goto bad_op_pluseq;
-
-        clear_until({context_type::DEFAULT,
-                    context_type::GENERATE,
-                    context_type::LIBRARY,
-                    context_type::BINARY,});
-        auto parent = _stack.top();
-        dup_tos_and_push(context_type::TEST, cmd);
-        auto child = _stack.top();
-        child->src_dir = parent->test_dir + "/" + parent->cmd->data();
-        child->check_dir = parent->check_dir + "/" + parent->cmd->data();
-
-        dup_tos_and_push(context_type::SOURCE, cmd);
-        _opts_target = _stack.top();
-
+        process(cmd->with_type(command_type::TESTS));
+        process(cmd->with_type(command_type::SOURCES));
         return;
-    }
 
     case command_type::TGENERATE:
         unimplemented:

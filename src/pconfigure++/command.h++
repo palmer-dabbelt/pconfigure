@@ -62,6 +62,8 @@ public:
     bool check_operation(const std::string& allowed_op)
         { return operation() == allowed_op; }
     
+    /* Copies this command, but gives it a different type. */
+    ptr with_type(const command_type& type);
 
 public:
     /* Converts a command string (as stored in the Configfile or as a
