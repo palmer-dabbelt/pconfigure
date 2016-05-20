@@ -3,16 +3,19 @@ addons:
   apt:
     sources:
       - ubuntu-toolchain-r-test
+      - llvm-toolchain-precise-3.5
     packages:
       - build-essential
       - gcc-4.9
       - g++-4.9
       - gcc-5
       - g++-5
+      - clang-3.5
 matrix:
   include:
      - env: TRAVIS_CC=gcc-4.9 TRAVIS_CXX=g++-4.9
      - env: TRAVIS_CC=gcc-5   TRAVIS_CXX=g++-5
+     - env: TRAVIS_CC=clang   TRAVIS_CXX=clang++
 before_install:
   export CC=$TRAVIS_CC
   export CXX=$TRAVIS_CXX
