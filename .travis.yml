@@ -5,10 +5,13 @@ addons:
       - ubuntu-toolchain-r-test
     packages:
       - build-essential
+      - gcc-4.8
+      - g++-4.8
       - gcc-4.9
       - g++-4.9
 matrix:
   include:
+     - env: TRAVIS_CC=gcc-4.8 TRAVIS_CXX=g++-4.8
      - env: TRAVIS_CC=gcc-4.9 TRAVIS_CXX=g++-4.9
 before_install:
   export CC=$TRAVIS_CC
