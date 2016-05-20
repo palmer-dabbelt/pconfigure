@@ -40,7 +40,7 @@ public:
 public:
     /* Allows sub-classes of this language to override the compiler and linker
      * strings. */
-    virtual std::string compiler_command(void) const { return "${CXX}"; }
+    virtual std::string compiler_command(void) const { return "${CXX} -x c++"; }
     virtual std::string compiler_pretty (void) const { return "C++";    }
     virtual std::string linker_command  (void) const { return "${CXX}"; }
     virtual std::string linker_pretty   (void) const { return "LD++";   }
