@@ -59,7 +59,7 @@ then
 
                 if [[ "$verbose" == "true" ]]
                 then
-                    cat "$f"
+                    tar -xOf "$f" ptest__output
                 fi
             fi
         done
