@@ -7,9 +7,12 @@ addons:
       - build-essential
       - gcc-4.9
       - g++-4.9
+matrix:
+  include:
+     - env: TRAVIS_CC=gcc-4.9 TRAVIS_CXX=g++-4.9
 before_install:
-  - export CXX=g++-4.9
-  - export CC=gcc-4.9
+  export CC=$TRAVIS_CC
+  export CXX=$TRAVIS_CXX
 script:
   - ./bootstrap.sh
   - PATH="$(pwd)/bin:$PATH" make check
