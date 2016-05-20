@@ -333,6 +333,12 @@ void command_processor::process(const command::ptr& cmd)
         tos->src_dir = cmd->data() + "/" + tos->src_dir;
         tos->test_dir = cmd->data() + "/" + tos->test_dir;
         return;
+
+    case command_type::HEADERSRC:
+        process(cmd->with_type(command_type::HEADERS));
+        process(cmd->with_type(command_type::SOURCES));
+        return;
+
     }
 
     std::cerr << "Bad command index on '"
