@@ -176,7 +176,7 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
                 case context_type::TEST:
                 {
                     auto l = pick_language(ctx->languages, child);
-                    auto filtered_child = [&]()
+                    auto filtered_child = [&]() -> context::ptr
                         {
                             if (l->name() == this->name())
                                 return child;
