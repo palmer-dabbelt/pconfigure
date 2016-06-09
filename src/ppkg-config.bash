@@ -33,7 +33,7 @@ do
 done
 
 # Actually runs pkg-config
-stdout=$($cmd $args 2> /dev/null)
+stdout=$($cmd $args 2> /dev/null | sed 's^-L/usr/lib64^^g' | sed 's^-Wl,-rpath,/usr/lib64^^g' | sed 's^-L/usr/lib^^g' | sed 's^-Wl,-rpath,/usr/lib^^g')
 retval="$?"
 
 # If --optional is given then don't panic
