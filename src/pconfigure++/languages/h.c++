@@ -31,13 +31,41 @@ language_h* language_h::clone(void) const
 
 bool language_h::can_process(const context::ptr& ctx) const
 {
-    return language::all_sources_match(
-        ctx,
-        {
-            std::regex(".*\\.h"),
-            std::regex(".*\\.h\\+\\+"),
+    if(language::all_sources_match(ctx,
+                                   {std::regex(".*\\.h")})) {
+        return true;
+    }
+
+    /* This works around a C++11 regex bug in GCC versions prior to
+     * 4.9 -- specifically, I can't match the "c++" extension because
+     * the old regex implementation doesn't appear to support escaping
+     * the '+' character. */
+    if (language::all_sources_match(ctx, {std::regex(".*\\.h..")})) {
+        for (const auto& child: ctx->children) {
+            switch (child->type) {
+            case context_type::DEFAULT:
+            case context_type::GENERATE:
+            case context_type::LIBRARY:
+            case context_type::BINARY:
+            case context_type::TEST:
+            case context_type::HEADER:
+                break;
+
+            case context_type::SOURCE:
+            {
+                auto file = child->cmd->data();
+                if ((file.find(".h++", file.length() - 5) == std::string::npos)
+                    && (file.find(".h", file.length() - 3) == std::string::npos)) {
+                    return false;
+                }
+            }
+            }
         }
-        );
+
+        return true;
+    }
+
+    return false;
 }
 
 static void install_h(void) __attribute__((constructor));
