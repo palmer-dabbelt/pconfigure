@@ -295,6 +295,21 @@ language_cxx::find_files_for_header(const std::string& full_header_path) const
         }
     }
 
+#if ((__GNUC__ == 4) && (__GNUC_MINOR__ == 8))
+    /* GCC-4.8 has bad regex support, so it drops the ".h++" to ".c++"
+     * conversion. */
+    {
+        auto lpos = full_header_path.find_last_of(".");
+        for (const auto& ending: std::vector<std::string>{".c++", ".c"}) {
+            if (lpos != std::string::npos) {
+                auto f = full_header_path.substr(0, lpos) + ending;
+                if (access(f.c_str(), R_OK) == 0)
+                    out.push_back(f);
+            }
+        }
+    }
+#endif
+
     return out;
 }
 
