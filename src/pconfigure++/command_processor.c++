@@ -339,6 +339,9 @@ void command_processor::process(const command::ptr& cmd)
         process(cmd->with_type(command_type::SOURCES));
         return;
 
+    case command_type::DEBUG:
+        _stack.top()->debug = true;
+        return;
     }
 
     std::cerr << "Bad command index on '"

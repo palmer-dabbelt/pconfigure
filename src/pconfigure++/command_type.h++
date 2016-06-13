@@ -58,6 +58,7 @@ enum class command_type {
     VERSION,
     SRCPATH,
     HEADERSRC,
+    DEBUG,
 };
 
 /* A utility function that allows one to iterate through all the
@@ -92,6 +93,7 @@ static const std::vector<command_type> all_command_types =
     command_type::VERSION,
     command_type::SRCPATH,
     command_type::HEADERSRC,
+    command_type::DEBUG,
 };
 
 /* Converts a command_type to a string, in the standard C++11 way. */
@@ -155,6 +157,8 @@ namespace std {
             return "SRCPATH";
         case command_type::HEADERSRC:
             return "HEADERSRC";
+        case command_type::DEBUG:
+            return "DEBUG";
         }
 
         throw "Unable to convert " + to_string(static_cast<int>(cmd)) + " to string";

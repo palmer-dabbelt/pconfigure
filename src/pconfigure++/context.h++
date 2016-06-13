@@ -109,6 +109,9 @@ public:
     /* This is TRUE when this target should be built in VERBOSE mode. */
     bool verbose;
 
+    /* This is TRUE when this target should be built in DEBUG mode. */
+    bool debug;
+
     /* The list of languages that are availiable to be used when trying to link
      * sub-objects and tests and such. */
     const std::shared_ptr<language_list> languages;
@@ -148,6 +151,7 @@ public:
             const std::vector<std::string>& dep_libs,
             const command::ptr& cmd,
             bool verbose,
+            bool debug,
             const std::shared_ptr<language_list>& languages,
             bool autodeps,
             const std::vector<ptr>& children);

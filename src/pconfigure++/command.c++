@@ -75,6 +75,8 @@ command::ptr command::parse(const std::string& str,
         return std::make_shared<command>(command_type::CONFIG, "+=", d);
     if (str == "--srcpath")
         return std::make_shared<command>(command_type::SRCPATH, "=", d);
+    if (str == "--debug")
+        return std::make_shared<command>(command_type::DEBUG, "=", "true", d);
 
     auto split = string_utils::split_char(str, " ");
     if (split.size() < 3) {

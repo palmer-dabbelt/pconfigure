@@ -53,9 +53,14 @@ int main(int argc, const char **argv)
 
     auto distcleaned = std::map<std::string, bool>();
     for (const auto& context: processor->output_contexts()) {
+        if (context->debug == true)
+            std::cerr << "Building Context: " << context->cmd->data() << "\n";
+
         auto language = pick_language(context->languages, context);
         for (const auto& target: language->targets(context)) {
             if (targets.find(target->name()) == targets.end()) {
+                if (context->debug == true)
+                    std::cerr << "  target: " << target->name() << "\n";
                 makefile->add_target(target);
             } else if (!same_recipe(targets.find(target->name())->second, target)) {
                 std::cout << "Mismatched recipe for targets with same name\n";
