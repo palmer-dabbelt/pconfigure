@@ -29,13 +29,15 @@ extern "C" {
 /* Lists the files included by a given source file. */
 typedef int (*pinclude_callback_t) (const char *filename, void *priv);
 int pinclude_list(const char *filename, pinclude_callback_t cb, void *priv,
-                  const char **include_dirs, const char **defined);
+                  const char **include_dirs, const char **defined,
+		  int skip_missing_files);
 
 typedef int (*pinclude_lineback_t) (const char *line, void *priv);
 int pinclude_lines(const char *filename,
                    pinclude_callback_t per_include, void *include_priv,
                    pinclude_lineback_t per_line, void *line_priv,
-                   const char **include_dirs, const char **defined);
+                   const char **include_dirs, const char **defined,
+		   int skip_missing_files);
 
 #ifdef __cplusplus
 }

@@ -58,7 +58,7 @@ int main(int argc __attribute__ ((unused)),
         return 0;
 
     defs[0] = NULL;
-    return pinclude_list(input, &callback, NULL, (const char **)dirs, (const char **)defs);
+    return pinclude_list(input, &callback, NULL, (const char **)dirs, (const char **)defs, 1);
 }
 
 int callback(const char *filename, void *unused)

@@ -55,7 +55,8 @@ static int _pinclude_lines(const char *input,
                            pinclude_callback_t per_include,
                            void *include_priv, pinclude_lineback_t per_line,
                            void *line_priv, const char **include_dirs,
-                           const char **defined, char **included)
+                           const char **defined, char **included,
+			   int skip_missing_files)
 {
     int err;
     FILE *infile;
@@ -241,7 +242,17 @@ static int _pinclude_lines(const char *input,
                 }
 
                 goto skip_dirs;
-            }
+            } else if (skip_missing_files == 0) {
+                if (per_include != NULL) {
+                    if ((err = per_include(full_path, include_priv)) != 0) {
+                        free(dir_path);
+                        free(filename);
+                        free(full_path);
+
+                        return err;
+                    }
+                }
+	    }
 
             /* Check each additional include directory */
             for (i = 0; include_dirs[i] != NULL; i++) {
@@ -284,7 +295,8 @@ static int _pinclude_lines(const char *input,
             _pinclude_lines(full_path,
                             per_include, include_priv,
                             per_line, line_priv,
-                            include_dirs, defined, included);
+                            include_dirs, defined, included,
+			    skip_missing_files);
 
           skip_file:
             free(dir_path);
@@ -305,16 +317,19 @@ static int _pinclude_lines(const char *input,
 }
 
 int pinclude_list(const char *filename, pinclude_callback_t cb, void *priv,
-                  const char **include_dirs, const char **defined)
+                  const char **include_dirs, const char **defined,
+		  int skip_missing_files)
 {
     return pinclude_lines(filename,
-                          cb, priv, NULL, NULL, include_dirs, defined);
+                          cb, priv, NULL, NULL, include_dirs, defined,
+			  skip_missing_files);
 }
 
 int pinclude_lines(const char *filename,
                    pinclude_callback_t per_include, void *include_priv,
                    pinclude_lineback_t per_line, void *line_priv,
-                   const char **include_dirs, const char **defined)
+                   const char **include_dirs, const char **defined,
+		   int skip_missing_files)
 {
     int err;
     int i;
@@ -326,7 +341,7 @@ int pinclude_lines(const char *filename,
     err = _pinclude_lines(filename,
                           per_include, include_priv,
                           per_line, line_priv,
-                          include_dirs, defined, included);
+                          include_dirs, defined, included, 1);
 
     for (i = 0; i < FILE_MAX; i++)
         if (included[i] != NULL)

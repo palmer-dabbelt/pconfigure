@@ -754,7 +754,8 @@ std::vector<std::string> language_cxx::dependencies(
                   &pinclude_callback,
                   &priv,
                   &include_dirs[0],
-                  &defined[0]);
+                  &defined[0],
+                  false);
 
     delete[] defined;
     delete[] include_dirs;

@@ -33,7 +33,8 @@ static int pinclude_callback(const char *path, void *args_uncase);
 int pinclude::list(std::string filename,
                    std::vector<std::string> include_dirs,
                    std::vector<std::string> defines,
-                   std::function<int(std::string)> callback)
+                   std::function<int(std::string)> callback,
+                   bool skip_missing_files)
 {
     size_t defines_i = 0;
     const char **defines_a = new const char*[defines.size() + 1];
@@ -53,7 +54,8 @@ int pinclude::list(std::string filename,
                              &pinclude_callback,
                              &args,
                              &include_dirs_a[0],
-                             &defines_a[0]);
+                             &defines_a[0],
+                             skip_missing_files ? 1 : 0);
 
     delete[] defines_a;
     delete[] include_dirs_a;

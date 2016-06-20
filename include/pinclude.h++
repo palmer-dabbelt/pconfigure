@@ -34,7 +34,8 @@ namespace pinclude {
     int list(std::string filename,
              std::vector<std::string> include_dirs,
              std::vector<std::string> defined,
-             std::function<int(std::string)> callback);
+             std::function<int(std::string)> callback,
+             bool skip_missing_files);
 }
 
 #endif
