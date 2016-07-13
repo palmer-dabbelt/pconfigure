@@ -623,6 +623,18 @@ language_cxx::compile_source(const context::ptr& ctx,
                              const shared_target& is_shared)
                              const
 {
+    auto filter_compile_opts = [&](const std::vector<std::string> compile_opts)
+        {
+            auto out = std::vector<std::string>();
+            for (const auto& opt: compile_opts) {
+                if (opt[0] == '-' && opt[1] == 'I' && opt[2] != '/')
+                    out.push_back("-I" + child->src_path + opt.substr(2));
+                else
+                    out.push_back(opt);
+            }
+            return out;
+        };
+
     auto shared_link_dir =
         child->obj_dir
         + "/" + ctx->cmd->data()
@@ -633,10 +645,12 @@ language_cxx::compile_source(const context::ptr& ctx,
 
     auto full_libexec_path = child->prefix + "/" + child->libexec_dir;
 
-    auto compile_opts = this->compile_opts() + child->compile_opts +
+    auto compile_opts =
+        filter_compile_opts(this->compile_opts()) +
+        filter_compile_opts(child->compile_opts) +
         std::vector<std::string>{
-            "-I" + child->hdr_dir,
-            "-I" + child->obj_dir + "/proc",
+            "-I" + child->src_path + child->hdr_dir,
+            "-I" + child->src_path + child->obj_dir + "/proc",
             "-D__PCONFIGURE__LIBEXEC=\\\"" + full_libexec_path + "\\\"",
             "-D__PCONFIGURE__PREFIX=\\\"" + ctx->prefix + "\\\""
         };

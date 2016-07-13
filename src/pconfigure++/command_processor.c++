@@ -332,6 +332,7 @@ void command_processor::process(const command::ptr& cmd)
 
         tos->src_dir = cmd->data() + "/" + tos->src_dir;
         tos->test_dir = cmd->data() + "/" + tos->test_dir;
+        tos->src_path = cmd->data() + "/";
         return;
 
     case command_type::HEADERSRC:

@@ -93,6 +93,10 @@ public:
      * used to build it. */
     std::string test_binary;
 
+    /* This is a bit odd: essentially all reads (except src_dir and test_dir,
+     * which have been munged already) have to be prefixed with "src_path". */
+    std::string src_path;
+
     /* These implement "opts_target" */
     std::vector<std::string> compile_opts;
     std::vector<std::string> link_opts;
@@ -146,6 +150,7 @@ public:
             const std::string& test_dir,
             const std::string& check_dir,
             const std::string& test_binary,
+            const std::string& src_path,
             const std::vector<std::string>& compile_opts,
             const std::vector<std::string>& link_opts,
             const std::vector<std::string>& dep_libs,
