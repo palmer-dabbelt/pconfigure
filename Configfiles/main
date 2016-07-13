@@ -8,6 +8,8 @@ COMPILEOPTS += -pedantic
 
 LANGUAGES   += bash
 
+LANGUAGES   += h
+
 LANGUAGES   += pkgconfig
 LINKOPTS    += -Sobj/proc/version-pc.sed
 
@@ -30,6 +32,12 @@ GENERATE    += version-pc.sed
 ##############################################################################
 # Libraries                                                                  #
 ##############################################################################
+HEADERS     += pinclude.h
+SOURCES     += libpinclude/pinclude.h
+
+HEADERS     += pinclude.h++
+SOURCES     += libpinclude/pinclude.h++
+
 LIBRARIES   += libpinclude.so
 SOURCES     += libpinclude/library.c
 
