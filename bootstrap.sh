@@ -42,12 +42,12 @@ fi
 #############################################################################
 # Manually builds some of the utilities                                     #
 #############################################################################
-./src/version.h.proc --generate > $BOOTSTRAP_DIR/version.h
+"$SOURCE_PATH"src/version.h.proc --generate > $BOOTSTRAP_DIR/version.h
 
 $CC --std=gnu99 \
     `find "$SOURCE_PATH"src/pbashc.c -iname "*.c"` \
     `find "$SOURCE_PATH"src/libpinclude/ -iname "*.c"` \
-    -I$BOOTSTRAP_DIR -Iinclude/ \
+    -I$BOOTSTRAP_DIR -I"$SOURCE_PATH"src/libpinclude \
     -DLANG_BASH \
     -o "$BOOTSTRAP_DIR/pbashc"
 
@@ -71,7 +71,7 @@ $CXX -x c++ --std=c++0x -Wall -Werror -g $CFLAGS \
     `find "$SOURCE_PATH"src/libmakefile/ -iname "*.c++"` \
     `find "$SOURCE_PATH"src/libpinclude/ -iname "*.c"` \
     `find "$SOURCE_PATH"src/libpinclude/ -iname "*.c++"` \
-    -Iinclude -Isrc \
+    -I"$SOURCE_PATH"src/libpinclude -I"$SOURCE_PATH"src \
     -I$BOOTSTRAP_DIR \
     -D__PCONFIGURE__LIBEXEC=\"$BOOTSTRAP_DIR/../libexec\" \
     -o "$BOOTSTRAP_DIR/pconfigure" || exit $?
@@ -79,7 +79,7 @@ $CXX -x c++ --std=c++0x -Wall -Werror -g $CFLAGS \
 # Runs pconfigure in order to build itself
 if [[ "$SOURCE_PATH" != "" ]]
 then
-    sp="--sourcepath $SOURCE_PATH"
+    sp="--srcpath $SOURCE_PATH"
 else
     sp=""
 fi
