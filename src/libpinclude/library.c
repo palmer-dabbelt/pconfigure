@@ -69,9 +69,6 @@ static int _pinclude_lines(const char *input,
     fprintf(stderr, "input: '%s'\n", input);
 #endif
 
-    if (input[0] == '/')
-        return 0;
-
     infile = fopen(input, "r");
 
     if (infile == NULL)
