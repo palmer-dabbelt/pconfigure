@@ -5,6 +5,12 @@ then
     shift
 fi
 
+if [[ "$1" == "--check" ]]
+then
+    make check
+    shift
+fi
+
 if [[ "$1" == "" ]]
 then
     make -q check
