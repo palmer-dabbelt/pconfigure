@@ -315,6 +315,7 @@ language_cxx::find_files_for_header(const std::string& full_header_path) const
 
 language_cxx::link_target::link_target(const std::string& target_path, 
                                        const std::vector<target::ptr>& objects,
+                                       const std::vector<target::ptr>& additional_deps,
                                        const install_target& install,
                                        const shared_target& shared,
                                        const std::vector<std::string>& comments,
@@ -324,6 +325,7 @@ language_cxx::link_target::link_target(const std::string& target_path,
                                        const std::string linker_pretty)
 : _target_path(target_path),
   _objects(objects),
+  _additional_deps(additional_deps),
   _install(install),
   _shared(shared),
   _comments(comments),
@@ -337,7 +339,7 @@ language_cxx::link_target::link_target(const std::string& target_path,
 makefile::target::ptr
 language_cxx::link_target::generate_makefile_target(void) const
 {
-    auto deps = vector_util::map(_objects,
+    auto deps = vector_util::map(_objects + _additional_deps,
                                  [](const target::ptr& t){
                                     return t->generate_makefile_target();
                                  });
@@ -565,12 +567,19 @@ language_cxx::link_objects(const context::ptr& ctx,
             "-L" + ctx->lib_dir,
         } + vector_util::map(ctx->dep_libs, [](std::string dl){ return "-l" + dl; });
 
+    auto additional_deps =
+        vector_util::map(ctx->dep_libs,
+                         [&](std::string dl) -> target::ptr {
+                            return std::make_shared<header_target>(ctx->lib_dir + "/lib" + dl + ".so");
+                         });
+
     /* There's actually two proper targets here: one which generates the link
      * that's targeted for installation, and one that generates the link that's
      * targeted for actual compulation. */
     auto install_target = std::make_shared<link_target>(
         shared_link_dir + "install",
         objects,
+        additional_deps,
         language_cxx::install_target::TRUE,
         is_shared_target(ctx),
         shared_comments + std::vector<std::string>{"install_target"},
@@ -583,6 +592,7 @@ language_cxx::link_objects(const context::ptr& ctx,
     auto local_target = std::make_shared<link_target>(
         shared_link_dir + "local",
         objects,
+        additional_deps,
         language_cxx::install_target::FALSE,
         is_shared_target(ctx),
         shared_comments + std::vector<std::string>{"local_target"},

@@ -99,6 +99,7 @@ protected:
     private:
         const std::string _target_path;
         const std::vector<target::ptr> _objects;
+        const std::vector<target::ptr> _additional_deps;
         const install_target _install;
         const shared_target _shared;
         const std::vector<std::string> _comments;
@@ -110,6 +111,7 @@ protected:
     public:
         link_target(const std::string& target_path,
                     const std::vector<target::ptr>& objects,
+                    const std::vector<target::ptr>& additional_deps,
                     const install_target& install,
                     const shared_target& shared,
                     const std::vector<std::string>& comments,
