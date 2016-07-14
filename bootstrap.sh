@@ -51,6 +51,9 @@ $CC --std=gnu99 \
     -DLANG_BASH \
     -o "$BOOTSTRAP_DIR/pbashc"
 
+$BOOTSTRAP_DIR/pbashc "$SOURCE_PATH"src/phc.bash \
+    -o $BOOTSTRAP_DIR/phc
+
 $BOOTSTRAP_DIR/pbashc "$SOURCE_PATH"src/ppkg-config.bash \
     -o $BOOTSTRAP_DIR/ppkg-config
 
