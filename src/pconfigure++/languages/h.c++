@@ -21,6 +21,7 @@
 #include "h.h++"
 #include "../language_list.h++"
 #include <assert.h>
+#include <unistd.h>
 #include <iostream>
 
 language_h* language_h::clone(void) const
@@ -66,6 +67,29 @@ bool language_h::can_process(const context::ptr& ctx) const
     }
 
     return false;
+}
+
+std::vector<makefile::target::ptr>
+language_h::targets(const context::ptr& ctx) const
+{
+    auto bash_targets = language_bash::targets(ctx);
+
+    for (const auto& t: bash_targets) {
+        if (t->has_global_target(makefile::global_targets::INSTALL))
+            continue;
+
+        auto o = t->name();
+        if (access(o.c_str(), R_OK) != 0) {
+            for (const auto& cmd: t->cmds()) {
+                if (system(cmd.c_str()) != 0) {
+                    std::cerr << "system(\"" << cmd << "\") failed" << std::endl;
+                    abort();
+                }
+            }
+        }
+    }
+
+    return bash_targets;
 }
 
 static void install_h(void) __attribute__((constructor));

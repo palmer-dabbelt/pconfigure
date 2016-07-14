@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Palmer Dabbelt
+ * Copyright (C) 2015-2016 Palmer Dabbelt
  *   <palmer@dabbelt.com>
  *
  * This file is part of pconfigure.
@@ -110,7 +110,7 @@ language_bash::targets(const context::ptr& ctx) const
             command += " " + str;
 
         auto commands = std::vector<std::string>{
-            "mkdir -p $(dir $@)",
+            "mkdir -p " + ctx->bin_dir,
             command
         };
 
@@ -135,7 +135,7 @@ language_bash::targets(const context::ptr& ctx) const
         };
 
         auto install_commands = std::vector<std::string>{
-            "mkdir -p $(dir $@)",
+            "mkdir -p " + ctx->bin_dir,
             "cp --reflink=auto -f " + target + " " + install_path
         };
 

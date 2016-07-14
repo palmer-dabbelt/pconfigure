@@ -38,6 +38,7 @@ public:
     /* Virtual methods from language_bash. */
     virtual std::string compiler_command(void) const { return "phc"; }
     virtual std::string compiler_pretty(void) const { return "H"; }
+    virtual std::vector<makefile::target::ptr> targets(const context::ptr& ctx) const override;
 
     /* Virtual methods from language. */
     virtual std::string name(void) const { return "h"; }

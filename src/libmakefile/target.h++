@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Palmer Dabbelt
+ * Copyright (C) 2015-2016 Palmer Dabbelt
  *   <palmer@dabbelt.com>
  *
  * This file is part of pconfigure.
@@ -58,6 +58,7 @@ namespace makefile {
     public:
         /* Accessor methods. */
         const std::string& name(void) const { return _name; }
+        const decltype(_cmds)& cmds(void) const { return _cmds; }
 
     public:
         /* Returns a copy of this target without the given global target. */
