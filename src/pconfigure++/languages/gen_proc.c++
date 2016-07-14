@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Palmer Dabbelt
+ * Copyright (C) 2015-2016 Palmer Dabbelt
  *   <palmer@dabbelt.com>
  *
  * This file is part of pconfigure.
@@ -22,6 +22,7 @@
 #include "../language_list.h++"
 #include "../file_utils.h++"
 #include <assert.h>
+#include <unistd.h>
 #include <iostream>
 
 language_gen_proc* language_gen_proc::clone(void) const
@@ -98,11 +99,15 @@ language_gen_proc::targets(const context::ptr& ctx) const
             ctx->src_dir + "/" + ctx->cmd->data() + ".proc --generate > " + target
         };
 
-        /* We actually issue the generate commands here */
-        for (const auto& cmd: commands) {
-            if (system(cmd.c_str()) != 0) {
-                std::cerr << "system(" << cmd << ") failed" << std::endl;
-                abort();
+        /* We actually issue the generate commands here, as that's the only way
+         * to tell the rest of pconfigure these commands have actually been
+         * generated. */
+        if (access(target.c_str(), R_OK) != 0) {
+            for (const auto& cmd: commands) {
+                if (system(cmd.c_str()) != 0) {
+                    std::cerr << "system(" << cmd << ") failed" << std::endl;
+                    abort();
+                }
             }
         }
 
