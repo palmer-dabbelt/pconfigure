@@ -39,7 +39,6 @@ HEADERS     += pinclude.h++
 SOURCES     += libpinclude/pinclude.h++
 
 LIBRARIES   += libpinclude.so
-COMPILEOPTS += -Isrc/libpinclude
 SOURCES     += libpinclude/library.c
 
 LIBRARIES   += pkgconfig/pinclude.pc
@@ -126,7 +125,6 @@ SOURCES	    += pwinegcc.bash
 ##############################################################################
 # A C++ frontend to pinclude, which has a bunch of nasty C-isms in it.
 LIBRARIES   += libpinclude++.so
-COMPILEOPTS += -Isrc/libpinclude
 SOURCES     += libpinclude/library.c++
 
 LIBRARIES   += pkgconfig/pinclude++.pc
@@ -138,7 +136,6 @@ SOURCES     += libpinclude/pinclude++.pc
 # A rewrite of pconfigure that's designed to bring the whole system
 # into the 21st century!
 BINARIES    += pconfigure
-COMPILEOPTS += -Isrc/libpinclude
 DEPLIBS     += pinclude
 DEPLIBS     += pinclude++
 SOURCES     += pconfigure++/main.c++
