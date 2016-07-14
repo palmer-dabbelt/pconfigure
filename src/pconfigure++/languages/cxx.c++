@@ -660,7 +660,8 @@ language_cxx::compile_source(const context::ptr& ctx,
         filter_compile_opts(child->compile_opts) +
         std::vector<std::string>{
             "-I" + child->src_path + child->hdr_dir,
-            "-I" + child->src_path + child->obj_dir + "/proc",
+            "-I" + child->hdr_dir,
+            "-I" + child->obj_dir + "/proc",
             "-D__PCONFIGURE__LIBEXEC=\\\"" + full_libexec_path + "\\\"",
             "-D__PCONFIGURE__PREFIX=\\\"" + ctx->prefix + "\\\""
         };
