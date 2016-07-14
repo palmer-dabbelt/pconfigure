@@ -98,6 +98,14 @@ language_gen_proc::targets(const context::ptr& ctx) const
             ctx->src_dir + "/" + ctx->cmd->data() + ".proc --generate > " + target
         };
 
+        /* We actually issue the generate commands here */
+        for (const auto& cmd: commands) {
+            if (system(cmd.c_str()) != 0) {
+                std::cerr << "system(" << cmd << ") failed" << std::endl;
+                abort();
+            }
+        }
+
         auto filename = ctx->cmd->debug()->filename();
         auto lineno = ctx->cmd->debug()->line_number();
         auto comment = std::vector<std::string>{
