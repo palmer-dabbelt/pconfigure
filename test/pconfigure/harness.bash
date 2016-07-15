@@ -18,6 +18,7 @@ CDIR=`pwd`
 cd $tempdir
 echo "Running"
 
+rm -f Configfile.local
 find -name "Configfile" | xargs cat
 $PTEST_BINARY $ARGS
 
@@ -37,9 +38,17 @@ ptest --verbose || exit 1
 
 ./bin/test > test.out
 
+out="$(diff -u test.out test.gold)"
+
 make D=$(pwd)/install DESTDIR=$(pwd)/install install
 
-out="$(diff -u test.out test.gold)"
+find bin* lib* -type f | while read f
+do
+    if test ! -f $(pwd)/install/usr/local/$f
+    then
+        exit 1
+    fi
+done
 
 cd $CDIR
 rm -rf $tempdir

@@ -123,11 +123,11 @@ language_pkgconfig::targets(const context::ptr& ctx) const
                 command += " | sed '" + str + "'";
         }
 
-        command += "> " + target;
+        command += "> ";
 
         auto commands = std::vector<std::string>{
             "mkdir -p $(dir $@)",
-            command
+            command + target
         };
 
         auto filename = ctx->cmd->debug()->filename();
@@ -144,7 +144,26 @@ language_pkgconfig::targets(const context::ptr& ctx) const
                                                              commands,
                                                              comment);
 
-        return {bin_target};
+        auto install_path = "$(DESTDIR)/" + ctx->prefix + "/" + target;
+
+        auto install_commands = std::vector<std::string>{
+            "mkdir -p $(dir $@)",
+            command + install_path
+        };
+
+        auto install_global_targets = std::vector<makefile::global_targets>{
+            makefile::global_targets::INSTALL,
+            makefile::global_targets::UNINSTALL,
+        };
+
+        auto ins_target = std::make_shared<makefile::target>(install_path,
+                                                             short_cmd,
+                                                             sources,
+                                                             install_global_targets,
+                                                             install_commands,
+                                                             comment);
+
+        return {bin_target, ins_target};
         break;
     }
     }
