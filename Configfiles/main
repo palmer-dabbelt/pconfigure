@@ -17,8 +17,7 @@ LANGUAGES   += c++
 COMPILEOPTS += -Wall
 COMPILEOPTS += -Wextra
 COMPILEOPTS += -Werror
-COMPILEOPTS += -std=c++11
-COMPILEOPTS += -pedantic
+COMPILEOPTS += -std=c++0x
 
 # Allows me to staticly link my internal C++ library dependencies --
 # note that this isn't just an optimization, it's actually necessary
