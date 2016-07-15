@@ -24,6 +24,7 @@
 #include "global_targets.h++"
 #include <memory>
 #include <vector>
+#include <string>
 
 namespace makefile {
     /* A fully-generated Makefile target, which contains a large batch of  */
