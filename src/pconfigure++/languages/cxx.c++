@@ -239,7 +239,7 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
             auto test_name = ctx->obj_dir + "/" + ctx->check_dir + "/" + ctx->cmd->data();
             auto commands = std::vector<std::string>{
                 "mkdir -p " + ctx->check_dir,
-                "ptest --test " + test_name + " --out " + target_name + " --bin " + bin_name
+                "+ptest --test " + test_name + " --out " + target_name + " --bin " + bin_name
             };
             auto comment = std::vector<std::string>{
                 "language_cxx::targets() CHECK"
