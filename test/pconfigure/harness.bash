@@ -33,7 +33,7 @@ then
 fi
 
 make check
-ptest || exit 1
+ptest --verbose || exit 1
 
 ./bin/test > test.out
 

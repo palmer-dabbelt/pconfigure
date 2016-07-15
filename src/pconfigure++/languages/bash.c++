@@ -109,8 +109,10 @@ language_bash::targets(const context::ptr& ctx) const
         for (const auto& str: this->clopts(ctx))
             command += " " + str;
 
+        auto bin_subdir = target.substr(0, target.find_last_of("/"));
+
         auto commands = std::vector<std::string>{
-            "mkdir -p " + ctx->bin_dir,
+            "mkdir -p " + bin_subdir,
             command
         };
 
@@ -135,7 +137,7 @@ language_bash::targets(const context::ptr& ctx) const
         };
 
         auto install_commands = std::vector<std::string>{
-            "mkdir -p $(DESTDIR)/" + ctx->prefix + "/" + ctx->bin_dir,
+            "mkdir -p $(DESTDIR)/" + ctx->prefix + "/" + bin_subdir,
             "cp --reflink=auto -f " + target + " " + install_path
         };
 

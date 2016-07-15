@@ -175,6 +175,7 @@ TESTSRC     += dashdash-config.bash
 TESTSRC     += srcpath.bash
 TESTSRC     += palmer-scripts.bash
 TESTSRC     += headersrc.bash
+TESTSRC     += putil.bash
 
 # These command-line tools are technically availiable for external
 # usage, but they're really just for internal tests.
