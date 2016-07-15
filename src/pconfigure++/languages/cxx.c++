@@ -295,7 +295,7 @@ language_cxx::find_files_for_header(const std::string& full_header_path) const
         }
     }
 
-#if ((__GNUC__ == 4) && (__GNUC_MINOR__ == 8))
+#if ((__GNUC__ == 4) && (__GNUC_MINOR__ <= 8))
     /* GCC-4.8 has bad regex support, so it drops the ".h++" to ".c++"
      * conversion. */
     {
