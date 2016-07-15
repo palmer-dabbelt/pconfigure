@@ -109,11 +109,8 @@ language_pkgconfig::targets(const context::ptr& ctx) const
         auto command = std::string();
         command += "cat " + sources[0]->name();
         command += " | sed 's^@@pconfigure_prefix@@^" + ctx->prefix + "^g'";
-#if 0
-        /* FIXME: Add these in. */
         command += " | sed 's^@@pconfigure_libdir@@^" + ctx->lib_dir + "^g'";
         command += " | sed 's^@@pconfigure_hdrdir@@^" + ctx->hdr_dir + "^g'";
-#endif
         for (const auto& str: this->clopts(ctx)) {
             if (strncmp(str.c_str(), "-S", 2) == 0)
                 command += " | sed `cat " + str.substr(2) + "`";
