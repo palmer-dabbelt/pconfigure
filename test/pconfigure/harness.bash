@@ -37,6 +37,8 @@ ptest || exit 1
 
 ./bin/test > test.out
 
+make D=$(pwd)/install DESTDIR=$(pwd)/install install
+
 out="$(diff -u test.out test.gold)"
 
 cd $CDIR

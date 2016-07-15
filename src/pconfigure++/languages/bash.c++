@@ -135,7 +135,7 @@ language_bash::targets(const context::ptr& ctx) const
         };
 
         auto install_commands = std::vector<std::string>{
-            "mkdir -p $(DESTDIR)/" + ctx->bin_dir,
+            "mkdir -p $(DESTDIR)/" + ctx->prefix + "/" + ctx->bin_dir,
             "cp --reflink=auto -f " + target + " " + install_path
         };
 
