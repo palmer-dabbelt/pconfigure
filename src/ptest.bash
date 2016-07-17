@@ -122,16 +122,10 @@ do
         bin="$2"
         shift
         shift
-    elif [[ "$1" == "--command" ]]
-    then
-        command="$2"
-        shift
-        shift
     elif [[ "$1" == "--args" ]]
     then
-        args="$2"
         shift
-        shift
+        break
     else
         echo "Unknown argument: $1"
         exit 1
@@ -149,14 +143,8 @@ trap "rm -rf $tmpdir" EXIT
 export PTEST_BINARY="$bin"
 export PTEST_TMPDIR="$tmpdir"
 
-if [[ "$command" == "" ]]
-then
-    "$test" >&"$tmpdir"/ptest__output
-    echo "$?" >"$tmpdir"/ptest__return
-else
-    "$command" "$args" >&"$tmpdir"/ptest__output
-    echo "$?" >"$tmpdir"/ptest__return
-fi
+"$test" "$@" >&"$tmpdir"/ptest__output
+echo "$?" >"$tmpdir"/ptest__return
 
 cd $tmpdir
 tar -c * > "$out"
