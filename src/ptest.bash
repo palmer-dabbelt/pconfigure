@@ -132,9 +132,9 @@ do
     fi
 done
 
-out="$(pwd)"/"$out"
-bin="$(pwd)"/"$bin"
-test="$(pwd)"/"$test"
+out="$(readlink -f "$out")"
+bin="$(readlink -f "$bin")"
+test="$(readlink -f "$test")"
 
 # This is the regular path where we actually run a test case
 tmpdir=`mktemp -d -t ptest-wrapper.XXXXXXXXXX`
