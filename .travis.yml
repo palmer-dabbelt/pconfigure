@@ -27,6 +27,7 @@ before_install:
   export CC=$TRAVIS_CC
   export CXX=$TRAVIS_CXX
 script:
+  - $CC --version
   - ./bootstrap.sh
   - PATH="$(pwd)/bin:$PATH" make check
   - PATH="$(pwd)/bin:$PATH" ptest --verbose
