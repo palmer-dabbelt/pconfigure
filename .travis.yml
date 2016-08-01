@@ -17,12 +17,13 @@ addons:
       - clang-3.5
 matrix:
   include:
-     - env: TRAVIS_CC=gcc-4.6 TRAVIS_CXX=g++-4.6
-     - env: TRAVIS_CC=gcc-4.8 TRAVIS_CXX=g++-4.8
-     - env: TRAVIS_CC=gcc-4.9 TRAVIS_CXX=g++-4.9
-     - env: TRAVIS_CC=gcc-5   TRAVIS_CXX=g++-5
-     - env: TRAVIS_CC=gcc-6   TRAVIS_CXX=g++-6
-     - env: TRAVIS_CC=clang   TRAVIS_CXX=clang++
+     - env: TRAVIS_CC=gcc-4.6   TRAVIS_CXX=g++-4.6
+     - env: TRAVIS_CC=gcc-4.8   TRAVIS_CXX=g++-4.8
+     - env: TRAVIS_CC=gcc-4.9   TRAVIS_CXX=g++-4.9
+     - env: TRAVIS_CC=gcc-5     TRAVIS_CXX=g++-5
+     - env: TRAVIS_CC=gcc-6     TRAVIS_CXX=g++-6
+     - env: TRAVIS_CC=clang     TRAVIS_CXX=clang++
+     - env: TRAVIS_CC=clang-3.5 TRAVIS_CXX=clang++-3.5
 before_install:
   export CC=$TRAVIS_CC
   export CXX=$TRAVIS_CXX
