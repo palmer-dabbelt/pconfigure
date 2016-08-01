@@ -643,6 +643,10 @@ language_cxx::compile_source(const context::ptr& ctx,
                 else if (opt == "-std=c++11")
                     out.push_back("-std=c++0x");
 #endif
+#if ((__GNUC__ == 4) && (__GNUC_MINOR__ <= 8))
+                else if (opt == "-std=c++14")
+                    out.push_back("-std=c++0y");
+#endif
                 else
                     out.push_back(opt);
             }
