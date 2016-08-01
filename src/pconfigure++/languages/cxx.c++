@@ -637,18 +637,28 @@ language_cxx::compile_source(const context::ptr& ctx,
         {
             auto out = std::vector<std::string>();
             for (const auto& opt: compile_opts) {
-                if (opt[0] == '-' && opt[1] == 'I' && opt[2] != '/')
+                if (opt[0] == '-' && opt[1] == 'I' && opt[2] != '/') {
                     out.push_back("-I" + child->src_path + opt.substr(2));
+                } else if (opt == "-std=c++11") {
 #if ((__GNUC__ == 4) && (__GNUC_MINOR__ <= 6))
-                else if (opt == "-std=c++11")
+                    std::cerr << "INFO: gcc-4.6 and older don't support c++11, falling back to c++0x\n";
                     out.push_back("-std=c++0x");
-#endif
-#if ((__GNUC__ == 4) && (__GNUC_MINOR__ <= 8))
-                else if (opt == "-std=c++14")
-                    out.push_back("-std=c++0y");
-#endif
-                else
+#else
                     out.push_back(opt);
+#endif
+                } else if (opt == "-std=c++14") {
+#if ((__GNUC__ == 4) && (__GNUC_MINOR__ <= 6))
+                    std::cerr << "WARNING: gcc-4.6 and older don't support c++14, falling back to c++0x\n";
+                    out.push_back("-std=c++0x");
+#elif ((__GNUC__ == 4) && (__GNUC_MINOR__ <= 8))
+                    std::cerr << "INFO: gcc-4.8 and older don't support c++14, falling back to c++1y\n";
+                    out.push_back("-std=c++1y");
+#else
+                    out.push_back(opt);
+#endif
+                } else {
+                    out.push_back(opt);
+                }
             }
             return out;
         };
