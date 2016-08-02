@@ -48,6 +48,15 @@ matrix:
            packages:
              - build-essential
              - clang-3.5
+     - env: TRAVIS_CC=clang-3.6 TRAVIS_CXX=clang++-3.6
+       addons:
+         apt:
+           sources:
+             - ubuntu-toolchain-r-test
+             - llvm-toolchain-precise-3.6
+           packages:
+             - build-essential
+             - clang-3.6
      - env: TRAVIS_CC=clang-3.7 TRAVIS_CXX=clang++-3.7
        addons:
          apt:
