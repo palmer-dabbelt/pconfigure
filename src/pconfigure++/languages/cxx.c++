@@ -653,6 +653,9 @@ language_cxx::compile_source(const context::ptr& ctx,
 #elif (defined(__GNUC__) && !defined(__clang__) && (__GNUC__ == 4) && (__GNUC_MINOR__ <= 8))
                     std::cerr << "INFO: gcc-4.8 and older don't support c++14, falling back to c++1y\n";
                     out.push_back("-std=c++1y");
+#elif (defined(__clang__) && (__clang_major__ == 3) && (__clang_minor__ <= 4))
+                    std::cerr << "INFO: clang-3.4 and older don't support c++14, falling back to c++1y\n";
+                    out.push_back("-std=c++1y");
 #else
                     out.push_back(opt);
 #endif
