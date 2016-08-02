@@ -146,6 +146,7 @@ SOURCES     += pconfigure++/languages/chisel.c++
 SOURCES     += pconfigure++/languages/perl.c++
 SOURCES     += pconfigure++/languages/h.c++
 SOURCES     += pconfigure++/languages/implicit_h.c++
+SOURCES     += pconfigure++/languages/swig.c++
 TESTSRC     += version.bash
 TESTSRC     += simple-c.bash
 TESTSRC     += tek.bash
@@ -177,6 +178,7 @@ TESTSRC     += palmer-scripts.bash
 TESTSRC     += headersrc.bash
 TESTSRC     += putil.bash
 TESTSRC     += cxx14.bash
+TESTSRC     += swig.bash
 
 # These command-line tools are technically availiable for external
 # usage, but they're really just for internal tests.
@@ -202,3 +204,6 @@ TESTSRC     += builtin.bash
 
 BINARIES    += phc
 SOURCES     += phc.bash
+
+BINARIES    += pswigcc
+SOURCES     += pswigcc.bash
