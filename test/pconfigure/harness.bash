@@ -38,6 +38,11 @@ ptest --verbose || exit 1
 
 ./bin/test > test.out
 
+if test -e test.gold.proc
+then
+    ./test.gold.proc > test.gold
+fi
+
 out="$(diff -u test.out test.gold)"
 
 make D=$(pwd)/install DESTDIR=$(pwd)/install install
