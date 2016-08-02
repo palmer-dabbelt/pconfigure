@@ -1,29 +1,62 @@
 language: c++
-addons:
-  apt:
-    sources:
-      - ubuntu-toolchain-r-test
-      - llvm-toolchain-precise-3.5
-    packages:
-      - build-essential
-      - gcc-4.8
-      - g++-4.8
-      - gcc-4.9
-      - g++-4.9
-      - gcc-5
-      - g++-5
-      - gcc-6
-      - g++-6
-      - clang-3.5
 matrix:
   include:
      - env: TRAVIS_CC=gcc-4.6   TRAVIS_CXX=g++-4.6
      - env: TRAVIS_CC=gcc-4.8   TRAVIS_CXX=g++-4.8
+       addons:
+         apt:
+           sources:
+             - ubuntu-toolchain-r-test
+           packages:
+             - build-essential
+             - gcc-4.8
+             - g++-4.8
      - env: TRAVIS_CC=gcc-4.9   TRAVIS_CXX=g++-4.9
+       addons:
+         apt:
+           sources:
+             - ubuntu-toolchain-r-test
+           packages:
+             - build-essential
+             - gcc-4.9
+             - g++-4.9
      - env: TRAVIS_CC=gcc-5     TRAVIS_CXX=g++-5
+       addons:
+         apt:
+           sources:
+             - ubuntu-toolchain-r-test
+           packages:
+             - build-essential
+             - gcc-5
+             - g++-5
      - env: TRAVIS_CC=gcc-6     TRAVIS_CXX=g++-6
+       addons:
+         apt:
+           sources:
+             - ubuntu-toolchain-r-test
+           packages:
+             - build-essential
+             - gcc-6
+             - g++-6
      - env: TRAVIS_CC=clang     TRAVIS_CXX=clang++
      - env: TRAVIS_CC=clang-3.5 TRAVIS_CXX=clang++-3.5
+       addons:
+         apt:
+           sources:
+             - ubuntu-toolchain-r-test
+             - llvm-toolchain-precise-3.5
+           packages:
+             - build-essential
+             - clang-3.5
+     - env: TRAVIS_CC=clang-3.8 TRAVIS_CXX=clang++-3.8
+       addons:
+         apt:
+           sources:
+             - ubuntu-toolchain-r-test
+             - llvm-toolchain-precise-3.8
+           packages:
+             - build-essential
+             - clang-3.8
 before_install:
   export CC=$TRAVIS_CC
   export CXX=$TRAVIS_CXX
