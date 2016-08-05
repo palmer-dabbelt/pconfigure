@@ -187,7 +187,9 @@ std::string execute(std::string line)
             auto f = popen(command_str.c_str(), "r");
             for (const auto& l: file_utils::readlines(f))
                 executed << string_utils::clean_white(l);
-            pclose(f);
+            auto exitcode = pclose(f);
+            if (exitcode != 0)
+                std::cerr << "'" << command_str << "': " << std::to_string(exitcode) << "\n";
         } else if (in_command == true) {
             command << c;
         } else if (c == '`') {
