@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Palmer Dabbelt
+ * Copyright (C) 2015,2016 Palmer Dabbelt
  *   <palmer@dabbelt.com>
  *
  * This file is part of pconfigure.
@@ -26,10 +26,14 @@
 #include <fcntl.h>
 #include <cstdlib>
 #include <iostream>
+#include <regex>
 #include <sstream>
 
 /* FIXME: This is a hack, it's set from command.c++ */
 std::string srcpath = ".";
+
+/* FIXME: This is a hack, it's used to set the path to ppkg-config */
+std::string ppkg_config = "ppkg-config";
 
 static std::string execute(std::string line);
 
@@ -38,6 +42,14 @@ std::vector<command::ptr> commands(int argc, const char **argv)
     std::vector<command::ptr> out;
 
     for (auto i = 1; i < argc; ++i) {
+        /* FIXME: This doesn't fit into the regular argument parsing framework,
+         * so instead I'm just doing this here. */
+        if (strcmp(argv[i], "--ppkg-config") == 0) {
+            ppkg_config = argv[i+1];
+            ++i;
+            continue;
+        }
+
         auto debug = std::make_shared<debug_info>("args",
                                                   i,
                                                   argv[i]);
@@ -169,7 +181,10 @@ std::string execute(std::string line)
     bool in_command = false;
     for (const auto& c: line) {
         if (in_command == true && c == '`') {
-            auto f = popen(command.str().c_str(), "r");
+            auto conv_ppkg_config = std::regex("ppkg-config");
+            auto command_str = command.str();
+            command_str = std::regex_replace(command_str, conv_ppkg_config, ppkg_config);
+            auto f = popen(command_str.c_str(), "r");
             for (const auto& l: file_utils::readlines(f))
                 executed << string_utils::clean_white(l);
             pclose(f);
