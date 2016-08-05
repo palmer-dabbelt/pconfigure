@@ -36,6 +36,7 @@ std::string srcpath = ".";
 std::string ppkg_config = "ppkg-config";
 
 static std::string execute(std::string line);
+static std::string replace_all(std::string haystack, std::string needle, std::string new_needle);
 
 std::vector<command::ptr> commands(int argc, const char **argv)
 {
@@ -181,9 +182,7 @@ std::string execute(std::string line)
     bool in_command = false;
     for (const auto& c: line) {
         if (in_command == true && c == '`') {
-            auto conv_ppkg_config = std::regex("ppkg-config");
-            auto command_str = command.str();
-            command_str = std::regex_replace(command_str, conv_ppkg_config, ppkg_config);
+            auto command_str = replace_all(command.str(), "ppkg-config", ppkg_config);
             auto f = popen(command_str.c_str(), "r");
             for (const auto& l: file_utils::readlines(f))
                 executed << string_utils::clean_white(l);
@@ -204,3 +203,19 @@ std::string execute(std::string line)
     return executed.str();
 }
 
+std::string replace_all(std::string haystack, std::string needle, std::string new_needle)
+{
+    /* FIXME: This implementation is afwul, but I'm tired. */
+    auto out = std::string("");
+    for (size_t i = 0; i < haystack.size(); ++i) {
+        if (strncmp(haystack.c_str() + i, needle.c_str(), needle.size()) == 0 ) {
+            out = out + new_needle;
+            i += needle.size();
+            --i;
+        } else {
+            char s[] = {haystack[i], '\0'};
+            out = out + std::string(s);
+        }
+    }
+    return out;
+}
