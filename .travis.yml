@@ -13,6 +13,26 @@ matrix:
            packages:
              - build-essential
              - swig
+     - env: TRAVIS_CC=clang-3.8 TRAVIS_CXX=clang++-3.8
+       addons:
+         apt:
+           sources:
+             - ubuntu-toolchain-r-test
+             - llvm-toolchain-precise-3.8
+           packages:
+             - build-essential
+             - clang-3.8
+             - swig
+     - env: TRAVIS_CC=gcc-6     TRAVIS_CXX=g++-6
+       addons:
+         apt:
+           sources:
+             - ubuntu-toolchain-r-test
+           packages:
+             - build-essential
+             - gcc-6
+             - g++-6
+             - swig
      - env: TRAVIS_CC=gcc-4.8   TRAVIS_CXX=g++-4.8
        addons:
          apt:
@@ -43,16 +63,6 @@ matrix:
              - gcc-5
              - g++-5
              - swig
-     - env: TRAVIS_CC=gcc-6     TRAVIS_CXX=g++-6
-       addons:
-         apt:
-           sources:
-             - ubuntu-toolchain-r-test
-           packages:
-             - build-essential
-             - gcc-6
-             - g++-6
-             - swig
      - env: TRAVIS_CC=clang-3.5 TRAVIS_CXX=clang++-3.5
        addons:
          apt:
@@ -82,16 +92,6 @@ matrix:
            packages:
              - build-essential
              - clang-3.7
-             - swig
-     - env: TRAVIS_CC=clang-3.8 TRAVIS_CXX=clang++-3.8
-       addons:
-         apt:
-           sources:
-             - ubuntu-toolchain-r-test
-             - llvm-toolchain-precise-3.8
-           packages:
-             - build-essential
-             - clang-3.8
              - swig
 before_install:
   export CC=$TRAVIS_CC
