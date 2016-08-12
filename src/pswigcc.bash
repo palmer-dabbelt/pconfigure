@@ -18,6 +18,8 @@ do
     *.c++) CINPUTS+=("$1");;
     -c) CFLAGS+=("$1") ;;
     -python) target="$1";;
+    -std=*) CFLAGS+=("$1");;
+    -c++) SWIGFLAGS+=("$1");;
     *) echo "Unknown argument $1" >&2; exit 1;;
     esac
     shift
