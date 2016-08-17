@@ -70,10 +70,11 @@ export PATH="$BOOTSTRAP_DIR:$PATH"
 
 # Actually build pconfigure here, this is the simple part :)
 $CXX -x c++ --std=c++0x -Wall -Werror -g $CFLAGS \
-    `find "$SOURCE_PATH"src/pconfigure++/ -iname "*.c++"` \
+    `find "$SOURCE_PATH"src/libpconfigure/ -iname "*.c++"` \
     `find "$SOURCE_PATH"src/libmakefile/ -iname "*.c++"` \
     `find "$SOURCE_PATH"src/libpinclude/ -iname "*.c"` \
     `find "$SOURCE_PATH"src/libpinclude/ -iname "*.c++"` \
+    src/pconfigure++.c++ \
     -I"$SOURCE_PATH"src/libpinclude -I"$SOURCE_PATH"src \
     -I$BOOTSTRAP_DIR \
     -D__PCONFIGURE__LIBEXEC=\"$BOOTSTRAP_DIR/../libexec\" \

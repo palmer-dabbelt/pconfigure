@@ -1,0 +1,12 @@
+prefix=@@pconfigure_prefix@@
+exec_prefix=@@pconfigure_prefix@@
+libdir=${prefix}/@@pconfigure_libdir@@
+includedir=${prefix}/@@pconfigure_hdrdir@@
+
+Name: pconfigure
+Description: pconfigure build system library
+Version: @@pinclude_version@@
+Requires: @@HAVE_TALLOC@@
+Libs: -Wl,-rpath,${libdir} -L${libdir} -lpconfigure
+Cflags: -I${includedir} 
+URL: http://dabbelt.com/~palmer/software/pconfigure/

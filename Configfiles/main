@@ -129,24 +129,32 @@ SOURCES     += libpinclude/library.c++
 LIBRARIES   += pkgconfig/pinclude++.pc
 SOURCES     += libpinclude/pinclude++.pc
 
+# pconfigure as a library, which can be used by other build systems that aren't
+# quite pconfigure.
+LIBRARIES   += libpconfigure.so
+DEPLIBS     += pinclude
+DEPLIBS     += pinclude++
+CONFIG      += libpconfigure_sources
+CONFIG      += libpconfigure_headers
+
+LIBRARIES   += pkgconfig/pconfigure.pc
+SOURCES     += libpconfigure/pconfigure.pc
+
+LIBRARIES   += libmakefile.so
+CONFIG      += libmakefile_sources
+
 ##############################################################################
 # Rewrite-Related Binaries                                                   #
 ##############################################################################
 # A rewrite of pconfigure that's designed to bring the whole system
 # into the 21st century!
 BINARIES    += pconfigure
+AUTODEPS     = false
 DEPLIBS     += pinclude
 DEPLIBS     += pinclude++
-SOURCES     += pconfigure++/main.c++
-SOURCES     += pconfigure++/languages/c.c++
-SOURCES     += pconfigure++/languages/bash.c++
-SOURCES     += pconfigure++/languages/pkgconfig.c++
-SOURCES     += pconfigure++/languages/cxx.c++
-SOURCES     += pconfigure++/languages/chisel.c++
-SOURCES     += pconfigure++/languages/perl.c++
-SOURCES     += pconfigure++/languages/h.c++
-SOURCES     += pconfigure++/languages/implicit_h.c++
-SOURCES     += pconfigure++/languages/swig.c++
+DEPLIBS     += pconfigure
+DEPLIBS     += makefile
+SOURCES     += pconfigure++.c++
 TESTSRC     += version.bash
 TESTSRC     += simple-c.bash
 TESTSRC     += tek.bash
@@ -184,7 +192,7 @@ TESTSRC     += swig.bash
 # usage, but they're really just for internal tests.
 LIBEXECS    += pconfigure/string_utils-clean_white
 COMPILEOPTS += -DTEST_CLEAN_WHITE
-SOURCES     += pconfigure++/string_utils.c++
+SOURCES     += libpconfigure/string_utils.c++
 TESTSRC     += no_spaces.bash
 TESTSRC     += internal_space.bash
 TESTSRC     += internal_spaces.bash
@@ -194,12 +202,12 @@ TESTSRC     += tab.bash
 
 LIBEXECS    += pconfigure/string_utils-strip_char
 COMPILEOPTS += -DTEST_STRIP_CHAR
-SOURCES     += pconfigure++/string_utils.c++
+SOURCES     += libpconfigure/string_utils.c++
 TESTSRC     += three_parts.bash
 
 LIBEXECS    += pconfigure/vector_util-map
 COMPILEOPTS += -DTEST_MAP
-SOURCES     += pconfigure++/vector_util.c++
+SOURCES     += libpconfigure/vector_util.c++
 TESTSRC     += builtin.bash
 
 BINARIES    += phc

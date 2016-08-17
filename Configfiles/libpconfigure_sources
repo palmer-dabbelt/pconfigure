@@ -1,0 +1,7 @@
+#!/bin/bash
+
+cd src
+find libpconfigure -iname "*.c++" | while read f
+do
+    echo "SOURCES += $f"
+done

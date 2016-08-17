@@ -18,9 +18,9 @@
  * along with pconfigure.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "commands.h++"
-#include "command_processor.h++"
-#include "pick_language.h++"
+#include <libpconfigure/commands.h++>
+#include <libpconfigure/command_processor.h++>
+#include <libpconfigure/pick_language.h++>
 #include "version.h"
 #include <libmakefile/makefile.h++>
 #include <algorithm>

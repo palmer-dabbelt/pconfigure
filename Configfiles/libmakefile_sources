@@ -1,0 +1,7 @@
+#!/bin/bash
+
+cd src
+find libmakefile -iname "*.c++" | while read f
+do
+    echo "SOURCES += $f"
+done
