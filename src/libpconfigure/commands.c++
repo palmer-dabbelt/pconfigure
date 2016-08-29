@@ -121,13 +121,26 @@ std::vector<command::ptr> commands(void)
 std::vector<command::ptr> commands(const std::string& filename)
 {
     auto out = std::vector<command::ptr>();
+    auto origpwd = [&]()
+        {
+            auto malloced_ptr = get_current_dir_name();
+            auto strout = std::string(malloced_ptr);
+            free(malloced_ptr);
+            return strout;
+        }();
 
     auto file = [&]()
         {
-            if (access(filename.c_str(), X_OK) == 0)
+            if (access(("./" + filename).c_str(), X_OK) == 0)
                 return popen(("./" + filename).c_str(), "r");
-            else
+            if (access(filename.c_str(), X_OK) == 0) {
+                chdir(srcpath.c_str());
+                return popen(filename.c_str(), "r");
+            }
+            if (access(filename.c_str(), R_OK) == 0)
                 return fopen(filename.c_str(), "r");
+
+            return (FILE*)NULL;
         }();
     if (file == NULL)
         return out;
@@ -168,6 +181,8 @@ std::vector<command::ptr> commands(const std::string& filename)
         pclose(file);
     else
         fclose(file);
+
+    chdir(origpwd.c_str());
 
     return out;
 }
