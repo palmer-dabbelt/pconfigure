@@ -74,7 +74,7 @@ $CXX -x c++ --std=c++0x -Wall -Werror -g $CFLAGS \
     `find "$SOURCE_PATH"src/libmakefile/ -iname "*.c++"` \
     `find "$SOURCE_PATH"src/libpinclude/ -iname "*.c"` \
     `find "$SOURCE_PATH"src/libpinclude/ -iname "*.c++"` \
-    src/pconfigure++.c++ \
+    "$SOURCE_PATH"src/pconfigure++.c++ \
     -I"$SOURCE_PATH"src/libpinclude -I"$SOURCE_PATH"src \
     -I$BOOTSTRAP_DIR \
     -D__PCONFIGURE__LIBEXEC=\"$BOOTSTRAP_DIR/../libexec\" \
