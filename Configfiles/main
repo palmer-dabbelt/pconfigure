@@ -105,7 +105,8 @@ SOURCES	    += ptest.bash
 
 BINARIES    += pinclude
 DEPLIBS     += pinclude
-SOURCES     += pinclude.c
+DEPLIBS     += pinclude++
+SOURCES     += pinclude.c++
 TESTSRC     += empty.bash
 TESTSRC     += nonexist.bash
 TESTSRC     += samedir.bash
