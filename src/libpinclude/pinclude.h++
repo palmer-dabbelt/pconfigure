@@ -36,6 +36,18 @@ namespace pinclude {
              std::vector<std::string> defined,
              std::function<int(std::string)> callback,
              bool skip_missing_files);
+
+    int list(std::string filename,
+             std::function<int(std::string)> callback,
+             bool skip_missing_files)
+    {
+        return list(filename,
+                    std::vector<std::string>{},
+                    std::vector<std::string>{},
+                    callback,
+                    skip_missing_files
+                );
+    }
 }
 
 #endif

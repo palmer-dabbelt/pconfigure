@@ -198,7 +198,7 @@ language_bash::targets(const context::ptr& ctx) const
 std::vector<makefile::target::ptr> language_bash::dependencies(const std::string& path) const
 {
     std::vector<makefile::target::ptr> out;
-    pinclude::list(path, {}, {},
+    pinclude::list(path,
                    [&](std::string p) {
                        auto t = std::make_shared<makefile::target>(p);
                        out.push_back(t);
