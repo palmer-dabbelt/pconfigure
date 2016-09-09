@@ -134,7 +134,10 @@ std::vector<command::ptr> commands(const std::string& filename)
             if (access(("./" + filename).c_str(), X_OK) == 0)
                 return popen(("./" + filename).c_str(), "r");
             if (access(filename.c_str(), X_OK) == 0) {
-                chdir(srcpath.c_str());
+                if (chdir(srcpath.c_str()) != 0) {
+                    perror("Unable to chdir");
+                    abort();
+                }
                 return popen(filename.c_str(), "r");
             }
             if (access(filename.c_str(), R_OK) == 0)
@@ -182,7 +185,10 @@ std::vector<command::ptr> commands(const std::string& filename)
     else
         fclose(file);
 
-    chdir(origpwd.c_str());
+    if (chdir(origpwd.c_str()) != 0) {
+        perror("Unable to chdir");
+        abort();
+    }
 
     return out;
 }
