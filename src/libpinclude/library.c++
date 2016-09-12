@@ -192,7 +192,7 @@ int list_overwrite_defines(std::string filename,
         if (last_slash == std::string::npos)
             return std::string("");
 
-        return filename.substr(0, last_slash);
+        return filename.substr(0, last_slash) + "/";
     };
 
     static const auto next_logical_line = [](std::ifstream& file, std::string& out) {
@@ -298,7 +298,7 @@ int list_overwrite_defines(std::string filename,
             }();
 
             auto full_path = [&]() {
-                auto cwd_relative = get_relative_cwd(filename) + "/" + rest_path;
+                auto cwd_relative = get_relative_cwd(filename) + rest_path;
                 if (access(cwd_relative.c_str(), R_OK) == 0)
                     return option<std::string>(strip_dd(cwd_relative));
 
