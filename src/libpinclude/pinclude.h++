@@ -37,6 +37,7 @@ namespace pinclude {
              std::function<int(std::string)> callback,
              bool skip_missing_files);
 
+    static inline
     int list(std::string filename,
              std::function<int(std::string)> callback,
              bool skip_missing_files)
