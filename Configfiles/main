@@ -134,6 +134,7 @@ SOURCES     += libpinclude/pinclude++.pc
 # quite pconfigure.
 LIBRARIES   += libpconfigure.so
 DEPLIBS     += pinclude
+DEPLIBS     += pinclude
 DEPLIBS     += pinclude++
 CONFIG      += libpconfigure_sources
 CONFIG      += libpconfigure_headers
