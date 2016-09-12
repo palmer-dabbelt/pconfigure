@@ -203,7 +203,7 @@ std::vector<makefile::target::ptr> language_bash::dependencies(const std::string
                        auto t = std::make_shared<makefile::target>(p);
                        out.push_back(t);
                        return 0;
-                   }, false);
+                   }, true);
     return out;
 }
 

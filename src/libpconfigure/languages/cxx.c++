@@ -22,15 +22,10 @@
 #include "../language_list.h++"
 #include "../vector_util.h++"
 #include "../pick_language.h++"
-#include <pinclude.h>
+#include <pinclude.h++>
 #include <unistd.h>
 #include <fcntl.h>
 #include <iostream>
-
-struct pinclude_priv {
-    std::vector<std::string> all_files;
-};
-static int pinclude_callback(const char *filename, void *priv_uncase);
 
 language_cxx* language_cxx::clone(void) const
 {
@@ -780,46 +775,27 @@ std::vector<std::string> language_cxx::dependencies(
     const shared_target& is_shared __attribute__((unused)),
     const std::vector<std::string>& compile_opts) const
 {
-    size_t defined_i = 0;
-    const char **defined = new const char*[compile_opts.size()];
-    size_t include_dirs_i = 0;
-    const char **include_dirs = new const char*[compile_opts.size()];
+    std::vector<std::string> defined;
+    std::vector<std::string> include_dirs;
 
     for (const auto& opt: compile_opts) {
         if (strncmp(opt.c_str(), "-D", 2) == 0)
-            defined[defined_i++] = opt.c_str() + 2;
+            defined.push_back(opt.c_str() + 2);
         if (strncmp(opt.c_str(), "-I", 2) == 0)
-            include_dirs[include_dirs_i++] = opt.c_str() + 2;
+            include_dirs.push_back(opt.c_str() + 2);
     }
 
-    defined[defined_i] = nullptr;
-    include_dirs[include_dirs_i] = nullptr;
+    std::vector<std::string> all_files;
+    pinclude::list(filename,
+                   include_dirs,
+                   defined,
+                   [&](std::string s) {
+                       all_files.push_back(s);
+                       return 0;
+                   },
+                   true);
 
-    struct pinclude_priv priv;
-    pinclude_list(filename.c_str(),
-                  &pinclude_callback,
-                  &priv,
-                  &include_dirs[0],
-                  &defined[0],
-                  false);
-
-    delete[] defined;
-    delete[] include_dirs;
-
-    return priv.all_files;
-}
-
-int pinclude_callback(const char *filename, void *priv_uncast)
-{
-    struct pinclude_priv *priv = (struct pinclude_priv *)priv_uncast;
-
-    std::string filtered = filename;
-    auto dirs = std::regex("(.+)/.+/\\.\\./(.+)");
-    while (std::regex_match(filtered, dirs))
-        filtered = std::regex_replace(filtered, dirs, std::string("$1/$2"));
-
-    priv->all_files.push_back(filtered);
-    return 0;
+    return all_files;
 }
 
 static void install_cxx(void) __attribute__((constructor));

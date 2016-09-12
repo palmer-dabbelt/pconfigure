@@ -24,6 +24,7 @@
 #include <functional>
 #include <string>
 #include <vector>
+#include <unordered_set>
 
 namespace pinclude {
     /* Looks through the given file for #include lines, calling the given
@@ -34,6 +35,12 @@ namespace pinclude {
     int list(std::string filename,
              std::vector<std::string> include_dirs,
              std::vector<std::string> defined,
+             std::function<int(std::string)> callback,
+             bool skip_missing_files);
+
+    int list(std::string filename,
+             std::vector<std::string> include_dirs,
+             std::unordered_set<std::string> defined,
              std::function<int(std::string)> callback,
              bool skip_missing_files);
 

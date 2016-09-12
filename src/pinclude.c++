@@ -22,18 +22,19 @@
 #include <string>
 #include <cstring>
 #include <iostream>
+#include <unordered_set>
 
 int main(int argc, const char **argv)
 {
     std::vector<std::string> dirs;
-    std::vector<std::string> defs;
+    std::unordered_set<std::string> defs;
     std::string input;
 
     for (int i = 1; i < argc; ++i) {
         if (strncmp(argv[i], "-I", 2) == 0)
             dirs.push_back(argv[i] + 2);
         else if (strncmp(argv[i], "-D", 2) == 0)
-            dirs.push_back(argv[i] + 2);
+            defs.insert(argv[i] + 2);
         else
             input = argv[i];
     }
