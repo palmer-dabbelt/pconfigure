@@ -394,12 +394,12 @@ static bool resolve_pp_function(
     static const auto token_terminators = std::vector<std::string>{
         "(", ")", "&&", "||", "!", "defined", " "
     };
-    static const auto terminates = [&](std::string str) {
+    static const auto terminates = [&](std::string str) -> std::string {
         for (const auto& term: token_terminators) {
             if (str.substr(0, term.size()) == term)
                 return term;
         }
-        return std::string("");
+        return "";
     };
 
     static const auto is_all_white = [](std::string str) {
