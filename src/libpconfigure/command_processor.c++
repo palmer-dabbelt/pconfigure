@@ -343,6 +343,10 @@ void command_processor::process(const command::ptr& cmd)
     case command_type::DEBUG:
         _stack.top()->debug = true;
         return;
+
+    case command_type::PHC:
+        _stack.top()->phc = cmd->data();
+        return;
     }
 
     std::cerr << "Bad command index on '"

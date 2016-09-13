@@ -72,6 +72,8 @@ bool language_h::can_process(const context::ptr& ctx) const
 std::vector<makefile::target::ptr>
 language_h::targets(const context::ptr& ctx) const
 {
+    this->_phc = ctx->phc;
+
     auto bash_targets = language_bash::targets(ctx);
 
     for (const auto& t: bash_targets) {

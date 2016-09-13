@@ -28,15 +28,19 @@ class language_h: public language_bash {
 public:
     typedef std::shared_ptr<language_h> ptr;
 
+private:
+    mutable std::string _phc;
+
 public:
     language_h(const std::vector<std::string>& compile_opts,
-                  const std::vector<std::string>& link_opts)
-    : language_bash(compile_opts, link_opts)
+               const std::vector<std::string>& link_opts)
+    : language_bash(compile_opts, link_opts),
+      _phc("phc")
     {}
 
 public:
     /* Virtual methods from language_bash. */
-    virtual std::string compiler_command(void) const { return "phc"; }
+    virtual std::string compiler_command(void) const { return _phc; }
     virtual std::string compiler_pretty(void) const { return "H"; }
     virtual std::vector<makefile::target::ptr> targets(const context::ptr& ctx) const;
 

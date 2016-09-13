@@ -44,6 +44,7 @@ context::context(void)
       debug(false),
       languages(std::make_shared<language_list>()),
       autodeps(true),
+      phc("phc"),
       children()
 {
 }
@@ -69,6 +70,7 @@ context::context(const context_type& _type,
                  bool _debug,
                  const language_list::ptr& _languages,
                  bool _autodeps,
+                 const std::string& _phc,
                  const std::vector<ptr>& _children)
     : type(_type),
       prefix(_prefix),
@@ -91,6 +93,7 @@ context::context(const context_type& _type,
       debug(_debug),
       languages(_languages),
       autodeps(_autodeps),
+      phc(_phc),
       children(_children)
 {
 }
@@ -131,6 +134,7 @@ context::ptr context::dup(const context_type& type,
                                      this->debug,
                                      this->languages->dup(),
                                      this->autodeps,
+                                     this->phc,
                                      children);
 }
 

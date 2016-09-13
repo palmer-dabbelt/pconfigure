@@ -123,6 +123,9 @@ public:
     /* Should automatic dependency resolution be enabled for this target?. */
     bool autodeps;
 
+    /* The path to the header compiler. */
+    std::string phc;
+
     /***************************************************************
      * Filled in after language::find_all_children                 *
      ***************************************************************/
@@ -159,6 +162,7 @@ public:
             bool debug,
             const std::shared_ptr<language_list>& languages,
             bool autodeps,
+            const std::string& phc,
             const std::vector<ptr>& children);
 
 public:
