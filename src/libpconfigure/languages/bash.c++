@@ -138,7 +138,11 @@ language_bash::targets(const context::ptr& ctx) const
 
         auto install_commands = std::vector<std::string>{
             "mkdir -p $(DESTDIR)/" + ctx->prefix + "/" + bin_subdir,
+#if defined(__gnu_linux__)
             "cp --reflink=auto -f " + target + " " + install_path
+#else
+            "cp -f " + target + " " + install_path
+#endif
         };
 
         auto install_target = std::make_shared<makefile::target>(install_path,
