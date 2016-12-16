@@ -488,7 +488,11 @@ language_cxx::cp_target::generate_makefile_target(void) const
     auto deps = vector_util::make(_source->generate_makefile_target());
     auto cmds = std::vector<std::string>{
         "mkdir -p $(dir $@)",
+#if defined(__gnu_linux__)
         "cp --reflink=auto -f " + _source->path() + " " + _target_path
+#else
+        "cp -f " + _source->path() + " " + _target_path
+#endif
     };
 
     auto global = [&]()
