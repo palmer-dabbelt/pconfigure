@@ -118,6 +118,18 @@ std::vector<command::ptr> commands(void)
     return out;
 }
 
+/* Workaround for non GNU systems */
+#ifndef _GNU_SOURCE
+static char* get_current_dir_name()
+{
+    size_t bufsz = 1024;
+    char *malloced_ptr = (char*) malloc(bufsz);
+    while ((getcwd(malloced_ptr, bufsz) == NULL) && errno == ERANGE)
+        malloced_ptr = (char*) realloc(malloced_ptr, (bufsz *= 2));
+    return malloced_ptr;
+}
+#endif
+
 std::vector<command::ptr> commands(const std::string& filename)
 {
     auto out = std::vector<command::ptr>();
