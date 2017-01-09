@@ -203,7 +203,14 @@ void command_processor::process(const command::ptr& cmd)
     }
 
     case command_type::LIBDIR:
-        goto unimplemented;
+    {
+        if (cmd->check_operation("=") == false)
+            goto bad_op_eq;
+
+        clear_until({context_type::DEFAULT});
+        _stack.top()->lib_dir = cmd->data();
+        return;
+    }
 
     case command_type::LIBEXECS:
     {

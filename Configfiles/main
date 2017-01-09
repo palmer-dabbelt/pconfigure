@@ -187,6 +187,7 @@ TESTSRC     += headersrc.bash
 TESTSRC     += putil.bash
 TESTSRC     += cxx14.bash
 TESTSRC     += swig.bash
+TESTSRC     += libdir.bash
 
 # These command-line tools are technically availiable for external
 # usage, but they're really just for internal tests.
