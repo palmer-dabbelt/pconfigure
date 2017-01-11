@@ -287,6 +287,15 @@ void command_processor::process(const command::ptr& cmd)
         return;
 
     case command_type::SRCDIR:
+    {
+        if (cmd->check_operation("=") == false)
+            goto bad_op_eq;
+
+        clear_until({context_type::DEFAULT});
+        _stack.top()->src_dir = cmd->data();
+        return;
+    }
+
     case command_type::TESTDEPS:
     case command_type::TESTDIR:
         goto unimplemented;
