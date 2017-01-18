@@ -59,7 +59,10 @@ static void language_c_extras(struct language *l_uncast, struct context *c,
 
 static char *string_strip(const char *in, void *context);
 static char *string_hashcode(const char *string, void *context);
+
+#ifndef __APPLE__
 static size_t count_char(const char *str, char c);
+#endif
 
 /* This converts from the clang inclusion format into the format
  * required by the pconfigure context support. */
@@ -638,6 +641,10 @@ void find_files(void *args_uncast, const char *format, ...)
     TALLOC_FREE(context);
 }
 
+#ifndef __APPLE__
+/* The only place where this function is used gets turned off if
+ * __APPLE__ is defined, so undefine this too to avoid unsed function
+ * errors. */
 size_t count_char(const char *str, char c)
 {
     size_t count;
@@ -650,3 +657,4 @@ size_t count_char(const char *str, char c)
     }
     return count;
 }
+#endif
