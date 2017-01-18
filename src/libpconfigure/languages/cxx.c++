@@ -373,39 +373,17 @@ language_cxx::link_target::generate_makefile_target(void) const
             case install_target::TRUE:
                 return "-Wl,-rpath," + _ctx->prefix + "/" + _ctx->lib_dir;
             case install_target::FALSE:
+#ifdef __APPLE__
+                return "-Wl,-rpath,@executable_path/" + dotdot(_ctx->bin_dir) + _ctx->lib_dir;
+#else
                 return "-Wl,-rpath,\\$$ORIGIN/" + dotdot(_ctx->bin_dir) + _ctx->lib_dir;
+#endif
             }
 
             abort();
             return "";
         }();
 
-
-#ifdef __APPLE__
-    /* Apple's wonky OS doesn't support link-time specification of dynamic
-     * library search paths, so this is a hack to run the install_name_tool
-     * utility on each install target. */
-    auto additional_dep_targs = vector_util::map(_additional_deps,
-                                 [](const target::ptr& t){
-                                    return t->generate_makefile_target();
-                                 });
-
-    auto install_name_tool_cmds = vector_util::map(
-          additional_dep_targs,
-          [&](const makefile::target::ptr& t) -> std::string {
-            if (_install != install_target::TRUE)
-              return "";
-            const auto& tn = t->name();
-            const auto& orig =
-              "`otool -L "+_target_path+" | grep " + tn + " | " +
-              " sed -e \"s/\\(.*\\)\\/local.*/\\1\\/local/\"`";
-            const auto newpath = _ctx->prefix + "/" + tn;
-            auto cmd =
-              "install_name_tool -change "+orig+ " " +newpath+" "+_target_path;
-            return cmd;
-          }
-        );
-#endif
 
     auto cmds = std::vector<std::string>{
         "mkdir -p $(dir $@)",
@@ -416,13 +394,6 @@ language_cxx::link_target::generate_makefile_target(void) const
           + " " + shared
           + " " + rpath
     };
-
-#ifdef __APPLE__
-    /* (See above comment on install_name_tool invocation.) */
-    cmds.insert(cmds.end(),
-                install_name_tool_cmds.begin(),
-                install_name_tool_cmds.end());
-#endif
 
     auto global = std::vector<makefile::global_targets>{
         makefile::global_targets::CLEAN,
