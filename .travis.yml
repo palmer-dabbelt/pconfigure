@@ -101,8 +101,8 @@ matrix:
              - swig
 
 before_install:
-  export CC=$TRAVIS_CC
-  export CXX=$TRAVIS_CXX
+  - if test -z ${TRAVIS_CC+x}; then true else export CC=$TRAVIS_CC; fi
+  - if test -z ${TRAVIS_CXX+x}; then true else export CXX=$TRAVIS_CXX; fi
 
 script:
   - $CC --version
