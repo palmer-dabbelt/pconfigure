@@ -1,4 +1,10 @@
-language: c++
+os:
+  - linux
+  - osx
+
+language:
+  - c++
+
 matrix:
   include:
      - env: TRAVIS_CC=gcc-4.6   TRAVIS_CXX=g++-4.6
@@ -93,9 +99,11 @@ matrix:
              - build-essential
              - clang-3.7
              - swig
+
 before_install:
   export CC=$TRAVIS_CC
   export CXX=$TRAVIS_CXX
+
 script:
   - $CC --version
   - ./bootstrap.sh
