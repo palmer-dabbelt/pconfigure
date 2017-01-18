@@ -59,7 +59,7 @@ static void language_c_extras(struct language *l_uncast, struct context *c,
 
 static char *string_strip(const char *in, void *context);
 static char *string_hashcode(const char *string, void *context);
-static size_t count_char(const char *str, char c);
+static size_t count_char(const char *str, char c) __attribute__((unused));
 
 /* This converts from the clang inclusion format into the format
  * required by the pconfigure context support. */
