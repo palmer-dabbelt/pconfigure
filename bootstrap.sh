@@ -24,6 +24,20 @@ EOF
     shift
 fi
 
+if [[ "$1" == "--cc" ]]
+then
+    CC="$2"
+    shift
+    shift
+fi
+
+if [[ "$1" == "--cxx" ]]
+then
+    CXX="$2"
+    shift
+    shift
+fi
+
 SOURCE_PATH="$1"
 BOOTSTRAP_DIR=bootstrap_bin
 
@@ -38,6 +52,9 @@ if [[ "$CXX" == "" ]]
 then
   CXX="g++"
 fi
+
+export CC
+export CXX
 
 #############################################################################
 # Manually builds some of the utilities                                     #
