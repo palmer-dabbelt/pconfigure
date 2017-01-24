@@ -38,6 +38,20 @@ then
     shift
 fi
 
+if [[ "$1" == "--cflags" ]]
+then
+    CFLAGS="$2"
+    shift
+    shift
+fi
+
+if [[ "$1" == "--cxxflags" ]]
+then
+    CXXFLAGS="$2"
+    shift
+    shift
+fi
+
 SOURCE_PATH="$1"
 BOOTSTRAP_DIR=bootstrap_bin
 
@@ -86,7 +100,7 @@ $BOOTSTRAP_DIR/pbashc "$SOURCE_PATH"src/pgcc-config.bash \
 export PATH="$BOOTSTRAP_DIR:$PATH"
 
 # Actually build pconfigure here, this is the simple part :)
-$CXX -x c++ --std=c++0x -Wall -Werror -g $CFLAGS \
+$CXX -x c++ --std=c++0x -Wall -Werror -g $CXXFLAGS \
     `find "$SOURCE_PATH"src/libpconfigure/ -iname "*.c++"` \
     `find "$SOURCE_PATH"src/libmakefile/ -iname "*.c++"` \
     `find "$SOURCE_PATH"src/libpinclude/ -iname "*.c"` \
