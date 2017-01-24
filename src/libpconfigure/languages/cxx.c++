@@ -350,7 +350,11 @@ language_cxx::link_target::generate_makefile_target(void) const
         {
             switch (_shared) {
             case shared_target::TRUE:
+#ifdef __APPLE__
+                return " -shared -Wl,-install_name,@rpath/" + _ctx->cmd->data();
+#else
                 return " -shared";
+#endif
             case shared_target::FALSE:
                 return "";
             }
