@@ -38,7 +38,7 @@ retval="$?"
 stdout="$(echo "$stdout" | sed 's^-L/usr/lib64^^g' | sed 's^-Wl,-rpath,/usr/lib64^^g' | sed 's^-L/usr/lib^^g' | sed 's^-Wl,-rpath,/usr/lib^^g')"
 if [[ "$(uname)" == "Darwin" ]]
 then
-    stdout="$(echo "$stdout" | sed 's/-lrt//')"
+    stdout="$(echo "$stdout" | sed 's/-lrt//g')"
 fi
 
 # If --optional is given then don't panic
