@@ -8,4 +8,4 @@ cd $TMPDIR
 touch Configfile
 $PTEST_BINARY --version
 
-test ! -f $tmpdir/Makefile
+test ! -f $TMPDIR/Makefile
