@@ -392,7 +392,7 @@ static bool resolve_pp_function(
     const std::unordered_set<std::string>& defines)
 {
     static const auto token_terminators = std::vector<std::string>{
-        "(", ")", "&&", "||", "!", "defined", " "
+        "(", ")", "&&", "||", "!=", "!", "defined", " "
     };
     static const auto terminates = [&](std::string str) -> std::string {
         for (const auto& term: token_terminators) {
@@ -476,7 +476,7 @@ static bool resolve_pp_function(
                 if (parens != 0)
                     continue;
 
-                if (token == "&&" || token == "||" || token == ">" || token == ">=" || token == "<" || token == "<=" || token == "==")
+                if (token == "&&" || token == "||" || token == ">" || token == ">=" || token == "<" || token == "<=" || token == "==" || token == "!=")
                     return it;
             }
 
