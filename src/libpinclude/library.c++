@@ -196,7 +196,7 @@ int list_overwrite_defines(std::string filename,
     };
 
     static const auto next_logical_line = [](std::ifstream& file, std::string& out,
-                                             int& lineno) {
+                                             int& comment, int& lineno) {
         std::string line;
         if (!std::getline(file, line))
             return false;
@@ -210,11 +210,27 @@ int list_overwrite_defines(std::string filename,
             out = out.substr(0, out.size() - 1) + line;
         }
 
+        for (size_t i = 0; i < out.size(); ++i) {
+            bool was_comment = comment > 0;
+            if (comment == 1)
+               comment = 0;
+            if (out[i] == '/' && out[i+1] == '/')
+              comment = 2;
+            if (out[i] == '/' && out[i+1] == '*')
+              comment = 2;
+            if (out[i] == '*' && out[i+1] == '/')
+              comment = 1;
+
+            if (was_comment || comment > 0)
+              out[i] = ' ';
+        }
+
         return true;
     };
 
     int lineno = 1;
-    while (next_logical_line(file, line, lineno)) {
+    int comment = 0;
+    while (next_logical_line(file, line, comment, lineno)) {
         check_line(line, "if", [&](std::string rest) {
             auto resolved = resolve_pp_function(rest, defines);
             state_stack.push(resolved ? state::OUTPUT : state::ELSE);
