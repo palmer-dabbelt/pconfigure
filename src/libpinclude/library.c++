@@ -533,6 +533,10 @@ static bool resolve_pp_function(
         if (*begin == "__GNUC_PREREQ") {
             return false;
         }
+
+        if (*begin == "__GLIBC_USE") {
+            return false;
+        }
     }
 
     /* This might just be a single value. */
