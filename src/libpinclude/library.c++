@@ -195,11 +195,13 @@ int list_overwrite_defines(std::string filename,
         return filename.substr(0, last_slash) + "/";
     };
 
-    static const auto next_logical_line = [](std::ifstream& file, std::string& out) {
+    static const auto next_logical_line = [](std::ifstream& file, std::string& out,
+                                             int& comment, int& lineno) {
         std::string line;
         if (!std::getline(file, line))
             return false;
         out = line;
+        lineno++;
 
         while (line[line.size() - 1] == '\\') {
             if (!std::getline(file, line))
@@ -208,10 +210,27 @@ int list_overwrite_defines(std::string filename,
             out = out.substr(0, out.size() - 1) + line;
         }
 
+        for (size_t i = 0; i < out.size(); ++i) {
+            bool was_comment = comment > 0;
+            if (comment == 1)
+               comment = 0;
+            if (out[i] == '/' && out[i+1] == '/')
+              comment = 2;
+            if (out[i] == '/' && out[i+1] == '*')
+              comment = 2;
+            if (out[i] == '*' && out[i+1] == '/')
+              comment = 1;
+
+            if (was_comment || comment > 0)
+              out[i] = ' ';
+        }
+
         return true;
     };
 
-    while (next_logical_line(file, line)) {
+    int lineno = 1;
+    int comment = 0;
+    while (next_logical_line(file, line, comment, lineno)) {
         check_line(line, "if", [&](std::string rest) {
             auto resolved = resolve_pp_function(rest, defines);
             state_stack.push(resolved ? state::OUTPUT : state::ELSE);
@@ -242,9 +261,13 @@ int list_overwrite_defines(std::string filename,
         });
 
         check_line(line, "else", [&](std::string rest) {
-            if (rest != "") {
-                std::cerr << "There shouldn't be anything after an else\n";
-                abort();
+            for (const auto r: rest) {
+                if (!isspace(r)) {
+                    std::cerr << "There shouldn't be anything after an else\n";
+                    std::cerr << "#else\"" << rest << "\"\n";
+                    std::cerr << "at " << filename << ":" << lineno << "\n";
+                    abort();
+                }
             }
 
             if (state_stack.size() == 0) {
@@ -508,6 +531,10 @@ static bool resolve_pp_function(
         }
 
         if (*begin == "__GNUC_PREREQ") {
+            return false;
+        }
+
+        if (*begin == "__GLIBC_USE") {
             return false;
         }
     }
