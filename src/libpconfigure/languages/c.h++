@@ -37,9 +37,9 @@ public:
 
 public:
     /* Virtual methods from language_cxx. */
-    virtual std::string compiler_command(void) const { return "${CC} -x c";  }
+    virtual std::string compiler_command(void) const { return "${CC} -x c ${CFLAGS}";  }
     virtual std::string compiler_pretty (void) const { return "CC";     }
-    virtual std::string linker_command  (void) const { return "${CC}";  }
+    virtual std::string linker_command  (void) const { return "${CC} ${LDFLAGS} ${CFLAGS}";  }
     virtual std::string linker_pretty   (void) const { return "LD";     }
 
     /* Virtual methods from language. */
