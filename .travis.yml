@@ -102,6 +102,10 @@ before_install:
 
 script:
   - $CC --version
+  - export CFLAGS="-fsanitize=address -g -Og"
+  - export CXXFLAGS="-fsanitize=address -g -Og"
+  - export LDFLAGS="-fsanitize=address -g -Og"
   - ./bootstrap.sh
+  - PATH="$(pwd)/bin:$PATH" make
   - PATH="$(pwd)/bin:$PATH" make check
   - PATH="$(pwd)/bin:$PATH" ptest --verbose
