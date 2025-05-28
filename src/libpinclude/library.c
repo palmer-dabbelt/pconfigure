@@ -31,7 +31,10 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifndef LINE_MAX
 #define LINE_MAX 1024
+#endif
+
 #define FILE_MAX 1024
 #define NEST_MAX 32
 
