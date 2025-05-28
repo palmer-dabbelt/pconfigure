@@ -34,6 +34,8 @@ public:
     : language_bash(compile_opts, link_opts)
     {}
 
+    virtual ~language_perl(void) {}
+
 public:
     /* Virtual methods from language_bash. */
     virtual std::string compiler_command(void) const { return "pperlc"; }

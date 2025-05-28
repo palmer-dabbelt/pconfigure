@@ -38,6 +38,8 @@ public:
       _phc("phc")
     {}
 
+    virtual ~language_h(void) {}
+
 public:
     /* Virtual methods from language_bash. */
     virtual std::string compiler_command(void) const { return _phc; }

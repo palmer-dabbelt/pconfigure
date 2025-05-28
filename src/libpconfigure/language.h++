@@ -45,6 +45,8 @@ public:
     language(const std::vector<std::string>& compile_opts,
              const std::vector<std::string>& link_opts);
 
+    virtual ~language(void) {}
+
 public:
     /* Accessor functions. */
     const std::vector<std::string>& compile_opts(void) const

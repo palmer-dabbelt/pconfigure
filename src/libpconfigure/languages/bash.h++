@@ -36,6 +36,8 @@ public:
     : language(compile_opts, link_opts)
     {}
 
+    virtual ~language_bash(void) {}
+
 public:
     /* language_bash is the parent of all the base-like languages, these
      * arguments allow children to override some internal functionality so they

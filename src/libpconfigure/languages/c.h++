@@ -35,6 +35,8 @@ public:
     : language_cxx(compile_opts, link_opts)
     {}
 
+    virtual ~language_c(void) {}
+
 public:
     /* Virtual methods from language_cxx. */
     virtual std::string compiler_command(void) const { return "${CC} -x c ${CFLAGS}";  }

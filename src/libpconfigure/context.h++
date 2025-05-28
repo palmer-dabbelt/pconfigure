@@ -165,6 +165,8 @@ public:
             const std::string& phc,
             const std::vector<ptr>& children);
 
+    virtual ~context(void) {}
+
 public:
     /* Duplicates the current context, potentially substituting in
      * some new values. */

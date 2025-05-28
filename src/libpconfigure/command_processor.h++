@@ -57,6 +57,7 @@ public:
     /* Creates a new, mostly empty command processor (there is a
      * default context on the stack, for example). */
     command_processor(void);
+    virtual ~command_processor(void) {}
 
 public:
     /* Accessor methods. */

@@ -56,6 +56,8 @@ namespace makefile {
          * already. */
         target(const std::string& name);
 
+	virtual ~target(void) {}
+
     public:
         /* Accessor methods. */
         const std::string& name(void) const { return _name; }

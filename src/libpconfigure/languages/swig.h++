@@ -36,6 +36,8 @@ public:
     : language_cxx(compile_opts, link_opts)
     {}
 
+    virtual ~language_swig(void) {}
+
 public:
     /* Virtual methods from language_swigxx. */
     virtual std::string compiler_command(void) const { return "pswigcc --cc=$(CXX)"; }

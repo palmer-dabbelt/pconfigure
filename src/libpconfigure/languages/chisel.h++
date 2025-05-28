@@ -37,6 +37,8 @@ public:
     : language(compile_opts, link_opts)
     {}
 
+    virtual ~language_chisel(void) {}
+
 public:
     /* Virtual methods from language. */
     virtual std::string name(void) const { return "chisel"; }

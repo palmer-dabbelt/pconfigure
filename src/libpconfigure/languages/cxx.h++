@@ -37,6 +37,8 @@ public:
     : language(compile_opts, link_opts)
     {}
 
+    virtual ~language_cxx(void) {}
+
 public:
     /* Allows sub-classes of this language to override the compiler and linker
      * strings. */
@@ -120,6 +122,8 @@ protected:
                     const std::string linker_command,
                     const std::string linker_pretty);
 
+        virtual ~link_target(void) {}
+
     public:
         /* target virtual functions */
         virtual makefile::target::ptr generate_makefile_target(void) const;
@@ -150,6 +154,8 @@ protected:
                        const std::string compiler_command,
                        const std::string compiler_pretty);
 
+        virtual ~compile_target(void) {}
+
     public:
         /* target virtual functions */
         virtual makefile::target::ptr generate_makefile_target(void) const;
@@ -170,6 +176,8 @@ protected:
                   const install_target& install,
                   const std::vector<std::string> comments);
 
+        virtual ~cp_target(void) {}
+
     public:
         /* target virtual functions */
         virtual makefile::target::ptr generate_makefile_target(void) const;
@@ -184,6 +192,7 @@ protected:
 
     public:
         header_target(const std::string& path);
+	virtual ~header_target(void) {}
 
     public:
         /* target virtual functions */
