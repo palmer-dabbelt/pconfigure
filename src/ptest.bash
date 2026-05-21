@@ -132,9 +132,16 @@ do
     fi
 done
 
-out="$(readlink -f "$out")"
-bin="$(readlink -f "$bin")"
-test="$(readlink -f "$test")"
+abs_path() {
+    case "$1" in
+        /*) echo "$1" ;;
+        *)  echo "$(pwd)/$1" ;;
+    esac
+}
+
+out="$(abs_path "$out")"
+bin="$(abs_path "$bin")"
+test="$(abs_path "$test")"
 
 # This is the regular path where we actually run a test case
 tmpdir=`mktemp -d -t ptest-wrapper.XXXXXXXXXX`
