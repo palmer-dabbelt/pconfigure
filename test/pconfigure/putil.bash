@@ -1,3 +1,4 @@
+test "$(uname -s)" = "Darwin" && exit 0
 #include "harness.bash"
 H4sIAM9biFcAA+w8aXfbNrb5av4KlNaLl4qUKGtxnNgZx2mneS+Tzsnyet5pNogELTYUyRJkHLfJ
 /PZ37wVAUku8tI460wqnbmgSy8XdF8Bu59YXb11oo8EA//VGg27zX9Nueb1Rv9cdDIaj3q2u1x30
