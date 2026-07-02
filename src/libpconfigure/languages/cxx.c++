@@ -576,16 +576,16 @@ language_cxx::link_objects(const context::ptr& ctx,
         + "/" + hash_link_options(ctx)
         + "/";
 
-    auto dedup_rpath = [](std::vector<std::string> opts) {
+    auto dedup_link_opts = [](std::vector<std::string> opts) {
         std::set<std::string> seen;
         return vector_util::filter(opts, [&](const std::string& opt) {
-            if (opt.substr(0, 11) != "-Wl,-rpath,")
+            if (opt.substr(0, 11) != "-Wl,-rpath," && opt.substr(0, 2) != "-l")
                 return true;
             return seen.insert(opt).second;
         });
     };
 
-    auto all_opts = dedup_rpath(link_opts() + ctx->link_opts +
+    auto all_opts = dedup_link_opts(link_opts() + ctx->link_opts +
         std::vector<std::string>{
             "-L" + ctx->lib_dir,
         } + vector_util::map(ctx->dep_libs, [](std::string dl){ return "-l" + dl; }));
