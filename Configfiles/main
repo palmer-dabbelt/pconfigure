@@ -150,6 +150,7 @@ TESTSRC     += osx-shared-deps.bash
 TESTSRC     += man.bash
 TESTSRC     += subdir-rpath.bash
 TESTSRC     += dup-rpath.bash
+TESTSRC     += dup-rpath-linkopts.bash
 TESTSRC     += dup-libs.bash
 TESTSRC     += config.bash
 TESTSRC     += compileopts-in-language.bash
