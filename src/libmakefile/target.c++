@@ -79,7 +79,7 @@ void makefile::target::write_to_file(FILE *file, bool verbose) const
             fprintf(file, "all: %s\n", _name.c_str());
             break;
         case global_targets::CHECK:
-            fprintf(file, "check: %s\n", _name.c_str());
+            fprintf(file, "obj/check-all-done: %s\n", _name.c_str());
             break;
         case global_targets::CLEAN:
             fprintf(file, ".PHONY: __pconfigure__clean-%s\n", _name.c_str());
