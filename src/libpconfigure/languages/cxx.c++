@@ -27,6 +27,7 @@
 #include <fcntl.h>
 #include <iostream>
 #include <set>
+#include <sstream>
 
 language_cxx* language_cxx::clone(void) const
 {
@@ -581,11 +582,18 @@ language_cxx::link_objects(const context::ptr& ctx,
         + "/";
 
     auto dedup_link_opts = [](std::vector<std::string> opts) {
+        std::vector<std::string> tokens;
+        for (const auto& opt : opts) {
+            std::istringstream ss(opt);
+            std::string tok;
+            while (ss >> tok)
+                tokens.push_back(tok);
+        }
         std::set<std::string> seen;
-        return vector_util::filter(opts, [&](const std::string& opt) {
-            if (opt.substr(0, 11) != "-Wl,-rpath," && opt.substr(0, 2) != "-l")
+        return vector_util::filter(tokens, [&](const std::string& tok) {
+            if (tok.substr(0, 11) != "-Wl,-rpath," && tok.substr(0, 2) != "-l")
                 return true;
-            return seen.insert(opt).second;
+            return seen.insert(tok).second;
         });
     };
 
