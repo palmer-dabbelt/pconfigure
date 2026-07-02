@@ -52,6 +52,7 @@ int main(int argc, const char **argv)
     auto makefile = std::make_shared<makefile::makefile>(verbose);
 
     auto distcleaned = std::map<std::string, bool>();
+    auto obj_dirs = std::map<std::string, bool>();
     for (const auto& context: processor->output_contexts()) {
         if (context->debug == true)
             std::cerr << "Building Context: " << context->cmd->data() << "\n";
@@ -77,6 +78,36 @@ int main(int argc, const char **argv)
         };
         for (const auto& dir: to_distclean)
             distcleaned[dir] = true;
+
+        obj_dirs[context->obj_dir] = true;
+    }
+
+    {
+        auto dirs = std::vector<std::string>();
+        for (const auto& pair: obj_dirs)
+            dirs.push_back(pair.first);
+
+        auto cache_clean_commands = std::vector<std::string>();
+        for (const auto& dir: dirs) {
+            cache_clean_commands.push_back(
+                "comm -23 "
+                "<(find " + dir + " -type f | sort) "
+                "<(sed -n 's/\\(^" + dir + "\\/[^[:space:]:]*\\):.*/\\1/p' Makefile | sort -u) "
+                "| xargs -r rm -f"
+            );
+            cache_clean_commands.push_back("find " + dir + " -type d -empty -delete");
+        }
+
+        auto target = std::make_shared<makefile::target>(
+            "cache-clean",
+            "CACHE-CLEAN",
+            std::vector<makefile::target::ptr>{},
+            std::vector<makefile::global_targets>{},
+            cache_clean_commands,
+            std::vector<std::string>{"cache-clean"}
+        );
+
+        makefile->add_target(target);
     }
 
     {
