@@ -43,13 +43,20 @@ void makefile::makefile::write_to_file(const std::string& filename)
     fprintf(file, ".PHONY: all\n");
     fprintf(file, ".PHONY: clean\n");
     fprintf(file, ".PHONY: cache-clean\n");
-    fprintf(file, ".PHONY: check\n");
+    fprintf(file, ".PHONY: report\n");
     fprintf(file, ".PHONY: install\n");
     fprintf(file, ".PHONY: uninstall\n");
     fprintf(file, "all:\n\n");
 
     for (const auto& target: _targets)
         target->write_to_file(file, _verbose);
+
+    auto q = _verbose ? "" : "@";
+    fprintf(file, "obj/check-all-done:\n\t%smkdir -p obj\n\t%sdate > $@\n\n", q, q);
+    fprintf(file, "obj/check-report-quiet: obj/check-all-done\n\t%sptest --quiet --no-check-make-check > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp; exit 1)\n\n", q);
+    fprintf(file, "obj/check-report: obj/check-all-done\n\t%sptest --no-check-make-check > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp; exit 1)\n\n", q);
+    fprintf(file, "check: obj/check-report-quiet\n\n");
+    fprintf(file, "report: obj/check-report\n\t%scat obj/check-report\n\n", q);
 
     fclose(file);
 }
