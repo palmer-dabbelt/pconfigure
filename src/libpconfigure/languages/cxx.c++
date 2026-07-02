@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <iostream>
+#include <set>
 
 language_cxx* language_cxx::clone(void) const
 {
@@ -575,10 +576,19 @@ language_cxx::link_objects(const context::ptr& ctx,
         + "/" + hash_link_options(ctx)
         + "/";
 
-    auto all_opts = link_opts() + ctx->link_opts +
+    auto dedup_rpath = [](std::vector<std::string> opts) {
+        std::set<std::string> seen;
+        return vector_util::filter(opts, [&](const std::string& opt) {
+            if (opt.substr(0, 11) != "-Wl,-rpath,")
+                return true;
+            return seen.insert(opt).second;
+        });
+    };
+
+    auto all_opts = dedup_rpath(link_opts() + ctx->link_opts +
         std::vector<std::string>{
             "-L" + ctx->lib_dir,
-        } + vector_util::map(ctx->dep_libs, [](std::string dl){ return "-l" + dl; });
+        } + vector_util::map(ctx->dep_libs, [](std::string dl){ return "-l" + dl; }));
 
     auto additional_deps =
         vector_util::map(ctx->dep_libs,
