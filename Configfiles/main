@@ -149,6 +149,7 @@ TESTSRC     += autodeps.bash
 TESTSRC     += osx-shared-deps.bash
 TESTSRC     += man.bash
 TESTSRC     += subdir-rpath.bash
+TESTSRC     += dup-rpath.bash
 TESTSRC     += config.bash
 TESTSRC     += compileopts-in-language.bash
 TESTSRC     += language-after-binary.bash
