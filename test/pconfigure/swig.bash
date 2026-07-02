@@ -1,3 +1,4 @@
+command -v swig > /dev/null 2>&1 || exit 0
 #include "harness.bash"
 H4sIAEwuoVcAA+w8aXfbNrb5av4KlNaLl4qUKEvyktgZx2mneS+Tzsnyet5pNogELTYUyRKkHbfJ
 /PZ37wVAUku8tI460wqnbmgSy8XdF8Bu584Xb11ou4MB/uvtDrrNf0274/XgTa+32/Wgn9cd7Azv
