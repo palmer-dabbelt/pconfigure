@@ -1,14 +1,22 @@
 verbose="false"
 quiet="false"
-if [[ "$1" == "--verbose" ]]
-then
-    verbose="true"
+check_make_check="true"
+while [[ "$1" == --* ]]
+do
+    if [[ "$1" == "--verbose" ]]
+    then
+        verbose="true"
+    elif [[ "$1" == "--quiet" ]]
+    then
+        quiet="true"
+    elif [[ "$1" == "--no-check-make-check" ]]
+    then
+        check_make_check="false"
+    else
+        break
+    fi
     shift
-elif [[ "$1" == "--quiet" ]]
-then
-    quiet="true"
-    shift
-fi
+done
 
 if [[ "$1" == "--check" ]]
 then
@@ -18,15 +26,15 @@ fi
 
 if [[ "$1" == "" ]]
 then
-    make -q check
-    makeq="$?"
-
-    if [[ "$makeq" != "0" ]]
+    if [[ "$check_make_check" == "true" ]]
     then
-        echo "*** WARNING: 'make check' is not up to date ***"
-        echo ""
-        echo ""
-        echo ""
+        if ! make -q obj/check-all-done 2>/dev/null
+        then
+            echo "*** WARNING: 'make check' is not up to date ***"
+            echo ""
+            echo ""
+            echo ""
+        fi
     fi
 
     # If there's no test directory then just give up
@@ -109,12 +117,15 @@ then
 
     error="$?"
 
-    if [[ "$makeq" != "0" ]]
+    if [[ "$check_make_check" == "true" ]]
     then
-        echo ""
-        echo ""
-        echo ""
-        echo "*** WARNING: 'make check' is not up to date ***"
+        if ! make -q obj/check-all-done 2>/dev/null
+        then
+            echo ""
+            echo ""
+            echo ""
+            echo "*** WARNING: 'make check' is not up to date ***"
+        fi
     fi
 
     exit $error
