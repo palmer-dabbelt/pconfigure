@@ -1,7 +1,12 @@
 verbose="false"
+quiet="false"
 if [[ "$1" == "--verbose" ]]
 then
     verbose="true"
+    shift
+elif [[ "$1" == "--quiet" ]]
+then
+    quiet="true"
     shift
 fi
 
@@ -42,13 +47,16 @@ then
         while read f
         do
             run=$(expr $run + 1)
-            
+
             # This is a special case that's used for printing the
             # success/failure of test cases
             ret="$(tar -xOf "$f" ptest__return)"
             if [[ "$ret" == "0" ]]
             then
-                echo -e "  PASS\t$(echo "$f" | cut -d'/' -f2-)"
+                if [[ "$quiet" != "true" ]]
+                then
+                    echo -e "  PASS\t$(echo "$f" | cut -d'/' -f2-)"
+                fi
                 pass=$(expr $pass + 1)
             elif [[ "$ret" == "1" ]]
             then
@@ -70,11 +78,23 @@ then
             fi
         done
 
-        echo ""
-        echo -e "NRUN\t"$run
-        echo -e "NPASS\t"$pass
-        echo -e "NFAIL\t"$fail
-        echo -e "NEROR\t"$error
+        if [[ "$quiet" == "true" ]]
+        then
+            if [[ "$fail" != "0" ]]
+            then
+                echo -e "NFAIL\t"$fail
+            fi
+            if [[ "$error" != "0" ]]
+            then
+                echo -e "NEROR\t"$error
+            fi
+        else
+            echo ""
+            echo -e "NRUN\t"$run
+            echo -e "NPASS\t"$pass
+            echo -e "NFAIL\t"$fail
+            echo -e "NEROR\t"$error
+        fi
 
         if [[ "$fail" != "0" ]]
         then
