@@ -390,6 +390,10 @@ language_cxx::link_target::generate_makefile_target(void) const
         }();
 
 
+    auto rpath_suffix = std::find(_opts.begin(), _opts.end(), rpath) == _opts.end()
+        ? " " + rpath
+        : std::string();
+
     auto cmds = std::vector<std::string>{
         "mkdir -p $(dir $@)",
         _linker_command
@@ -397,7 +401,7 @@ language_cxx::link_target::generate_makefile_target(void) const
           + " " + vector_util::join(vector_util::map(_objects, target2name), " ")
           + " " + vector_util::join(_opts, " ")
           + " " + shared
-          + " " + rpath
+          + rpath_suffix
     };
 
     auto global = std::vector<makefile::global_targets>{
