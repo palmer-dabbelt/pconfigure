@@ -19,7 +19,7 @@ cd $tempdir
 echo "Running"
 
 rm -f Configfile.local
-find -name "Configfile" | xargs cat
+find . -name "Configfile" | xargs cat
 $PTEST_BINARY $ARGS
 
 cat Makefile
