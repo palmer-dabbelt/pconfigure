@@ -53,6 +53,9 @@ private:
     /* This is set to TRUE if a "--version" command was given. */
     bool _given_version_command;
 
+    /* This is set to TRUE if a "--help" command was given. */
+    bool _given_help_command;
+
 public:
     /* Creates a new, mostly empty command processor (there is a
      * default context on the stack, for example). */
@@ -65,6 +68,8 @@ public:
         { return _output_contexts; }
     const bool& given_version_command(void) const
         { return _given_version_command; }
+    const bool& given_help_command(void) const
+        { return _given_help_command; }
 
 public:
     /* Processes a single command, performing the action that should

@@ -71,6 +71,8 @@ command::ptr command::parse(const std::string& str,
         return std::make_shared<command>(command_type::VERBOSE, "=", "true", d);
     if (str == "--version")
         return std::make_shared<command>(command_type::VERSION, "=", "true", d);
+    if (str == "--help" || str == "-h")
+        return std::make_shared<command>(command_type::HELP, "=", "true", d);
     if (str == "--config")
         return std::make_shared<command>(command_type::CONFIG, "+=", d);
     if (str == "--srcpath")

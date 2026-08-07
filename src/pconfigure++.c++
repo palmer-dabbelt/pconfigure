@@ -35,6 +35,27 @@ int main(int argc, const char **argv)
     for (const auto& command: commands(argc, argv))
         processor->process(command);
 
+    if (processor->given_help_command()) {
+        std::cout <<
+"usage: pconfigure [options]\n"
+"\n"
+"pconfigure reads a Configfile (by default Configfiles/main and Configfile in\n"
+"the current directory) and generates a Makefile that builds the project.\n"
+"\n"
+"Options:\n"
+"  -h, --help          Show this help message and exit\n"
+"  --version           Show the pconfigure version and exit\n"
+"  --verbose           Generate a Makefile that echoes each build command\n"
+"  --debug             Print debugging information while generating the Makefile\n"
+"  --config NAME       Also read Configfiles/NAME and Configfile.NAME\n"
+"  --srcpath PATH      Treat PATH as the root of the source tree\n"
+"  --phc PATH          Use PATH as the phc (header compiler) tool\n"
+"  --ppkg-config PATH  Use PATH as the ppkg-config tool\n"
+"\n"
+"See https://github.com/palmer-dabbelt/pconfigure for more information.\n";
+        return 0;
+    }
+
     if (processor->given_version_command()) {
         std::cout << "pconfigure " << PCONFIGURE_VERSION << std::endl;
         return 0;

@@ -27,7 +27,8 @@
 command_processor::command_processor(void)
     : _stack(),
       _opts_target(NULL),
-      _given_version_command(false)
+      _given_version_command(false),
+      _given_help_command(false)
 {
     _stack.push(std::make_shared<context>());
     auto tos = _stack.top();
@@ -340,6 +341,10 @@ void command_processor::process(const command::ptr& cmd)
 
     case command_type::VERSION:
         this->_given_version_command = true;
+        return;
+
+    case command_type::HELP:
+        this->_given_help_command = true;
         return;
 
     case command_type::SRCPATH:
