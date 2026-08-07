@@ -20,6 +20,7 @@
 
 #include "context.h++"
 #include "language_list.h++"
+#include <libmakefile/self_path.h++>
 #include <sstream>
 
 context::context(void)
@@ -44,7 +45,7 @@ context::context(void)
       debug(false),
       languages(std::make_shared<language_list>()),
       autodeps(true),
-      phc("phc"),
+      phc(makefile::tool_command("phc")),
       children()
 {
 }

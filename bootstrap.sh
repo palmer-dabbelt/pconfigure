@@ -128,6 +128,13 @@ fi
 # Actually builds itself
 make || exit $?
 
+# Regenerate the Makefile with the freshly-built pconfigure.  pconfigure now
+# bakes the absolute path of its own helper tools (pbashc, phc, ptest, ...)
+# into the Makefile, resolved relative to the running pconfigure binary.  The
+# Makefile generated above points those at $BOOTSTRAP_DIR, which is about to be
+# removed, so rewrite it to point at the just-built bin/ instead.
+env PATH="$BOOTSTRAP_DIR:$PATH" ./bin/pconfigure $sp || exit $?
+
 # Cleans up from the bootstrap process
 rm -rf $BOOTSTRAP_DIR
 

@@ -19,6 +19,7 @@
  */
 
 #include "cxx.h++"
+#include <libmakefile/self_path.h++>
 #include "../language_list.h++"
 #include "../vector_util.h++"
 #include "../pick_language.h++"
@@ -236,7 +237,7 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
             auto test_name = ctx->obj_dir + "/" + ctx->check_dir + "/" + ctx->cmd->data();
             auto commands = std::vector<std::string>{
                 "mkdir -p " + ctx->check_dir,
-                "+ptest --test " + test_name + " --out " + target_name + " --bin " + bin_name
+                "+" + makefile::tool_command("ptest") + " --test " + test_name + " --out " + target_name + " --bin " + bin_name
             };
             auto comment = std::vector<std::string>{
                 "language_cxx::targets() CHECK"

@@ -19,6 +19,7 @@
  */
 
 #include "implicit_h.h++"
+#include <libmakefile/self_path.h++>
 #include "../language_list.h++"
 #include <assert.h>
 #include <iostream>
@@ -79,7 +80,7 @@ language_implicit_h::targets(const context::ptr& ctx) const
         
         auto install_commands = std::vector<std::string>{
             "mkdir -p $(dir $@)",
-            "pbashc -i " + header_path + " -o " + install_path
+            makefile::tool_command("pbashc") + " -i " + header_path + " -o " + install_path
         };
 
         auto header_target = std::make_shared<makefile::target>(header_path);
