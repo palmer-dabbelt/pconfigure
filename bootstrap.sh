@@ -17,7 +17,6 @@ then
     cat > Configfiles/local <<EOF
 PREFIX = $2
 LANGUAGES += c
-COMPILEOPTS += -DDEFAULT_PREFIX=\"$2\"
 EOF
 
     shift
@@ -139,15 +138,7 @@ env PATH="$BOOTSTRAP_DIR:$PATH" ./bin/pconfigure $sp || exit $?
 rm -rf $BOOTSTRAP_DIR
 
 # Informational messages to the user
-prefix=`cat "$SOURCE_PATH"src/pconfigure/context.c | grep PREFIX | head -2 | tail -n1 | cut -d \" -f 2`
-
-dprefix=`cat "$SOURCE_PATH"Configfiles/{local,main} | grep DEFAULT_PREFIX | head -1 | cut -d '=' -f 3`
-dprefix=`echo $dprefix`
-
-if [[ "$dprefix" != "" ]]
-then
-    prefix="$dprefix"
-fi
+prefix=`grep 'prefix("' "$SOURCE_PATH"src/libpconfigure/context.c++ | head -1 | cut -d '"' -f 2`
 
 echo "run 'make install' to install this to the system"
 echo -e "\tby default it is installed into $prefix"
