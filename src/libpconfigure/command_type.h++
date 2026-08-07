@@ -60,6 +60,7 @@ enum class command_type {
     HEADERSRC,
     DEBUG,
     PHC,
+    HELP,
 };
 
 /* A utility function that allows one to iterate through all the
@@ -96,6 +97,7 @@ static const std::vector<command_type> all_command_types =
     command_type::HEADERSRC,
     command_type::DEBUG,
     command_type::PHC,
+    command_type::HELP,
 };
 
 /* Converts a command_type to a string, in the standard C++11 way. */
@@ -163,6 +165,8 @@ namespace std {
             return "DEBUG";
         case command_type::PHC:
             return "PHC";
+        case command_type::HELP:
+            return "HELP";
         }
 
         throw "Unable to convert " + to_string(static_cast<int>(cmd)) + " to string";
