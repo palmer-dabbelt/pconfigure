@@ -19,6 +19,7 @@
  */
 
 #include "makefile.h++"
+#include "self_path.h++"
 #include <iostream>
 
 makefile::makefile::makefile(bool verbose)
@@ -52,9 +53,10 @@ void makefile::makefile::write_to_file(const std::string& filename)
         target->write_to_file(file, _verbose);
 
     auto q = _verbose ? "" : "@";
+    auto ptest = tool_command("ptest");
     fprintf(file, "obj/check-all-done:\n\t%smkdir -p obj\n\t%sdate > $@\n\n", q, q);
-    fprintf(file, "obj/check-report-quiet: obj/check-all-done\n\t%sptest --quiet --no-check-make-check > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp; exit 1)\n\n", q);
-    fprintf(file, "obj/check-report: obj/check-all-done\n\t%sptest --no-check-make-check > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp; exit 1)\n\n", q);
+    fprintf(file, "obj/check-report-quiet: obj/check-all-done\n\t%s%s --quiet --no-check-make-check > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp; exit 1)\n\n", q, ptest.c_str());
+    fprintf(file, "obj/check-report: obj/check-all-done\n\t%s%s --no-check-make-check > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp; exit 1)\n\n", q, ptest.c_str());
     fprintf(file, "check: obj/check-report-quiet\n\n");
     fprintf(file, "report: obj/check-report\n\t%scat obj/check-report\n\n", q);
 

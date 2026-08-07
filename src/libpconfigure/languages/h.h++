@@ -35,7 +35,7 @@ public:
     language_h(const std::vector<std::string>& compile_opts,
                const std::vector<std::string>& link_opts)
     : language_bash(compile_opts, link_opts),
-      _phc("phc")
+      _phc(makefile::tool_command("phc"))
     {}
 
     virtual ~language_h(void) {}

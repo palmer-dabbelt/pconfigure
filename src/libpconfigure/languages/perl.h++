@@ -38,7 +38,7 @@ public:
 
 public:
     /* Virtual methods from language_bash. */
-    virtual std::string compiler_command(void) const { return "pperlc"; }
+    virtual std::string compiler_command(void) const { return makefile::tool_command("pperlc"); }
     virtual std::string compiler_pretty(void) const { return "PERL"; }
 
     /* Virtual methods from language. */

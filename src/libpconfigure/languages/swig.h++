@@ -22,6 +22,7 @@
 #define LANGUAGES__SWIG_CXX
 
 #include "cxx.h++"
+#include <libmakefile/self_path.h++>
 #include <memory>
 
 /* SWIG generates shared libraries from C code, but with wrappers so they can
@@ -40,7 +41,7 @@ public:
 
 public:
     /* Virtual methods from language_swigxx. */
-    virtual std::string compiler_command(void) const { return "pswigcc --cc=$(CXX)"; }
+    virtual std::string compiler_command(void) const { return makefile::tool_command("pswigcc") + " --cc=$(CXX)"; }
     virtual std::string compiler_pretty (void) const { return "SWCC";     }
     virtual std::string linker_command  (void) const { return "$(CXX)";  }
     virtual std::string linker_pretty   (void) const { return "SWLD";     }
