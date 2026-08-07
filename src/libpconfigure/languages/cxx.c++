@@ -405,6 +405,15 @@ language_cxx::link_target::generate_makefile_target(void) const
           + rpath_suffix
     };
 
+#ifdef __APPLE__
+    /* On macOS the kernel refuses to exec (or dlopen) a Mach-O whose code
+     * signature is invalid, killing the process with SIGKILL.  The linker
+     * usually adds an ad-hoc signature, but it can be left stale/invalid when
+     * we rewrite the binary (e.g. the install_name_tool-style rpath tweaks
+     * above), so re-sign the freshly-linked output ad-hoc to be safe. */
+    cmds.push_back("codesign --force --sign - " + _target_path);
+#endif
+
     auto global = std::vector<makefile::global_targets>{
         makefile::global_targets::CLEAN,
     };
