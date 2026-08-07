@@ -411,8 +411,15 @@ language_cxx::link_target::generate_makefile_target(void) const
      * signature is invalid, killing the process with SIGKILL.  The linker
      * usually adds an ad-hoc signature, but it can be left stale/invalid when
      * we rewrite the binary (e.g. the install_name_tool-style rpath tweaks
-     * above), so re-sign the freshly-linked output ad-hoc to be safe. */
-    cmds.push_back("codesign --force --sign - " + _target_path);
+     * above), so re-sign the freshly-linked output ad-hoc to be safe.
+     *
+     * codesign is chatty on success ("<file>: replacing existing signature"),
+     * so on non-verbose runs swallow its output but still surface it if the
+     * signing actually fails. */
+    auto sign = "codesign --force --sign - " + _target_path;
+    if (_ctx->verbose == false)
+        sign = "out=$$(" + sign + " 2>&1) || { echo \"$$out\"; exit 1; }";
+    cmds.push_back(sign);
 #endif
 
     auto global = std::vector<makefile::global_targets>{
