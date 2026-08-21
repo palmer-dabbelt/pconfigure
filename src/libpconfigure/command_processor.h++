@@ -73,6 +73,10 @@ private:
      * because reading a project is the job of whoever owns this. */
     std::vector<std::string> _pending_subprojects;
 
+    /* The Configfiles a CONFIG command asked for, which are handed
+     * back the same way and for the same reason. */
+    std::vector<std::string> _pending_configs;
+
 public:
     /* Creates a new, mostly empty command processor (there is a
      * default context on the stack, for example) for the project
@@ -101,6 +105,10 @@ public:
      * or an empty string once there aren't any left.  The path is
      * relative to where pconfigure was run and ends with a '/'. */
     std::string take_pending_subproject(void);
+
+    /* Hands back the suffix of a Configfile that a CONFIG command
+     * asked for, or an empty string once there aren't any left. */
+    std::string take_pending_config(void);
 
 public:
     /* Processes a single command, performing the action that should

@@ -22,6 +22,7 @@
 #define PROJECT_HXX
 
 #include "command_processor.h++"
+#include "commands.h++"
 #include <libmakefile/implied_deps.h++>
 #include <libmakefile/makefile.h++>
 #include <map>
@@ -130,6 +131,19 @@ public:
     static std::vector<ptr> flatten(const ptr& root);
 
 private:
+    /* Processes one Configfile line and everything it asks for: a
+     * CONFIG is read where it appears, and a SUBPROJECTS is read
+     * before the next line, so that the rest of the file can refer to
+     * what the subproject builds. */
+    static void process_line(const ptr& self,
+                             const configfile_line& line,
+                             std::set<std::string>& seen);
+
+    /* Processes every line of one Configfile. */
+    static void read_file(const ptr& self,
+                          const std::string& filename,
+                          std::set<std::string>& seen);
+
     /* The targets that don't come from any context: cleaning out the
      * object cache, and undoing a configure. */
     makefile::target::ptr cache_clean_target(const std::vector<ptr>& projects) const;

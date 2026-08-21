@@ -19,9 +19,36 @@
  */
 
 #include "pkgconfig.h++"
+#include "../commands.h++"
 #include "../language_list.h++"
 #include <assert.h>
 #include <iostream>
+#include <stdlib.h>
+#include <unistd.h>
+
+/* Where this project sits, spelled from the root of the filesystem.
+ *
+ * The pkg-config file that gets written for the build tree has to say
+ * where things are in a way that means the same thing to everybody
+ * who reads it, and the projects reading it are at all sorts of
+ * depths.  A relative answer would be re-rooted a second time by
+ * whoever consumed it. */
+static std::string absolute_base(const std::string& base)
+{
+    auto buffer = std::vector<char>(4096);
+    while (getcwd(&buffer[0], buffer.size()) == NULL) {
+        if (errno != ERANGE) {
+            perror("Unable to find the working directory");
+            abort();
+        }
+        buffer.resize(buffer.size() * 2);
+    }
+
+    auto out = std::string(&buffer[0]);
+    if (base.size() > 0)
+        out += "/" + base.substr(0, base.size() - 1);
+    return out;
+}
 
 language_pkgconfig* language_pkgconfig::clone(void) const
 {
@@ -118,21 +145,26 @@ language_pkgconfig::targets(const context::ptr& ctx) const
             makefile::global_targets::CLEAN,
         };
 
-        auto command = std::string();
-        command += "cat " + sources[0]->name();
-        command += " | sed 's^@@pconfigure_prefix@@^" + ctx->prefix + "^g'";
-        command += " | sed 's^@@pconfigure_libdir@@^" + ctx->unbased(ctx->lib_dir) + "^g'";
-        command += " | sed 's^@@pconfigure_hdrdir@@^" + ctx->unbased(ctx->hdr_dir) + "^g'";
-        for (const auto& str: this->clopts(ctx)) {
-            if (strncmp(str.c_str(), "-S", 2) == 0)
-                command += " | sed `cat " + sed_file(str) + "`";
-            else if (strncmp(str.c_str(), "`", 1) == 0)
-                command += " | sed " + str;
-            else
-                command += " | sed '" + str + "'";
-        }
+        auto build = [&](const std::string& prefix) {
+            auto command = std::string();
+            command += "cat " + sources[0]->name();
+            command += " | sed 's^@@pconfigure_prefix@@^" + prefix + "^g'";
+            command += " | sed 's^@@pconfigure_libdir@@^" + ctx->unbased(ctx->lib_dir) + "^g'";
+            command += " | sed 's^@@pconfigure_hdrdir@@^" + ctx->unbased(ctx->hdr_dir) + "^g'";
+            for (const auto& str: this->clopts(ctx)) {
+                if (strncmp(str.c_str(), "-S", 2) == 0)
+                    command += " | sed `cat " + sed_file(str) + "`";
+                else if (strncmp(str.c_str(), "`", 1) == 0)
+                    command += " | sed " + str;
+                else
+                    command += " | sed '" + str + "'";
+            }
 
-        command += "> ";
+            command += "> ";
+            return command;
+        };
+
+        auto command = build(ctx->prefix);
 
         auto commands = std::vector<std::string>{
             "mkdir -p $(dir $@)",
@@ -153,6 +185,53 @@ language_pkgconfig::targets(const context::ptr& ctx) const
                                                              commands,
                                                              comment);
 
+        /* The one above describes where this library will be once
+         * it's installed.  Another project in this build needs to
+         * link against it now, where it actually is, so there's a
+         * second copy that says that -- and it gets built while
+         * pconfigure is still running, because the Configfile that
+         * wants to know about it is being read right now. */
+        auto pkgconfig_dir = ctx->obj_dir + "/pkgconfig";
+        auto basename = ctx->cmd->data().substr(
+            ctx->cmd->data().find_last_of("/") + 1);
+        auto build_path = pkgconfig_dir + "/" + basename;
+        auto build_command = build(absolute_base(ctx->base));
+
+        auto build_target = std::make_shared<makefile::target>(
+            build_path,
+            short_cmd,
+            sources,
+            std::vector<makefile::global_targets>{
+                makefile::global_targets::ALL,
+                makefile::global_targets::CLEAN,
+            },
+            std::vector<std::string>{
+                /* Spelled out rather than "$(dir $@)", because these
+                 * same commands get run below by pconfigure itself,
+                 * where there's no make around to say what that
+                 * means. */
+                "mkdir -p " + pkgconfig_dir,
+                build_command + build_path
+            },
+            comment);
+
+        add_pkgconfig_path(pkgconfig_dir);
+
+        if (access(build_path.c_str(), R_OK) != 0) {
+            auto have_sources = true;
+            for (const auto& source: sources)
+                if (access(source->name().c_str(), R_OK) != 0)
+                    have_sources = false;
+
+            /* Anything it's built from that isn't there yet will be
+             * by the time make runs, so this is worth trying and not
+             * worth failing over. */
+            if (have_sources == true)
+                for (const auto& cmd: build_target->cmds())
+                    if (system(cmd.c_str()) != 0)
+                        break;
+        }
+
         auto install_path = "$(DESTDIR)/" + ctx->prefix + "/" + ctx->unbased(target);
 
         auto install_commands = std::vector<std::string>{
@@ -172,7 +251,7 @@ language_pkgconfig::targets(const context::ptr& ctx) const
                                                              install_commands,
                                                              comment);
 
-        return {bin_target, ins_target};
+        return {bin_target, build_target, ins_target};
         break;
     }
     }
