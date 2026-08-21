@@ -27,6 +27,26 @@ done
 
 if [[ "${#check_dirs[@]}" == "0" ]]
 then
+    # A build with subprojects has its test results spread across all
+    # of them, and there's nothing in this directory that says where
+    # the others are -- so pconfigure writes the list down next to the
+    # Makefile it writes at the same time.  A Makefile old enough not
+    # to have one, or a tree that was never configured, still has the
+    # one directory everybody has.
+    if [[ -r obj/check-dirs ]]
+    then
+        while read -r dir
+        do
+            if [[ "$dir" != "" ]]
+            then
+                check_dirs+=("$dir")
+            fi
+        done <obj/check-dirs
+    fi
+fi
+
+if [[ "${#check_dirs[@]}" == "0" ]]
+then
     check_dirs=(check)
 fi
 

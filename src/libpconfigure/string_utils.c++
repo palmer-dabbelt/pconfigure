@@ -103,6 +103,17 @@ int main(int argc, char **argv)
 }
 #endif
 
+bool string_utils::has_extension(const std::string& name,
+                                 const std::string& extension)
+{
+    if (name.size() <= extension.size())
+        return false;
+
+    return name.compare(name.size() - extension.size(),
+                        extension.size(),
+                        extension) == 0;
+}
+
 std::string string_utils::join(const std::vector<std::string>& in,
                                const std::string& delim)
 {

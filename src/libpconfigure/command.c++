@@ -77,9 +77,30 @@ command::ptr command::parse(const std::string& str,
         return std::make_shared<command>(command_type::DEBUG, "=", "true", d);
     if (str == "--phc")
         return std::make_shared<command>(command_type::PHC, "=", d);
+    if (str == "--cross-compile")
+        return std::make_shared<command>(command_type::CROSS_COMPILE, "=", d);
 
     auto split = string_utils::split_char(str, " ");
-    if (split.size() < 3) {
+
+    /* A command that sets something to nothing is written with the
+     * value left off, since there's no way to write an empty word.
+     * That's the only way to take back something a project was given
+     * from further up -- a CROSS_COMPILE the whole project inherited,
+     * for the one target that has to be built for this machine.
+     *
+     * CROSS_COMPILE is the only command it means anything for, and
+     * the only one allowed to be written that way.  Everything else
+     * that takes an '=' names a place rather than a choice, and an
+     * empty answer to "where" isn't a project saying "nowhere", it's
+     * a line somebody got wrong: an empty LIBDIR would quietly make
+     * every library path in the build absolute. */
+    auto sets_nothing = (split.size() == 2)
+        && (split[1] == "=")
+        && (strcasecmp(split[0].c_str(),
+                       std::to_string(command_type::CROSS_COMPILE).c_str())
+            == 0);
+
+    if (split.size() < 3 && sets_nothing == false) {
         std::cerr << "split_char() returned " << split.size() << "\n"
                   << "  original string: '" << str << "'\n";
         return NULL;
@@ -87,7 +108,9 @@ command::ptr command::parse(const std::string& str,
 
     auto cmdstr = split[0];
     auto op = split[1];
-    auto arg = std::string(str, split[0].size() + split[1].size() + 2);
+    auto arg = sets_nothing
+        ? std::string()
+        : std::string(str, split[0].size() + split[1].size() + 2);
 
     try {
         auto cmd = check_command_type(cmdstr);

@@ -40,12 +40,7 @@ bool language_swig::can_process(const context::ptr& ctx) const
         return false;
 
     case context_type::LIBRARY:
-        return language::all_sources_match(
-            ctx,
-            {
-                std::regex(".*\\.i"),
-            }
-            );
+        return language::all_sources_match(ctx, {".i"});
     }
 
     std::cerr << "Internal error: bad context type "

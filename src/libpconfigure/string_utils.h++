@@ -45,6 +45,11 @@ namespace string_utils {
 
     /* Computes a simple hash code for a vector of strings. */
     std::string hash(const std::vector<std::string>& in);
+
+    /* TRUE when a filename ends with the given extension.  A name
+     * that is nothing but the extension has no stem, so it isn't
+     * one. */
+    bool has_extension(const std::string& name, const std::string& extension);
 }
 
 #endif

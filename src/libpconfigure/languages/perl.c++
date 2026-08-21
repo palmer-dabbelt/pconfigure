@@ -31,12 +31,7 @@ language_perl* language_perl::clone(void) const
 
 bool language_perl::can_process(const context::ptr& ctx) const
 {
-    return language::all_sources_match(
-        ctx,
-        {
-            std::regex(".*\\.pl"),
-        }
-        );
+    return language::all_sources_match(ctx, {".pl"});
 }
 
 static void install_perl(void) __attribute__((constructor));

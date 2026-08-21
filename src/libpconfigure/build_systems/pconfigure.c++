@@ -52,7 +52,8 @@ void build_system_pconfigure::add_configureopt(const std::string& opt)
 }
 
 std::vector<makefile::target::ptr>
-build_system_pconfigure::targets(void) const
+build_system_pconfigure::targets(
+    const std::vector<build_system::ptr>& peers __attribute__((unused))) const
 {
     return std::vector<makefile::target::ptr>();
 }

@@ -22,6 +22,7 @@
 #include "commands.h++"
 #include "file_utils.h++"
 #include "pick_language.h++"
+#include <sys/stat.h>
 #include <cctype>
 #include <iostream>
 
@@ -178,7 +179,7 @@ void project::generate_targets(void)
      * already has a Makefile and it's the tree's own, so there's
      * nowhere else for them to go. */
     for (const auto& vendored: _processor->vendored())
-        for (const auto& target: vendored->targets())
+        for (const auto& target: vendored->targets(_processor->vendored()))
             _targets.push_back(target);
 
     for (const auto& context: _processor->output_contexts()) {
@@ -240,6 +241,14 @@ makefile::target::ptr project::cache_clean_target(const std::vector<ptr>& projec
         for (const auto& vendored: project->_processor->vendored())
             prune += " -not -path '" + vendored->output_dir() + "/*'";
 
+        /* pconfigure wrote this one, and the Makefile says nothing
+         * about it: reading the Makefile back would decide it was
+         * stale and throw away the only record of where the test
+         * results live. */
+        prune += " -not -path '"
+              + project->_processor->root_context()->obj_dir
+              + "/check-dirs'";
+
         for (const auto& pair: obj_dirs) {
             const auto& dir = pair.first;
 
@@ -272,6 +281,13 @@ makefile::target::ptr project::distclean_target(const std::vector<ptr>& projects
     auto dirs = std::map<std::string, bool>();
     auto makefiles = std::vector<std::string>();
     for (const auto& project: projects) {
+        /* Every project has an object directory whether or not it
+         * builds anything, because pconfigure writes to it: the list
+         * of where test results land goes there.  A project that only
+         * pulls in other projects has no context to find that
+         * directory through, so it gets named outright. */
+        dirs[project->_processor->root_context()->obj_dir] = true;
+
         /* A vendored tree builds into this project's object
          * directory, so it's already covered by whatever covers that
          * -- but a project that vendors something and builds nothing
@@ -351,4 +367,31 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
     out->add_standalone_target(distclean_target(aggregated));
 
     out->write_to_file(makefile_path());
+
+    write_check_dirs(aggregated);
+}
+
+void project::write_check_dirs(const std::vector<ptr>& aggregated) const
+{
+    const auto& root = _processor->root_context();
+
+    /* The Makefile is what creates this directory during a build, and
+     * nothing has been built yet. */
+    mkdir(root->obj_dir.c_str(), 0777);
+
+    auto path = root->obj_dir + "/check-dirs";
+    auto file = fopen(path.c_str(), "w");
+    if (file == NULL) {
+        std::cerr << "Unable to open " << path << "\n";
+        abort();
+    }
+
+    /* Written the way whoever reads it will be standing: "ptest" runs
+     * where make runs, which for this file is this project. */
+    for (const auto& project: aggregated)
+        fprintf(file, "%s\n",
+                root->unbased(
+                    project->processor()->root_context()->check_dir).c_str());
+
+    fclose(file);
 }

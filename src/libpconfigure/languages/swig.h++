@@ -41,9 +41,15 @@ public:
 
 public:
     /* Virtual methods from language_swigxx. */
-    virtual std::string compiler_command(void) const { return makefile::tool_command("pswigcc") + " --cc=$(CXX)"; }
+    virtual std::string
+    default_compiler_command(const context::ptr& ctx __attribute__((unused)))
+    const
+        { return makefile::tool_command("pswigcc") + " --cc=$(CXX)"; }
     virtual std::string compiler_pretty (void) const { return "SWCC";     }
-    virtual std::string linker_command  (void) const { return "$(CXX)";  }
+    virtual std::string
+    default_linker_command(const context::ptr& ctx __attribute__((unused)))
+    const
+        { return "$(CXX)"; }
     virtual std::string linker_pretty   (void) const { return "SWLD";     }
 
     /* Virtual methods from language. */

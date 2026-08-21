@@ -42,12 +42,7 @@ bool language_bash::can_process(const context::ptr& ctx) const
     case context_type::BINARY:
     case context_type::SOURCE:
     case context_type::TEST:
-    return language::all_sources_match(
-        ctx,
-        {
-            std::regex(".*\\.bash"),
-        }
-        );
+    return language::all_sources_match(ctx, {".bash"});
     }
 
     std::cerr << "Internal error: bad context type "
@@ -100,7 +95,7 @@ language_bash::targets(const context::ptr& ctx) const
         };
 
         auto command = std::string();
-        command += this->compiler_command()
+        command += this->compiler_command(ctx)
                    + " -i "
                    + sources[0]->name()
                    + " -o "
@@ -182,6 +177,15 @@ language_bash::targets(const context::ptr& ctx) const
             makefile::global_targets::CLEAN
         };
         auto test_name = ctx->obj_dir + "/" + ctx->unbased(ctx->check_dir) + "/" + ctx->cmd->data();
+
+        /* A test that needs something built before it runs says so
+         * with a TESTDEPS, and all that has to happen is that make
+         * builds it first.  Every one of them is something this
+         * project builds, which is what keeps this Makefile usable
+         * on its own. */
+        for (const auto& dep: ctx->based_test_deps())
+            deps.push_back(std::make_shared<makefile::target>(dep));
+
         auto commands = std::vector<std::string>{
             "mkdir -p " + ctx->check_dir,
             "+" + makefile::tool_command("ptest") + " --test " + test_name + " --out " + target_name + " --bin " + bin_name

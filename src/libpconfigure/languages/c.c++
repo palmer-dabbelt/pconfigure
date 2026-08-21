@@ -22,6 +22,22 @@
 #include "../language_list.h++"
 #include <iostream>
 
+std::string language_c::default_compiler_command(const context::ptr& ctx) const
+{
+    if (ctx->cross_compile.size() > 0)
+        return ctx->cross_compile + "gcc -x c ${CFLAGS}";
+
+    return "${CC} -x c ${CFLAGS}";
+}
+
+std::string language_c::default_linker_command(const context::ptr& ctx) const
+{
+    if (ctx->cross_compile.size() > 0)
+        return ctx->cross_compile + "gcc ${LDFLAGS} ${CFLAGS}";
+
+    return "${CC} ${LDFLAGS} ${CFLAGS}";
+}
+
 language_c* language_c::clone(void) const
 {
     return new language_c(this->list_compile_opts(),
@@ -40,12 +56,11 @@ bool language_c::can_process(const context::ptr& ctx) const
     case context_type::BINARY:
     case context_type::SOURCE:
     case context_type::TEST:
-        return language::all_sources_match(
-            ctx,
-            {
-                std::regex(".*\\.c"),
-            }
-            );
+        /* Just the one, and that's the whole of what keeps C and C++
+         * from both claiming the same file: every other spelling a C
+         * compiler would accept is one a C++ project is more likely
+         * to have meant. */
+        return language::all_sources_match(ctx, {".c"});
     }
 
     std::cerr << "Internal error: bad context type "
