@@ -68,12 +68,18 @@ private:
      * project's defaults. */
     context::ptr _root;
 
+    /* The subprojects that have been asked for but not read yet.
+     * They're handed back one at a time rather than read here,
+     * because reading a project is the job of whoever owns this. */
+    std::vector<std::string> _pending_subprojects;
+
 public:
     /* Creates a new, mostly empty command processor (there is a
      * default context on the stack, for example) for the project
      * rooted at "base" -- which is either empty, for the project
      * being configured, or a path ending in '/' for a subproject. */
-    command_processor(const std::string& base = "");
+    command_processor(const std::string& base = "",
+                      const context::ptr& defaults = NULL);
     virtual ~command_processor(void) {}
 
 public:
@@ -90,6 +96,11 @@ public:
         { return _base; }
     const context::ptr& root_context(void) const
         { return _root; }
+
+    /* Hands back a subproject that a SUBPROJECTS command asked for,
+     * or an empty string once there aren't any left.  The path is
+     * relative to where pconfigure was run and ends with a '/'. */
+    std::string take_pending_subproject(void);
 
 public:
     /* Processes a single command, performing the action that should

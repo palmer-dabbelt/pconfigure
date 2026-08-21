@@ -24,7 +24,8 @@
 #include "languages/implicit_h.h++"
 #include <iostream>
 
-command_processor::command_processor(const std::string& base)
+command_processor::command_processor(const std::string& base,
+                                     const context::ptr& defaults)
     : _stack(),
       _opts_target(NULL),
       _given_version_command(false),
@@ -33,6 +34,18 @@ command_processor::command_processor(const std::string& base)
       _base(base),
       _root(std::make_shared<context>(base))
 {
+    /* A subproject is its own project, with its own languages and its
+     * own directories, but it does get built and installed as part of
+     * whoever pulled it in -- so it starts out installing to the same
+     * place, and using the same tools.  Anything its own Configfile
+     * says about either still wins. */
+    if (defaults != NULL) {
+        _root->prefix = defaults->prefix;
+        _root->phc = defaults->phc;
+        _root->verbose = defaults->verbose;
+        _root->debug = defaults->debug;
+    }
+
     _stack.push(_root);
     auto tos = _stack.top();
     tos->languages->add(std::make_shared<language_gen_proc>(
@@ -308,6 +321,21 @@ void command_processor::process(const command::ptr& cmd)
         return;
     }
 
+    case command_type::SUBPROJECTS:
+    {
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        clear_until({context_type::DEFAULT});
+
+        /* Reading it is somebody else's job: this just says which one
+         * was asked for, relative to where pconfigure is running
+         * rather than to whoever asked. */
+        _pending_subprojects.push_back(_base + cmd->data());
+
+        return;
+    }
+
     case command_type::TESTDEPS:
     case command_type::TESTDIR:
         goto unimplemented;
@@ -414,6 +442,16 @@ no_opts_target:
               << std::to_string(cmd->type())
               << " needs an *OPTS target, but none exists\n";
     abort();
+}
+
+std::string command_processor::take_pending_subproject(void)
+{
+    if (_pending_subprojects.size() == 0)
+        return "";
+
+    auto out = _pending_subprojects.front();
+    _pending_subprojects.erase(_pending_subprojects.begin());
+    return out;
 }
 
 void command_processor::clear_until(const std::vector<context_type>& types)

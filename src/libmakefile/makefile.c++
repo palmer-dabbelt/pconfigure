@@ -123,7 +123,7 @@ void makefile::makefile::write_to_file(const std::string& filename)
      * children's. */
     fprintf(file, "%s:", stamp.c_str());
     for (const auto& check_stamp: _check_stamps)
-        fprintf(file, " %s", check_stamp.c_str());
+        fprintf(file, " %s", _prefix.rewrite(check_stamp).c_str());
     fprintf(file, "\n\t%smkdir -p %s\n\t%sdate > $@\n\n",
             q, obj_dir.c_str(), q);
 

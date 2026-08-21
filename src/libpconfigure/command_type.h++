@@ -49,6 +49,7 @@ enum class command_type {
     PREFIX,
     SOURCES,
     SRCDIR,
+    SUBPROJECTS,
     TESTDEPS,
     TESTDIR,
     TESTEXECS,
@@ -87,6 +88,7 @@ static const std::vector<command_type> all_command_types =
     command_type::PREFIX,
     command_type::SOURCES,
     command_type::SRCDIR,
+    command_type::SUBPROJECTS,
     command_type::TESTDEPS,
     command_type::TESTDIR,
     command_type::TESTEXECS,
@@ -145,6 +147,8 @@ namespace std {
             return "SOURCES";
         case command_type::SRCDIR:
             return "SRCDIR";
+        case command_type::SUBPROJECTS:
+            return "SUBPROJECTS";
         case command_type::TESTDEPS:
             return "TESTDEPS";
         case command_type::TESTDIR:

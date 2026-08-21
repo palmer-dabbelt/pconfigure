@@ -170,12 +170,19 @@ protected:
     class cp_target: public target {
     private:
         const std::string _target_path;
+
+        /* What to call the file when telling somebody it's being
+         * copied.  The path this ends up at is relative to wherever
+         * pconfigure ran, which isn't a name a subproject's own build
+         * would recognize. */
+        const std::string _pretty_path;
         const target::ptr _source;
         const install_target _install;
         const std::vector<std::string> _comments;
 
     public:
         cp_target(const std::string& target_path,
+                  const std::string& pretty_path,
                   const target::ptr& source,
                   const install_target& install,
                   const std::vector<std::string> comments);

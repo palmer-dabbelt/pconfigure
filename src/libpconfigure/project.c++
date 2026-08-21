@@ -19,14 +19,131 @@
  */
 
 #include "project.h++"
+#include "commands.h++"
 #include "pick_language.h++"
+#include <cctype>
 #include <iostream>
+#include <unistd.h>
 
 project::project(const std::string& base,
                  const command_processor::ptr& processor)
 : _base(base),
   _processor(processor)
 {
+}
+
+std::string project::normalize_base(const std::string& path)
+{
+    auto parts = std::vector<std::string>();
+    auto part = std::string();
+
+    for (size_t i = 0; i <= path.size(); ++i) {
+        if (i < path.size() && path[i] != '/') {
+            part += path[i];
+            continue;
+        }
+
+        if (part.size() == 0 || part == ".") {
+            /* "sub//x" and "sub/./x" are just "sub/x". */
+        } else if (part == ".." && parts.size() > 0 && parts.back() != "..") {
+            parts.pop_back();
+        } else {
+            parts.push_back(part);
+        }
+
+        part = "";
+    }
+
+    auto out = std::string();
+    for (const auto& p: parts)
+        out += p + "/";
+    return out;
+}
+
+std::string project::prefix_variable(const std::string& base)
+{
+    /* The variable has to name this project and nobody else, so it's
+     * built from where the project is -- which is unique by
+     * definition, once the path has been normalized.  Everything that
+     * make would object to becomes an underscore. */
+    auto suffix = std::string();
+
+    auto was_word = false;
+    for (const auto& c: base) {
+        if (isalnum(c) != 0) {
+            if (was_word == false && suffix.size() > 0)
+                suffix += '_';
+            suffix += c;
+            was_word = true;
+        } else {
+            was_word = false;
+        }
+    }
+
+    return "pconfigure_subdir_" + suffix;
+}
+
+project::ptr project::read(const command_processor::ptr& processor,
+                           std::set<std::string>& seen)
+{
+    auto out = std::make_shared<project>(processor->base(), processor);
+
+    for (const auto& command: configfiles(processor->srcpath())) {
+        processor->process(command);
+
+        /* Read a subproject as soon as it's asked for, so that the
+         * rest of this Configfile can refer to what it builds. */
+        while (true) {
+            auto base = processor->take_pending_subproject();
+            if (base.size() == 0)
+                break;
+
+            auto child = read(base,
+                              processor->root_context(),
+                              seen);
+            if (child != NULL)
+                out->_children.push_back(child);
+        }
+    }
+
+    out->generate_targets();
+    return out;
+}
+
+project::ptr project::read(const std::string& base,
+                           const context::ptr& defaults,
+                           std::set<std::string>& seen)
+{
+    auto normalized = normalize_base(base);
+
+    if (normalized.size() == 0) {
+        std::cerr << "SUBPROJECTS can't point at the project itself\n";
+        abort();
+    }
+
+    /* A project that two others both pull in is one project, and only
+     * gets read once -- which is also what stops a project that
+     * somehow reaches itself from recursing forever. */
+    if (seen.insert(normalized).second == false)
+        return NULL;
+
+    if (access((normalized + "Configfile").c_str(), R_OK) != 0
+        && access((normalized + "Configfiles/main").c_str(), R_OK) != 0) {
+        std::cerr << "No Configfile in subproject '" << normalized << "'\n";
+        abort();
+    }
+
+    auto processor = std::make_shared<command_processor>(normalized, defaults);
+    return read(processor, seen);
+}
+
+std::vector<project::ptr> project::flatten(const ptr& root)
+{
+    auto out = std::vector<ptr>{root};
+    for (const auto& child: root->_children)
+        for (const auto& descendant: flatten(child))
+            out.push_back(descendant);
+    return out;
 }
 
 void project::generate_targets(void)
@@ -60,23 +177,25 @@ void project::generate_targets(void)
     }
 }
 
-makefile::target::ptr project::cache_clean_target(void) const
+makefile::target::ptr project::cache_clean_target(const std::vector<ptr>& projects) const
 {
-    auto obj_dirs = std::map<std::string, bool>();
-    for (const auto& context: _processor->output_contexts())
-        obj_dirs[context->obj_dir] = true;
-
     auto commands = std::vector<std::string>();
-    for (const auto& pair: obj_dirs) {
-        const auto& dir = pair.first;
-        commands.push_back(
-            "comm -23 "
-            "<(find " + dir + " -type f | sort) "
-            "<(sed -n 's/\\(^" + dir + "\\/[^[:space:]:]*\\):.*/\\1/p' "
-            + makefile_path() + " | sort -u) "
-            "| xargs -r rm -f"
-        );
-        commands.push_back("find " + dir + " -type d -empty -delete");
+    for (const auto& project: projects) {
+        auto obj_dirs = std::map<std::string, bool>();
+        for (const auto& context: project->_processor->output_contexts())
+            obj_dirs[context->obj_dir] = true;
+
+        for (const auto& pair: obj_dirs) {
+            const auto& dir = pair.first;
+            commands.push_back(
+                "comm -23 "
+                "<(find " + dir + " -type f | sort) "
+                "<(sed -n 's/\\(^" + dir + "\\/[^[:space:]:]*\\):.*/\\1/p' "
+                + project->makefile_path() + " | sort -u) "
+                "| xargs -r rm -f"
+            );
+            commands.push_back("find " + dir + " -type d -empty -delete");
+        }
     }
 
     return std::make_shared<makefile::target>(
@@ -89,20 +208,25 @@ makefile::target::ptr project::cache_clean_target(void) const
     );
 }
 
-makefile::target::ptr project::distclean_target(void) const
+makefile::target::ptr project::distclean_target(const std::vector<ptr>& projects) const
 {
     auto dirs = std::map<std::string, bool>();
-    for (const auto& context: _processor->output_contexts()) {
-        dirs[context->bin_dir] = true;
-        dirs[context->check_dir] = true;
-        dirs[context->lib_dir] = true;
-        dirs[context->obj_dir] = true;
+    auto makefiles = std::vector<std::string>();
+    for (const auto& project: projects) {
+        for (const auto& context: project->_processor->output_contexts()) {
+            dirs[context->bin_dir] = true;
+            dirs[context->check_dir] = true;
+            dirs[context->lib_dir] = true;
+            dirs[context->obj_dir] = true;
+        }
+        makefiles.push_back(project->makefile_path());
     }
 
     auto commands = std::vector<std::string>();
     for (const auto& pair: dirs)
         commands.push_back("rm -rf " + pair.first);
-    commands.push_back("rm -rf " + makefile_path());
+    for (const auto& path: makefiles)
+        commands.push_back("rm -rf " + path);
 
     return std::make_shared<makefile::target>(
         "distclean",
@@ -114,7 +238,8 @@ makefile::target::ptr project::distclean_target(void) const
     );
 }
 
-void project::write_makefile(const std::vector<makefile::implied_dep>& implied) const
+void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
+                             const std::vector<ptr>& aggregated) const
 {
     /* FIXME: If any target is verbose, then all are. */
     auto verbose = [&](void) -> bool {
@@ -124,9 +249,17 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied) 
         return false;
         }();
 
+    auto prefix = _base.size() == 0
+        ? makefile::path_prefix()
+        : makefile::path_prefix(_base, prefix_variable(_base));
+
     auto out = std::make_shared<makefile::makefile>(
         verbose,
-        _processor->root_context()->obj_dir);
+        _processor->root_context()->obj_dir,
+        prefix);
+
+    for (const auto& child: _children)
+        out->add_subproject(prefix_variable(child->base()), child->base());
 
     for (const auto& target: _targets)
         out->add_target(target);
@@ -135,8 +268,22 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied) 
         if (_by_name.find(dep.target) != _by_name.end())
             out->add_dep(dep.target, dep.dep);
 
-    out->add_standalone_target(cache_clean_target());
-    out->add_standalone_target(distclean_target());
+    /* A project's "make check" stamp waits on its children's, so that
+     * asking any one project to run its tests runs the tests of
+     * everything it pulled in too. */
+    for (const auto& child: _children)
+        out->add_check_stamp(
+            child->processor()->root_context()->obj_dir + "/check-all-done");
+
+    /* Running make here means collecting the test results of, and
+     * knowing the build directories of, this project and everything
+     * it pulled in.  These only get written out for a standalone
+     * build, so a parent's copies are what run when there is one. */
+    for (const auto& project: aggregated)
+        out->add_check_dir(project->processor()->root_context()->check_dir);
+
+    out->add_standalone_target(cache_clean_target(aggregated));
+    out->add_standalone_target(distclean_target(aggregated));
 
     out->write_to_file(makefile_path());
 }
