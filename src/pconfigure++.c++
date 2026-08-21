@@ -51,6 +51,9 @@ int main(int argc, const char **argv)
 "  --config NAME       Also read Configfiles/NAME and Configfile.NAME\n"
 "  --srcpath PATH      Treat PATH as the root of the source tree\n"
 "  --phc PATH          Use PATH as the phc (header compiler) tool\n"
+"  --strict VERSION    Turn every warning that existed as of VERSION into an\n"
+"                      error, e.g. --strict v0.13.  Defaults to v0.12, which\n"
+"                      promotes nothing.\n"
 "  --ppkg-config PATH  Use PATH as the ppkg-config tool\n"
 "\n"
 "See https://github.com/palmer-dabbelt/pconfigure for more information.\n";

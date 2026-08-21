@@ -25,6 +25,7 @@
 #include <string>
 #include "context_type.h++"
 #include "command.h++"
+#include "strict.h++"
 #include "opts_target.h++"
 
 class language_list;
@@ -127,6 +128,14 @@ public:
      * mean for it can ignore this and still be handed a COMPILER. */
     std::string cross_compile;
 
+    /* How much of what pconfigure used to let a project get away with
+     * it should still let this one get away with, which is what a
+     * STRICT says.  This rides along on the context for the same
+     * reason a CROSS_COMPILE does: a subproject inherits it from
+     * whoever pulled it in, and a project that says nothing gets the
+     * default. */
+    strict strictness;
+
     /* The list of internal libraries that this target depends on.
      * These need to be both linked in at link-time, and trigger a
      * re-link if they've changed. */
@@ -216,6 +225,7 @@ public:
             const std::string& compiler,
             const std::string& linker,
             const std::string& cross_compile,
+            const strict& strictness,
             const std::vector<std::string>& dep_libs,
             const std::vector<std::string>& test_deps,
             const command::ptr& cmd,

@@ -166,6 +166,12 @@ private:
      * is not a rule make will run again -- so the options have to
      * reach the Makefile as a file as well as as a recipe. */
     void write_configureopts(void) const;
+
+    /* Says so when a target isn't shaped like one: nothing to build,
+     * or the same output as something already asked for.  Both are
+     * things that come out looking like they worked. */
+    static void check_target_shape(const context::ptr& ctx,
+                                   std::map<std::string, context::ptr>& seen);
 };
 
 #endif
