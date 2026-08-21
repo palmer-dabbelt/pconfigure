@@ -405,6 +405,21 @@ language_cxx::link_target::generate_makefile_target(void) const
                                  });
     auto target2name = [](const target::ptr& t){ return t->path(); };
 
+#ifdef __APPLE__
+    /* Where the plist an ENTITLEMENTS names actually lives: it's
+     * written relative to the project that asked for it, the same as
+     * everything else in that project's Configfile. */
+    auto entitlements = _ctx->entitlements.size() == 0
+        ? std::string()
+        : _ctx->base + _ctx->entitlements;
+
+    /* Changing what a binary is allowed to do has to re-sign it, and
+     * signing only happens as part of a link, so the plist is an
+     * input to the link like any of the objects are. */
+    if (entitlements.size() > 0)
+        deps.push_back(std::make_shared<makefile::target>(entitlements));
+#endif
+
     auto shared = [&](void) -> std::string
         {
             switch (_shared) {
@@ -533,10 +548,19 @@ language_cxx::link_target::generate_makefile_target(void) const
      * we rewrite the binary (e.g. the install_name_tool-style rpath tweaks
      * above), so re-sign the freshly-linked output ad-hoc to be safe.
      *
+     * The signature is also the only place macOS looks to find out what
+     * a binary is allowed to do, so anything ENTITLEMENTS asked for has
+     * to be named here: signing without it doesn't leave the previous
+     * entitlements alone, it drops them.
+     *
      * codesign is chatty on success ("<file>: replacing existing signature"),
      * so on non-verbose runs swallow its output but still surface it if the
      * signing actually fails. */
-    auto sign = "codesign --force --sign - " + _target_path;
+    auto sign = "codesign --force --sign -"
+        + (entitlements.size() == 0
+           ? std::string()
+           : " --entitlements " + entitlements)
+        + " " + _target_path;
     if (_ctx->verbose == false)
         sign = "out=$$(" + sign + " 2>&1) || { echo \"$$out\"; exit 1; }";
     cmds.push_back(sign);

@@ -39,6 +39,7 @@ enum class command_type {
     CONFIG,
     CONFIGUREOPTS,
     DEPLIBS,
+    ENTITLEMENTS,
     GENERATE,
     HDRDIR,
     HEADERS,
@@ -80,6 +81,7 @@ static const std::vector<command_type> all_command_types =
     command_type::CONFIG,
     command_type::CONFIGUREOPTS,
     command_type::DEPLIBS,
+    command_type::ENTITLEMENTS,
     command_type::GENERATE,
     command_type::HDRDIR,
     command_type::HEADERS,
@@ -131,6 +133,8 @@ namespace std {
             return "CONFIGUREOPTS";
         case command_type::DEPLIBS:
             return "DEPLIBS";
+        case command_type::ENTITLEMENTS:
+            return "ENTITLEMENTS";
         case command_type::GENERATE:
             return "GENERATE";
         case command_type::HDRDIR:
