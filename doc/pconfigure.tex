@@ -1168,6 +1168,61 @@ has said which machine it is building for has already said this.  A
 vendored tree that has to be built with a different toolchain than the
 project around it.
 
+Alongside those two rules \pconfigure\ writes a third file, which has
+no rule of its own:
+
+\begin{verbatim}
+obj/kconfig/linux/configure-opts
+\end{verbatim}
+
+It holds what the tree was configured with: one
+\texttt{CONFIGUREOPTS} line per line, exactly as it was written and in
+the order it was written, followed by a
+\texttt{CROSS\_COMPILE=\$prefix} line for a build system that is told
+one.  A \texttt{kconfig} tree's file carries the project's
+\texttt{CROSS\_COMPILE} and a \texttt{buildroot} tree's does not, for
+the same reason \texttt{buildroot} isn't told it in the first place
+(see Section~\ref{buildsys:buildroot}): a tree that has no use for the
+prefix this project was configured with has no business being
+reconfigured over it.  The file sits beside the tree's output
+directory rather than inside it, since that directory is handed to the
+vendored tree as its \texttt{O=} and nothing of ours belongs in there.
+
+\pconfigure\ writes it, at configure time, and it is a prerequisite of
+the \texttt{.config}.  It has to exist because nothing else here can
+do its job: every other prerequisite these two rules have is a file
+that belonged to the tree or to the project before \pconfigure\ ran,
+and a recipe changing is not a reason for \texttt{make} to run a rule.
+So a tree re-configured with different \texttt{CONFIGUREOPTS} would
+find every file it depends on exactly as it left it, do nothing, and
+sit there configured and built the old way underneath a
+\texttt{Makefile} that says otherwise.  This is the one prerequisite
+that changes when the answer changes.
+
+It is rewritten only when its contents change, so a \pconfigure\ run
+that says the same thing as the last one leaves the mtime where it was
+and the vendored tree is not disturbed -- which is the whole point,
+since re-running \pconfigure\ is something a build does on its own
+whenever a \texttt{Configfile} is touched.  It hangs off the
+configuration rather than off the build stamp because the build
+already waits for the configuration, so one file covers both; the
+price is that an option only the build reads, a \texttt{--target},
+reconfigures too, which costs one sub-\texttt{make} of a defconfig
+that writes back the file that was already there.
+
+\texttt{make clean} leaves it alone.  It is a prerequisite that
+nothing knows how to build, so a \texttt{clean} that removed it would
+leave \texttt{make} with no rule to make it and no way forward.
+\texttt{make distclean} does remove it, along with the whole object
+directory, which is the same thing as never having configured the tree
+at all.
+
+The one consequence worth knowing about is the first run after
+upgrading: a tree that an older \pconfigure\ configured has no such
+file, so writing one gives the \texttt{.config} a prerequisite it has
+never seen before and every vendored tree in the build reconfigures
+exactly once.
+
 The dependency guess described in Section~\ref{cmd:build_systems}
 works by following every \texttt{source} out of a \texttt{Kconfig} and
 every \texttt{include} out of a \texttt{Makefile}, treating every word
