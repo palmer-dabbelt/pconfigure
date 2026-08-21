@@ -208,6 +208,18 @@ void command_processor::process(const command::ptr& cmd)
 
         return;
 
+    /* What a binary is allowed to ask the kernel for.  This is only
+     * ever consulted on macOS, but it's accepted everywhere: a
+     * Configfile shouldn't have to know which machine is reading it,
+     * and a platform with nothing to sign has nothing to do here. */
+    case command_type::ENTITLEMENTS:
+        if (cmd->check_operation("=") == false)
+            goto bad_op_eq;
+
+        tos->entitlements = cmd->data();
+
+        return;
+
     case command_type::GENERATE:
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
