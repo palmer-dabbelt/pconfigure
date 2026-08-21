@@ -22,6 +22,7 @@
 #define BUILD_SYSTEMS__KCONFIG_HXX
 
 #include "../build_system.h++"
+#include "kconfig_deps.h++"
 
 /* Linux's build system, and everything else that copied it: a
  * configuration that comes out of Kconfig, and a build that comes out
@@ -40,6 +41,13 @@
  * guessed at configure time so that make has something to compare
  * against before it recurses.
  *
+ * This is also what every other kconfig-derived build system is built
+ * out of, since the trees that copied kbuild copied the shape of all
+ * of this along with it.  What such a tree gets to say for itself is
+ * which files it's recognized by, which files a chase starts from,
+ * what its .config editor is called, and what it wants on the
+ * sub-make's command line -- everything else is here.
+ *
  * The options a CONFIGUREOPTS gives this are:
  *
  *   --defconfig NAME     The make target that produces the starting
@@ -47,11 +55,12 @@
  *
  *   --configure OPT=y    Set an option on top of that defconfig.
  *   --configure OPT=m    "y", "m" and "n" mean what they mean in a
- *   --configure OPT=n    .config; anything else is used as a value.
- *                        Later ones win, so the order matters.
+ *   --configure OPT=n    .config, a quoted value is a string, and
+ *   --configure OPT="s"  anything else is used as a value.  Later
+ *                        ones win, so the order matters.
  */
 class build_system_kconfig: public build_system {
-private:
+protected:
     /* The make target that writes the first .config.  This is a
      * target rather than a file because that's how kbuild spells it:
      * "make x86_64_defconfig", not "cp arch/x86/configs/...". */
@@ -81,6 +90,41 @@ public:
     bool can_build(const std::string& base) const;
     void add_configureopt(const std::string& opt);
     std::vector<makefile::target::ptr> targets(void) const;
+
+protected:
+    /* Takes one CONFIGUREOPTS, and answers whether it was one of
+     * these.  A tree with options of its own overrides this, handles
+     * what it knows, and hands the rest back here -- which is what
+     * keeps "--defconfig" spelled the same way everywhere. */
+    virtual bool handle_configureopt(const std::string& opt);
+
+    /* What to print when nobody recognized an option, which is the
+     * list of the ones that would have been recognized. */
+    virtual std::string configureopt_help(void) const;
+
+    /* The value a flag was given, or "" when this option isn't that
+     * flag.  Both "--flag value" and "--flag=value" turn up in the
+     * wild and neither is any harder to read than the other. */
+    static std::string option_value(const std::string& opt,
+                                    const std::string& flag);
+
+protected:
+    /* The files the dependency guess starts from, which is most of
+     * what tells one of these trees from another. */
+    virtual kconfig_deps::roots dep_roots(void) const;
+
+    /* The tree's own program for setting an option in a .config.  A
+     * .config isn't a list of settings, it's the answer Kconfig
+     * worked out, so editing one is a job for the tree rather than
+     * for us. */
+    virtual std::string config_tool(void) const
+        { return base() + "scripts/config"; }
+
+    /* Anything else the vendored make wants on its command line,
+     * with a leading space.  Empty for kbuild, which is told
+     * everything it needs to know by O= and the .config. */
+    virtual std::string submake_flags(void) const
+        { return ""; }
 
 public:
     /* Where the vendored build system is told to put its output.
