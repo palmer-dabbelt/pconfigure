@@ -22,6 +22,7 @@
 #define LIBMAKEFILE__MAKEFILE_HXX
 
 #include <memory>
+#include <utility>
 #include <vector>
 #include "target.h++"
 
@@ -43,6 +44,10 @@ namespace makefile {
          * which is where the "make check" stamp and reports live. */
         const std::string _obj_dir;
 
+        /* Dependencies that get written out on their own, without a
+         * recipe attached. */
+        std::vector<std::pair<std::string, std::string>> _extra_deps;
+
     public:
         /* Creates a new "empty" Makefile -- note that this actually
          * contains some about of default targets and such that you
@@ -58,6 +63,13 @@ namespace makefile {
     public:
         /* Adds a target to this makefile. */
         void add_target(const target::ptr& target);
+
+        /* Adds a dependency that isn't part of any target's recipe.
+         * This is how dependencies that were worked out by looking at
+         * the command lines get written down, and it's the only way
+         * to make a target depend on something another Makefile knows
+         * how to build. */
+        void add_dep(const std::string& target, const std::string& dep);
 
         /* Writes this makefilie out to a text file. */
         void write_to_file(const std::string& filename);

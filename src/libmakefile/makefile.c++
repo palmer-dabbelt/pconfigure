@@ -33,6 +33,12 @@ void makefile::makefile::add_target(const target::ptr& target)
     _targets.push_back(target);
 }
 
+void makefile::makefile::add_dep(const std::string& target,
+                                 const std::string& dep)
+{
+    _extra_deps.push_back(std::make_pair(target, dep));
+}
+
 void makefile::makefile::write_to_file(const std::string& filename)
 {
     auto file = fopen(filename.c_str(), "w");
@@ -53,6 +59,13 @@ void makefile::makefile::write_to_file(const std::string& filename)
     auto stamp = check_stamp();
     for (const auto& target: _targets)
         target->write_to_file(file, _verbose, stamp);
+
+    if (_extra_deps.size() > 0) {
+        fprintf(file, "# Dependencies implied by the command lines above.\n");
+        for (const auto& dep: _extra_deps)
+            fprintf(file, "%s: %s\n", dep.first.c_str(), dep.second.c_str());
+        fprintf(file, "\n");
+    }
 
     auto q = _verbose ? "" : "@";
     auto ptest = tool_command("ptest");
