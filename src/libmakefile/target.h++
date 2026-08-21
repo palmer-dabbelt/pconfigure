@@ -22,6 +22,7 @@
 #define LIBMAKEFILE__TARGET_HXX
 
 #include "global_targets.h++"
+#include "path_prefix.h++"
 #include <memory>
 #include <vector>
 #include <string>
@@ -79,7 +80,8 @@ namespace makefile {
          * project this target belongs to. */
         void write_to_file(FILE *file,
                            bool verbose,
-                           const std::string& check_stamp) const;
+                           const std::string& check_stamp,
+                           const path_prefix& prefix) const;
     };
 
     /* Returns TRUE if two targets have equivilant recipes.  Note that you
