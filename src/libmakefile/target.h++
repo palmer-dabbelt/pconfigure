@@ -73,8 +73,12 @@ namespace makefile {
 
     public:
         /* Writes this target (and with its commands) to the given
-         * file. */
-        void write_to_file(FILE *file, bool verbose) const;
+         * file.  "check_stamp" is the name of the stamp file that
+         * "make check" hangs its tests off of, which depends on which
+         * project this target belongs to. */
+        void write_to_file(FILE *file,
+                           bool verbose,
+                           const std::string& check_stamp) const;
     };
 
     /* Returns TRUE if two targets have equivilant recipes.  Note that you
