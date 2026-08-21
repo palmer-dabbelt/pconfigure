@@ -60,10 +60,20 @@ private:
      * is changed by the SRCPATH command. */
     std::string _srcpath;
 
+    /* The directory this project is rooted at, which is either empty
+     * or ends with a '/'. */
+    const std::string _base;
+
+    /* The context at the bottom of the stack, which holds this
+     * project's defaults. */
+    context::ptr _root;
+
 public:
     /* Creates a new, mostly empty command processor (there is a
-     * default context on the stack, for example). */
-    command_processor(void);
+     * default context on the stack, for example) for the project
+     * rooted at "base" -- which is either empty, for the project
+     * being configured, or a path ending in '/' for a subproject. */
+    command_processor(const std::string& base = "");
     virtual ~command_processor(void) {}
 
 public:
@@ -76,6 +86,10 @@ public:
         { return _given_help_command; }
     const std::string& srcpath(void) const
         { return _srcpath; }
+    const std::string& base(void) const
+        { return _base; }
+    const context::ptr& root_context(void) const
+        { return _root; }
 
 public:
     /* Processes a single command, performing the action that should
