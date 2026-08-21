@@ -177,10 +177,11 @@ TESTSRC     += swig.bash
 TESTSRC     += libdir.bash
 TESTSRC     += srcdir.bash
 TESTSRC     += cflags.bash
+TESTSRC     += testexec.bash
 
-# These command-line tools are technically availiable for external
-# usage, but they're really just for internal tests.
-LIBEXECS    += pconfigure/string_utils-clean_white
+# These command-line tools are only ever run by the tests below, so
+# they're built but never installed.
+TESTEXECS   += pconfigure/string_utils-clean_white
 COMPILEOPTS += -DTEST_CLEAN_WHITE
 SOURCES     += libpconfigure/string_utils.c++
 TESTSRC     += no_spaces.bash
@@ -190,12 +191,12 @@ TESTSRC     += leading_spaces.bash
 TESTSRC     += trailing_spaces.bash
 TESTSRC     += tab.bash
 
-LIBEXECS    += pconfigure/string_utils-strip_char
+TESTEXECS   += pconfigure/string_utils-strip_char
 COMPILEOPTS += -DTEST_STRIP_CHAR
 SOURCES     += libpconfigure/string_utils.c++
 TESTSRC     += three_parts.bash
 
-LIBEXECS    += pconfigure/vector_util-map
+TESTEXECS   += pconfigure/vector_util-map
 COMPILEOPTS += -DTEST_MAP
 SOURCES     += libpconfigure/vector_util.c++
 TESTSRC     += builtin.bash
