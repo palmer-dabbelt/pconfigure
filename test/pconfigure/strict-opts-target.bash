@@ -408,4 +408,71 @@ fi
 cat target/Makefile
 grep -q -- "-oobj/bin/a/.*-lm" target/Makefile
 
+##############################################################################
+# A target that was closed and then a new one opened                         #
+##############################################################################
+# This is the shape the whole mechanism turns on, and it is the one
+# every other negative in this file misses.  All of those are silent
+# for a trivial reason -- nothing was ever marked stale in them, so
+# there is nothing to have been cleared.  Here something really is
+# closed and marked, and then a BINARIES opens a target of its own,
+# and the COMPILEOPTS underneath lands exactly where it was aimed.
+#
+# The mark has to be taken back when that happens.  If it isn't, the
+# stale pointer stays set for the rest of the file and every ordinary
+# stanza after the first closer starts being warned about -- which is
+# the failure a warning must never have, since a project's answer to
+# being told its correct lines are wrong is to stop reading the
+# warnings.  pconfigure's own Configfiles/main is full of this shape.
+mkdir -p reopen/src reopen/other
+cd reopen
+
+cat >Configfile <<EOF
+LANGUAGES += c
+
+BINARIES  += a
+SOURCES   += a.c
+SRCDIR     = other
+
+SRCDIR     = src
+BINARIES  += b
+COMPILEOPTS += -DREOPENED
+SOURCES   += b.c
+EOF
+
+cat >src/a.c <<EOF
+int main(void) { return 0; }
+EOF
+
+cat >src/b.c <<EOF
+int main(void) { return 0; }
+EOF
+
+$PTEST_BINARY $PCONFIGURE_ARGS > reopen.out 2>&1
+cat reopen.out
+
+# Not a word about it.  The SRCDIR on the fourth line really did close
+# the target above it -- that half is the same mistake this file spends
+# its first half on -- but the BINARIES three lines later opened
+# another one, and what follows belongs to that one.
+if grep -q "warning:" reopen.out
+then
+    exit 1
+fi
+
+# And the option went where it was aimed, which is what the silence is
+# standing for: an assertion that nothing was said would pass just as
+# well if the line had been dropped on the floor.
+cat Makefile
+grep -q -- "-DREOPENED.*src/b\.c" Makefile
+
+# Nothing of it reached the target that was closed, either, which is
+# the other way this could be quietly wrong.
+if grep -- "-DREOPENED" Makefile | grep -q "src/a\.c"
+then
+    exit 1
+fi
+
+cd ..
+
 exit 0
