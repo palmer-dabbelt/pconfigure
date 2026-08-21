@@ -22,6 +22,7 @@
 #define LANGUAGE_HXX
 
 #include "context.h++"
+#include "file_utils.h++"
 #include "opts_target.h++"
 #include "vector_util.h++"
 #include <libmakefile/target.h++>
@@ -116,7 +117,11 @@ public:
      * that's named outright on a command line be found. */
     virtual std::vector<std::string>
     provides(const makefile::target::ptr& target) const
-        { return std::vector<std::string>{"file:" + target->name()}; }
+        {
+            return std::vector<std::string>{
+                "file:" + file_utils::normalize_path(target->name())
+            };
+        }
 
     virtual std::vector<std::string>
     needs(const makefile::target::ptr& target __attribute__((unused))) const
