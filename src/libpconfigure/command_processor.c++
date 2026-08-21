@@ -214,6 +214,7 @@ void command_processor::process(const command::ptr& cmd)
     }
 
     case command_type::LIBEXECS:
+    case command_type::TESTEXECS:
     {
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
@@ -221,12 +222,19 @@ void command_processor::process(const command::ptr& cmd)
         clear_until({context_type::DEFAULT});
         dup_tos_and_push(context_type::BINARY, cmd);
 
-        _stack.top()->bin_dir = _stack.top()->libexec_dir;
-
-        _opts_target = _stack.top();
-        _output_contexts.push_back(_stack.top());
-
         auto ctx = _stack.top();
+        if (cmd->type() == command_type::TESTEXECS) {
+            /* TESTEXECs are just LIBEXECs that only the tests are
+             * expected to run, so they're built but never installed. */
+            ctx->bin_dir = ctx->testexec_dir;
+            ctx->install = false;
+        } else {
+            ctx->bin_dir = ctx->libexec_dir;
+        }
+
+        _opts_target = ctx;
+        _output_contexts.push_back(ctx);
+
         ctx->test_binary = ctx->bin_dir + "/" + ctx->cmd->data();
 
         return;

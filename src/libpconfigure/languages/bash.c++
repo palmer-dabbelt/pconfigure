@@ -130,6 +130,11 @@ language_bash::targets(const context::ptr& ctx) const
                                                              commands,
                                                              comment);
 
+        /* Targets that are never installed (TESTEXECs) just get built in
+         * place, there's no install rule to go along with them. */
+        if (ctx->install == false)
+            return {bin_target};
+
         auto install_path = "$(DESTDIR)/" + ctx->prefix + "/" + target;
 
         auto global_install_targets = std::vector<makefile::global_targets>{
