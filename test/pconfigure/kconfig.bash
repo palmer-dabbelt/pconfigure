@@ -134,7 +134,15 @@ cat Makefile
 grep -q "^O ?= " sub/Makefile
 test ! -e sub/obj
 test ! -e sub/Configfile
-test ! -e obj/kconfig/sub
+
+# The one thing configure time does write on this side of the fence is
+# the list of options the tree is about to be configured with, which
+# has to exist before make runs because make is what compares it
+# against the last one.  The build directory itself is still make's to
+# create.
+test -f obj/kconfig/sub/configure-opts
+test ! -e obj/kconfig/sub/build
+test ! -e obj/kconfig/sub/build-stamp
 
 # The rules that drive it live in the Makefile of whoever pulled it
 # in, since there's nowhere else for them to go.

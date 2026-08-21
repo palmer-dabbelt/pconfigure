@@ -64,6 +64,24 @@ namespace file_utils {
      * as "sub" is understood to be the same subproject and so that
      * sticking a filename on the end of one always works. */
     std::string normalize_directory(const std::string& path);
+
+    /* Makes a directory and every directory above it, the way
+     * "mkdir -p" does, and says whether it worked.  A directory that
+     * was already there is a success, since what the caller wanted
+     * was for it to exist rather than for it to be new. */
+    bool mkdir_p(const std::string& path);
+
+    /* Writes a file, but only when what it should say isn't what it
+     * already says.
+     *
+     * This is for a file that make is going to look at, which makes
+     * its mtime the whole point rather than an implementation
+     * detail: a file rewritten on every configure would rebuild
+     * whatever depends on it on every configure, which is a worse
+     * bug than any this fixes.  A file that isn't there yet counts
+     * as saying something different. */
+    bool write_if_changed(const std::string& path,
+                          const std::string& contents);
 }
 
 #endif
