@@ -35,6 +35,14 @@ int main(int argc, const char **argv)
     for (const auto& command: commands(argc, argv))
         processor->process(command);
 
+    /* The Configfiles are read after the command-line options have
+     * been processed because the command line can change where those
+     * Configfiles live. */
+    if (processor->given_help_command() == false
+        && processor->given_version_command() == false)
+        for (const auto& command: configfiles(processor->srcpath()))
+            processor->process(command);
+
     if (processor->given_help_command()) {
         std::cout <<
 "usage: pconfigure [options]\n"

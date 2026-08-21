@@ -56,6 +56,10 @@ private:
     /* This is set to TRUE if a "--help" command was given. */
     bool _given_help_command;
 
+    /* The path that this project's Configfiles are read from, which
+     * is changed by the SRCPATH command. */
+    std::string _srcpath;
+
 public:
     /* Creates a new, mostly empty command processor (there is a
      * default context on the stack, for example). */
@@ -70,6 +74,8 @@ public:
         { return _given_version_command; }
     const bool& given_help_command(void) const
         { return _given_help_command; }
+    const std::string& srcpath(void) const
+        { return _srcpath; }
 
 public:
     /* Processes a single command, performing the action that should
