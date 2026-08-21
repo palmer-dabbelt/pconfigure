@@ -29,11 +29,14 @@ command_processor::command_processor(const std::string& base,
                                      const context::ptr& defaults)
     : _stack(),
       _opts_target(NULL),
+      _stale_opts_target(NULL),
+      _stale_opts_closed_by(NULL),
       _build_systems(),
       _vendored(),
       _configure_target(NULL),
       _given_version_command(false),
       _given_help_command(false),
+      _given_srcpath(false),
       _srcpath(base.size() == 0 ? "." : base.substr(0, base.size() - 1)),
       _base(base),
       _root(std::make_shared<context>(base))
@@ -49,6 +52,12 @@ command_processor::command_processor(const std::string& base,
         _root->verbose = defaults->verbose;
         _root->debug = defaults->debug;
         _root->cross_compile = defaults->cross_compile;
+
+        /* How loudly a project wants to be told about the things
+         * below is a property of the build rather than of one
+         * Configfile, so a subproject is as strict as whoever pulled
+         * it in until it says otherwise. */
+        _root->strictness = defaults->strictness;
     }
 
     /* Every project can build a pconfigure subproject without being
@@ -70,7 +79,106 @@ command_processor::command_processor(const std::string& base,
     ));
 }
 
+void command_processor::set_opts_target(const opts_target::ptr& target)
+{
+    _opts_target = target;
+    _stale_opts_target = NULL;
+    _stale_opts_closed_by = NULL;
+}
+
+void command_processor::check_opts_target(const command::ptr& cmd)
+{
+    if (_stale_opts_target == NULL)
+        return;
+
+    _stack.top()->strictness.complain(
+        strict_since::v0_13(),
+        cmd->debug(),
+        std::to_string(cmd->type()) + " lands on the '"
+        + _stale_opts_target->cmd->data() + "' that "
+        + std::to_string(_stale_opts_closed_by->type())
+        + " already closed, on "
+        + std::to_string(_stale_opts_closed_by->debug()),
+        "move it above that line, or open the target again with the "
+        + std::to_string(_stale_opts_target->cmd->type())
+        + " it belongs to");
+}
+
+/* Which commands name a file or a target rather than describing one.
+ * A value with a space in it means two different things to these two
+ * groups: a COMPILEOPTS is a command line and is meant to have spaces
+ * in it, while a SOURCES is one path and a space in it is somebody
+ * expecting a list. */
+static bool names_a_path(const command_type& type)
+{
+    switch (type) {
+    case command_type::BINARIES:
+    case command_type::ENTITLEMENTS:
+    case command_type::GENERATE:
+    case command_type::HDRDIR:
+    case command_type::HEADERS:
+    case command_type::HEADERSRC:
+    case command_type::LIBDIR:
+    case command_type::LIBEXECS:
+    case command_type::LIBRARIES:
+    case command_type::PREFIX:
+    case command_type::SOURCES:
+    case command_type::SRCDIR:
+    case command_type::SRCPATH:
+    case command_type::SUBPROJECTS:
+    case command_type::TESTDEPS:
+    case command_type::TESTEXECS:
+    case command_type::TESTS:
+    case command_type::TESTSRC:
+    case command_type::TGENERATE:
+        return true;
+
+    case command_type::AUTODEPS:
+    case command_type::BUILD_SYSTEMS:
+    case command_type::COMPAT:
+    case command_type::COMPILEOPTS:
+    case command_type::COMPILER:
+    case command_type::CONFIG:
+    case command_type::CONFIGUREOPTS:
+    case command_type::CROSS_COMPILE:
+    case command_type::DEBUG:
+    case command_type::DEPLIBS:
+    case command_type::HELP:
+    case command_type::LANGUAGES:
+    case command_type::LINKER:
+    case command_type::LINKOPTS:
+    case command_type::PHC:
+    case command_type::STRICT:
+    case command_type::VERBOSE:
+    case command_type::VERSION:
+        return false;
+    }
+
+    return false;
+}
+
 void command_processor::process(const command::ptr& cmd)
+{
+    /* Said here rather than inside the switch because TESTSRC and
+     * HEADERSRC are each two commands wearing one hat and go through
+     * process_one() twice: this is about the line as it was written,
+     * and the line was written once. */
+    if (names_a_path(cmd->type()) == true
+        && cmd->data().find(' ') != std::string::npos) {
+        _stack.top()->strictness.complain(
+            strict_since::v0_13(),
+            cmd->debug(),
+            "everything after the operator is one path, so this names a"
+            " single file with a space in its name",
+            "write one " + std::to_string(cmd->type())
+            + " line per file -- the rule this makes gets split back up"
+            " by make into targets nobody meant");
+    }
+
+    process_one(cmd);
+}
+
+void command_processor::process_one(const command::ptr& cmd)
 {
     auto tos = _stack.top();
 
@@ -100,10 +208,10 @@ void command_processor::process(const command::ptr& cmd)
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
-        clear_until({context_type::DEFAULT});
+        clear_until({context_type::DEFAULT}, cmd);
         dup_tos_and_push(context_type::BINARY, cmd);
 
-        _opts_target = _stack.top();
+        set_opts_target(_stack.top());
         _output_contexts.push_back(_stack.top());
 
         auto ctx = _stack.top();
@@ -117,7 +225,7 @@ void command_processor::process(const command::ptr& cmd)
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
-        clear_until({context_type::DEFAULT});
+        clear_until({context_type::DEFAULT}, cmd);
 
         /* Asking for one that's already here is how you get back to
          * it to say something more about it, which is exactly what
@@ -146,10 +254,19 @@ void command_processor::process(const command::ptr& cmd)
         return;
     }
 
+    /* COMPAT was going to be this, and never became anything: it has
+     * been read and thrown away since it was added.  What it was
+     * reaching for is what STRICT does, so it says so and stays
+     * accepted, since a line that has never done anything can't have
+     * been holding a project up. */
     case command_type::COMPAT:
-        /* FIXME: The only way I currently get here is through a
-         * checked pconfigure command type, but I do eventually need
-         * to do _something_ here... */
+        tos->strictness.complain(
+            strict_since::v0_13(),
+            cmd->debug(),
+            "COMPAT is read and then thrown away -- it has never done"
+            " anything",
+            "delete the line; a project that wants to say which"
+            " pconfigure it was written against wants STRICT");
         return;
 
     case command_type::COMPILEOPTS:
@@ -159,6 +276,7 @@ void command_processor::process(const command::ptr& cmd)
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
+        check_opts_target(cmd);
         _opts_target->add_compileopt(cmd->data());
 
         return;
@@ -170,6 +288,7 @@ void command_processor::process(const command::ptr& cmd)
         if (cmd->check_operation("=") == false)
             goto bad_op_eq;
 
+        check_opts_target(cmd);
         _opts_target->set_compiler(cmd->data());
 
         return;
@@ -244,6 +363,25 @@ void command_processor::process(const command::ptr& cmd)
         if (cmd->check_operation("=") == false)
             goto bad_op_eq;
 
+        /* Only a whole linked thing is ever signed, so an
+         * ENTITLEMENTS that landed below one is asking for nothing --
+         * and asking for nothing quietly is worse here than
+         * elsewhere, since what comes out is a binary that runs until
+         * it reaches the thing it wasn't allowed to do. */
+        if (tos->check_type({context_type::SOURCE,
+                             context_type::HEADER,
+                             context_type::GENERATE,
+                             context_type::TEST,}) == true)
+            tos->strictness.complain(
+                strict_since::v0_13(),
+                cmd->debug(),
+                "ENTITLEMENTS written under a "
+                + std::to_string(tos->type)
+                + " asks for nothing: only a whole linked binary is"
+                " signed",
+                "move it up so it sits directly under the BINARIES or"
+                " LIBRARIES it's about");
+
         tos->entitlements = cmd->data();
 
         return;
@@ -252,10 +390,10 @@ void command_processor::process(const command::ptr& cmd)
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
-        clear_until({context_type::DEFAULT});
+        clear_until({context_type::DEFAULT}, cmd);
         dup_tos_and_push(context_type::GENERATE, cmd);
 
-        _opts_target = _stack.top();
+        set_opts_target(_stack.top());
         _output_contexts.push_back(_stack.top());
 
         dup_tos_and_push(context_type::SOURCE,
@@ -277,12 +415,12 @@ void command_processor::process(const command::ptr& cmd)
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
-        clear_until({context_type::DEFAULT});
+        clear_until({context_type::DEFAULT}, cmd);
         dup_tos_and_push(context_type::HEADER, cmd);
 
         _stack.top()->bin_dir = _stack.top()->hdr_dir;
 
-        _opts_target = _stack.top();
+        set_opts_target(_stack.top());
         _output_contexts.push_back(_stack.top());
 
         return;
@@ -293,11 +431,11 @@ void command_processor::process(const command::ptr& cmd)
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
-        clear_until({context_type::DEFAULT});
+        clear_until({context_type::DEFAULT}, cmd);
         tos = _stack.top();
 
         if (tos->languages->search(cmd->data()) != NULL) {
-            _opts_target = tos->languages->search(cmd->data());
+            set_opts_target(tos->languages->search(cmd->data()));
             return;
         }
 
@@ -312,7 +450,7 @@ void command_processor::process(const command::ptr& cmd)
 
         auto clone = language::ptr(new_language->clone());
         tos->languages->add(clone);
-        _opts_target = clone;
+        set_opts_target(clone);
 
         return;
     }
@@ -322,7 +460,7 @@ void command_processor::process(const command::ptr& cmd)
         if (cmd->check_operation("=") == false)
             goto bad_op_eq;
 
-        clear_until({context_type::DEFAULT});
+        clear_until({context_type::DEFAULT}, cmd);
         _stack.top()->lib_dir = _base + cmd->data();
         return;
     }
@@ -333,7 +471,7 @@ void command_processor::process(const command::ptr& cmd)
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
-        clear_until({context_type::DEFAULT});
+        clear_until({context_type::DEFAULT}, cmd);
         dup_tos_and_push(context_type::BINARY, cmd);
 
         auto ctx = _stack.top();
@@ -346,7 +484,7 @@ void command_processor::process(const command::ptr& cmd)
             ctx->bin_dir = ctx->libexec_dir;
         }
 
-        _opts_target = ctx;
+        set_opts_target(ctx);
         _output_contexts.push_back(ctx);
 
         ctx->test_binary = ctx->bin_dir + "/" + ctx->cmd->data();
@@ -359,10 +497,10 @@ void command_processor::process(const command::ptr& cmd)
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
-        clear_until({context_type::DEFAULT});
+        clear_until({context_type::DEFAULT}, cmd);
         dup_tos_and_push(context_type::LIBRARY, cmd);
 
-        _opts_target = _stack.top();
+        set_opts_target(_stack.top());
         _output_contexts.push_back(_stack.top());
 
         auto ctx = _stack.top();
@@ -378,6 +516,7 @@ void command_processor::process(const command::ptr& cmd)
         if (cmd->check_operation("=") == false)
             goto bad_op_eq;
 
+        check_opts_target(cmd);
         _opts_target->set_linker(cmd->data());
 
         return;
@@ -388,6 +527,23 @@ void command_processor::process(const command::ptr& cmd)
 
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
+
+        check_opts_target(cmd);
+
+        /* A source file is compiled and never linked, so a link
+         * option that landed on one is read by nothing at all: every
+         * language asks the target for its link options and the
+         * target is the binary or the library. */
+        if (_stack.top()->type == context_type::SOURCE
+            && _opts_target == _stack.top())
+            _stack.top()->strictness.complain(
+                strict_since::v0_13(),
+                cmd->debug(),
+                "LINKOPTS written after a SOURCES lands on that one file,"
+                " and a source file is compiled rather than linked, so"
+                " nothing ever reads it",
+                "move it above the SOURCES, onto the target the file gets"
+                " linked into");
 
         _opts_target->add_linkopt(cmd->data());
 
@@ -410,10 +566,28 @@ void command_processor::process(const command::ptr& cmd)
                     context_type::LIBRARY,
                     context_type::BINARY,
                     context_type::TEST,
-                    context_type::HEADER,});
+                    context_type::HEADER,}, cmd);
+
+        /* A source file has to be compiled into something, and the
+         * something is whatever target is open above it.  With
+         * nothing open the context this hangs off is the project's
+         * own, which is never asked for its targets and never asks
+         * its children for theirs -- so the file is read, remembered,
+         * and then dropped without a word. */
+        if (_stack.top()->check_type({context_type::DEFAULT}) == true)
+            _stack.top()->strictness.complain(
+                strict_since::v0_13(),
+                cmd->debug(),
+                "SOURCES with no target open above it is dropped: nothing"
+                " is being built out of this file",
+                "put the BINARIES, LIBRARIES, LIBEXECS, TESTEXECS or"
+                " HEADERS it belongs to above it, and check that nothing"
+                " in between -- a SRCDIR or a LIBDIR -- closed that"
+                " target first");
+
         dup_tos_and_push(context_type::SOURCE, cmd);
 
-        _opts_target = _stack.top();
+        set_opts_target(_stack.top());
 
         return;
 
@@ -422,17 +596,32 @@ void command_processor::process(const command::ptr& cmd)
         if (cmd->check_operation("=") == false)
             goto bad_op_eq;
 
-        clear_until({context_type::DEFAULT});
+        clear_until({context_type::DEFAULT}, cmd);
         _stack.top()->src_dir = _base + cmd->data();
         return;
     }
+
+    /* How much of what pconfigure used to let a project get away with
+     * it should still let this one get away with.  This lands on
+     * whatever context is open, the same way a CROSS_COMPILE does,
+     * which is what lets a subproject be stricter than the project
+     * that pulled it in -- but the place to write it is the top of a
+     * Configfile, since a warning is about a line rather than about a
+     * target and the line might be anywhere. */
+    case command_type::STRICT:
+        if (cmd->check_operation("=") == false)
+            goto bad_op_eq;
+
+        _stack.top()->strictness = strict::parse(cmd->data(), cmd->debug());
+
+        return;
 
     case command_type::SUBPROJECTS:
     {
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
-        clear_until({context_type::DEFAULT});
+        clear_until({context_type::DEFAULT}, cmd);
 
         /* A project that moved its source root can't also root
          * subprojects: a subproject's sources and its build output
@@ -588,21 +777,39 @@ void command_processor::process(const command::ptr& cmd)
                     context_type::GENERATE,
                     context_type::LIBRARY,
                     context_type::BINARY,
-                    context_type::HEADER,});
+                    context_type::HEADER,}, cmd);
         auto parent = _stack.top();
+
+        /* A test belongs to the thing it exercises, and with nothing
+         * open the parent is the project's own context, which has no
+         * command behind it -- so what used to happen here was a null
+         * dereference and a signal, with nothing printed at all.
+         * That makes this an error rather than a warning: there is no
+         * behaviour to stay compatible with. */
+        if (parent->cmd == NULL) {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: "
+                      << std::to_string(cmd->type())
+                      << " with no target open above it has nothing to"
+                      << " test\n"
+                      << "  put it under the BINARIES, LIBRARIES, LIBEXECS"
+                      << " or TESTEXECS whose tests these are\n";
+            abort();
+        }
+
         dup_tos_and_push(context_type::TEST, cmd);
         auto child = _stack.top();
         child->src_dir = parent->test_dir + "/" + parent->cmd->data();
         child->check_dir = parent->check_dir + "/" + parent->cmd->data();
 
-        _opts_target = _stack.top();
+        set_opts_target(_stack.top());
 
         return;
     }
 
     case command_type::TESTSRC:
-        process(cmd->with_type(command_type::TESTS));
-        process(cmd->with_type(command_type::SOURCES));
+        process_one(cmd->with_type(command_type::TESTS));
+        process_one(cmd->with_type(command_type::SOURCES));
         return;
 
     case command_type::TGENERATE:
@@ -613,8 +820,29 @@ void command_processor::process(const command::ptr& cmd)
         abort();
         break;
 
+    /* These two look like they take a value and don't: writing one
+     * at all turns the thing on, and "= false" turns it on just as
+     * surely as "= true" does.  Leaving that quiet is how a project
+     * ends up with a Configfile that says the opposite of what the
+     * build does. */
     case command_type::VERBOSE:
-        _stack.top()->verbose = true;
+    case command_type::DEBUG:
+        if (cmd->check_operation("=") == false || cmd->data() != "true")
+            _stack.top()->strictness.complain(
+                strict_since::v0_13(),
+                cmd->debug(),
+                std::to_string(cmd->type()) + " ignores what it's set to:"
+                " writing the line at all turns it on, and it stays on for"
+                " everything below",
+                "write '" + std::to_string(cmd->type()) + " = true' when"
+                " that's what's wanted, and leave the line out entirely"
+                " when it isn't");
+
+        if (cmd->type() == command_type::VERBOSE)
+            _stack.top()->verbose = true;
+        else
+            _stack.top()->debug = true;
+
         return;
 
     case command_type::VERSION:
@@ -633,6 +861,21 @@ void command_processor::process(const command::ptr& cmd)
         /* A SRCPATH is relative to the project it shows up in, which
          * is only the directory pconfigure was run from for the
          * top-level project. */
+        /* This rewrites the source directories in place rather than
+         * replacing them, so a second one is read relative to
+         * whatever the first one already produced: "SRCPATH = a" then
+         * "SRCPATH = b" looks under "b/a".  It's written with an '='
+         * rather than a '+=', which is a promise that it replaces. */
+        if (_given_srcpath == true)
+            tos->strictness.complain(
+                strict_since::v0_13(),
+                cmd->debug(),
+                "a second SRCPATH doesn't replace the first one, it's read"
+                " relative to it",
+                "say it once, at the top of the project, and remember that"
+                " '--srcpath' on the command line has already said it");
+        _given_srcpath = true;
+
         auto path = _base + cmd->data();
         tos->src_dir = path + "/" + tos->src_dir.substr(_base.size());
         tos->test_dir = path + "/" + tos->test_dir.substr(_base.size());
@@ -642,12 +885,8 @@ void command_processor::process(const command::ptr& cmd)
     }
 
     case command_type::HEADERSRC:
-        process(cmd->with_type(command_type::HEADERS));
-        process(cmd->with_type(command_type::SOURCES));
-        return;
-
-    case command_type::DEBUG:
-        _stack.top()->debug = true;
+        process_one(cmd->with_type(command_type::HEADERS));
+        process_one(cmd->with_type(command_type::SOURCES));
         return;
 
     case command_type::PHC:
@@ -709,12 +948,30 @@ std::string command_processor::take_pending_config(void)
     return out;
 }
 
-void command_processor::clear_until(const std::vector<context_type>& types)
+void command_processor::clear_until(const std::vector<context_type>& types,
+                                    const command::ptr& by)
 {
     while ((_stack.size() > 0) && (_stack.top()->check_type(types) == false)) {
         auto top = _stack.top();
         _stack.pop();
         _all_contexts.push_back(top);
+
+        /* A popped context is kept forever -- it's in _all_contexts
+         * now and it was in its parent's children already -- so this
+         * pointer stays good and nothing else can ever be allocated
+         * where it is.  That's why writing to a closed target has
+         * always been quiet rather than a crash, and it's what makes
+         * the identity test below trustworthy.
+         *
+         * Identity against what was popped, rather than "is
+         * _opts_target the top of the stack": a GENERATE deliberately
+         * pushes a source context on top of the target it just
+         * pointed this at, so the two aren't the same there and
+         * nothing is wrong. */
+        if (_opts_target == top) {
+            _stale_opts_target = top;
+            _stale_opts_closed_by = by;
+        }
     }
 
     if (_stack.size() == 0) {

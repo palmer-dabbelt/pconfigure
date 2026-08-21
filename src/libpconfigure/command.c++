@@ -79,6 +79,8 @@ command::ptr command::parse(const std::string& str,
         return std::make_shared<command>(command_type::PHC, "=", d);
     if (str == "--cross-compile")
         return std::make_shared<command>(command_type::CROSS_COMPILE, "=", d);
+    if (str == "--strict")
+        return std::make_shared<command>(command_type::STRICT, "=", d);
 
     auto split = string_utils::split_char(str, " ");
 
