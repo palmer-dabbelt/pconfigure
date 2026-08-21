@@ -426,12 +426,22 @@ into.
 
 \subsection{\texttt{SUBPROJECTS += \$dirname} \label{cmd:subprojects}}
 
-Pulls in another \texttt{pconfigure} project that lives in a
-subdirectory -- a git submodule, usually.  \texttt{\$dirname} is
-relative to the \texttt{Configfile} that names it, and the project it
-points at needs no idea that it is being used this way: its
-\texttt{Configfile} is read exactly as it would be if you had run
-\texttt{pconfigure} inside it.
+Pulls in another project that lives in a subdirectory -- a git
+submodule, usually.  \texttt{\$dirname} is relative to the
+\texttt{Configfile} that names it, and the project it points at needs
+no idea that it is being used this way.
+
+How it gets built is worked out from what is in the directory, the
+same way the language that builds a source file is worked out from
+what the file is called.  A directory with a \texttt{Configfile} in it
+is a \texttt{pconfigure} project, and the rest of this section is
+about those; a directory that looks like somebody else's build system
+is handled by that build system, which is what
+\texttt{BUILD\_SYSTEMS} (Section~\ref{cmd:build_systems}) is for.
+Nothing has to be said about a subproject from inside the subproject.
+
+A \texttt{pconfigure} subproject's \texttt{Configfile} is read exactly
+as it would be if you had run \texttt{pconfigure} inside it.
 
 A single run of \texttt{pconfigure} reads every project and writes a
 \texttt{Makefile} for each one, and each project's \texttt{Makefile}
@@ -456,6 +466,82 @@ where that subproject's output actually is.
 A subproject is built and installed as part of whoever pulled it in,
 into the same \texttt{PREFIX}, and \texttt{make check} from the top
 runs its tests along with everyone else's.
+
+\subsection{\texttt{BUILD\_SYSTEMS += \$name} \label{cmd:build_systems}}
+
+Makes a build system available to \texttt{SUBPROJECTS}, so that a
+subdirectory holding a third-party tree can be pulled into this build
+and still be built by whatever build system it came with.  The build
+systems that come with \texttt{pconfigure} are listed in
+Section~\ref{buildsys}.
+
+This stands in the same relation to \texttt{SUBPROJECTS} that
+\texttt{LANGUAGES} stands in to \texttt{SOURCES}.  It does not say
+which subproject gets built which way -- that is decided by what is
+in the directory, and only build systems that have been asked for are
+ever considered.  Vendoring a kernel next to your own code is
+therefore all one file:
+
+\begin{verbatim}
+BUILD_SYSTEMS += kconfig
+
+SUBPROJECTS   += linux
+CONFIGUREOPTS += --defconfig x86_64_defconfig
+CONFIGUREOPTS += --configure CONFIG_KVM=y
+\end{verbatim}
+
+Nothing is added to the tree you vendored, and nothing in it has to
+know that \texttt{pconfigure} exists.  \texttt{linux} is built the
+\texttt{kbuild} way because there is a \texttt{Kconfig} in it; a
+subproject with a \texttt{Configfile} in it would still be read as a
+\texttt{pconfigure} project even with the line above in scope.
+
+There is an implicit \texttt{BUILD\_SYSTEMS += pconfigure} at the
+bottom of every project, and it is asked first: a tree that says how
+to build itself the \texttt{pconfigure} way meant it.  After that,
+build systems are asked in the order they were named, and the first
+one that recognizes the directory gets it.  A \texttt{SUBPROJECTS}
+that nobody recognizes is an error that lists what was asked.
+
+Everything about a vendored tree is left alone.  In particular
+\texttt{pconfigure} does not write a \texttt{Makefile} there: that
+file already exists and belongs to the tree, and it is the file the
+vendored build system reads.  The rules that drive the build go into
+the \texttt{Makefile} of the project that pulled the subproject in,
+the build happens in that project's object directory rather than in
+the tree, and \texttt{make distclean} throws that away without
+touching the tree at all.
+
+Unlike a \texttt{pconfigure} subproject, a vendored tree is built with
+a recursive \texttt{make}.  There is no way to fold somebody else's
+build system into this one's dependency graph, so the rule that
+builds it just runs \texttt{\$(MAKE) -C} and lets that build system do
+what it does.  What \texttt{pconfigure} does instead is work out, at
+configure time, every file that build could possibly read, and hang
+the recursive \texttt{make} off all of them -- so \texttt{make} at the
+top of a tree that is already built does no work at all, and
+\texttt{make} after you touch a file down inside the vendored tree
+does.
+
+That list of files is a guess, and it is meant to be.  Being generous
+costs one \texttt{stat} per file that didn't matter; being short just
+means the sub-\texttt{make} gets entered more often than it strictly
+had to, and the sub-\texttt{make} is the thing that decides what
+actually gets rebuilt.  Nothing is ever built or skipped on the
+strength of the guess.
+
+\subsection{\texttt{CONFIGUREOPTS += \$opt} \label{cmd:configureopts}}
+
+Passes an option to whichever build system or subproject was named
+most recently, in the same way that \texttt{COMPILEOPTS} passes an
+option to whichever \texttt{LANGUAGES} or \texttt{BINARIES} was named
+most recently.
+
+After a \texttt{BUILD\_SYSTEMS} it applies to every subproject that
+ends up being built that way; after a \texttt{SUBPROJECTS} it applies
+to that subproject alone, on top of whatever its build system was
+already given.  What an option means is up to the build system it
+reaches; see Section~\ref{buildsys}.
 
 \subsection{\texttt{DEPLIBS += \$libname} \label{cmd:deplibs}}
 
@@ -727,6 +813,81 @@ to some added complexity and should be eventually fixed, but it'll be
 tough because it's hard to parse Scala code in a timely fashion.
 
 Scala supports linking against scala.
+
+\section{Supported Build Systems \label{buildsys}}
+
+These are the build systems that \texttt{BUILD\_SYSTEMS}
+(Section~\ref{cmd:build_systems}) can make available to a
+\texttt{SUBPROJECTS}, along with what each one looks for when it is
+deciding whether a directory is its kind of tree and which
+\texttt{CONFIGUREOPTS} it understands.
+
+\subsection{\texttt{pconfigure}: \texttt{pconfigure} Itself}
+
+Recognizes a directory with a \texttt{Configfile} or a
+\texttt{Configfiles/main} in it, and is the build system a
+subproject gets when nothing else is going on.  Every project has
+this one available without asking, and it is always asked first.
+
+It is also the only one that isn't run as a build system at all: a
+\texttt{pconfigure} subproject is read into this run and built out of
+its own contexts, which is what Section~\ref{cmd:subprojects}
+describes.  It takes no \texttt{CONFIGUREOPTS}, since a
+\texttt{pconfigure} project is configured by its own
+\texttt{Configfile}.
+
+\subsection{\texttt{kconfig}: Linux's Build System}
+
+Linux's build system, and everything else that copied it: a
+configuration that comes out of \texttt{Kconfig} files, and a build
+that comes out of \texttt{Makefile}s that read that configuration.
+It recognizes a directory with a \texttt{Kconfig} in it alongside a
+\texttt{Makefile} or a \texttt{Kbuild}, which is what such a tree
+looks like from outside.
+
+Two rules come out of this.  The first produces a \texttt{.config},
+by running the tree's own \texttt{defconfig} target and then setting
+whatever options were asked for on top of it.  The second runs the
+tree's own \texttt{make} against that configuration.  Both build into
+\texttt{\$obj\_dir/kconfig/\$dirname} in the project that pulled the
+tree in, using an out-of-tree build (\texttt{O=}), so the vendored
+tree itself is never written to.
+
+The options are:
+
+\begin{itemize}
+\item \texttt{--defconfig \$name} picks the \texttt{make} target that
+  produces the starting configuration.  This is a target rather than
+  a filename because that is how these trees spell it:
+  \texttt{x86\_64\_defconfig}, not
+  \texttt{arch/x86/configs/x86\_64\_defconfig}.  It defaults to
+  \texttt{defconfig}.
+
+\item \texttt{--configure \$option=\$value} sets one option on top of
+  that defconfig, using the tree's own \texttt{scripts/config}, and
+  then re-runs \texttt{olddefconfig} so that whatever the option
+  turned on gets its dependencies filled in.  A \texttt{\$value} of
+  \texttt{y}, \texttt{m} or \texttt{n} means what it means in a
+  \texttt{.config}; anything else is used as the option's value.
+  Later options win, so the order they are given in matters.
+\end{itemize}
+
+The dependency guess described in Section~\ref{cmd:build_systems}
+works by following every \texttt{source} out of a \texttt{Kconfig} and
+every \texttt{include} out of a \texttt{Makefile}, treating every word
+of every \texttt{Makefile} line as a possible path, and keeping the
+ones that name a file that exists.  A word ending in a \texttt{/} is a
+directory \texttt{kbuild} descends into, so its \texttt{Makefile},
+\texttt{Kbuild} and \texttt{Kconfig} get followed too; a word ending
+in \texttt{.o} is an object, so the sources it could have been built
+from get picked up.
+
+None of that pays any attention to the conditionals around it: a file
+that is only read when some option is set is still a file this
+configuration might read tomorrow, and a path a variable made
+unreadable -- \texttt{arch/\$(SRCARCH)/Kconfig} -- becomes a glob, on
+the grounds that it names a real file for every value that variable
+could take.
 
 \section{Common Error Messages \label{err}}
 
