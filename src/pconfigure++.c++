@@ -78,7 +78,9 @@ int main(int argc, const char **argv)
         return false;
         }();
 
-    auto makefile = std::make_shared<makefile::makefile>(verbose);
+    auto makefile = std::make_shared<makefile::makefile>(
+        verbose,
+        processor->root_context()->obj_dir);
 
     auto distcleaned = std::map<std::string, bool>();
     auto obj_dirs = std::map<std::string, bool>();
