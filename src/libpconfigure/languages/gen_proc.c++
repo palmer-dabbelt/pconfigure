@@ -81,11 +81,27 @@ language_gen_proc::targets(const context::ptr& ctx) const
         auto target = ctx->gen_dir + "/" + ctx->cmd->data();
         auto procfile = ctx->src_dir + "/" + ctx->cmd->data() + ".proc";
 
+        /* The script gets run from the top of the project it belongs
+         * to, not from wherever pconfigure happens to be running, so
+         * that the paths it reads and the paths it prints are the
+         * ones it was written against.  For a project that nothing
+         * pulled in those are the same place. */
+        auto in_project = [&](const std::string& command) {
+            if (ctx->base.size() == 0)
+                return command;
+            return "cd " + ctx->base.substr(0, ctx->base.size() - 1)
+                   + " && " + command;
+        };
+
         auto sources = std::vector<makefile::target::ptr>{
             std::make_shared<makefile::target>(procfile)
         };
-        for (const auto& line: file_utils::execlines(procfile, {"--deps"})) {
-            sources.push_back(std::make_shared<makefile::target>(line));
+        for (const auto& line: file_utils::execlines(
+                 in_project("\"" + ctx->unbased(procfile) + "\""),
+                 {"--deps"})) {
+            /* What it printed is relative to itself. */
+            sources.push_back(
+                std::make_shared<makefile::target>(ctx->base + line));
         }
 
         auto global_targets = std::vector<makefile::global_targets>{
@@ -96,7 +112,8 @@ language_gen_proc::targets(const context::ptr& ctx) const
         auto short_cmd = "GEN\t" + ctx->cmd->data();
         auto commands = std::vector<std::string>{
             "mkdir -p " + ctx->gen_dir,
-            ctx->src_dir + "/" + ctx->cmd->data() + ".proc --generate > " + target
+            in_project(ctx->unbased(procfile) + " --generate > "
+                       + ctx->unbased(target))
         };
 
         /* We actually issue the generate commands here, as that's the only way

@@ -117,14 +117,18 @@ public:
     /* Writes this project's Makefile, along with whichever of the
      * dependencies that were worked out across the whole run belong
      * in it. */
-    /* Writes this project's Makefile.  "implied" is every dependency
-     * that was worked out across the whole run, and "aggregated" is
+    /* Writes this project's Makefile.  "implied" is the dependencies
+     * that belong in this Makefile, and "aggregated" is
      * every project whose test results and build directories this
      * one's Makefile is responsible for -- which is all of them for
      * the project make gets run in, and none of them for a project
      * that only ever gets included. */
     void write_makefile(const std::vector<makefile::implied_dep>& implied,
                         const std::vector<ptr>& aggregated) const;
+
+    /* The projects this one pulls in, at any depth, including
+     * itself. */
+    std::set<std::string> reachable(void) const;
 
 public:
     /* A project and everything below it, parents before children. */

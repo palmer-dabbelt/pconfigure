@@ -330,6 +330,20 @@ void command_processor::process(const command::ptr& cmd)
 
         clear_until({context_type::DEFAULT});
 
+        /* A project that moved its source root can't also root
+         * subprojects: a subproject's sources and its build output
+         * would stop being in the same place, and one variable can't
+         * mean both. */
+        auto rooted_at = _base.size() == 0
+            ? std::string(".")
+            : _base.substr(0, _base.size() - 1);
+        if (_srcpath != rooted_at) {
+            std::cerr << "SUBPROJECTS doesn't work alongside SRCPATH: '"
+                      << std::to_string(cmd->debug())
+                      << "' is rooted at '" << _srcpath << "'\n";
+            abort();
+        }
+
         /* Reading it is somebody else's job: this just says which one
          * was asked for, relative to where pconfigure is running
          * rather than to whoever asked. */
