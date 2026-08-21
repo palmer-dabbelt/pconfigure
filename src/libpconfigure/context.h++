@@ -209,6 +209,23 @@ public:
         return o;
     }
 
+    /* Strips this project's base off a directory, giving the path as
+     * it looks from inside the project rather than from where
+     * pconfigure was run.
+     *
+     * That's the spelling wanted whenever a path isn't naming a file
+     * to build: where a file gets installed to, how far "bin" is from
+     * "lib" for an rpath, and what to stick on the end of another
+     * directory that's already based.  Prepending the base twice is
+     * the easiest mistake to make here, and it produces paths that
+     * look plausible and don't exist. */
+    std::string unbased(const std::string& dir) const
+    {
+        if (base.size() > 0 && dir.compare(0, base.size(), base) == 0)
+            return dir.substr(base.size());
+        return dir;
+    }
+
     /* Checks to see if the context matches one of the given types,
      * returning TRUE if it matches, and FALSE if it doesn't. */
     bool check_type(const std::vector<context_type>& types);
