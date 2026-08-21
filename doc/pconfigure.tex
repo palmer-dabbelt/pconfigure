@@ -424,16 +424,50 @@ semantics), setting \texttt{LINKOPTS} for a source won't do anything,
 you should instead set it on the target that source will be linked
 into.
 
+\subsection{\texttt{SUBPROJECTS += \$dirname} \label{cmd:subprojects}}
+
+Pulls in another \texttt{pconfigure} project that lives in a
+subdirectory -- a git submodule, usually.  \texttt{\$dirname} is
+relative to the \texttt{Configfile} that names it, and the project it
+points at needs no idea that it is being used this way: its
+\texttt{Configfile} is read exactly as it would be if you had run
+\texttt{pconfigure} inside it.
+
+A single run of \texttt{pconfigure} reads every project and writes a
+\texttt{Makefile} for each one, and each project's \texttt{Makefile}
+includes its subprojects'.  There is no recursive \texttt{make}: a
+build from the top has the whole thing in one dependency graph, so
+\texttt{make -j} can schedule across projects.  Subprojects nest,
+and a project that gets asked for twice is only read once.
+
+A subproject's \texttt{Makefile} is written so that it also works on
+its own, so you can \texttt{cd} into a submodule and run
+\texttt{make} there while you work on it.  Every path in it is
+written relative to a variable that the \texttt{Makefile} defaults to
+nothing and a parent sets before including.
+
+Dependencies between projects don't have to be written down.  A
+\texttt{-l} on a link line that names a library some project in the
+build produces becomes a \texttt{Makefile} dependency on it, and
+\texttt{ppkg-config} is answered out of the build tree, so a project
+can ask about a package one of its subprojects provides and be told
+where that subproject's output actually is.
+
+A subproject is built and installed as part of whoever pulled it in,
+into the same \texttt{PREFIX}, and \texttt{make check} from the top
+runs its tests along with everyone else's.
+
 \subsection{\texttt{DEPLIBS += \$libname} \label{cmd:deplibs}}
 
 Adds an internal library dependency to the list of link options.  This
-is essentially the same as calling
+is the same as calling
 \begin{verbatim}
 LINKOPTS += -l$libname
 \end{verbatim}
-but it also adds a \texttt{Makefile} dependency such that whenever
-\texttt{lib\$libname.so} is rebuilt the target this is attached to
-will also be rebuilt.
+and nothing more: the \texttt{Makefile} dependency on
+\texttt{lib\$libname.so} comes from the \texttt{-l} itself, so a
+library that reaches the link line some other way -- from
+\texttt{LINKOPTS}, or from \texttt{ppkg-config} -- gets one too.
 
 \subsection{\texttt{TESTDEPS += \$path}}
 
