@@ -44,6 +44,15 @@ private:
     /* The object that should be touched for {COMPILE,LINK}OPTS. */
     opts_target::ptr _opts_target;
 
+    /* The target above, once whatever opened it has been closed by a
+     * command that went back to the top of the project without
+     * opening anything new.  A COMPILER or a COMPILEOPTS written
+     * after one of those still lands on it, which is almost never
+     * what the line meant -- so it's remembered here, along with the
+     * command that closed it, to say so. */
+    context::ptr _stale_opts_target;
+    command::ptr _stale_opts_closed_by;
+
     /* The build systems that are available to build a SUBPROJECTS,
      * which is pconfigure plus whatever a BUILD_SYSTEMS asked for.
      * None of these is bound to a directory: they're the list that a
@@ -72,6 +81,11 @@ private:
 
     /* This is set to TRUE if a "--help" command was given. */
     bool _given_help_command;
+
+    /* TRUE once a SRCPATH has moved this project's source root,
+     * which is worth knowing because a second one is read relative to
+     * the first rather than replacing it. */
+    bool _given_srcpath;
 
     /* The path that this project's Configfiles are read from, which
      * is changed by the SRCPATH command. */
@@ -135,9 +149,31 @@ public:
     void process(const command::ptr& command);
 
 private:
+    /* The half of process() that does the work.  The split exists
+     * because TESTSRC and HEADERSRC are each two commands wearing one
+     * hat and go back through here twice, and anything process()
+     * says about the line as it was written has to be said once. */
+    void process_one(const command::ptr& command);
+
+    /* Points {COMPILE,LINK}OPTS, COMPILER and LINKER at something,
+     * which every command that opens a target has to do.  This is a
+     * function rather than an assignment so that forgetting the other
+     * half of it -- that whatever was stale isn't stale any more --
+     * isn't something a command added later can do. */
+    void set_opts_target(const opts_target::ptr& target);
+
+    /* Says that a command landed on a target that something else had
+     * already closed, if one did.  Called by the four commands that
+     * go through _opts_target, which are the only ones that can. */
+    void check_opts_target(const command::ptr& cmd);
+
     /* Clears the stack until it reaches one of the following types of
-     * context, saving every popped context into _all_contexts. */
-    void clear_until(const std::vector<context_type>& types);
+     * context, saving every popped context into _all_contexts.  "by"
+     * is the command doing the clearing, which is only used to say
+     * which line closed a target that something later still tried to
+     * write to. */
+    void clear_until(const std::vector<context_type>& types,
+                     const command::ptr& by);
 
     /* Duplicates the TOS, but with a new context type and an
      * argument, and then pushes it onto the stack. */

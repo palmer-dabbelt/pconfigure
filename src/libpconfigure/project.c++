@@ -184,9 +184,18 @@ void project::generate_targets(void)
         for (const auto& target: vendored->targets(_processor->vendored()))
             _targets.push_back(target);
 
+    /* What each target this project builds is going to be called,
+     * which is the only way to notice that two of them are going to
+     * be called the same thing.  The name alone isn't enough: a
+     * LIBDIR between two LIBRARIES lines makes two libraries with one
+     * name and two homes, which is a thing somebody meant. */
+    auto by_output = std::map<std::string, context::ptr>();
+
     for (const auto& context: _processor->output_contexts()) {
         if (context->debug == true)
             std::cerr << "Building Context: " << context->cmd->data() << "\n";
+
+        check_target_shape(context, by_output);
 
         auto language = pick_language(context->languages, context);
         for (const auto& target: language->targets(context)) {
@@ -372,6 +381,63 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
 
     write_check_dirs(aggregated);
     write_configureopts();
+}
+
+void project::check_target_shape(const context::ptr& ctx,
+                                 std::map<std::string, context::ptr>& seen)
+{
+    /* Only the things that get linked, since they're the ones where
+     * both of these questions have an answer.  A HEADERS is installed
+     * rather than built, and a GENERATE writes its own source. */
+    if (ctx->check_type({context_type::BINARY,
+                         context_type::LIBRARY,}) == false)
+        return;
+
+    /* A target with no sources is a link with nothing to link, which
+     * fails when make finally gets there with a message from the
+     * linker about a missing main rather than anything that points at
+     * the Configfile.  The usual way to arrive here is a SRCDIR or a
+     * LIBDIR written between the target and its sources: both of
+     * those go back to the top of the project, which closes the
+     * target above them. */
+    auto sources = false;
+    for (const auto& child: ctx->children)
+        if (child->check_type({context_type::SOURCE}) == true)
+            sources = true;
+
+    if (sources == false)
+        ctx->strictness.complain(
+            strict_since::v0_13(),
+            ctx->cmd->debug(),
+            "'" + ctx->cmd->data() + "' has nothing to build: no SOURCES"
+            " ever landed on it",
+            "give it at least one SOURCES, and check that nothing in"
+            " between closed it first -- a SRCDIR or a LIBDIR goes back"
+            " to the top of the project and ends the target above it");
+
+    /* Two targets that come out in the same place are one target.
+     * The second one's rules are identical to the first's, so they're
+     * folded together and everything written under it goes nowhere --
+     * which looks exactly like it worked. */
+    auto dir = ctx->check_type({context_type::LIBRARY})
+        ? ctx->lib_dir
+        : ctx->bin_dir;
+    auto output = dir + "/" + ctx->cmd->data();
+
+    auto found = seen.find(output);
+    if (found != seen.end())
+        ctx->strictness.complain(
+            strict_since::v0_13(),
+            ctx->cmd->debug(),
+            "'" + output + "' was already asked for on "
+            + std::to_string(found->second->cmd->debug())
+            + ", and two targets that come out in the same place are one"
+            " target",
+            "give one of them a different name, or delete the duplicate --"
+            " everything written under this one is folded into the first"
+            " and does nothing");
+
+    seen[output] = ctx;
 }
 
 void project::write_configureopts(void) const
