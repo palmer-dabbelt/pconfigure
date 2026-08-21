@@ -415,10 +415,16 @@ void project::check_target_shape(const context::ptr& ctx,
             " between closed it first -- a SRCDIR or a LIBDIR goes back"
             " to the top of the project and ends the target above it");
 
-    /* Two targets that come out in the same place are one target.
-     * The second one's rules are identical to the first's, so they're
-     * folded together and everything written under it goes nowhere --
-     * which looks exactly like it worked. */
+    /* Two targets that come out in the same place are one target,
+     * and only one set of rules can come out of that.  Which way it
+     * goes wrong depends on whether the two were described the same
+     * way: rules that match are folded together, so the second target
+     * goes nowhere and it looks exactly like it worked, and rules
+     * that don't match stop the build with an internal-sounding
+     * complaint that names neither line.  Saying so here is worth it
+     * for the second case alone, since it's the one where the only
+     * other thing anybody gets is "Mismatched recipe for targets with
+     * same name". */
     auto dir = ctx->check_type({context_type::LIBRARY})
         ? ctx->lib_dir
         : ctx->bin_dir;
@@ -434,8 +440,8 @@ void project::check_target_shape(const context::ptr& ctx,
             + ", and two targets that come out in the same place are one"
             " target",
             "give one of them a different name, or delete the duplicate --"
-            " everything written under this one is folded into the first"
-            " and does nothing");
+            " only one set of rules can come out, so the other is lost,"
+            " and if the two disagree at all the build stops here");
 
     seen[output] = ctx;
 }

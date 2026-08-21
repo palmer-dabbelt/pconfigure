@@ -22,6 +22,7 @@
 #include "vector_util.h++"
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <cerrno>
 #include <cstdio>
 #include <sstream>
 using namespace file_utils;
@@ -157,8 +158,19 @@ bool file_utils::mkdir_p(const std::string& path)
         return true;
 
     /* Somebody else may have made it in between, which is a success:
-     * what was asked for was that the directory exist. */
-    return stat(path.c_str(), &buf) == 0 && S_ISDIR(buf.st_mode);
+     * what was asked for was that the directory exist.
+     *
+     * Whether they did or not, asking costs the errno that says why
+     * the mkdir failed -- and that errno is the whole of what the
+     * caller has to tell somebody.  Put back the real one, since a
+     * permission problem reported as a missing directory sends
+     * whoever reads it looking for a directory that is right there. */
+    auto why = errno;
+    auto made = stat(path.c_str(), &buf) == 0 && S_ISDIR(buf.st_mode);
+    if (made == false)
+        errno = why;
+
+    return made;
 }
 
 bool file_utils::write_if_changed(const std::string& path,
