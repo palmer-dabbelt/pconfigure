@@ -39,11 +39,21 @@ namespace makefile {
     private:
 	    const bool _verbose;
 
+        /* The directory that intermediate build products go into,
+         * which is where the "make check" stamp and reports live. */
+        const std::string _obj_dir;
+
     public:
         /* Creates a new "empty" Makefile -- note that this actually
          * contains some about of default targets and such that you
          * don't want if you're going to be */
-        makefile(bool verbose = false);
+        makefile(bool verbose = false, const std::string& obj_dir = "obj");
+
+    public:
+        /* The name of the stamp file that "make check" hangs its
+         * tests off of. */
+        std::string check_stamp(void) const
+            { return _obj_dir + "/check-all-done"; }
 
     public:
         /* Adds a target to this makefile. */
