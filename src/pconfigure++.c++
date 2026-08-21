@@ -20,18 +20,16 @@
 
 #include <libpconfigure/commands.h++>
 #include <libpconfigure/command_processor.h++>
-#include <libpconfigure/pick_language.h++>
+#include <libpconfigure/project.h++>
 #include "version.h"
 #include <libmakefile/implied_deps.h++>
-#include <libmakefile/makefile.h++>
 #include <algorithm>
 #include <iostream>
-#include <map>
+#include <vector>
 
 int main(int argc, const char **argv)
 {
     auto processor = std::make_shared<command_processor>();
-    auto targets = std::map<std::string, makefile::target::ptr>();
 
     for (const auto& command: commands(argc, argv))
         processor->process(command);
@@ -70,117 +68,32 @@ int main(int argc, const char **argv)
         return 0;
     }
 
-    /* FIXME: If any target is verbose, then all are. */
-    bool verbose = [&](void) -> bool {
-        for (const auto& context: processor->output_contexts())
-            if (context->verbose == true)
-                return true;
+    auto projects = std::vector<project::ptr>{
+        std::make_shared<project>(processor->base(), processor)
+    };
 
-        return false;
-        }();
+    for (const auto& project: projects)
+        project->generate_targets();
 
-    auto makefile = std::make_shared<makefile::makefile>(
-        verbose,
-        processor->root_context()->obj_dir);
-
-    auto distcleaned = std::map<std::string, bool>();
-    auto obj_dirs = std::map<std::string, bool>();
+    /* Dependencies are worked out with every project's targets in
+     * hand: what one project wants can perfectly well be provided by
+     * a project that was read after it. */
+    auto targets = std::vector<makefile::target::ptr>();
     auto provided = std::vector<makefile::capability>();
     auto needed = std::vector<makefile::capability>();
-    for (const auto& context: processor->output_contexts()) {
-        if (context->debug == true)
-            std::cerr << "Building Context: " << context->cmd->data() << "\n";
-
-        auto language = pick_language(context->languages, context);
-        for (const auto& target: language->targets(context)) {
-            if (targets.find(target->name()) == targets.end()) {
-                if (context->debug == true)
-                    std::cerr << "  target: " << target->name() << "\n";
-                makefile->add_target(target);
-            } else if (!same_recipe(targets.find(target->name())->second, target)) {
-                std::cout << "Mismatched recipe for targets with same name\n";
-                abort();
-            }
-            targets[target->name()] = target;
-
-            /* Only the language that wrote this recipe knows how to
-             * read it, so it's the one that says what this target
-             * offers and what it wants.  Matching those up is left
-             * until every target is known, below. */
-            for (const auto& name: language->provides(target))
-                provided.push_back(makefile::capability(name, target->name()));
-            for (const auto& name: language->needs(target))
-                needed.push_back(makefile::capability(name, target->name()));
-        }
-
-        auto to_distclean = std::vector<std::string>{
-            context->bin_dir,
-            context->check_dir,
-            context->lib_dir,
-            context->obj_dir
-        };
-        for (const auto& dir: to_distclean)
-            distcleaned[dir] = true;
-
-        obj_dirs[context->obj_dir] = true;
+    for (const auto& project: projects) {
+        for (const auto& target: project->targets())
+            targets.push_back(target);
+        for (const auto& capability: project->provided())
+            provided.push_back(capability);
+        for (const auto& capability: project->needed())
+            needed.push_back(capability);
     }
 
-    {
-        auto all_targets = std::vector<makefile::target::ptr>();
-        for (const auto& pair: targets)
-            all_targets.push_back(pair.second);
+    auto implied = makefile::implied_deps(targets, provided, needed);
 
-        for (const auto& dep: makefile::implied_deps(all_targets, provided, needed))
-            makefile->add_dep(dep.target, dep.dep);
-    }
+    for (const auto& project: projects)
+        project->write_makefile(implied);
 
-    {
-        auto dirs = std::vector<std::string>();
-        for (const auto& pair: obj_dirs)
-            dirs.push_back(pair.first);
-
-        auto cache_clean_commands = std::vector<std::string>();
-        for (const auto& dir: dirs) {
-            cache_clean_commands.push_back(
-                "comm -23 "
-                "<(find " + dir + " -type f | sort) "
-                "<(sed -n 's/\\(^" + dir + "\\/[^[:space:]:]*\\):.*/\\1/p' Makefile | sort -u) "
-                "| xargs -r rm -f"
-            );
-            cache_clean_commands.push_back("find " + dir + " -type d -empty -delete");
-        }
-
-        auto target = std::make_shared<makefile::target>(
-            "cache-clean",
-            "CACHE-CLEAN",
-            std::vector<makefile::target::ptr>{},
-            std::vector<makefile::global_targets>{},
-            cache_clean_commands,
-            std::vector<std::string>{"cache-clean"}
-        );
-
-        makefile->add_target(target);
-    }
-
-    {
-        auto distclean_commands = std::vector<std::string>();
-        for (const auto& pair: distcleaned)
-            distclean_commands.push_back("rm -rf " + pair.first);
-        distclean_commands.push_back("rm -rf Makefile");
-
-        auto target = std::make_shared<makefile::target>(
-            "distclean",
-            "DISTCLEAN",
-            std::vector<makefile::target::ptr>{},
-            std::vector<makefile::global_targets>{},
-            distclean_commands,
-            std::vector<std::string>{"distclean"}
-        );
-
-        makefile->add_target(target);
-    }
-
-    makefile->write_to_file("Makefile");
-    
     return 0;
 }
