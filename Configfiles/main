@@ -59,6 +59,7 @@ TESTSRC     += simple.bash
 TESTSRC     += samedir.bash
 TESTSRC     += define.bash
 TESTSRC     += define2.bash
+TESTSRC     += missing-include.bash
 
 BINARIES    += pperlc
 DEPLIBS     += pinclude
