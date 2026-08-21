@@ -125,6 +125,10 @@ public:
      * which case it's built by "make all" but never installed. */
     bool install;
 
+    /* The directory this project is rooted at: either empty, or a
+     * path that ends with a '/'. */
+    std::string base;
+
     /* The list of languages that are availiable to be used when trying to link
      * sub-objects and tests and such. */
     const std::shared_ptr<language_list> languages;
@@ -146,8 +150,15 @@ public:
     /* Creates a new context with everything filled in to the default
      * values.  Note that you probably don't want to use this unless
      * you're creating a new context stack, you really want to
-     * clone a context and then modify it. */
-    context(void);
+     * clone a context and then modify it.
+     *
+     * "base" is the directory this project is rooted at, relative to
+     * the directory pconfigure is running in.  It's either empty (for
+     * the project being configured) or ends with a '/' (for a
+     * subproject).  Every directory this context knows about is
+     * rooted there, which is what allows a single pconfigure run to
+     * configure more than one project. */
+    context(const std::string& base = "");
 
     /* Allows every field inside a context to be set. */
     context(const context_type& type,
@@ -171,6 +182,7 @@ public:
             bool verbose,
             bool debug,
             bool install,
+            const std::string& base,
             const std::shared_ptr<language_list>& languages,
             bool autodeps,
             const std::string& phc,

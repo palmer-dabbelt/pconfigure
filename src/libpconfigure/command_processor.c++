@@ -24,14 +24,16 @@
 #include "languages/implicit_h.h++"
 #include <iostream>
 
-command_processor::command_processor(void)
+command_processor::command_processor(const std::string& base)
     : _stack(),
       _opts_target(NULL),
       _given_version_command(false),
       _given_help_command(false),
-      _srcpath(".")
+      _srcpath(base.size() == 0 ? "." : base.substr(0, base.size() - 1)),
+      _base(base),
+      _root(std::make_shared<context>(base))
 {
-    _stack.push(std::make_shared<context>());
+    _stack.push(_root);
     auto tos = _stack.top();
     tos->languages->add(std::make_shared<language_gen_proc>(
         std::vector<std::string>{},
@@ -360,11 +362,17 @@ void command_processor::process(const command::ptr& cmd)
         if (cmd->check_operation("=") == false)
             goto bad_op_eq;
 
-        tos->src_dir = cmd->data() + "/" + tos->src_dir;
-        tos->test_dir = cmd->data() + "/" + tos->test_dir;
-        tos->src_path = cmd->data() + "/";
-        _srcpath = cmd->data();
+    {
+        /* A SRCPATH is relative to the project it shows up in, which
+         * is only the directory pconfigure was run from for the
+         * top-level project. */
+        auto path = _base + cmd->data();
+        tos->src_dir = path + "/" + tos->src_dir.substr(_base.size());
+        tos->test_dir = path + "/" + tos->test_dir.substr(_base.size());
+        tos->src_path = path + "/";
+        _srcpath = path;
         return;
+    }
 
     case command_type::HEADERSRC:
         process(cmd->with_type(command_type::HEADERS));
