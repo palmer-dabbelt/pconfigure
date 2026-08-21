@@ -178,6 +178,16 @@ putting \texttt{CROSS\_COMPILE = <prefix>} at the top of the first
 file that gets read, which is what lets one tree be configured for
 one machine and then for another without editing anything in it.
 
+\subsection{\texttt{--strict <version>} \label{cl:strict}}
+
+Sets \texttt{STRICT} for the whole project before any
+\texttt{Configfile} is read, see Section~\ref{cmd:strict}.  Calling
+\texttt{--strict <version>} is exactly the same as putting
+\texttt{STRICT = <version>} at the top of the first file that gets
+read, which is how a tree gets held to a version without being edited
+-- and how a project that is thinking about writing the line down
+finds out what it would have to fix first.
+
 \subsection{\texttt{--version}}
 
 Prints the version number of \pconfigure\ and exits without touching
@@ -817,6 +827,77 @@ set to \texttt{include}.
 Sets the \texttt{SRCDIR} variable to \texttt{\$val}.  By default it is
 set to \texttt{src}.
 
+\subsection{\texttt{STRICT = \$version} \label{cmd:strict}}
+
+Says how much of what \pconfigure\ used to let a project get away with
+it should still let this one get away with.  \texttt{\$version} is a
+\pconfigure\ version, and every warning that existed as of that
+version becomes a hard error:
+
+\begin{verbatim}
+STRICT = v0.13
+\end{verbatim}
+
+A handful of \texttt{Configfile} lines are accepted and then quietly
+do something nobody meant; they're listed in Section~\ref{warn}.  None
+of them can simply be made errors, because every one of them is
+something some project is relying on without knowing it and a build
+system that stops building last week's project isn't much of a build
+system.  So they're warnings: the message goes to \texttt{stderr},
+\pconfigure\ carries on, and the \texttt{Makefile} that comes out is
+the one that would have come out anyway.
+
+\begin{verbatim}
+./Configfile:5 'COMPAT = 1.0'
+  warning: COMPAT is read and then thrown away -- it has never done anything
+  delete the line; a project that wants to say which pconfigure it was written against wants STRICT
+  ('STRICT = v0.13' makes this an error)
+\end{verbatim}
+
+A project that would rather be told loudly writes the \texttt{STRICT}
+line, and the same message comes out saying \texttt{error} where it
+said \texttt{warning}, followed by the version that did it.  Nothing else
+changes about it, and \pconfigure\ stops there rather than writing a
+\texttt{Makefile}: a warning that a project has asked to be an error
+is an error, and half a \texttt{Makefile} is worse than none.
+
+The default is \texttt{v0.12}, the release these were first written
+down in, which promotes nothing at all.  That's the whole
+compatibility story from here on.  Each warning carries the version it
+was added in, so asking for a version asks for everything found up to
+that point and nothing found since: a project pinned at
+\texttt{v0.13} keeps building when \texttt{v0.14} finds a new edge
+case, and hears about that one as a warning like everybody else until
+it decides to move the number.
+
+A version is written the way a release is written, and read the way a
+person writes it: the leading \texttt{v} is optional and a component
+that isn't there is zero, so \texttt{v0.13}, \texttt{0.13} and
+\texttt{v0.13.0} are one version, and \texttt{v0.12.1} is a version
+too.  Anything older than \texttt{v0.12} is \texttt{v0.12}, since
+there was never a \pconfigure\ that behaved differently and asking for
+one is asking for the oldest behavior there is.
+
+Anything that isn't a version at all -- \texttt{banana},
+\texttt{v0..1}, \texttt{v1.2.3.4} -- is a fatal error that names the
+line, rather than a warning.  This is the one command that can't
+afford to be wrong quietly: a misspelled \texttt{STRICT} that got
+ignored would turn every warning below it back off, which is the
+opposite of what the line was written to do.
+
+Like \texttt{CROSS\_COMPILE} (see Section~\ref{cmd:cross_compile})
+this lands on whatever context is open rather than on the current
+language, so a project pulled in by a \texttt{SUBPROJECTS} (see
+Section~\ref{cmd:subprojects}) inherits it the same way it inherits a
+\texttt{PREFIX}, and a subproject that isn't ready for it writes its
+own \texttt{STRICT} to relax back -- somebody else's tree is somebody
+else's tree.  The place to write it is the top of a
+\texttt{Configfile} even so, since a warning is about a line rather
+than about a target and the line could be anywhere.
+
+It can also be given on the command line, see
+Section~\ref{cl:strict}.
+
 \subsection{\texttt{CONFIG += \$file} \label{cmd:config}}
 
 When \texttt{Configfiles/\$file} exists and is executable, the output
@@ -1293,6 +1374,209 @@ other compiler is at best noise, and Buildroot's own manual says in so
 many words not to set it.  Which compiler builds the target is
 something its \texttt{.config} says instead.
 
+\section{Warnings \label{warn}}
+
+These are the \texttt{Configfile} lines that are accepted and then
+quietly do something nobody meant.  Each one prints the file and line
+that wrote it, what actually happens, what to write instead, and the
+version that turns it into an error; \texttt{STRICT} (see
+Section~\ref{cmd:strict}) is what does the turning, and everything
+listed here was found in \texttt{v0.13}, so \texttt{STRICT = v0.13}
+promotes the lot.
+
+What a warning means doesn't change when it becomes an error, and
+neither does what \pconfigure\ does with the line it's about: the
+build a project gets under the default is the build it has always
+got.  All that changes is whether the run finishes and leaves a
+\texttt{Makefile} behind it.
+
+\subsection{An option that lands on a target that was already closed}
+
+\texttt{COMPILER}, \texttt{LINKER}, \texttt{COMPILEOPTS} and
+\texttt{LINKOPTS} all land on whatever target was opened last.
+\texttt{SRCDIR}, \texttt{LIBDIR}, \texttt{BUILD\_SYSTEMS} and
+\texttt{SUBPROJECTS} each go back to the top of the project, which
+closes that target without opening another one:
+
+\begin{verbatim}
+BINARIES    += hello
+SRCDIR       = hello
+COMPILEOPTS += -Wall
+\end{verbatim}
+
+\texttt{-Wall} is still aimed at \texttt{hello}, which stopped
+listening one line earlier, so nothing at all is built with it.  The
+message names both ends and the line that closed the target, since
+which of the four did it is the part that isn't obvious.
+
+Three things that look like this and aren't: an opts target that came
+from a \texttt{LANGUAGES} is never stale, because a language isn't a
+context and never gets closed, so setting a language's options either
+side of a \texttt{SRCDIR} means exactly what it looks like; a
+\texttt{GENERATE} deliberately opens a source of its own on top of the
+target it just aimed these at; and a \texttt{SOURCES} or a
+\texttt{TESTS} closes the source above it and immediately aims at the
+one it opened.  None of those warn.
+
+\subsection{\texttt{LINKOPTS} written after a \texttt{SOURCES}}
+
+\begin{verbatim}
+BINARIES += hello
+SOURCES  += hello.c
+LINKOPTS += -lm
+\end{verbatim}
+
+A \texttt{LINKOPTS} written after a \texttt{SOURCES} lands on that one
+file, and a source file is compiled rather than linked: every language
+asks the target for its link options, and the target is the binary or
+the library.  So nothing ever reads this one.  It wants to be above
+the \texttt{SOURCES}, on the target the file gets linked into.
+
+\subsection{\texttt{ENTITLEMENTS} under something that isn't linked}
+
+\begin{verbatim}
+BINARIES     += vmm
+SOURCES      += vmm.c
+ENTITLEMENTS  = vmm.plist
+\end{verbatim}
+
+Only a whole linked binary is signed, so an \texttt{ENTITLEMENTS} that
+landed under a \texttt{SOURCES}, a \texttt{HEADERS}, a
+\texttt{GENERATE} or a \texttt{TESTS} asks for nothing at all -- and
+asking for nothing quietly is worse here than elsewhere, since what
+comes out is a program that runs right up until it reaches the thing
+it wasn't allowed to do.  See Section~\ref{cmd:entitlements}.
+
+Directly under the \texttt{BINARIES} or \texttt{LIBRARIES} it's about
+is where it belongs, and doesn't warn.  Neither does one written at
+the top of a project, before any target: that one is inherited by
+every target below it, which is a thing somebody meant.
+
+\subsection{\texttt{SOURCES} with no target open above it}
+
+\begin{verbatim}
+LANGUAGES += c
+SOURCES   += hello.c
+\end{verbatim}
+
+A source file has to be compiled into something, and the something is
+whatever target is open above it.  With nothing open the file hangs
+off the project's own context, which is never asked for its targets
+and never asks its children for theirs, so the line is read,
+remembered and then dropped without a word.  The usual way to arrive
+here is not writing the target at all, and the second usual way is a
+\texttt{SRCDIR} or a \texttt{LIBDIR} between the target and its
+sources.
+
+\subsection{A value with a space in it}
+
+\begin{verbatim}
+SOURCES += a.c b.c
+\end{verbatim}
+
+Everything after the operator is one value, so that names a single
+file called \texttt{a.c b.c}.  What comes out is a \texttt{Makefile}
+rule that \texttt{make} splits back up on the space into targets
+nobody meant.  One line per file.
+
+Only the commands whose value is a path or the name of a target are
+asked this question.  A \texttt{COMPILEOPTS}, a \texttt{LINKOPTS}, a
+\texttt{CONFIGUREOPTS}, a \texttt{COMPILER} or a \texttt{LINKER} is a
+command line, is meant to have spaces in it, and is left alone.
+
+The question is asked once of the line as it was written, rather than
+of each command that line turns into -- so a \texttt{TESTSRC}, which
+is a \texttt{TESTS} and a \texttt{SOURCES} wearing one hat, warns once
+about the \texttt{TESTSRC} rather than three times about three
+different names for the same mistake.
+
+\subsection{\texttt{COMPAT}}
+
+\begin{verbatim}
+COMPAT = 1.0
+\end{verbatim}
+
+\texttt{COMPAT} is read and then thrown away, and always has been: it
+was going to be what \texttt{STRICT} is (see
+Section~\ref{cmd:strict}) and never became anything.  A project that
+wants to say which \pconfigure\ it was written against wants that
+instead; a project that doesn't wants the line deleted.
+
+\subsection{\texttt{VERBOSE} and \texttt{DEBUG} ignore what they're set to}
+
+\begin{verbatim}
+VERBOSE = false
+\end{verbatim}
+
+turns verbose output on, exactly as \texttt{VERBOSE = true} does:
+writing either line at all turns the thing on, and it stays on for
+everything below.  \texttt{DEBUG} is the same.  Anything that isn't
+exactly \texttt{= true} warns, and the line goes on doing what it has
+always done -- \texttt{VERBOSE = false} still turns verbose output on,
+warning or no warning, since a line that changed its meaning under a
+new release would be a worse problem than the one being pointed at.
+
+\subsection{A second \texttt{SRCPATH}}
+
+\begin{verbatim}
+SRCPATH = a
+SRCPATH = b
+\end{verbatim}
+
+A \texttt{SRCPATH} rewrites the source directories in place rather
+than replacing them, so a second one is read relative to whatever the
+first one already produced and the project goes looking under
+\texttt{b/a}.  It's written with an \texttt{=} rather than a
+\texttt{+=}, which is a promise that it replaces, so this is the rare
+one where the line says the opposite of what happens.  Say it once, at
+the top of the project, and remember that a source path given on the
+command line has already said it.
+
+\subsection{A target with nothing to build}
+
+\begin{verbatim}
+BINARIES += hello
+SRCDIR    = hello
+\end{verbatim}
+
+A \texttt{BINARIES}, \texttt{LIBRARIES}, \texttt{LIBEXECS} or
+\texttt{TESTEXECS} that no \texttt{SOURCES} ever landed on is a link
+with nothing to link.  Without this it fails when \texttt{make}
+finally gets there, with a message from the linker about a missing
+\texttt{main} rather than anything that points at the
+\texttt{Configfile}.  The usual cause is the one above: a
+\texttt{SRCDIR} or a \texttt{LIBDIR} written between the target and
+its sources, which goes back to the top of the project and ends the
+target on its way.
+
+A \texttt{HEADERS} and a \texttt{GENERATE} aren't asked, since a
+header is installed rather than built and a \texttt{GENERATE} writes
+its own source.
+
+\subsection{Two targets that come out in the same place}
+
+\begin{verbatim}
+BINARIES += hello
+SOURCES  += hello.c
+
+BINARIES += hello
+SOURCES  += other.c
+\end{verbatim}
+
+Two targets that come out in the same place are one target: the second
+one's rules are identical to the first's, so they're folded together
+and everything written under the second does nothing -- which looks
+exactly like it worked.  The message names the line that asked for the
+output first.
+
+They're compared by where they come out rather than by what they're
+called, which is the whole point: two \texttt{LIBRARIES} of the same
+name written either side of a \texttt{LIBDIR} are two libraries with
+one name and two homes, which is a thing somebody meant, and they
+don't warn.  The comparison is within one project, since two projects
+that both build a \texttt{libutil.so} each build it into their own
+\texttt{LIBDIR}.
+
 \section{Common Error Messages \label{err}}
 
 \pconfigure\ will print a number of error messages to \texttt{stderr}.
@@ -1309,6 +1593,20 @@ a problem yet, it's a big problem with many other languages). %
 A shell-out exited with a non-zero exit code.  You should avoid using
 commands that can fail but should instead handle these failures in
 your code (ie, as opposed to your \texttt{Configfile}).
+
+\subsection{\texttt{TESTS} with no target open above it has nothing to test}
+
+A \texttt{TESTS} or a \texttt{TESTSRC} written with no
+\texttt{BINARIES}, \texttt{LIBRARIES}, \texttt{LIBEXECS} or
+\texttt{TESTEXECS} open above it.  A test belongs to the thing it
+exercises, and with nothing open the thing above it is the project's
+own context, which has no command behind it and no binary to hand the
+test as \texttt{\$PTEST\_BINARY} (see Section~\ref{cmd:tests}).
+
+This is a fatal error whatever \texttt{STRICT} says, rather than one
+of the warnings in Section~\ref{warn}: what used to happen here was a
+null dereference and a signal, with nothing printed at all, so there
+is no behavior to stay compatible with.
 
 \section{Useful Helper Programs \label{prog}}
 
