@@ -62,6 +62,7 @@ namespace makefile {
         /* Accessor methods. */
         const std::string& name(void) const { return _name; }
         const decltype(_cmds)& cmds(void) const { return _cmds; }
+        const decltype(_deps)& deps(void) const { return _deps; }
 
     public:
         /* Returns a copy of this target without the given global target. */
