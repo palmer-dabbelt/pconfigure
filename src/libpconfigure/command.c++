@@ -22,8 +22,6 @@
 #include "string_utils.h++"
 #include <iostream>
 
-extern std::string srcpath;
-
 command::command(const command_type& type,
                  const std::string& op,
                  const std::string& data,
@@ -34,8 +32,6 @@ command::command(const command_type& type,
       _debug_info(debug_info),
       _needs_data(false)
 {
-    if (type == command_type::SRCPATH)
-        srcpath = data;
 }
 
 command::command(const command_type& type,

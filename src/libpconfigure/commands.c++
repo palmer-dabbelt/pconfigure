@@ -29,9 +29,6 @@
 #include <regex>
 #include <sstream>
 
-/* FIXME: This is a hack, it's set from command.c++ */
-std::string srcpath = ".";
-
 /* FIXME: This is a hack, it's used to set the path to ppkg-config */
 std::string ppkg_config = "ppkg-config";
 
@@ -79,13 +76,11 @@ std::vector<command::ptr> commands(int argc, const char **argv)
         out.push_back(ecmd);
     }
 
-    for (const auto& command: commands())
-        out.push_back(command);
-
     return out;
 }
 
-std::vector<command::ptr> commands(const std::string& prefix,
+std::vector<command::ptr> commands(const std::string& srcpath,
+                                   const std::string& prefix,
                                    const std::string& suffix)
 {
     auto filenames = std::vector<std::string>{
@@ -95,13 +90,13 @@ std::vector<command::ptr> commands(const std::string& prefix,
 
     std::vector<command::ptr> out;
     for (const auto& filename: filenames) {
-        auto cmds = commands(filename);
+        auto cmds = commands_from_file(srcpath, filename);
         out.insert(out.end(), cmds.begin(), cmds.end());
     }
     return out;
 }
 
-std::vector<command::ptr> commands(void)
+std::vector<command::ptr> configfiles(const std::string& srcpath)
 {
     auto filenames = std::vector<std::string>{
         srcpath + "/Configfiles/local",
@@ -112,7 +107,7 @@ std::vector<command::ptr> commands(void)
 
     std::vector<command::ptr> out;
     for (const auto& filename: filenames) {
-        auto cmds = commands(filename);
+        auto cmds = commands_from_file(srcpath, filename);
         out.insert(out.end(), cmds.begin(), cmds.end());
     }
     return out;
@@ -130,7 +125,8 @@ static char* get_current_dir_name()
 }
 #endif
 
-std::vector<command::ptr> commands(const std::string& filename)
+std::vector<command::ptr> commands_from_file(const std::string& srcpath,
+                                             const std::string& filename)
 {
     auto out = std::vector<command::ptr>();
     auto origpwd = [&]()

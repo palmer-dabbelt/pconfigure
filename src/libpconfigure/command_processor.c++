@@ -28,7 +28,8 @@ command_processor::command_processor(void)
     : _stack(),
       _opts_target(NULL),
       _given_version_command(false),
-      _given_help_command(false)
+      _given_help_command(false),
+      _srcpath(".")
 {
     _stack.push(std::make_shared<context>());
     auto tos = _stack.top();
@@ -109,7 +110,7 @@ void command_processor::process(const command::ptr& cmd)
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
-        for (const auto& command: commands("Configfile", cmd->data()))
+        for (const auto& command: commands(_srcpath, "Configfile", cmd->data()))
             process(command);
 
         return;
@@ -362,6 +363,7 @@ void command_processor::process(const command::ptr& cmd)
         tos->src_dir = cmd->data() + "/" + tos->src_dir;
         tos->test_dir = cmd->data() + "/" + tos->test_dir;
         tos->src_path = cmd->data() + "/";
+        _srcpath = cmd->data();
         return;
 
     case command_type::HEADERSRC:

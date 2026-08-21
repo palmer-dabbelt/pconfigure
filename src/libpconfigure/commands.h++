@@ -24,21 +24,27 @@
 #include "command.h++"
 #include <vector>
 
-/* Produces a list of commands that need to be handled by the system,
- * which can then be processed by something that actually understands
- * the meaning of those commands.  This is essentially just a way to
- * hide the fact that there's many command sources from the rest of
- * the system. */
+/* Produces the list of commands that were given on the command line.
+ * Note that this doesn't include anything that comes from a
+ * Configfile: those are read seperately, after the command-line
+ * options have been processed (as they can change where the
+ * Configfiles are read from). */
 std::vector<command::ptr> commands(int argc, const char **argv);
 
-/* Produces a list of commands that come from a file with the given suffix. */
-std::vector<command::ptr> commands(const std::string& prefix,
+/* Produces a list of commands that come from a file with the given
+ * suffix, looked up relative to the given source path. */
+std::vector<command::ptr> commands(const std::string& srcpath,
+                                   const std::string& prefix,
                                    const std::string& suffix);
 
-/* Produces a list of commands that come from the default Configfile. */
-std::vector<command::ptr> commands(void);
+/* Produces a list of commands that come from the default Configfiles
+ * of the project rooted at the given source path. */
+std::vector<command::ptr> configfiles(const std::string& srcpath);
 
-/* Produces a list of commands that come from a file with exactly this name. */
-std::vector<command::ptr> commands(const std::string& filename);
+/* Produces a list of commands that come from a file with exactly this
+ * name.  The source path is only used to find executable Configfiles,
+ * which are run with it as their working directory. */
+std::vector<command::ptr> commands_from_file(const std::string& srcpath,
+                                             const std::string& filename);
 
 #endif
