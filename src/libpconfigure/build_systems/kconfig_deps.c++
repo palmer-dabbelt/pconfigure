@@ -127,10 +127,85 @@ namespace {
         return out;
     }
 
+    /* The make functions that hand back the paths they were given,
+     * so that what's inside one is worth reading even though the
+     * call itself can't be evaluated.  A tree with a lot of Makefiles
+     * in it tends to include them all at once, by wrapping a wildcard
+     * in a sort, and this is what gets that chased rather than thrown
+     * out for having a variable in it. */
+    const std::vector<std::string> transparent_functions = {
+        "sort", "wildcard", "strip", "abspath", "realpath",
+    };
+
+    /* Turns what's left of a variable into a '*': a variable this run
+     * can't evaluate still stands for some real path, and a glob is
+     * the cheapest way to ask which ones. */
+    std::string wildify(const std::string& line)
+    {
+        auto out = std::string();
+
+        for (size_t i = 0; i < line.size(); ++i) {
+            if (line[i] != '$') {
+                out += line[i];
+                continue;
+            }
+
+            /* A '$' that doesn't open a variable is a '$' in a shell
+             * command, which is nothing this cares about. */
+            if (i + 1 >= line.size())
+                break;
+
+            if (line[i + 1] != '(' && line[i + 1] != '{')
+                continue;
+
+            /* Nested variables ("$(CONFIG_$(X))") close on the last
+             * one, which is fine: the whole thing is unknowable
+             * either way. */
+            auto depth = 0;
+            auto end = i;
+            for (; end < line.size(); ++end) {
+                if (line[end] == '(' || line[end] == '{')
+                    depth++;
+                else if (line[end] == ')' || line[end] == '}') {
+                    if (--depth == 0)
+                        break;
+                }
+            }
+
+            if (end >= line.size())
+                break;
+
+            /* A function that just hands its arguments back gets
+             * looked through rather than thrown away, since the paths
+             * inside it are paths this build reads. */
+            auto body = line.substr(i + 2, end - (i + 2));
+            auto space = body.find_first_of(" \t");
+            auto looked_through = false;
+
+            if (space != std::string::npos) {
+                auto function = body.substr(0, space);
+                for (const auto& transparent: transparent_functions) {
+                    if (function != transparent)
+                        continue;
+                    out += wildify(body.substr(space + 1));
+                    looked_through = true;
+                    break;
+                }
+            }
+
+            if (looked_through == false)
+                out += '*';
+
+            i = end;
+        }
+
+        return out;
+    }
+
     /* Takes the variables out of a line: the ones that name a
-     * directory become ".", and everything else becomes a '*' -- a
-     * variable this run can't evaluate still stands for some real
-     * path, and a glob is the cheapest way to ask which ones. */
+     * directory become ".", since both the top of the tree and the
+     * directory the file lives in are roots every path gets tried
+     * against anyway, and everything else goes to wildify(). */
     std::string substitute(const std::string& line)
     {
         auto out = line;
@@ -147,43 +222,7 @@ namespace {
             }
         }
 
-        auto wild = std::string();
-        for (size_t i = 0; i < out.size(); ++i) {
-            if (out[i] != '$') {
-                wild += out[i];
-                continue;
-            }
-
-            /* A '$' that doesn't open a variable is a '$' in a shell
-             * command, which is nothing this cares about. */
-            if (i + 1 >= out.size())
-                break;
-
-            if (out[i + 1] != '(' && out[i + 1] != '{')
-                continue;
-
-            /* Nested variables ("$(CONFIG_$(X))") close on the last
-             * one, which is fine: the whole thing is unknowable
-             * either way. */
-            auto depth = 0;
-            auto end = i;
-            for (; end < out.size(); ++end) {
-                if (out[end] == '(' || out[end] == '{')
-                    depth++;
-                else if (out[end] == ')' || out[end] == '}') {
-                    if (--depth == 0)
-                        break;
-                }
-            }
-
-            if (end >= out.size())
-                break;
-
-            wild += '*';
-            i = end;
-        }
-
-        return wild;
+        return wildify(out);
     }
 
     /* Splits a line into the words that could be paths.  Everything
@@ -289,13 +328,12 @@ namespace {
         {}
 
     public:
-        kconfig_deps::dependencies run(void)
+        kconfig_deps::dependencies run(const kconfig_deps::roots& from)
         {
-            /* A kbuild tree is rooted at a Makefile and a Kconfig,
-             * and some trees use a Kbuild alongside the Makefile. */
-            queue(_base + "Makefile", kind::MAKEFILE);
-            queue(_base + "Kbuild", kind::MAKEFILE);
-            queue(_base + "Kconfig", kind::KCONFIG);
+            for (const auto& pattern: from.build)
+                queue(pattern, kind::MAKEFILE);
+            for (const auto& pattern: from.config)
+                queue(pattern, kind::KCONFIG);
 
             while (_at < _queue.size()) {
                 auto entry = _queue[_at++];
@@ -435,9 +473,10 @@ namespace {
     };
 }
 
-kconfig_deps::dependencies kconfig_deps::chase(const std::string& base)
+kconfig_deps::dependencies kconfig_deps::chase(const std::string& base,
+                                              const roots& from)
 {
-    return chaser(base).run();
+    return chaser(base).run(from);
 }
 
 std::vector<std::string> kconfig_deps::defconfig_files(const std::string& base,

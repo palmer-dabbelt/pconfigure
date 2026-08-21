@@ -55,6 +55,20 @@
  *     prerequisite make has no idea how to build.
  */
 namespace kconfig_deps {
+    /* The files a chase starts from, spelled the way the Makefile
+     * spells them -- so they already have the tree's base on the
+     * front, and one that reaches outside the tree is fine.
+     *
+     * Which files these are is the only thing that changes between
+     * one kconfig-derived tree and the next: kbuild starts at a
+     * Makefile and a Kconfig, buildroot starts at a Makefile and a
+     * Config.in, and everything downstream of that is the same
+     * chase. */
+    struct roots {
+        std::vector<std::string> config;
+        std::vector<std::string> build;
+    };
+
     /* The files split by which of the two rules wants them: the
      * configuration is regenerated when a Kconfig changes, and the
      * build is re-entered when anything at all does.
@@ -65,12 +79,13 @@ namespace kconfig_deps {
         std::vector<std::string> build;
     };
 
-    /* Chases everything reachable from the top of the tree rooted at
-     * "base", which is a directory ending with a '/' (or empty, for
-     * the directory pconfigure ran in).  Every path that comes back
-     * is spelled relative to that same directory, which is what the
-     * Makefile wants. */
-    dependencies chase(const std::string& base);
+    /* Chases everything reachable from the given roots.  "base" is
+     * the top of the tree, a directory ending with a '/' (or empty,
+     * for the directory pconfigure ran in), which is where a path
+     * that's relative to the top of the tree gets tried from.  Every
+     * path that comes back is spelled relative to the directory
+     * pconfigure ran in, which is what the Makefile wants. */
+    dependencies chase(const std::string& base, const roots& from);
 
     /* The paths a defconfig could live at, which is a make target
      * name rather than a filename: "make defconfig" reads
