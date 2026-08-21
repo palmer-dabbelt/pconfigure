@@ -181,16 +181,30 @@ makefile::target::ptr project::cache_clean_target(const std::vector<ptr>& projec
 {
     auto commands = std::vector<std::string>();
     for (const auto& project: projects) {
+        /* This works by reading the Makefile back and keeping the
+         * files it still knows how to build.  A project that a parent
+         * can include writes its paths in terms of a variable, so
+         * what's in the file isn't what's on disk and reading it back
+         * would decide that nothing is still wanted -- which would
+         * throw away the whole object cache rather than the stale
+         * part of it.  So only a project whose Makefile says what it
+         * means gets one of these. */
+        if (project->_base.size() > 0)
+            continue;
+
         auto obj_dirs = std::map<std::string, bool>();
         for (const auto& context: project->_processor->output_contexts())
             obj_dirs[context->obj_dir] = true;
 
         for (const auto& pair: obj_dirs) {
             const auto& dir = pair.first;
+
+            /* '|' rather than '/' as the delimiter, since a directory
+             * that has one in it would otherwise end the command. */
             commands.push_back(
                 "comm -23 "
                 "<(find " + dir + " -type f | sort) "
-                "<(sed -n 's/\\(^" + dir + "\\/[^[:space:]:]*\\):.*/\\1/p' "
+                "<(sed -n 's|\\(^" + dir + "/[^[:space:]:]*\\):.*|\\1|p' "
                 + project->makefile_path() + " | sort -u) "
                 "| xargs -r rm -f"
             );
