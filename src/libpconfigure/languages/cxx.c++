@@ -34,6 +34,10 @@
  * for libraries in. */
 static std::vector<std::string> link_dirs(const std::vector<std::string>& args);
 
+/* Turns a directory that's inside the tree being built back into the
+ * relative path everything else uses to talk about it. */
+static std::string relative_to_here(const std::string& dir);
+
 /* Splits link arguments into words and re-roots the relative "-L"
  * directories among them at the project they were written in.
  *
@@ -465,7 +469,9 @@ language_cxx::link_target::generate_makefile_target(void) const
                  * this project are left alone: working out how to get
                  * back to them from here isn't something this knows
                  * how to do. */
-                for (const auto& dir: link_dirs(_opts)) {
+                for (const auto& raw: link_dirs(_opts)) {
+                    auto dir = relative_to_here(raw);
+
                     if (dir == _ctx->lib_dir)
                         continue;
                     if (dir.size() == 0 || dir[0] == '/')
@@ -984,6 +990,30 @@ static std::vector<std::string> link_dirs(const std::vector<std::string>& args)
     return out;
 }
 
+/* Most paths on a command line got there relative to where pconfigure
+ * is running, but not all: what pkg-config says about a package is
+ * absolute, because a .pc file has to mean the same thing to whoever
+ * reads it.  Both have to be spelled the same way to be recognized as
+ * the same directory. */
+static std::string relative_to_here(const std::string& dir)
+{
+    if (dir.size() == 0 || dir[0] != '/')
+        return dir;
+
+    auto buffer = std::vector<char>(4096);
+    while (getcwd(&buffer[0], buffer.size()) == NULL) {
+        if (errno != ERANGE)
+            return dir;
+        buffer.resize(buffer.size() * 2);
+    }
+
+    auto here = std::string(&buffer[0]) + "/";
+    if (dir.compare(0, here.size(), here) != 0)
+        return dir;
+
+    return dir.substr(here.size());
+}
+
 /* The suffixes a linker will look for when it's asked for "-lfoo".
  * LIBRARIES are named explicitly in a Configfile, so a project picks
  * its own suffix and all of these are worth recognizing. */
@@ -1090,7 +1120,7 @@ language_cxx::needs(const makefile::target::ptr& target) const
         if (arg.size() > 0
             && arg[0] != '-'
             && arg.find('/') != std::string::npos)
-            out.push_back("file:" + arg);
+            out.push_back("file:" + relative_to_here(arg));
     }
 
     /* Which of the search directories a library actually turns up in
@@ -1098,7 +1128,7 @@ language_cxx::needs(const makefile::target::ptr& target) const
      * the ones that nothing builds go unanswered. */
     for (const auto& dir: search_dirs)
         for (const auto& name: library_names)
-            out.push_back("library:" + dir + "/" + name);
+            out.push_back("library:" + relative_to_here(dir) + "/" + name);
 
     return out;
 }

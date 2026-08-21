@@ -125,8 +125,10 @@ void command_processor::process(const command::ptr& cmd)
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
-        for (const auto& command: commands(_srcpath, "Configfile", cmd->data()))
-            process(command);
+        /* Reading it is left to whoever owns this, so that the
+         * lines inside it get run at the point they're processed
+         * rather than all at once up front. */
+        _pending_configs.push_back(cmd->data());
 
         return;
     }
@@ -451,6 +453,16 @@ std::string command_processor::take_pending_subproject(void)
 
     auto out = _pending_subprojects.front();
     _pending_subprojects.erase(_pending_subprojects.begin());
+    return out;
+}
+
+std::string command_processor::take_pending_config(void)
+{
+    if (_pending_configs.size() == 0)
+        return "";
+
+    auto out = _pending_configs.front();
+    _pending_configs.erase(_pending_configs.begin());
     return out;
 }
 

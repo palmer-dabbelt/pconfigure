@@ -32,6 +32,21 @@
 /* FIXME: This is a hack, it's used to set the path to ppkg-config */
 std::string ppkg_config = "ppkg-config";
 
+/* The pkg-config files this run knows how to build.  There's one list
+ * for the whole run rather than one per project on purpose: which
+ * packages exist is a property of the build, not of whoever happens
+ * to be asking about them. */
+static std::vector<std::string> pkgconfig_path;
+
+void add_pkgconfig_path(const std::string& dir)
+{
+    for (const auto& existing: pkgconfig_path)
+        if (existing == dir)
+            return;
+
+    pkgconfig_path.push_back(dir);
+}
+
 static std::string execute(std::string line);
 static std::string replace_all(std::string haystack, std::string needle, std::string new_needle);
 
@@ -79,24 +94,24 @@ std::vector<command::ptr> commands(int argc, const char **argv)
     return out;
 }
 
-std::vector<command::ptr> commands(const std::string& srcpath,
-                                   const std::string& prefix,
-                                   const std::string& suffix)
+std::vector<configfile_line> config_lines(const std::string& srcpath,
+                                          const std::string& prefix,
+                                          const std::string& suffix)
 {
     auto filenames = std::vector<std::string>{
         srcpath + "/" + prefix + "s/" + suffix,
         srcpath + "/" + prefix + "." + suffix
     };
 
-    std::vector<command::ptr> out;
+    std::vector<configfile_line> out;
     for (const auto& filename: filenames) {
-        auto cmds = commands_from_file(srcpath, filename);
-        out.insert(out.end(), cmds.begin(), cmds.end());
+        auto lines = lines_from_file(srcpath, filename);
+        out.insert(out.end(), lines.begin(), lines.end());
     }
     return out;
 }
 
-std::vector<command::ptr> configfiles(const std::string& srcpath)
+std::vector<configfile_line> configfile_lines(const std::string& srcpath)
 {
     auto filenames = std::vector<std::string>{
         srcpath + "/Configfiles/local",
@@ -105,12 +120,43 @@ std::vector<command::ptr> configfiles(const std::string& srcpath)
         srcpath + "/Configfile"
     };
 
-    std::vector<command::ptr> out;
+    std::vector<configfile_line> out;
     for (const auto& filename: filenames) {
-        auto cmds = commands_from_file(srcpath, filename);
-        out.insert(out.end(), cmds.begin(), cmds.end());
+        auto lines = lines_from_file(srcpath, filename);
+        out.insert(out.end(), lines.begin(), lines.end());
     }
     return out;
+}
+
+command::ptr parse_line(const configfile_line& line)
+{
+    auto text = execute(string_utils::clean_white(line.text));
+
+    /* Skip empty lines and anything beginning with a '#' --
+     * those are comments. */
+    if (text.size() == 0)
+        return NULL;
+    if (text[0] == '#')
+        return NULL;
+
+    auto debug = std::make_shared<debug_info>(line.filename,
+                                              line.number,
+                                              text);
+
+    auto cmd = command::parse(text, debug);
+    if (cmd == NULL) {
+        std::cerr << "Unable to parse "
+                  << line.filename
+                  << ":"
+                  << line.number
+                  << ": '"
+                  << text
+                  << "'\n";
+
+        abort();
+    }
+
+    return cmd;
 }
 
 /* Workaround for non GNU systems */
@@ -125,10 +171,10 @@ static char* get_current_dir_name()
 }
 #endif
 
-std::vector<command::ptr> commands_from_file(const std::string& srcpath,
+std::vector<configfile_line> lines_from_file(const std::string& srcpath,
                                              const std::string& filename)
 {
-    auto out = std::vector<command::ptr>();
+    auto out = std::vector<configfile_line>();
     auto origpwd = [&]()
         {
             auto malloced_ptr = get_current_dir_name();
@@ -156,37 +202,10 @@ std::vector<command::ptr> commands_from_file(const std::string& srcpath,
     if (file == NULL)
         return out;
 
-    for (const auto& ln: file_utils::readlines_and_numbers(file)) {
-        auto line = execute(string_utils::clean_white(ln.line));
-
-        /* Skip empty lines and anything beginning with a '#' --
-         * those are comments. */
-        if (line.size() == 0)
-            continue;
-        if (line[0] == '#')
-            continue;
-
-        auto linenum = ln.number;
-
-        auto debug = std::make_shared<debug_info>(filename,
-                                                  linenum,
-                                                  line);
-
-        auto cmd = command::parse(line, debug);
-        if (cmd == NULL) {
-            std::cerr << "Unable to parse "
-                      << filename
-                      << ":"
-                      << linenum
-                      << ": '"
-                      << line
-                      << "'\n";
-
-            abort();
-        }
-
-        out.push_back(cmd);
-    }
+    /* Nothing is done to the lines here beyond reading them: a line
+     * only becomes a command when it's about to be processed. */
+    for (const auto& ln: file_utils::readlines_and_numbers(file))
+        out.push_back(configfile_line(filename, ln.number, ln.line));
 
     if (access(filename.c_str(), X_OK) == 0)
         pclose(file);
@@ -212,6 +231,21 @@ std::string execute(std::string line)
     for (const auto& c: line) {
         if (in_command == true && c == '`') {
             auto command_str = replace_all(command.str(), "ppkg-config", ppkg_config);
+
+            /* A pkg-config that this build produces itself comes
+             * first, so that a project linking against a subproject
+             * is told where that subproject's build output is rather
+             * than where some older copy got installed. */
+            if (pkgconfig_path.size() > 0
+                && command_str.find("pkg-config") != std::string::npos) {
+                auto path = std::string();
+                for (const auto& dir: pkgconfig_path)
+                    path += dir + ":";
+
+                command_str = "PKG_CONFIG_PATH=" + path + "$PKG_CONFIG_PATH "
+                              + command_str;
+            }
+
             auto f = popen(command_str.c_str(), "r");
             for (const auto& l: file_utils::readlines(f))
                 executed << string_utils::clean_white(l);
