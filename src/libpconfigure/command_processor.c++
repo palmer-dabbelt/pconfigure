@@ -367,11 +367,18 @@ void command_processor::process_one(const command::ptr& cmd)
          * ENTITLEMENTS that landed below one is asking for nothing --
          * and asking for nothing quietly is worse here than
          * elsewhere, since what comes out is a binary that runs until
-         * it reaches the thing it wasn't allowed to do. */
+         * it reaches the thing it wasn't allowed to do.
+         *
+         * A TEST is not one of those.  It reads like a place nothing
+         * gets linked, but a test is built into a program of its own:
+         * the language duplicates the context into a BINARY and links
+         * and signs that, entitlements and all.  So a test that needs
+         * to be allowed to do something says so exactly here, and
+         * warning about it would be telling somebody to delete the
+         * line that was doing the work. */
         if (tos->check_type({context_type::SOURCE,
                              context_type::HEADER,
-                             context_type::GENERATE,
-                             context_type::TEST,}) == true)
+                             context_type::GENERATE,}) == true)
             tos->strictness.complain(
                 strict_since::v0_13(),
                 cmd->debug(),

@@ -11,12 +11,19 @@ top="$tempdir"
 # ENTITLEMENTS that landed somewhere nothing ever gets signed                #
 ##############################################################################
 # Only a whole linked thing wears a signature, so an ENTITLEMENTS that
-# came to rest on a source file, a header or a test is asking for
-# something nobody will ever read.  That's worth being loud about
-# rather than quiet: what comes out is a binary that starts up fine
-# and then fails at the moment it reaches the one operation the
-# entitlement was there to allow, which is a long way from the line
-# that caused it.
+# came to rest on a source file or a header is asking for something
+# nobody will ever read.  That's worth being loud about rather than
+# quiet: what comes out is a binary that starts up fine and then fails
+# at the moment it reaches the one operation the entitlement was there
+# to allow, which is a long way from the line that caused it.
+#
+# A TESTS is deliberately not one of those, and the negative below is
+# the one that matters most in this section.  A test reads like a
+# place where nothing gets linked, but a test is built into a program
+# of its own: the language duplicates the context into a binary and
+# links and signs that, entitlements and all.  So a test that has to
+# be allowed to do something says so exactly there, and a warning
+# would be telling somebody to delete the line doing the work.
 mkdir -p $top/ent/src $top/ent/test/app
 cd $top/ent
 
@@ -60,13 +67,14 @@ chmod +x src/gen.c.proc
 $PTEST_BINARY $PCONFIGURE_ARGS > ent.out 2>&1
 cat ent.out
 
-# Four of those six lines are wrong and two of them are right, and the
-# count is the assertion that says so.  The ENTITLEMENTS written
-# directly under the BINARIES is the whole point of the command, and
-# the one written at the top of the project before any target at all
-# is inherited by every binary in it -- which is a thing somebody
-# means rather than a thing somebody typed by accident.
-test "$(grep -c 'warning: ENTITLEMENTS written under' ent.out)" = "4"
+# Three of those six lines are wrong and three of them are right, and
+# the count is the assertion that says so.  The ENTITLEMENTS written
+# directly under the BINARIES is the whole point of the command, the
+# one written at the top of the project before any target at all is
+# inherited by every binary in it, and the one under the TESTS reaches
+# the program that test is built into -- all three are things somebody
+# means rather than things somebody typed by accident.
+test "$(grep -c 'warning: ENTITLEMENTS written under' ent.out)" = "3"
 
 # The message names the context the line actually landed on, since
 # "this is under the wrong thing" is only useful when it says which
@@ -75,8 +83,17 @@ test "$(grep -c 'warning: ENTITLEMENTS written under' ent.out)" = "4"
 # to write -- so an ENTITLEMENTS below one lands a level lower than it
 # looks.  That's why SOURCE is expected twice here.
 grep -q 'ENTITLEMENTS written under a HEADER' ent.out
-grep -q 'ENTITLEMENTS written under a TEST' ent.out
 test "$(grep -c 'ENTITLEMENTS written under a SOURCE' ent.out)" = "2"
+
+# And the one under the TESTS said nothing at all, which is the half
+# of this that would be a real bug the other way round: the plist is
+# on the test binary's own signature, so a warning here would be
+# advice to break a working build.
+if grep -q 'ENTITLEMENTS written under a TEST' ent.out
+then
+    exit 1
+fi
+grep -q "entitlements app.plist" Makefile
 
 # A warning leaves the build alone: the Makefile was written and the
 # exit status was zero, which is the entire difference between this
