@@ -30,6 +30,57 @@
 #include <set>
 #include <sstream>
 
+/* The directories a set of link arguments tells the linker to look
+ * for libraries in. */
+static std::vector<std::string> link_dirs(const std::vector<std::string>& args);
+
+/* Splits link arguments into words and re-roots the relative "-L"
+ * directories among them at the project they were written in.
+ *
+ * A Configfile that says "-Lb/lib" means the "b/lib" next to it, the
+ * same way "-Ib/include" does, and for the same reason: it was
+ * written by somebody who only knew about their own project.  The
+ * directories pconfigure adds itself are already rooted, so this only
+ * ever sees what a Configfile asked for. */
+static std::vector<std::string> reroot_link_opts(const std::vector<std::string>& opts,
+                                                 const std::string& base)
+{
+    auto words = std::vector<std::string>();
+    for (const auto& opt: opts) {
+        std::istringstream ss(opt);
+        std::string word;
+        while (ss >> word)
+            words.push_back(word);
+    }
+
+    if (base.size() == 0)
+        return words;
+
+    auto reroot = [&](const std::string& dir) {
+        if (dir.size() == 0 || dir[0] == '/')
+            return dir;
+        return base + dir;
+    };
+
+    auto out = std::vector<std::string>();
+    auto pending = false;
+    for (const auto& word: words) {
+        if (pending == true) {
+            out.push_back(reroot(word));
+            pending = false;
+        } else if (word == "-L") {
+            out.push_back(word);
+            pending = true;
+        } else if (word.compare(0, 2, "-L") == 0) {
+            out.push_back("-L" + reroot(word.substr(2)));
+        } else {
+            out.push_back(word);
+        }
+    }
+
+    return out;
+}
+
 language_cxx* language_cxx::clone(void) const
 {
     return new language_cxx(this->list_compile_opts(),
@@ -374,27 +425,70 @@ language_cxx::link_target::generate_makefile_target(void) const
                     out = out + "../";
             return out;
         };
-    auto rpath = [&](void) -> std::string
+    /* Where a binary looks for the shared libraries it was linked
+     * against when it's run.  Once installed everything lives in one
+     * place; before that it's still spread across the build tree,
+     * which for a project with subprojects means more than one
+     * directory. */
+    auto local_rpath = [&](const std::string& dir) -> std::string
+        {
+            auto from_output = dotdot(_ctx->unbased(_ctx->bin_dir));
+
+            /* Relative to whatever's being loaded rather than to the
+             * program doing the loading: a library that a subproject
+             * built sits at a different depth than the binary that
+             * ends up linking it, and only the library knows how far
+             * it is from the libraries it needs itself.  This is what
+             * ELF has always done here; macOS needed asking. */
+#ifdef __APPLE__
+            return "-Wl,-rpath,@loader_path/" + from_output + dir;
+#else
+            return "-Wl,-rpath,\\$$ORIGIN/" + from_output + dir;
+#endif
+        };
+
+    auto rpaths = [&](void) -> std::vector<std::string>
         {
             switch (_install) {
             case install_target::TRUE:
-                return "-Wl,-rpath," + _ctx->prefix + "/" + _ctx->unbased(_ctx->lib_dir);
+                return {"-Wl,-rpath," + _ctx->prefix + "/" + _ctx->unbased(_ctx->lib_dir)};
+
             case install_target::FALSE:
-#ifdef __APPLE__
-                return "-Wl,-rpath,@executable_path/" + dotdot(_ctx->unbased(_ctx->bin_dir)) + _ctx->unbased(_ctx->lib_dir);
-#else
-                return "-Wl,-rpath,\\$$ORIGIN/" + dotdot(_ctx->unbased(_ctx->bin_dir)) + _ctx->unbased(_ctx->lib_dir);
-#endif
+            {
+                auto out = std::vector<std::string>{
+                    local_rpath(_ctx->unbased(_ctx->lib_dir))
+                };
+
+                /* A "-L" pointing somewhere else in this build is a
+                 * library that came from a subproject, and it hasn't
+                 * been installed yet either.  Directories outside
+                 * this project are left alone: working out how to get
+                 * back to them from here isn't something this knows
+                 * how to do. */
+                for (const auto& dir: link_dirs(_opts)) {
+                    if (dir == _ctx->lib_dir)
+                        continue;
+                    if (dir.size() == 0 || dir[0] == '/')
+                        continue;
+                    if (_ctx->base.size() > 0
+                        && dir.compare(0, _ctx->base.size(), _ctx->base) != 0)
+                        continue;
+
+                    out.push_back(local_rpath(_ctx->unbased(dir)));
+                }
+
+                return out;
+            }
             }
 
             abort();
-            return "";
+            return {};
         }();
 
-
-    auto rpath_suffix = std::find(_opts.begin(), _opts.end(), rpath) == _opts.end()
-        ? " " + rpath
-        : std::string();
+    auto rpath_suffix = std::string();
+    for (const auto& rpath: rpaths)
+        if (std::find(_opts.begin(), _opts.end(), rpath) == _opts.end())
+            rpath_suffix += " " + rpath;
 
     auto cmds = std::vector<std::string>{
         "mkdir -p $(dir $@)",
@@ -503,10 +597,12 @@ language_cxx::compile_target::generate_makefile_target(void) const
 }
 
 language_cxx::cp_target::cp_target(const std::string& target_path,
+                                   const std::string& pretty_path,
                                    const target::ptr& source,
                                    const install_target& install,
                                    const std::vector<std::string> comments)
 : _target_path(target_path),
+  _pretty_path(pretty_path),
   _source(source),
   _install(install),
   _comments(comments)
@@ -548,7 +644,7 @@ language_cxx::cp_target::generate_makefile_target(void) const
 
     return std::make_shared<makefile::target>(
         _target_path,
-        std::string("CP\t") + _target_path,
+        std::string("CP\t") + _pretty_path,
         deps,
         global,
         cmds,
@@ -614,7 +710,8 @@ language_cxx::link_objects(const context::ptr& ctx,
         });
     };
 
-    auto all_opts = dedup_link_opts(link_opts() + ctx->link_opts +
+    auto all_opts = dedup_link_opts(
+        reroot_link_opts(link_opts() + ctx->link_opts, ctx->base) +
         std::vector<std::string>{
             "-L" + ctx->lib_dir,
         } + vector_util::map(ctx->dep_libs, [](std::string dl){ return "-l" + dl; }));
@@ -658,8 +755,12 @@ language_cxx::link_objects(const context::ptr& ctx,
     /* In order to keep the local and install targets consistant with the
      * Makefile, we build the "copy" targets that depend on the generated
      * Makefile. */
+    auto install_path =
+        "$(DESTDIR)/" + ctx->prefix + "/" + ctx->unbased(bin_dir)
+        + "/" + ctx->cmd->data();
     auto cp_install_target = std::make_shared<cp_target>(
-        "$(DESTDIR)/" + ctx->prefix + "/" + ctx->unbased(bin_dir) + "/" + ctx->cmd->data(),
+        install_path,
+        install_path,
         install_target,
         language_cxx::install_target::TRUE,
         shared_comments + std::vector<std::string>{"cp_install_target"}
@@ -667,6 +768,7 @@ language_cxx::link_objects(const context::ptr& ctx,
 
      auto cp_local_target = std::make_shared<cp_target>(
         bin_dir + "/" + ctx->cmd->data(),
+        ctx->unbased(bin_dir) + "/" + ctx->cmd->data(),
         local_target,
         language_cxx::install_target::FALSE,
         shared_comments + std::vector<std::string>{"cp_local_target"}
@@ -861,6 +963,25 @@ std::vector<std::string> language_cxx::dependencies(
                    true);
 
     return all_files;
+}
+
+static std::vector<std::string> link_dirs(const std::vector<std::string>& args)
+{
+    auto out = std::vector<std::string>();
+    auto pending = false;
+
+    for (const auto& arg: args) {
+        if (pending == true) {
+            out.push_back(arg);
+            pending = false;
+        } else if (arg == "-L") {
+            pending = true;
+        } else if (arg.compare(0, 2, "-L") == 0) {
+            out.push_back(arg.substr(2));
+        }
+    }
+
+    return out;
 }
 
 /* The suffixes a linker will look for when it's asked for "-lfoo".

@@ -26,6 +26,7 @@
 #include <libmakefile/makefile.h++>
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -51,14 +52,50 @@ private:
     std::vector<makefile::capability> _provided;
     std::vector<makefile::capability> _needed;
 
+    /* The projects this one pulled in with SUBPROJECTS. */
+    std::vector<ptr> _children;
+
 public:
     project(const std::string& base,
             const command_processor::ptr& processor);
     virtual ~project(void) {}
 
 public:
+    /* Reads a project and everything it pulls in, turning all of it
+     * into targets.
+     *
+     * A subproject is read at the point its SUBPROJECTS command shows
+     * up rather than afterwards, so that the rest of the Configfile
+     * that asked for it can refer to what it builds.  "seen" is
+     * carried through the whole run so that a project that gets asked
+     * for twice is only read once, and so that a project that somehow
+     * contains itself doesn't recurse forever.
+     *
+     * "defaults" is the context a subproject inherits from whoever
+     * pulled it in, and is NULL for the project being configured. */
+    static ptr read(const std::string& base,
+                    const context::ptr& defaults,
+                    std::set<std::string>& seen);
+
+    /* The same thing, for a project whose command processor already
+     * exists because the command line had to be processed first. */
+    static ptr read(const command_processor::ptr& processor,
+                    std::set<std::string>& seen);
+
+    /* Turns a path into the one spelling of it that this run will
+     * use, so that a project asked for as "./sub" and as "sub" is
+     * understood to be the same project.  The result ends with a '/',
+     * or is empty for the top of the tree. */
+    static std::string normalize_base(const std::string& path);
+
+    /* The make variable this project's Makefile uses to find itself,
+     * which has to be unique across the whole run. */
+    static std::string prefix_variable(const std::string& base);
+
+public:
     /* Accessor methods. */
     const std::string& base(void) const { return _base; }
+    const std::vector<ptr>& children(void) const { return _children; }
     const command_processor::ptr& processor(void) const { return _processor; }
     const std::vector<makefile::target::ptr>& targets(void) const
         { return _targets; }
@@ -79,13 +116,24 @@ public:
     /* Writes this project's Makefile, along with whichever of the
      * dependencies that were worked out across the whole run belong
      * in it. */
-    void write_makefile(const std::vector<makefile::implied_dep>& implied) const;
+    /* Writes this project's Makefile.  "implied" is every dependency
+     * that was worked out across the whole run, and "aggregated" is
+     * every project whose test results and build directories this
+     * one's Makefile is responsible for -- which is all of them for
+     * the project make gets run in, and none of them for a project
+     * that only ever gets included. */
+    void write_makefile(const std::vector<makefile::implied_dep>& implied,
+                        const std::vector<ptr>& aggregated) const;
+
+public:
+    /* A project and everything below it, parents before children. */
+    static std::vector<ptr> flatten(const ptr& root);
 
 private:
     /* The targets that don't come from any context: cleaning out the
      * object cache, and undoing a configure. */
-    makefile::target::ptr cache_clean_target(void) const;
-    makefile::target::ptr distclean_target(void) const;
+    makefile::target::ptr cache_clean_target(const std::vector<ptr>& projects) const;
+    makefile::target::ptr distclean_target(const std::vector<ptr>& projects) const;
 };
 
 #endif

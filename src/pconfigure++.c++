@@ -25,6 +25,8 @@
 #include <libmakefile/implied_deps.h++>
 #include <algorithm>
 #include <iostream>
+#include <map>
+#include <set>
 #include <vector>
 
 int main(int argc, const char **argv)
@@ -33,14 +35,6 @@ int main(int argc, const char **argv)
 
     for (const auto& command: commands(argc, argv))
         processor->process(command);
-
-    /* The Configfiles are read after the command-line options have
-     * been processed because the command line can change where those
-     * Configfiles live. */
-    if (processor->given_help_command() == false
-        && processor->given_version_command() == false)
-        for (const auto& command: configfiles(processor->srcpath()))
-            processor->process(command);
 
     if (processor->given_help_command()) {
         std::cout <<
@@ -68,12 +62,13 @@ int main(int argc, const char **argv)
         return 0;
     }
 
-    auto projects = std::vector<project::ptr>{
-        std::make_shared<project>(processor->base(), processor)
-    };
-
-    for (const auto& project: projects)
-        project->generate_targets();
+    /* The Configfiles are read after the command-line options have
+     * been processed, because the command line can change where those
+     * Configfiles live -- and because there's no point reading them
+     * at all for --help or --version. */
+    auto seen = std::set<std::string>();
+    auto top = project::read(processor, seen);
+    auto projects = project::flatten(top);
 
     /* Dependencies are worked out with every project's targets in
      * hand: what one project wants can perfectly well be provided by
@@ -81,9 +76,25 @@ int main(int argc, const char **argv)
     auto targets = std::vector<makefile::target::ptr>();
     auto provided = std::vector<makefile::capability>();
     auto needed = std::vector<makefile::capability>();
+    auto owner = std::map<std::string, std::string>();
     for (const auto& project: projects) {
-        for (const auto& target: project->targets())
+        for (const auto& target: project->targets()) {
+            /* Two projects that build the same path would be two
+             * recipes for one target, and make would quietly pick
+             * one.  The paths that can collide are the ones that
+             * aren't rooted in a project -- where a file gets
+             * installed to, most of all. */
+            auto found = owner.find(target->name());
+            if (found != owner.end() && found->second != project->base()) {
+                std::cerr << "'" << target->name() << "' is built by both '"
+                          << found->second << "' and '" << project->base()
+                          << "'\n";
+                abort();
+            }
+            owner[target->name()] = project->base();
+
             targets.push_back(target);
+        }
         for (const auto& capability: project->provided())
             provided.push_back(capability);
         for (const auto& capability: project->needed())
@@ -93,7 +104,7 @@ int main(int argc, const char **argv)
     auto implied = makefile::implied_deps(targets, provided, needed);
 
     for (const auto& project: projects)
-        project->write_makefile(implied);
+        project->write_makefile(implied, project::flatten(project));
 
     return 0;
 }
