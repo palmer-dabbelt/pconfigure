@@ -135,8 +135,8 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied) 
         if (_by_name.find(dep.target) != _by_name.end())
             out->add_dep(dep.target, dep.dep);
 
-    out->add_target(cache_clean_target());
-    out->add_target(distclean_target());
+    out->add_standalone_target(cache_clean_target());
+    out->add_standalone_target(distclean_target());
 
     out->write_to_file(makefile_path());
 }

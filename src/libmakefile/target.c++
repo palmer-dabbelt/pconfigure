@@ -71,32 +71,40 @@ bool makefile::target::has_global_target(const global_targets& g) const
 
 void makefile::target::write_to_file(FILE *file,
                                      bool verbose,
-                                     const std::string& check_stamp) const
+                                     const std::string& check_stamp,
+                                     const path_prefix& prefix) const
 {
+    /* Every path this target knows about is relative to where
+     * pconfigure ran, and has to come out relative to where make will
+     * run instead.  The name gets rewritten before anything is built
+     * out of it so that the rule, the .PHONY line and the
+     * clean/uninstall helpers all end up spelling it the same way. */
+    auto name = prefix.rewrite(_name);
+
     /* First write a little header that adds the upcoming target to
      * any of the global targets that it may have ended up setting. */
     for (const auto& global_target: _global) {
         switch (global_target) {
         case global_targets::ALL:
-            fprintf(file, "all: %s\n", _name.c_str());
+            fprintf(file, "all: %s\n", name.c_str());
             break;
         case global_targets::CHECK:
-            fprintf(file, "%s: %s\n", check_stamp.c_str(), _name.c_str());
+            fprintf(file, "%s: %s\n", check_stamp.c_str(), name.c_str());
             break;
         case global_targets::CLEAN:
-            fprintf(file, ".PHONY: __pconfigure__clean-%s\n", _name.c_str());
+            fprintf(file, ".PHONY: __pconfigure__clean-%s\n", name.c_str());
             fprintf(file, "__pconfigure__clean-%s:; @rm -fr %s\n",
-                    _name.c_str(), _name.c_str());
-            fprintf(file, "clean: __pconfigure__clean-%s\n", _name.c_str());
+                    name.c_str(), name.c_str());
+            fprintf(file, "clean: __pconfigure__clean-%s\n", name.c_str());
             break;
         case global_targets::INSTALL:
-            fprintf(file, "install: %s\n", _name.c_str());
+            fprintf(file, "install: %s\n", name.c_str());
             break;
         case global_targets::UNINSTALL:
-            fprintf(file, ".PHONY: __pconfigure__uninstall-%s\n", _name.c_str());
+            fprintf(file, ".PHONY: __pconfigure__uninstall-%s\n", name.c_str());
             fprintf(file, "__pconfigure__uninstall-%s:; @rm -f %s\n",
-                    _name.c_str(), _name.c_str());
-            fprintf(file, "uninstall: __pconfigure__uninstall-%s\n", _name.c_str());
+                    name.c_str(), name.c_str());
+            fprintf(file, "uninstall: __pconfigure__uninstall-%s\n", name.c_str());
             break;
          }
     }
@@ -104,18 +112,18 @@ void makefile::target::write_to_file(FILE *file,
     /* This actually writes out the make rule that's necessary  */
     for (const auto& comment: _comment)
         fprintf(file, "# %s\n", comment.c_str());
-    fprintf(file, "%s:", _name.c_str());
+    fprintf(file, "%s:", name.c_str());
     for (const auto& dep: _deps)
-        fprintf(file, " %s", dep->_name.c_str());
+        fprintf(file, " %s", prefix.rewrite(dep->_name).c_str());
     fprintf(file, "\n");
     if (verbose == false) {
         fprintf(file, "\t@echo \"%s\"\n", _short_cmd.c_str());
         for (const auto& cmd: _cmds)
-            fprintf(file, "\t@%s\n", cmd.c_str());
+            fprintf(file, "\t@%s\n", prefix.rewrite(cmd).c_str());
     } else {
         fprintf(file, "\techo \"%s\"\n", _short_cmd.c_str());
         for (const auto& cmd: _cmds)
-            fprintf(file, "\t%s\n", cmd.c_str());
+            fprintf(file, "\t%s\n", prefix.rewrite(cmd).c_str());
     }
     fprintf(file, "\n");
 }
