@@ -212,7 +212,7 @@ void command_processor::process(const command::ptr& cmd)
             goto bad_op_eq;
 
         clear_until({context_type::DEFAULT});
-        _stack.top()->lib_dir = cmd->data();
+        _stack.top()->lib_dir = _base + cmd->data();
         return;
     }
 
@@ -304,7 +304,7 @@ void command_processor::process(const command::ptr& cmd)
             goto bad_op_eq;
 
         clear_until({context_type::DEFAULT});
-        _stack.top()->src_dir = cmd->data();
+        _stack.top()->src_dir = _base + cmd->data();
         return;
     }
 

@@ -211,7 +211,7 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
         case context_type::TEST:
         {
             auto child_ctx = ctx->dup(context_type::BINARY);
-            child_ctx->bin_dir = ctx->obj_dir + "/" + ctx->check_dir;
+            child_ctx->bin_dir = ctx->obj_dir + "/" + ctx->unbased(ctx->check_dir);
             auto bin_targets =
                 vector_util::filter(
                     vector_util::map(targets(child_ctx),
@@ -234,7 +234,7 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
                 makefile::global_targets::CHECK,
                 makefile::global_targets::CLEAN
             };
-            auto test_name = ctx->obj_dir + "/" + ctx->check_dir + "/" + ctx->cmd->data();
+            auto test_name = ctx->obj_dir + "/" + ctx->unbased(ctx->check_dir) + "/" + ctx->cmd->data();
             auto commands = std::vector<std::string>{
                 "mkdir -p " + ctx->check_dir,
                 "+" + makefile::tool_command("ptest") + " --test " + test_name + " --out " + target_name + " --bin " + bin_name
@@ -378,12 +378,12 @@ language_cxx::link_target::generate_makefile_target(void) const
         {
             switch (_install) {
             case install_target::TRUE:
-                return "-Wl,-rpath," + _ctx->prefix + "/" + _ctx->lib_dir;
+                return "-Wl,-rpath," + _ctx->prefix + "/" + _ctx->unbased(_ctx->lib_dir);
             case install_target::FALSE:
 #ifdef __APPLE__
-                return "-Wl,-rpath,@executable_path/" + dotdot(_ctx->bin_dir) + _ctx->lib_dir;
+                return "-Wl,-rpath,@executable_path/" + dotdot(_ctx->unbased(_ctx->bin_dir)) + _ctx->unbased(_ctx->lib_dir);
 #else
-                return "-Wl,-rpath,\\$$ORIGIN/" + dotdot(_ctx->bin_dir) + _ctx->lib_dir;
+                return "-Wl,-rpath,\\$$ORIGIN/" + dotdot(_ctx->unbased(_ctx->bin_dir)) + _ctx->unbased(_ctx->lib_dir);
 #endif
             }
 
@@ -593,7 +593,7 @@ language_cxx::link_objects(const context::ptr& ctx,
         
     auto shared_link_dir =
         ctx->obj_dir
-        + "/" + bin_dir
+        + "/" + ctx->unbased(bin_dir)
         + "/" + ctx->cmd->data()
         + "/" + hash_link_options(ctx)
         + "/";
@@ -659,7 +659,7 @@ language_cxx::link_objects(const context::ptr& ctx,
      * Makefile, we build the "copy" targets that depend on the generated
      * Makefile. */
     auto cp_install_target = std::make_shared<cp_target>(
-        "$(DESTDIR)/" + ctx->prefix + "/" + bin_dir + "/" + ctx->cmd->data(),
+        "$(DESTDIR)/" + ctx->prefix + "/" + ctx->unbased(bin_dir) + "/" + ctx->cmd->data(),
         install_target,
         language_cxx::install_target::TRUE,
         shared_comments + std::vector<std::string>{"cp_install_target"}
@@ -731,13 +731,13 @@ language_cxx::compile_source(const context::ptr& ctx,
 
     auto source_path = child->src_dir + "/" + child->cmd->data();
 
-    auto full_libexec_path = child->prefix + "/" + child->libexec_dir;
+    auto full_libexec_path = child->prefix + "/" + child->unbased(child->libexec_dir);
 
     auto compile_opts =
         filter_compile_opts(this->compile_opts()) +
         filter_compile_opts(child->compile_opts) +
         std::vector<std::string>{
-            "-I" + child->src_path + child->hdr_dir,
+            "-I" + child->src_path + child->unbased(child->hdr_dir),
             "-I" + child->hdr_dir,
             "-I" + child->obj_dir + "/proc",
             "-D__PCONFIGURE__LIBEXEC=\\\"" + full_libexec_path + "\\\"",
@@ -752,7 +752,7 @@ language_cxx::compile_source(const context::ptr& ctx,
 
     auto base_out_name =
         child->obj_dir
-        + "/" + child->src_dir
+        + "/" + child->unbased(child->src_dir)
         + "/" + child->cmd->data()
         + "/" + hash_compile_options(child);
 
@@ -771,7 +771,7 @@ language_cxx::compile_source(const context::ptr& ctx,
             for (const auto& dep: find_files_for_header(header_dep)) {
                 auto dep_out_name =
                     child->obj_dir
-                    + "/" + dep
+                    + "/" + child->unbased(dep)
                     + "/" + hash_compile_options(child);
 
                 bool should_process = true;
@@ -782,7 +782,10 @@ language_cxx::compile_source(const context::ptr& ctx,
                     continue;
                 processed.push_back(dep_out_name);
 
-                std::string stripped_dep = dep.c_str() + child->src_dir.size() + 1;
+                auto src_prefix = child->src_dir + "/";
+                if (dep.compare(0, src_prefix.size(), src_prefix) != 0)
+                    continue;
+                std::string stripped_dep = dep.substr(src_prefix.size());
                 auto cmd = std::make_shared<command>(command_type::SOURCES,
                                                      "+=",
                                                      stripped_dep,
