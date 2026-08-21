@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <pinclude.h>
 
 #ifndef SHEBANG_PREFIX
@@ -121,12 +122,26 @@ int main(int argc, char **argv)
     }
 
     outfile = fopen(output, "w");
+    if (outfile == NULL) {
+        fprintf(stderr, "unable to write '%s'\n", output);
+        exit(1);
+    }
 
     fprintf(outfile, SHEBANG "\n");
 
     if (pinclude_lines(input, NULL, NULL, &write_line, defs, (const char **)dirs, (const char **)defs, 1) != 0) {
-        fprintf(stderr, "pinclude failed to parse input: '%s'\n", input);
-        abort();
+        fprintf(stderr, "unable to expand '%s'\n", input);
+
+        /* The output is written as it goes, so what's on disk now is
+         * however far this got: a shebang and whatever came before
+         * the line that failed.  Leaving that behind would be worse
+         * than writing nothing, because it is a file with a fresh
+         * mtime that make would take for a finished one and never
+         * build again. */
+        fclose(outfile);
+        unlink(output);
+
+        exit(1);
     }
 
     fclose(outfile);

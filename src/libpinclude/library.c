@@ -65,6 +65,8 @@ static int _pinclude_lines(const char *input,
     FILE *infile;
     char buffer[LINE_MAX];
     size_t i;
+    size_t lineno;
+    bool found;
     bool state[NEST_MAX];
     int state_i;
 
@@ -79,8 +81,11 @@ static int _pinclude_lines(const char *input,
 
     state_i = 0;
     state[state_i] = true;
+    lineno = 0;
 
     while (fgets(buffer, LINE_MAX, infile) != NULL) {
+        lineno++;
+
 #ifdef DEBUG_LIBPINCLUDE_EACHLINE
         fprintf(stderr, "    %s", buffer);
 #endif
@@ -170,7 +175,12 @@ static int _pinclude_lines(const char *input,
         if (state[state_i] == false)
             continue;
 
-        /* Here's a hack: treat <> includes just like "" includes. */
+        /* Here's a hack: treat <> includes just like "" includes.
+         *
+         * Both spellings mean the same thing here, unlike in C: what
+         * this expands is scripts, and a script's includes are all
+         * files belonging to whoever wrote it.  Several of the tests
+         * in this tree write their harness the angled way. */
         if (strncmp(buffer, "#include <", strlen("#include <")) == 0) {
             buffer[strlen("#include <") - 1] = '"';
             strstr(buffer, ">")[0] = '"';
@@ -201,9 +211,19 @@ static int _pinclude_lines(const char *input,
             if (strlen(dir_path) == 0)
                 strcpy(dir_path, ".");
 
-            /* Pull FILENAME out of #include "FILENAME" */
+            /* Pull FILENAME out of #include "FILENAME".  The name
+             * ends at its closing quote: counting two characters back
+             * from the end instead means the last line of a file that
+             * doesn't end in a newline comes out one character
+             * short. */
             filename = strdup(buffer + strlen("#include \""));
-            filename[strlen(filename) - 2] = '\0';
+            {
+                char *close = strchr(filename, '"');
+                if (close != NULL)
+                    *close = '\0';
+                else
+                    str_chomp(filename);
+            }
 
             if (strcmp(dir_path, ".") != 0) {
                 if (asprintf(&full_path, "%s/%s", dir_path, filename) < 0)
@@ -217,6 +237,8 @@ static int _pinclude_lines(const char *input,
                 if (included[i] != NULL
                     && strcmp(full_path, included[i]) == 0)
                     goto skip_file;
+
+            found = false;
 
             if (access(full_path, R_OK) == 0) {
                 for (i = 0; i < FILE_MAX; i++) {
@@ -236,12 +258,14 @@ static int _pinclude_lines(const char *input,
                         free(dir_path);
                         free(filename);
                         free(full_path);
+                        fclose(infile);
 
                         return err;
                     }
                 }
 
-                goto skip_dirs;
+                found = true;
+                goto found_file;
             } else if (skip_missing_files == 0) {
                 if (per_include != NULL) {
                     if ((err = per_include(full_path, include_priv)) != 0) {
@@ -269,11 +293,14 @@ static int _pinclude_lines(const char *input,
                         goto skip_file;
 
                 if (access(full_path, R_OK) == 0) {
-                    for (i = 0; i < FILE_MAX; i++) {
-                        if (included[i] != NULL)
+                    /* A separate index from the one this loop is
+                     * walking: they were the same variable, which
+                     * only worked because control left immediately. */
+                    for (fi = 0; fi < FILE_MAX; fi++) {
+                        if (included[fi] != NULL)
                             continue;
 
-                        included[i] = strdup(full_path);
+                        included[fi] = strdup(full_path);
                         break;
                     }
 
@@ -282,21 +309,78 @@ static int _pinclude_lines(const char *input,
                             free(dir_path);
                             free(filename);
                             free(full_path);
+                            fclose(infile);
 
                             return err;
                         }
                     }
 
-                    goto skip_dirs;
+                    found = true;
+                    goto found_file;
                 }
             }
 
-          skip_dirs:
-            _pinclude_lines(full_path,
-                            per_include, include_priv,
-                            per_line, line_priv,
-                            include_dirs, defined, included,
-			    skip_missing_files);
+          found_file:
+            /* Nowhere had it.
+             *
+             * When this is expanding a file rather than listing what
+             * that file reads, being unable to find an include has to
+             * stop everything.  The "#include" line is a directive
+             * rather than text, so it is never written to the output
+             * -- which means carrying on writes a file with the
+             * include silently missing from it.  For bash that is a
+             * script that runs perfectly well and quietly does the
+             * wrong thing, which is the worst way for this to fail
+             * and was how it failed.
+             *
+             * Listing is the other case and wants the opposite.  A
+             * file that isn't there yet is usually one something else
+             * in the build is about to generate, and saying that it
+             * will be read is the entire point of asking. */
+            if (found == false) {
+                if (per_line == NULL)
+                    goto skip_file;
+
+                fprintf(stderr, "%s:%zu: can't find '%s'\n",
+                        input, lineno, filename);
+                fprintf(stderr, "  looked in '%s'\n", dir_path);
+                for (i = 0; include_dirs[i] != NULL; i++) {
+                    /* The file's own directory is often on the list
+                     * as well, and saying it twice reads like two
+                     * different places were tried. */
+                    if (strcmp(include_dirs[i], dir_path) == 0)
+                        continue;
+
+                    fprintf(stderr, "  looked in '%s'\n", include_dirs[i]);
+                }
+                fprintf(stderr,
+                        "  check the spelling, or add a '-I' for the"
+                        " directory it's in\n");
+
+                free(dir_path);
+                free(filename);
+                free(full_path);
+                fclose(infile);
+
+                return -1;
+            }
+
+            /* Whatever went wrong further down is this file's problem
+             * too: the output is written as it goes, so a nested
+             * failure that got dropped here would leave a
+             * half-expanded file behind and say nothing. */
+            if ((err = _pinclude_lines(full_path,
+                                       per_include, include_priv,
+                                       per_line, line_priv,
+                                       include_dirs, defined, included,
+                                       skip_missing_files)) != 0) {
+                free(dir_path);
+                free(filename);
+                free(full_path);
+                fclose(infile);
+
+                return err;
+            }
 
           skip_file:
             free(dir_path);
@@ -338,10 +422,15 @@ int pinclude_lines(const char *filename,
     for (i = 0; i < FILE_MAX; i++)
         included[i] = NULL;
 
+    /* Passing what the caller asked for rather than a 1: written the
+     * other way the argument was accepted and then ignored, so
+     * pinclude_list()'s promise to report the files that aren't there
+     * was one only it knew it wasn't keeping. */
     err = _pinclude_lines(filename,
                           per_include, include_priv,
                           per_line, line_priv,
-                          include_dirs, defined, included, 1);
+                          include_dirs, defined, included,
+                          skip_missing_files);
 
     for (i = 0; i < FILE_MAX; i++)
         if (included[i] != NULL)
