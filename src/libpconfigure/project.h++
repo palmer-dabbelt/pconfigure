@@ -159,6 +159,13 @@ private:
      * rules hand along -- but a report you can only get by running
      * make is no use on a build that doesn't build. */
     void write_check_dirs(const std::vector<ptr>& aggregated) const;
+
+    /* Writes down what this run told each vendored tree, so that make
+     * has something to compare against.  A vendored tree's rules are
+     * built out of its CONFIGUREOPTS, and a rule whose recipe changed
+     * is not a rule make will run again -- so the options have to
+     * reach the Makefile as a file as well as as a recipe. */
+    void write_configureopts(void) const;
 };
 
 #endif

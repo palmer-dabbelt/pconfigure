@@ -20,6 +20,8 @@
 
 #include "file_utils.h++"
 #include "vector_util.h++"
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <cstdio>
 #include <sstream>
 using namespace file_utils;
@@ -131,4 +133,62 @@ std::string file_utils::normalize_path(const std::string& path)
         out = trailing ? "" : ".";
 
     return out;
+}
+
+bool file_utils::mkdir_p(const std::string& path)
+{
+    if (path.size() == 0)
+        return true;
+
+    struct stat buf;
+    if (stat(path.c_str(), &buf) == 0)
+        return S_ISDIR(buf.st_mode);
+
+    /* Whatever is above this has to exist first, which is the whole
+     * of what "-p" means.  A path with no '/' left in it has nothing
+     * above it inside this tree, and the recursion stops on the empty
+     * string above rather than on a special case here. */
+    auto slash = path.rfind('/');
+    if (slash != std::string::npos)
+        if (mkdir_p(path.substr(0, slash)) == false)
+            return false;
+
+    if (mkdir(path.c_str(), 0777) == 0)
+        return true;
+
+    /* Somebody else may have made it in between, which is a success:
+     * what was asked for was that the directory exist. */
+    return stat(path.c_str(), &buf) == 0 && S_ISDIR(buf.st_mode);
+}
+
+bool file_utils::write_if_changed(const std::string& path,
+                                  const std::string& contents)
+{
+    auto read = std::string();
+
+    auto in = fopen(path.c_str(), "r");
+    if (in != NULL) {
+        char buffer[4096];
+        size_t got;
+        while ((got = fread(buffer, 1, sizeof(buffer), in)) > 0)
+            read.append(buffer, got);
+        fclose(in);
+
+        if (read == contents)
+            return true;
+    }
+
+    auto slash = path.rfind('/');
+    if (slash != std::string::npos)
+        if (mkdir_p(path.substr(0, slash)) == false)
+            return false;
+
+    auto out = fopen(path.c_str(), "w");
+    if (out == NULL)
+        return false;
+
+    auto wrote = contents.size() == 0
+        || fwrite(contents.data(), 1, contents.size(), out) == contents.size();
+
+    return fclose(out) == 0 && wrote;
 }

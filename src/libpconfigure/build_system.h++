@@ -65,6 +65,13 @@ private:
      * unbound. */
     context::ptr _context;
 
+    /* Every CONFIGUREOPTS this build system was handed, in the order
+     * they were written.  What an option means is the build system's
+     * business, but that one was written at all is this class's: it's
+     * what a later run compares itself against to find out that the
+     * tree has to be configured again. */
+    std::vector<std::string> _configureopts;
+
 public:
     build_system(const std::string& name);
     virtual ~build_system(void) {}
@@ -102,10 +109,33 @@ public:
      * build system: its subprojects are read into this run instead. */
     virtual bool vendored(void) const { return true; }
 
-    /* Handles one CONFIGUREOPTS line.  What an option means is up to
-     * the build system it was handed to, so the line arrives here
-     * exactly as it was written. */
-    virtual void add_configureopt(const std::string& opt) = 0;
+    /* Handles one CONFIGUREOPTS line, and remembers that it was
+     * given.  What an option means is up to the build system it was
+     * handed to, so the line is passed on exactly as it was
+     * written. */
+    void add_configureopt(const std::string& opt);
+
+    /* Everything this run told the vendored tree that a rule's
+     * recipe is built out of, written down so that two runs can be
+     * compared.
+     *
+     * This exists because of a hole nothing else can fill: every
+     * prerequisite a vendored tree's rules have is a file that
+     * belonged to the tree or to the project before pconfigure ran,
+     * and a recipe changing is not a reason for make to run a rule.
+     * So a build reconfigured with different CONFIGUREOPTS would sit
+     * there configured the old way, with a Makefile that says
+     * otherwise.  Writing the options into a file gives make
+     * something that changes when the answer changes.
+     *
+     * The options say most of it; a build system that's told
+     * anything else has to say so. */
+    virtual std::string configure_signature(void) const;
+
+    /* Where that gets written, or "" for a build system that has
+     * nothing to write -- which is the same answer, and for the same
+     * reason, that build_stamp() gives. */
+    virtual std::string configureopts_file(void) const { return ""; }
 
     /* The targets that drive this build system, which go into the
      * Makefile of the project that pulled the tree in -- a vendored
@@ -123,6 +153,12 @@ public:
      * single such file.  This is what a subproject that has to wait
      * for another one hangs itself off. */
     virtual std::string build_stamp(void) const { return ""; }
+
+protected:
+    /* Takes one CONFIGUREOPTS line.  This is the half of
+     * add_configureopt() that knows what an option means, and it's
+     * the only half a build system has to write. */
+    virtual void take_configureopt(const std::string& opt) = 0;
 
 public:
     /* Points a copy of this build system at a directory, which is

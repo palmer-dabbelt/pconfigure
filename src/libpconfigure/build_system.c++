@@ -26,8 +26,32 @@
 build_system::build_system(const std::string& name)
 : _name(name),
   _base(),
-  _context(NULL)
+  _context(NULL),
+  _configureopts()
 {
+}
+
+void build_system::add_configureopt(const std::string& opt)
+{
+    _configureopts.push_back(opt);
+    take_configureopt(opt);
+}
+
+std::string build_system::configure_signature(void) const
+{
+    /* One option per line, in the order they were given, character
+     * for character.  The order is part of the answer -- a later
+     * --configure is allowed to overwrite an earlier one -- so two
+     * runs that gave the same options in a different order really are
+     * two different runs.
+     *
+     * The raw lines are enough even though a build system turns them
+     * into settings with defaults behind them, since a default can
+     * only be moved off by an option and every option is here. */
+    auto out = std::string();
+    for (const auto& opt: _configureopts)
+        out += opt + "\n";
+    return out;
 }
 
 /* Drops the trailing '/' off a directory, which is the spelling that

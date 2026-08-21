@@ -317,7 +317,23 @@ std::string build_system_kconfig::configureopt_help(void) const
            " configuring\n";
 }
 
-void build_system_kconfig::add_configureopt(const std::string& opt)
+std::string build_system_kconfig::configure_signature(void) const
+{
+    auto out = build_system::configure_signature();
+
+    /* CROSS_COMPILE isn't a CONFIGUREOPTS, but make_var_flags() puts
+     * it on the command line of every sub-make this writes -- so a
+     * project that changed which machine it builds for has changed
+     * how the tree gets configured just as surely as a --make-var
+     * would have.  A tree that refuses to be told this at all has no
+     * business being reconfigured over it. */
+    if (wants_cross_compile() == true)
+        out += "CROSS_COMPILE=" + ctx()->cross_compile + "\n";
+
+    return out;
+}
+
+void build_system_kconfig::take_configureopt(const std::string& opt)
 {
     if (handle_configureopt(opt) == true)
         return;
@@ -370,6 +386,25 @@ build_system_kconfig::targets(const std::vector<build_system::ptr>& peers) const
     for (const auto& depend: _config_depends)
         config_deps.push_back(std::make_shared<makefile::target>(
             resolve_depend("--depend-config", depend, peers)));
+
+    /* What this run was told, which has to be a prerequisite because
+     * nothing else here is: every other file above is one the tree or
+     * the project already had, so a build reconfigured with different
+     * options would find all of them exactly as it left them and do
+     * nothing.  pconfigure writes this one, and rewrites it only when
+     * it says something different than it did last time.
+     *
+     * It hangs off the configuration rather than off the build
+     * because the build already waits for the configuration, so this
+     * one file covers both -- and because the alternative is two
+     * files and a standing argument about which half of the state
+     * each new option belongs in, when --env, --make-var and
+     * CROSS_COMPILE all land in both.  The price is that a --target,
+     * which only the build reads, reconfigures too: that costs one
+     * sub-make of a defconfig that writes back the file that was
+     * already there. */
+    config_deps.push_back(std::make_shared<makefile::target>(
+        configureopts_file()));
 
     auto config_commands = std::vector<std::string>{
         "mkdir -p " + output,

@@ -24,6 +24,8 @@
 #include "pick_language.h++"
 #include <sys/stat.h>
 #include <cctype>
+#include <cerrno>
+#include <cstring>
 #include <iostream>
 
 project::project(const std::string& base,
@@ -369,6 +371,33 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
     out->write_to_file(makefile_path());
 
     write_check_dirs(aggregated);
+    write_configureopts();
+}
+
+void project::write_configureopts(void) const
+{
+    /* Every vendored tree belongs to exactly the project whose
+     * Configfile pulled it in, which is the same project whose
+     * Makefile got its rules -- so walking this project's own list
+     * writes each tree's file exactly once, from the same place the
+     * rule that reads it was written. */
+    for (const auto& vendored: _processor->vendored()) {
+        const auto& path = vendored->configureopts_file();
+        if (path.size() == 0)
+            continue;
+
+        if (file_utils::write_if_changed(path,
+                                         vendored->configure_signature()))
+            continue;
+
+        std::cerr << "can't write '" << path << "': "
+                  << strerror(errno) << "\n"
+                  << "  this is where the options the vendored tree in '"
+                  << vendored->source_dir() << "' was configured with get"
+                  << " written down,\n"
+                  << "  and make needs it to know when they've changed\n";
+        abort();
+    }
 }
 
 void project::write_check_dirs(const std::vector<ptr>& aggregated) const
