@@ -19,7 +19,9 @@
  */
 
 #include "context.h++"
+#include "file_utils.h++"
 #include "language_list.h++"
+#include "vector_util.h++"
 #include <libmakefile/self_path.h++>
 #include <sstream>
 
@@ -40,7 +42,11 @@ context::context(const std::string& base)
       src_path(base),
       compile_opts(),
       link_opts(),
+      compiler(""),
+      linker(""),
+      cross_compile(""),
       dep_libs(),
+      test_deps(),
       cmd(NULL),
       verbose(false),
       debug(false),
@@ -70,7 +76,11 @@ context::context(const context_type& _type,
                  const std::string& _src_path,
                  const std::vector<std::string>& _compile_opts,
                  const std::vector<std::string>& _link_opts,
+                 const std::string& _compiler,
+                 const std::string& _linker,
+                 const std::string& _cross_compile,
                  const std::vector<std::string>& _dep_libs,
+                 const std::vector<std::string>& _test_deps,
                  const command::ptr& _cmd,
                  bool _verbose,
                  bool _debug,
@@ -97,7 +107,11 @@ context::context(const context_type& _type,
       src_path(_src_path),
       compile_opts(_compile_opts),
       link_opts(_link_opts),
+      compiler(_compiler),
+      linker(_linker),
+      cross_compile(_cross_compile),
       dep_libs(_dep_libs),
+      test_deps(_test_deps),
       cmd(_cmd),
       verbose(_verbose),
       debug(_debug),
@@ -142,7 +156,11 @@ context::ptr context::dup(const context_type& type,
                                      this->src_path,
                                      this->compile_opts,
                                      this->link_opts,
+                                     this->compiler,
+                                     this->linker,
+                                     this->cross_compile,
                                      this->dep_libs,
+                                     this->test_deps,
                                      cmd,
                                      this->verbose,
                                      this->debug,
@@ -153,6 +171,19 @@ context::ptr context::dup(const context_type& type,
                                      this->phc,
                                      this->entitlements,
                                      children);
+}
+
+std::vector<std::string> context::based_test_deps(void) const
+{
+    /* A TESTDEPS is written relative to the project that named it,
+     * the same way a SOURCES is, and normalizing is what turns the
+     * "../" a sibling project has to be reached through into the one
+     * spelling of that path everybody else in this Makefile uses. */
+    return vector_util::map(test_deps,
+                            [&](const std::string& dep)
+                            {
+                                return file_utils::normalize_path(base + dep);
+                            });
 }
 
 bool context::check_type(const std::vector<context_type>& types)

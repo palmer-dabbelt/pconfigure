@@ -19,6 +19,7 @@
  */
 
 #include "chisel.h++"
+#include <regex>
 #include "../language_list.h++"
 #include "../map_util.h++"
 #include "../string_utils.h++"
@@ -93,9 +94,7 @@ language_chisel* language_chisel::clone(void) const
 
 bool language_chisel::can_process(const context::ptr& ctx) const
 {
-    if (language::all_sources_match(ctx,
-                                    {std::regex(".*\\.scala"),
-                                     std::regex(".*\\.v")})) {
+    if (language::all_sources_match(ctx, {".scala", ".v"})) {
         return true;
     }
 

@@ -66,7 +66,14 @@ build_system::ptr build_system::bind(const std::string& base,
 {
     auto out = dup();
     out->_base = base;
-    out->_context = context;
+
+    /* A copy of the context rather than the context itself.  What
+     * gets bound here is the live top of the Configfile's stack, and
+     * the rest of the file keeps writing to it: a CROSS_COMPILE five
+     * lines further down would otherwise reach back and change what
+     * this subproject was built with, which is not what a line
+     * written after a SUBPROJECTS means anywhere else. */
+    out->_context = context->dup();
     return out;
 }
 

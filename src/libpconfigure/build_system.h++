@@ -109,8 +109,20 @@ public:
 
     /* The targets that drive this build system, which go into the
      * Makefile of the project that pulled the tree in -- a vendored
-     * tree's own Makefile belongs to the tree. */
-    virtual std::vector<makefile::target::ptr> targets(void) const = 0;
+     * tree's own Makefile belongs to the tree.
+     *
+     * "peers" is every vendored tree the same project pulled in,
+     * which is how a subproject that has to be built after another
+     * one finds out what to wait for.  Nothing else about a peer is
+     * any of this one's business. */
+    virtual std::vector<makefile::target::ptr>
+    targets(const std::vector<ptr>& peers) const = 0;
+
+    /* The file that says this build system has been run since
+     * anything it reads changed, or "" for one that hasn't got a
+     * single such file.  This is what a subproject that has to wait
+     * for another one hangs itself off. */
+    virtual std::string build_stamp(void) const { return ""; }
 
 public:
     /* Points a copy of this build system at a directory, which is

@@ -15,7 +15,7 @@ do
     -f*) CFLAGS+=("$1");;
     -o) obj_output="$2"; swig_output="$2.swig.c"; shift;;
     *.i) SWIGINPUTS+=("$1") SWIGFLAGS+=("-I$(dirname "$1")") CFLAGS+=("-I$(dirname "$1")");;
-    *.c++) CINPUTS+=("$1");;
+    *.c++|*.cpp|*.cxx|*.cc|*.C) CINPUTS+=("$1");;
     -c) CFLAGS+=("$1") ;;
     -python) target="$1";;
     -std=*) CFLAGS+=("$1");;

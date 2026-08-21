@@ -28,21 +28,22 @@ class language_h: public language_bash {
 public:
     typedef std::shared_ptr<language_h> ptr;
 
-private:
-    mutable std::string _phc;
-
 public:
     language_h(const std::vector<std::string>& compile_opts,
                const std::vector<std::string>& link_opts)
-    : language_bash(compile_opts, link_opts),
-      _phc(makefile::tool_command("phc"))
+    : language_bash(compile_opts, link_opts)
     {}
 
     virtual ~language_h(void) {}
 
 public:
     /* Virtual methods from language_bash. */
-    virtual std::string compiler_command(void) const { return _phc; }
+    /* A PHC is a property of the project being configured rather
+     * than of this language, which is why it's read back off the
+     * context rather than remembered here. */
+    virtual std::string
+    default_compiler_command(const context::ptr& ctx) const
+        { return ctx->phc; }
     virtual std::string compiler_pretty(void) const { return "H"; }
     virtual std::vector<makefile::target::ptr> targets(const context::ptr& ctx) const;
 

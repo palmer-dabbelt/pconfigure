@@ -44,7 +44,8 @@ public:
     bool can_build(const std::string& base) const;
     bool vendored(void) const { return false; }
     void add_configureopt(const std::string& opt);
-    std::vector<makefile::target::ptr> targets(void) const;
+    std::vector<makefile::target::ptr>
+    targets(const std::vector<ptr>& peers) const;
 };
 
 #endif

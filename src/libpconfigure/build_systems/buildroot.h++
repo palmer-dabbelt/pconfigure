@@ -34,13 +34,19 @@
  *     of these;
  *
  *   - the program that edits a .config is "utils/config" rather than
- *     "scripts/config";
+ *     "scripts/config", and the one that merges a fragment into a
+ *     .config is "support/kconfig/merge_config.sh" rather than
+ *     "scripts/kconfig/merge_config.sh";
  *
  *   - the build description is in ".mk" files that the top-level
  *     Makefile pulls in by wildcard, one per package;
  *
  *   - a tree of your own packages is bolted on from outside with
- *     BR2_EXTERNAL rather than being sourced from within.
+ *     BR2_EXTERNAL rather than being sourced from within;
+ *
+ *   - and it builds the toolchain it's going to use rather than being
+ *     handed one, so it's the one kconfig-derived tree that isn't
+ *     told what CROSS_COMPILE this project was configured with.
  *
  * The rest -- an out-of-tree build with O=, a defconfig target, an
  * olddefconfig after the options are set, and a dependency guess that
@@ -80,6 +86,18 @@ protected:
 
     std::string config_tool(void) const
         { return base() + "utils/config"; }
+
+    std::string merge_config_tool(void) const
+        { return base() + "support/kconfig/merge_config.sh"; }
+
+    /* Buildroot builds its own toolchain before it builds anything
+     * with it, so the prefix this project was configured with names a
+     * compiler that has nothing to do with the one buildroot is about
+     * to make -- and buildroot's own manual says, in so many words,
+     * not to tell it this.  Which compiler builds the target is
+     * something its .config says instead. */
+    bool wants_cross_compile(void) const
+        { return false; }
 };
 
 #endif

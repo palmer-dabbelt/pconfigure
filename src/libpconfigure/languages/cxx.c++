@@ -23,6 +23,7 @@
 #include "../language_list.h++"
 #include "../vector_util.h++"
 #include "../file_utils.h++"
+#include "../string_utils.h++"
 #include "../pick_language.h++"
 #include <pinclude.h++>
 #include <unistd.h>
@@ -86,6 +87,48 @@ static std::vector<std::string> reroot_link_opts(const std::vector<std::string>&
     return out;
 }
 
+const std::vector<std::string>& cxx_source_extensions(void)
+{
+    static const auto out = std::vector<std::string>{
+        ".c++", ".cpp", ".cxx", ".cc", ".C"
+    };
+    return out;
+}
+
+const std::vector<std::string>& cxx_header_extensions(void)
+{
+    static const auto out = std::vector<std::string>{
+        ".h++", ".hpp", ".hxx", ".hh", ".h"
+    };
+    return out;
+}
+
+/* What to run to build C++ for the machine a CROSS_COMPILE named, or
+ * for this one when it named nothing.
+ *
+ * A cross toolchain doesn't come with a CXX pointing at it: that
+ * variable belongs to whoever runs make and it names the one compiler
+ * this machine has.  So a cross build has to name the program
+ * outright, which it can do because every program in a toolchain is
+ * called the same thing with the same prefix on the front -- that's
+ * what a CROSS_COMPILE is, and it's the spelling kbuild has used for
+ * as long as anybody has been doing this. */
+std::string language_cxx::default_compiler_command(const context::ptr& ctx) const
+{
+    if (ctx->cross_compile.size() > 0)
+        return ctx->cross_compile + "g++ -x c++ ${CXXFLAGS}";
+
+    return "${CXX} -x c++ ${CXXFLAGS}";
+}
+
+std::string language_cxx::default_linker_command(const context::ptr& ctx) const
+{
+    if (ctx->cross_compile.size() > 0)
+        return ctx->cross_compile + "g++ ${LDFLAGS} ${CXXFLAGS}";
+
+    return "${CXX} ${LDFLAGS} ${CXXFLAGS}";
+}
+
 language_cxx* language_cxx::clone(void) const
 {
     return new language_cxx(this->list_compile_opts(),
@@ -94,40 +137,7 @@ language_cxx* language_cxx::clone(void) const
 
 bool language_cxx::can_process(const context::ptr& ctx) const
 {
-    if (language::all_sources_match(ctx,
-                                    {std::regex(".*\\.C"),
-                                     std::regex(".*\\.cxx")})) {
-        return true;
-    }
-
-    /* This works around a C++11 regex bug in GCC versions prior to
-     * 4.9 -- specifically, I can't match the "c++" extension because
-     * the old regex implementation doesn't appear to support escaping
-     * the '+' character. */
-    if (language::all_sources_match(ctx, {std::regex(".*\\.c..")})) {
-        for (const auto& child: ctx->children) {
-            switch (child->type) {
-            case context_type::DEFAULT:
-            case context_type::GENERATE:
-            case context_type::LIBRARY:
-            case context_type::BINARY:
-            case context_type::TEST:
-            case context_type::HEADER:
-                break;
-
-            case context_type::SOURCE:
-            {
-                auto file = child->cmd->data();
-                if (file.find(".c++", file.length() - 5) == std::string::npos)
-                    return false;
-            }
-            }
-        }
-
-        return true;
-    }
-
-    return false;
+    return language::all_sources_match(ctx, cxx_source_extensions());
 }
 
 language_cxx::shared_target language_cxx::is_shared_target(const context::ptr& ctx) const
@@ -154,7 +164,7 @@ language_cxx::shared_target language_cxx::is_shared_target(const context::ptr& c
 std::string language_cxx::hash_link_options(const context::ptr& ctx) const
 {
     return hash_options(
-        std::vector<std::string>{this->linker_command()}
+        std::vector<std::string>{this->linker_command(ctx)}
         + this->clopts()
         + ctx->clopts()
     );
@@ -163,7 +173,7 @@ std::string language_cxx::hash_link_options(const context::ptr& ctx) const
 std::string language_cxx::hash_compile_options(const context::ptr& ctx) const
 {
     return hash_options(
-        std::vector<std::string>{this->compiler_command()}
+        std::vector<std::string>{this->compiler_command(ctx)}
         + this->compile_opts()
         + ctx->list_compile_opts()
     );
@@ -291,6 +301,15 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
                 makefile::global_targets::CLEAN
             };
             auto test_name = ctx->obj_dir + "/" + ctx->unbased(ctx->check_dir) + "/" + ctx->cmd->data();
+
+            /* A test that needs something built before it runs says so
+             * with a TESTDEPS, and all that has to happen is that make
+             * builds it first.  Every one of them is something this
+             * project builds, which is what keeps this Makefile usable
+             * on its own. */
+            for (const auto& dep: ctx->based_test_deps())
+                deps.push_back(std::make_shared<makefile::target>(dep));
+
             auto commands = std::vector<std::string>{
                 "mkdir -p " + ctx->check_dir,
                 "+" + makefile::tool_command("ptest") + " --test " + test_name + " --out " + target_name + " --bin " + bin_name
@@ -331,44 +350,39 @@ language_cxx::find_files_for_header(const std::string& full_header_path) const
 {
     std::vector<std::string> out;
 
-    std::vector<std::regex> remove_patterns = {
-        std::regex("(.*)\\.h"),
-#if ((__GNUC__ != 4) || (__GNUC_MINOR__ > 8))
-        std::regex("(.*)\\.h\\+\\+")
-#endif
+    /* A header and the source that implements it are the same name
+     * with a different ending, and that's the only thing saying the
+     * two go together -- nobody writes it down.  Everything that
+     * exists gets built, because a project that keeps both a "foo.c"
+     * and a "foo.c++" next to "foo.h" meant to have both.
+     *
+     * The list of endings tried here isn't quite the list of names a
+     * C++ source goes by.  ".c" is in it even though it isn't one of
+     * them, because this is also how the C language finds the source
+     * behind a header it saw included -- it inherits this function.
+     * ".C" is out of it even though it is one of them, because it
+     * differs from ".c" only in case: on a filesystem that doesn't
+     * care about that, guessing both hands back one file twice under
+     * two names, and it gets compiled and linked in twice.  A project
+     * that spells its C++ ".C" can still say so in a SOURCES line,
+     * where nobody has to guess. */
+    static const auto sources = std::vector<std::string>{
+        ".c++", ".cpp", ".cxx", ".cc", ".c"
     };
 
-    std::vector<std::string> add_patterns = {
-        "$1.c++",
-        "$1.c"
-    };
+    for (const auto& header: cxx_header_extensions()) {
+        if (string_utils::has_extension(full_header_path, header) == false)
+            continue;
 
-    const auto regex_flags = std::regex_constants::format_no_copy;
-    for (const auto& remove: remove_patterns) {
-        for (const auto& add: add_patterns) {
-            std::string f = std::regex_replace(full_header_path,
-                                               remove,
-                                               add,
-                                               regex_flags);
+        auto stem = full_header_path.substr(
+            0, full_header_path.size() - header.size());
+
+        for (const auto& source: sources) {
+            auto f = stem + source;
             if (access(f.c_str(), R_OK) == 0)
                 out.push_back(f);
         }
     }
-
-#if ((__GNUC__ == 4) && (__GNUC_MINOR__ <= 8))
-    /* GCC-4.8 has bad regex support, so it drops the ".h++" to ".c++"
-     * conversion. */
-    {
-        auto lpos = full_header_path.find_last_of(".");
-        for (const auto& ending: std::vector<std::string>{".c++", ".c"}) {
-            if (lpos != std::string::npos) {
-                auto f = full_header_path.substr(0, lpos) + ending;
-                if (access(f.c_str(), R_OK) == 0)
-                    out.push_back(f);
-            }
-        }
-    }
-#endif
 
     return out;
 }
@@ -405,11 +419,29 @@ language_cxx::link_target::generate_makefile_target(void) const
                                  });
     auto target2name = [](const target::ptr& t){ return t->path(); };
 
+    /* Whether what comes out of this link is a Mach-O.  That's a
+     * question about the machine being built for rather than the one
+     * doing the building, and the two are the same machine right up
+     * until a CROSS_COMPILE says they aren't.
+     *
+     * Everything below that Apple's linker understands and nobody
+     * else's does hangs off this.  Getting it wrong isn't subtle in
+     * one direction -- "-install_name" is not an option GNU ld has,
+     * so a cross-linked shared library stops dead -- and is very
+     * subtle in the other, where "@loader_path" is accepted as a
+     * perfectly good literal rpath that means nothing anywhere the
+     * binary will actually run. */
+#ifdef __APPLE__
+    const auto mach_o = _ctx->cross_compile.size() == 0;
+#else
+    const auto mach_o = false;
+#endif
+
 #ifdef __APPLE__
     /* Where the plist an ENTITLEMENTS names actually lives: it's
      * written relative to the project that asked for it, the same as
      * everything else in that project's Configfile. */
-    auto entitlements = _ctx->entitlements.size() == 0
+    auto entitlements = (mach_o == false || _ctx->entitlements.size() == 0)
         ? std::string()
         : _ctx->base + _ctx->entitlements;
 
@@ -424,11 +456,10 @@ language_cxx::link_target::generate_makefile_target(void) const
         {
             switch (_shared) {
             case shared_target::TRUE:
-#ifdef __APPLE__
-                return " -shared -Wl,-install_name,@rpath/" + _ctx->cmd->data();
-#else
+                if (mach_o == true)
+                    return " -shared -Wl,-install_name,@rpath/"
+                         + _ctx->cmd->data();
                 return " -shared";
-#endif
             case shared_target::FALSE:
                 return "";
             }
@@ -479,11 +510,9 @@ language_cxx::link_target::generate_makefile_target(void) const
              * ends up linking it, and only the library knows how far
              * it is from the libraries it needs itself.  This is what
              * ELF has always done here; macOS needed asking. */
-#ifdef __APPLE__
-            return "-Wl,-rpath,@loader_path/" + from_output + dir;
-#else
+            if (mach_o == true)
+                return "-Wl,-rpath,@loader_path/" + from_output + dir;
             return "-Wl,-rpath,\\$$ORIGIN/" + from_output + dir;
-#endif
         };
 
     auto rpaths = [&](void) -> std::vector<std::string>
@@ -563,7 +592,23 @@ language_cxx::link_target::generate_makefile_target(void) const
         + " " + _target_path;
     if (_ctx->verbose == false)
         sign = "out=$$(" + sign + " 2>&1) || { echo \"$$out\"; exit 1; }";
-    cmds.push_back(sign);
+
+    /* A signature is a Mach-O idea, and the linker on the other end of
+     * this isn't always one that makes Mach-Os: point a CROSS_COMPILE
+     * at a toolchain for somebody else's machine and what lands here
+     * is an ELF.  codesign doesn't refuse those, which is the trouble
+     * -- it quietly signs them "generic", hanging an ad-hoc signature
+     * off the file in extended attributes that means nothing to the
+     * machine the thing is going to run on, accepting --entitlements
+     * while ignoring it, and failing outright on a file that arrived
+     * carrying attributes of its own.  So ask what was actually linked
+     * before signing it, and leave a foreign object the way its own
+     * linker left it.  file(1) ships with the OS the same way codesign
+     * does, and every Mach-O it knows about -- thin, fat, library,
+     * object -- it names starting with the same word. */
+    if (mach_o == true)
+        cmds.push_back("case $$(/usr/bin/file -b " + _target_path
+                     + ") in Mach-O*) " + sign + " ;; esac");
 #endif
 
     auto global = std::vector<makefile::global_targets>{
@@ -785,7 +830,7 @@ language_cxx::link_objects(const context::ptr& ctx,
         shared_comments + std::vector<std::string>{"install_target"},
         all_opts,
         ctx,
-        this->linker_command(),
+        this->linker_command(ctx),
         this->linker_pretty()
     );
 
@@ -798,7 +843,7 @@ language_cxx::link_objects(const context::ptr& ctx,
         shared_comments + std::vector<std::string>{"local_target"},
         all_opts,
         ctx,
-        this->linker_command(),
+        this->linker_command(ctx),
         this->linker_pretty()
     );
 
@@ -959,7 +1004,7 @@ language_cxx::compile_source(const context::ptr& ctx,
         compile_opts,
         child,
         header_deps,
-        this->compiler_command(),
+        this->compiler_command(child),
         this->compiler_pretty()
     );
 
@@ -971,7 +1016,7 @@ language_cxx::compile_source(const context::ptr& ctx,
         compile_opts,
         child,
         header_deps,
-        this->compiler_command(),
+        this->compiler_command(child),
         this->compiler_pretty()
     );
 

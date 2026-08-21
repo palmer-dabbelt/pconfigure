@@ -27,7 +27,6 @@
 #include "vector_util.h++"
 #include <libmakefile/target.h++>
 #include <memory>
-#include <regex>
 
 /* Contains a single language.  Languages take contexts (which the
  * Configfile parser understands) and turn them into targets (which
@@ -41,6 +40,12 @@ private:
     /* These implement "opts_target" */
     std::vector<std::string> _compile_opts;
     std::vector<std::string> _link_opts;
+
+    /* What a COMPILER or a LINKER written against this language said
+     * to run, or empty when nobody said anything and whatever this
+     * language does by default should happen. */
+    std::string _compiler;
+    std::string _linker;
 
 public:
     language(const std::vector<std::string>& compile_opts,
@@ -67,7 +72,57 @@ public:
      * types. */
     virtual language* clone(void) const = 0;
 
-    ptr dup(void) const { return std::shared_ptr<language>(clone()); }
+    /* Every language writes its own clone(), and all any of them
+     * copies is the options -- so anything added alongside them would
+     * be quietly dropped by ten different functions.  Carrying it
+     * across out here instead means a language that never heard of a
+     * COMPILER still hands one down. */
+    ptr dup(void) const
+    {
+        auto out = std::shared_ptr<language>(clone());
+        out->_compiler = _compiler;
+        out->_linker = _linker;
+        return out;
+    }
+
+    /* What actually gets run to compile or link something.  Either
+     * can be said at any scope, so the answer depends on what's being
+     * built: what the target was told beats what the language was
+     * told, which beats whatever the language does when nobody says
+     * anything at all. */
+    std::string compiler_command(const context::ptr& ctx) const
+    {
+        if (ctx->compiler.size() > 0)
+            return ctx->compiler;
+        if (_compiler.size() > 0)
+            return _compiler;
+        return default_compiler_command(ctx);
+    }
+
+    std::string linker_command(const context::ptr& ctx) const
+    {
+        if (ctx->linker.size() > 0)
+            return ctx->linker;
+        if (_linker.size() > 0)
+            return _linker;
+        return default_linker_command(ctx);
+    }
+
+    /* What this language runs when nobody has said otherwise.  These
+     * take the context because a language that knows what a cross
+     * toolchain would mean for it has to look at the CROSS_COMPILE
+     * before it can name a program.  A language with nothing here is
+     * one that never compiles (or never links), and being asked is a
+     * bug rather than a default. */
+    virtual std::string
+    default_compiler_command(const context::ptr& ctx __attribute__((unused)))
+    const
+        { return ""; }
+
+    virtual std::string
+    default_linker_command(const context::ptr& ctx __attribute__((unused)))
+    const
+        { return ""; }
 
     /* Returns TRUE if this language can process the given context. */
     virtual bool can_process(const context::ptr& ctx) const = 0;
@@ -131,6 +186,8 @@ public:
 public:
     void add_compileopt(const std::string& data);
     void add_linkopt(const std::string& data);
+    void set_compiler(const std::string& data) { _compiler = data; }
+    void set_linker(const std::string& data) { _linker = data; }
     const std::vector<std::string>& list_compile_opts(void) const
         { return _compile_opts; }
     const std::vector<std::string>& list_link_opts(void) const
@@ -138,11 +195,11 @@ public:
 
 protected:
     /* Returns TRUE if every source that's a direct child of the given
-     * context has a name that matches any one of the given regular
-     * expressions.  Essentially this is a helper function that allows
-     * a language to check if it can build the given codebase. */
+     * context is named with one of the given extensions.  A language
+     * that can build a codebase is one that recognizes every file in
+     * it, so a single name nobody claims is enough to say no. */
     static bool all_sources_match(const context::ptr& ctx,
-                                  const std::vector<std::regex>& rxs);
+                                  const std::vector<std::string>& extensions);
 };
 
 #endif
