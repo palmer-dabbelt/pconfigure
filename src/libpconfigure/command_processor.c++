@@ -20,6 +20,7 @@
 
 #include "command_processor.h++"
 #include "commands.h++"
+#include "file_utils.h++"
 #include "languages/gen_proc.h++"
 #include "languages/implicit_h.h++"
 #include <iostream>
@@ -28,6 +29,9 @@ command_processor::command_processor(const std::string& base,
                                      const context::ptr& defaults)
     : _stack(),
       _opts_target(NULL),
+      _build_systems(),
+      _vendored(),
+      _configure_target(NULL),
       _given_version_command(false),
       _given_help_command(false),
       _srcpath(base.size() == 0 ? "." : base.substr(0, base.size() - 1)),
@@ -45,6 +49,13 @@ command_processor::command_processor(const std::string& base,
         _root->verbose = defaults->verbose;
         _root->debug = defaults->debug;
     }
+
+    /* Every project can build a pconfigure subproject without being
+     * told how: there's an implicit "BUILD_SYSTEMS += pconfigure" at
+     * the bottom of all of them, and it's first in the list so that a
+     * directory with a Configfile in it is read rather than handed to
+     * somebody else's build system. */
+    _build_systems.push_back(build_system::create("pconfigure"));
 
     _stack.push(_root);
     auto tos = _stack.top();
@@ -100,6 +111,40 @@ void command_processor::process(const command::ptr& cmd)
         return;
     }
 
+    case command_type::BUILD_SYSTEMS:
+    {
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        clear_until({context_type::DEFAULT});
+
+        /* Asking for one that's already here is how you get back to
+         * it to say something more about it, which is exactly what
+         * LANGUAGES does. */
+        for (const auto& existing: _build_systems) {
+            if (existing->name() != cmd->data())
+                continue;
+            _configure_target = existing;
+            return;
+        }
+
+        auto added = build_system::create(cmd->data());
+        if (added == NULL) {
+            std::cerr << "Unable to find build system: '"
+                      << cmd->data()
+                      << "'\n"
+                      << "Build System Set:\n";
+            for (const auto& name: build_system::names())
+                std::cerr << "  " << name << "\n";
+            abort();
+        }
+
+        _build_systems.push_back(added);
+        _configure_target = added;
+
+        return;
+    }
+
     case command_type::COMPAT:
         /* FIXME: The only way I currently get here is through a
          * checked pconfigure command type, but I do eventually need
@@ -132,6 +177,17 @@ void command_processor::process(const command::ptr& cmd)
 
         return;
     }
+
+    case command_type::CONFIGUREOPTS:
+        if (_configure_target == NULL)
+            goto no_configure_target;
+
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        _configure_target->add_configureopt(cmd->data());
+
+        return;
 
     case command_type::DEPLIBS:
         if (cmd->check_operation("+=") == false)
@@ -344,10 +400,78 @@ void command_processor::process(const command::ptr& cmd)
             abort();
         }
 
-        /* Reading it is somebody else's job: this just says which one
-         * was asked for, relative to where pconfigure is running
-         * rather than to whoever asked. */
-        _pending_subprojects.push_back(_base + cmd->data());
+        auto path = file_utils::normalize_directory(_base + cmd->data());
+
+        if (path == _base) {
+            std::cerr << "SUBPROJECTS can't point at the project itself: '"
+                      << std::to_string(cmd->debug())
+                      << "'\n";
+            abort();
+        }
+
+        /* Everything here names files relative to where pconfigure
+         * ran, and a Makefile written outside that tree would be
+         * talking about a directory this build doesn't own. */
+        if (path.compare(0, 3, "../") == 0) {
+            std::cerr << "SUBPROJECTS can't reach outside the project: '"
+                      << std::to_string(cmd->debug())
+                      << "'\n";
+            abort();
+        }
+
+        /* Which build system builds it is decided by what's in it,
+         * the same way the language that builds a source file is
+         * decided by what the file is called.  Nothing has to be said
+         * about the subproject from inside the subproject, which is
+         * the point: a vendored tree is somebody else's and shouldn't
+         * have to carry a file that says it's ours.
+         *
+         * pconfigure gets asked first, since a tree that says how to
+         * build itself the pconfigure way meant it. */
+        auto picked = build_system::ptr(NULL);
+        for (const auto& available: _build_systems) {
+            if (available->can_build(path) == false)
+                continue;
+            picked = available;
+            break;
+        }
+
+        if (picked == NULL) {
+            std::cerr << "Unable to find a build system for '"
+                      << path
+                      << "'\n  from '"
+                      << std::to_string(cmd->debug())
+                      << "'\n"
+                      << "Build System Set:\n";
+            for (const auto& available: _build_systems)
+                std::cerr << "  " << available->name() << "\n";
+            abort();
+        }
+
+        /* A tree that two Configfiles both ask for is one tree, and
+         * only gets built once. */
+        for (const auto& bound: _vendored) {
+            if (bound->base() != path)
+                continue;
+            _configure_target = bound;
+            return;
+        }
+
+        /* Binding copies, so that the CONFIGUREOPTS that come after
+         * this land on this subproject rather than on every other
+         * subproject built the same way. */
+        auto bound = picked->bind(path, _stack.top());
+        _configure_target = bound;
+
+        if (picked->vendored() == false) {
+            /* Reading it is somebody else's job: this just says which
+             * one was asked for, relative to where pconfigure is
+             * running rather than to whoever asked. */
+            _pending_subprojects.push_back(path);
+            return;
+        }
+
+        _vendored.push_back(bound);
 
         return;
     }
@@ -457,6 +581,12 @@ no_opts_target:
     std::cerr << "Command "
               << std::to_string(cmd->type())
               << " needs an *OPTS target, but none exists\n";
+    abort();
+
+no_configure_target:
+    std::cerr << "Command "
+              << std::to_string(cmd->type())
+              << " needs a BUILD_SYSTEMS target, but none exists\n";
     abort();
 }
 

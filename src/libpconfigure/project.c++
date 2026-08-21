@@ -24,7 +24,6 @@
 #include "pick_language.h++"
 #include <cctype>
 #include <iostream>
-#include <unistd.h>
 
 project::project(const std::string& base,
                  const command_processor::ptr& processor)
@@ -35,13 +34,7 @@ project::project(const std::string& base,
 
 std::string project::normalize_base(const std::string& path)
 {
-    auto out = file_utils::normalize_path(path);
-
-    if (out == ".")
-        return "";
-    if (out.size() > 0 && out[out.size() - 1] != '/')
-        out += "/";
-    return out;
+    return file_utils::normalize_directory(path);
 }
 
 std::string project::prefix_variable(const std::string& base)
@@ -145,33 +138,17 @@ project::ptr project::read(const std::string& base,
                            const context::ptr& defaults,
                            std::set<std::string>& seen)
 {
+    /* The path arrived normalized, and whether this is a pconfigure
+     * project at all was decided before it got here: picking a build
+     * system for a directory is what a SUBPROJECTS does, and only the
+     * ones that turned out to be pconfigure projects come this way. */
     auto normalized = normalize_base(base);
-
-    if (normalized.size() == 0) {
-        std::cerr << "SUBPROJECTS can't point at the project itself\n";
-        abort();
-    }
-
-    /* Everything here names files relative to where pconfigure ran,
-     * and a Makefile written outside that tree would be talking about
-     * a directory this build doesn't own. */
-    if (normalized.compare(0, 3, "../") == 0) {
-        std::cerr << "SUBPROJECTS can't reach outside the project: '"
-                  << base << "'\n";
-        abort();
-    }
 
     /* A project that two others both pull in is one project, and only
      * gets read once -- which is also what stops a project that
      * somehow reaches itself from recursing forever. */
     if (seen.insert(normalized).second == false)
         return NULL;
-
-    if (access((normalized + "Configfile").c_str(), R_OK) != 0
-        && access((normalized + "Configfiles/main").c_str(), R_OK) != 0) {
-        std::cerr << "No Configfile in subproject '" << normalized << "'\n";
-        abort();
-    }
 
     auto processor = std::make_shared<command_processor>(normalized, defaults);
     return read(processor, seen);
@@ -197,6 +174,13 @@ std::vector<project::ptr> project::flatten(const ptr& root)
 
 void project::generate_targets(void)
 {
+    /* A vendored tree's rules belong to this project: the tree
+     * already has a Makefile and it's the tree's own, so there's
+     * nowhere else for them to go. */
+    for (const auto& vendored: _processor->vendored())
+        for (const auto& target: vendored->targets())
+            _targets.push_back(target);
+
     for (const auto& context: _processor->output_contexts()) {
         if (context->debug == true)
             std::cerr << "Building Context: " << context->cmd->data() << "\n";
@@ -244,6 +228,17 @@ makefile::target::ptr project::cache_clean_target(const std::vector<ptr>& projec
         auto obj_dirs = std::map<std::string, bool>();
         for (const auto& context: project->_processor->output_contexts())
             obj_dirs[context->obj_dir] = true;
+        for (const auto& vendored: project->_processor->vendored())
+            obj_dirs[vendored->ctx()->obj_dir] = true;
+
+        /* A vendored tree builds into here too, and what it puts in
+         * its output directory is between it and its own build
+         * system: the Makefile says nothing about any of it, so
+         * reading the Makefile back would decide the whole thing was
+         * stale and throw away a build that's perfectly good. */
+        auto prune = std::string();
+        for (const auto& vendored: project->_processor->vendored())
+            prune += " -not -path '" + vendored->output_dir() + "/*'";
 
         for (const auto& pair: obj_dirs) {
             const auto& dir = pair.first;
@@ -252,12 +247,13 @@ makefile::target::ptr project::cache_clean_target(const std::vector<ptr>& projec
              * that has one in it would otherwise end the command. */
             commands.push_back(
                 "comm -23 "
-                "<(find " + dir + " -type f | sort) "
+                "<(find " + dir + " -type f" + prune + " | sort) "
                 "<(sed -n 's|\\(^" + dir + "/[^[:space:]:]*\\):.*|\\1|p' "
                 + project->makefile_path() + " | sort -u) "
                 "| xargs -r rm -f"
             );
-            commands.push_back("find " + dir + " -type d -empty -delete");
+            commands.push_back(
+                "find " + dir + " -type d -empty" + prune + " -delete");
         }
     }
 
@@ -276,6 +272,13 @@ makefile::target::ptr project::distclean_target(const std::vector<ptr>& projects
     auto dirs = std::map<std::string, bool>();
     auto makefiles = std::vector<std::string>();
     for (const auto& project: projects) {
+        /* A vendored tree builds into this project's object
+         * directory, so it's already covered by whatever covers that
+         * -- but a project that vendors something and builds nothing
+         * of its own has no contexts to find it through. */
+        for (const auto& vendored: project->_processor->vendored())
+            dirs[vendored->ctx()->obj_dir] = true;
+
         for (const auto& context: project->_processor->output_contexts()) {
             dirs[context->bin_dir] = true;
             dirs[context->check_dir] = true;

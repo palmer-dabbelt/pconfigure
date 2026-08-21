@@ -32,10 +32,12 @@
 enum class command_type {
     AUTODEPS,
     BINARIES,
+    BUILD_SYSTEMS,
     COMPAT,
     COMPILEOPTS,
     COMPILER,
     CONFIG,
+    CONFIGUREOPTS,
     DEPLIBS,
     GENERATE,
     HDRDIR,
@@ -71,10 +73,12 @@ static const std::vector<command_type> all_command_types =
 {
     command_type::AUTODEPS,
     command_type::BINARIES,
+    command_type::BUILD_SYSTEMS,
     command_type::COMPAT,
     command_type::COMPILEOPTS,
     command_type::COMPILER,
     command_type::CONFIG,
+    command_type::CONFIGUREOPTS,
     command_type::DEPLIBS,
     command_type::GENERATE,
     command_type::HDRDIR,
@@ -113,6 +117,8 @@ namespace std {
             return "AUTODEPS";
         case command_type::BINARIES:
             return "BINARIES";
+        case command_type::BUILD_SYSTEMS:
+            return "BUILD_SYSTEMS";
         case command_type::COMPAT:
             return "COMPAT";
         case command_type::COMPILEOPTS:
@@ -121,6 +127,8 @@ namespace std {
             return "COMPILER";
         case command_type::CONFIG:
             return "CONFIG";
+        case command_type::CONFIGUREOPTS:
+            return "CONFIGUREOPTS";
         case command_type::DEPLIBS:
             return "DEPLIBS";
         case command_type::GENERATE:
