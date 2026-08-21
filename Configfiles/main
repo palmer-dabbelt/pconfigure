@@ -178,6 +178,7 @@ TESTSRC     += libdir.bash
 TESTSRC     += srcdir.bash
 TESTSRC     += cflags.bash
 TESTSRC     += testexec.bash
+TESTSRC     += implied-deps.bash
 
 # These command-line tools are only ever run by the tests below, so
 # they're built but never installed.
