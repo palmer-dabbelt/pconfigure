@@ -139,6 +139,13 @@ public:
     /* The path to the header compiler. */
     std::string phc;
 
+    /* The entitlements this target's code signature should carry,
+     * named as a path to a plist relative to the project it belongs
+     * to, or empty when it should carry none.  This only means
+     * anything on macOS, where the signature is the only place the
+     * kernel looks to find out what a binary is allowed to do. */
+    std::string entitlements;
+
     /***************************************************************
      * Filled in after language::find_all_children                 *
      ***************************************************************/
@@ -186,6 +193,7 @@ public:
             const std::shared_ptr<language_list>& languages,
             bool autodeps,
             const std::string& phc,
+            const std::string& entitlements,
             const std::vector<ptr>& children);
 
     virtual ~context(void) {}

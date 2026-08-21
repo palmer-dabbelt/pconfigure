@@ -49,6 +49,7 @@ context::context(const std::string& base)
       languages(std::make_shared<language_list>()),
       autodeps(true),
       phc(makefile::tool_command("phc")),
+      entitlements(""),
       children()
 {
 }
@@ -78,6 +79,7 @@ context::context(const context_type& _type,
                  const language_list::ptr& _languages,
                  bool _autodeps,
                  const std::string& _phc,
+                 const std::string& _entitlements,
                  const std::vector<ptr>& _children)
     : type(_type),
       prefix(_prefix),
@@ -104,6 +106,7 @@ context::context(const context_type& _type,
       languages(_languages),
       autodeps(_autodeps),
       phc(_phc),
+      entitlements(_entitlements),
       children(_children)
 {
 }
@@ -148,6 +151,7 @@ context::ptr context::dup(const context_type& type,
                                      this->languages->dup(),
                                      this->autodeps,
                                      this->phc,
+                                     this->entitlements,
                                      children);
 }
 
