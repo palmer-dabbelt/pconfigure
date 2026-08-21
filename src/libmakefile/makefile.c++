@@ -22,9 +22,12 @@
 #include "self_path.h++"
 #include <iostream>
 
-makefile::makefile::makefile(bool verbose, const std::string& obj_dir)
+makefile::makefile::makefile(bool verbose,
+                             const std::string& obj_dir,
+                             const path_prefix& prefix)
 : _verbose(verbose),
-  _obj_dir(obj_dir)
+  _obj_dir(obj_dir),
+  _prefix(prefix)
 {
 }
 
@@ -39,6 +42,27 @@ void makefile::makefile::add_dep(const std::string& target,
     _extra_deps.push_back(std::make_pair(target, dep));
 }
 
+void makefile::makefile::add_standalone_target(const target::ptr& target)
+{
+    _standalone_targets.push_back(target);
+}
+
+void makefile::makefile::add_subproject(const std::string& variable,
+                                        const std::string& base)
+{
+    _subprojects.push_back(std::make_pair(variable, base));
+}
+
+void makefile::makefile::add_check_stamp(const std::string& stamp)
+{
+    _check_stamps.push_back(stamp);
+}
+
+void makefile::makefile::add_check_dir(const std::string& dir)
+{
+    _check_dirs.push_back(dir);
+}
+
 void makefile::makefile::write_to_file(const std::string& filename)
 {
     auto file = fopen(filename.c_str(), "w");
@@ -48,6 +72,14 @@ void makefile::makefile::write_to_file(const std::string& filename)
     }
 
     fprintf(file, "SHELL=/bin/bash\n\n");
+
+    /* A project that a parent can include finds itself through a
+     * variable, which is empty when make is run here and set by the
+     * parent when it isn't.  Everything below is written in terms of
+     * it, so it has to come first. */
+    if (_prefix.included() == true)
+        fprintf(file, "%s ?=\n\n", _prefix.variable().c_str());
+
     fprintf(file, ".PHONY: all\n");
     fprintf(file, ".PHONY: clean\n");
     fprintf(file, ".PHONY: cache-clean\n");
@@ -56,29 +88,69 @@ void makefile::makefile::write_to_file(const std::string& filename)
     fprintf(file, ".PHONY: uninstall\n");
     fprintf(file, "all:\n\n");
 
+    /* The subprojects come after "all" so that it stays the rule make
+     * picks when it isn't told what to build, and before everything
+     * else so that a subproject's rules are in hand by the time
+     * anything here refers to them. */
+    for (const auto& subproject: _subprojects) {
+        fprintf(file, "%s ?= %s\n",
+                subproject.first.c_str(),
+                _prefix.rewrite(subproject.second).c_str());
+        fprintf(file, "include $(%s)Makefile\n\n", subproject.first.c_str());
+    }
+
     auto stamp = check_stamp();
     for (const auto& target: _targets)
-        target->write_to_file(file, _verbose, stamp);
+        target->write_to_file(file, _verbose, stamp, _prefix);
 
     if (_extra_deps.size() > 0) {
         fprintf(file, "# Dependencies implied by the command lines above.\n");
         for (const auto& dep: _extra_deps)
-            fprintf(file, "%s: %s\n", dep.first.c_str(), dep.second.c_str());
+            fprintf(file, "%s: %s\n",
+                    _prefix.rewrite(dep.first).c_str(),
+                    _prefix.rewrite(dep.second).c_str());
         fprintf(file, "\n");
     }
 
     auto q = _verbose ? "" : "@";
     auto ptest = tool_command("ptest");
-    auto quiet_report = _obj_dir + "/check-report-quiet";
-    auto report = _obj_dir + "/check-report";
-    fprintf(file, "%s:\n\t%smkdir -p %s\n\t%sdate > $@\n\n",
-            stamp.c_str(), q, _obj_dir.c_str(), q);
-    fprintf(file, "%s: %s\n\t%s%s --quiet --no-check-make-check > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp; exit 1)\n\n",
-            quiet_report.c_str(), stamp.c_str(), q, ptest.c_str());
-    fprintf(file, "%s: %s\n\t%s%s --no-check-make-check > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp; exit 1)\n\n",
-            report.c_str(), stamp.c_str(), q, ptest.c_str());
+    auto obj_dir = _prefix.rewrite(_obj_dir);
+    auto quiet_report = obj_dir + "/check-report-quiet";
+    auto report = obj_dir + "/check-report";
+
+    /* The stamp is named after this project's object directory, so
+     * every project has its own and a parent's waits on its
+     * children's. */
+    fprintf(file, "%s:", stamp.c_str());
+    for (const auto& check_stamp: _check_stamps)
+        fprintf(file, " %s", check_stamp.c_str());
+    fprintf(file, "\n\t%smkdir -p %s\n\t%sdate > $@\n\n",
+            q, obj_dir.c_str(), q);
+
+    /* Everything from here down is a rule that every project would
+     * write out under the same name, so only the project make was
+     * actually run in gets to have them.  When a parent included this
+     * one, the parent's copies are the ones that run, and they cover
+     * this project too. */
+    if (_prefix.included() == true)
+        fprintf(file, "ifeq ($(%s),)\n\n", _prefix.variable().c_str());
+
+    for (const auto& target: _standalone_targets)
+        target->write_to_file(file, _verbose, stamp, _prefix);
+
+    auto check_dirs = std::string();
+    for (const auto& dir: _check_dirs)
+        check_dirs += " --check-dir " + _prefix.rewrite(dir);
+
+    fprintf(file, "%s: %s\n\t%s%s --quiet --no-check-make-check%s > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp; exit 1)\n\n",
+            quiet_report.c_str(), stamp.c_str(), q, ptest.c_str(), check_dirs.c_str());
+    fprintf(file, "%s: %s\n\t%s%s --no-check-make-check%s > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp; exit 1)\n\n",
+            report.c_str(), stamp.c_str(), q, ptest.c_str(), check_dirs.c_str());
     fprintf(file, "check: %s\n\n", quiet_report.c_str());
     fprintf(file, "report: %s\n\t%scat %s\n\n", report.c_str(), q, report.c_str());
+
+    if (_prefix.included() == true)
+        fprintf(file, "endif\n\n");
 
     fclose(file);
 }

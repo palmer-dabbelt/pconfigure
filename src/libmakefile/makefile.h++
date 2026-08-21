@@ -24,6 +24,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include "path_prefix.h++"
 #include "target.h++"
 
 namespace makefile {
@@ -48,17 +49,39 @@ namespace makefile {
          * recipe attached. */
         std::vector<std::pair<std::string, std::string>> _extra_deps;
 
+        /* Where this Makefile sits relative to whoever runs make. */
+        const path_prefix _prefix;
+
+        /* Targets that only make sense when make was run in this
+         * project rather than in a parent that included it, because
+         * a parent has its own. */
+        std::vector<target::ptr> _standalone_targets;
+
+        /* The Makefiles of the projects this one pulls in, along with
+         * the variables that say where they are. */
+        std::vector<std::pair<std::string, std::string>> _subprojects;
+
+        /* The stamp files of those projects, which this one's stamp
+         * waits on so that "make check" tests everything. */
+        std::vector<std::string> _check_stamps;
+
+        /* The directories ptest should look in for test results,
+         * which is one per project. */
+        std::vector<std::string> _check_dirs;
+
     public:
         /* Creates a new "empty" Makefile -- note that this actually
          * contains some about of default targets and such that you
          * don't want if you're going to be */
-        makefile(bool verbose = false, const std::string& obj_dir = "obj");
+        makefile(bool verbose = false,
+                 const std::string& obj_dir = "obj",
+                 const path_prefix& prefix = path_prefix());
 
     public:
         /* The name of the stamp file that "make check" hangs its
          * tests off of. */
         std::string check_stamp(void) const
-            { return _obj_dir + "/check-all-done"; }
+            { return _prefix.rewrite(_obj_dir + "/check-all-done"); }
 
     public:
         /* Adds a target to this makefile. */
@@ -70,6 +93,23 @@ namespace makefile {
          * to make a target depend on something another Makefile knows
          * how to build. */
         void add_dep(const std::string& target, const std::string& dep);
+
+        /* Adds a target that's only written out for a standalone
+         * build.  These are the ones that carry a recipe and a name
+         * that every project uses, so two of them in one make run
+         * would be two recipes for the same target. */
+        void add_standalone_target(const target::ptr& target);
+
+        /* Pulls in another project's Makefile.  "base" is where that
+         * project is relative to where pconfigure ran, and "variable"
+         * is the make variable it uses to find itself. */
+        void add_subproject(const std::string& variable,
+                            const std::string& base);
+
+        /* Waits on another project's "make check" stamp, and looks in
+         * another project's directory for test results. */
+        void add_check_stamp(const std::string& stamp);
+        void add_check_dir(const std::string& dir);
 
         /* Writes this makefilie out to a text file. */
         void write_to_file(const std::string& filename);
