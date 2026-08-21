@@ -1,6 +1,7 @@
 verbose="false"
 quiet="false"
 check_make_check="true"
+check_dirs=()
 while [[ "$1" == --* ]]
 do
     if [[ "$1" == "--verbose" ]]
@@ -12,11 +13,22 @@ do
     elif [[ "$1" == "--no-check-make-check" ]]
     then
         check_make_check="false"
+    elif [[ "$1" == "--check-dir" ]]
+    then
+        # One per project: a build with subprojects has its test
+        # results spread across all of them.
+        shift
+        check_dirs+=("$1")
     else
         break
     fi
     shift
 done
+
+if [[ "${#check_dirs[@]}" == "0" ]]
+then
+    check_dirs=(check)
+fi
 
 if [[ "$1" == "--check" ]]
 then
@@ -37,24 +49,56 @@ then
         fi
     fi
 
-    # If there's no test directory then just give up
-    if test ! -d check
+    # If there's no test directory anywhere then just give up
+    existing=()
+    for dir in "${check_dirs[@]}"
+    do
+        if test -d "$dir"
+        then
+            existing+=("$dir")
+        fi
+    done
+
+    if [[ "${#existing[@]}" == "0" ]]
     then
         echo "No tests"
         exit 0
     fi
 
+    # Names a test by the project it belongs to, so that two projects
+    # with a test of the same name stay tellable apart.
+    label() {
+        local dir="$1"
+        local file="$2"
+        local rest="${file#$dir/}"
+        local project="$(dirname "$dir")"
+
+        if [[ "$project" == "." ]]
+        then
+            echo "$rest"
+        else
+            echo "$project/$rest"
+        fi
+    }
+
     # This subshell is necessary to keep these variables after the
     # loop terminates
-    find check -type f | sort | {
+    for dir in "${existing[@]}"
+    do
+        find "$dir" -type f | sort | while read f
+        do
+            printf '%s\t%s\n' "$dir" "$f"
+        done
+    done | {
         run="0"
         pass="0"
         fail="0"
         error="0"
 
-        while read f
+        while read dir f
         do
             run=$(expr $run + 1)
+            name="$(label "$dir" "$f")"
 
             # This is a special case that's used for printing the
             # success/failure of test cases
@@ -63,12 +107,12 @@ then
             then
                 if [[ "$quiet" != "true" ]]
                 then
-                    echo -e "  PASS\t$(echo "$f" | cut -d'/' -f2-)"
+                    echo -e "  PASS\t$name"
                 fi
                 pass=$(expr $pass + 1)
             elif [[ "$ret" == "1" ]]
             then
-                echo -e "* FAIL\t$(echo "$f" | cut -d'/' -f2-)"
+                echo -e "* FAIL\t$name"
                 fail=$(expr $fail + 1)
 
                 if [[ "$verbose" == "true" ]]
@@ -76,7 +120,7 @@ then
                     cat "$f"
                 fi
             else
-                echo -e "! EROR\t$(echo "$f" | cut -d'/' -f2-)"
+                echo -e "! EROR\t$name"
                 error=$(expr $error + 1)
 
                 if [[ "$verbose" == "true" ]]
