@@ -38,6 +38,7 @@ enum class command_type {
     COMPILER,
     CONFIG,
     CONFIGUREOPTS,
+    CROSS_COMPILE,
     DEPLIBS,
     ENTITLEMENTS,
     GENERATE,
@@ -54,7 +55,6 @@ enum class command_type {
     SRCDIR,
     SUBPROJECTS,
     TESTDEPS,
-    TESTDIR,
     TESTEXECS,
     TESTS,
     TESTSRC,
@@ -80,6 +80,7 @@ static const std::vector<command_type> all_command_types =
     command_type::COMPILER,
     command_type::CONFIG,
     command_type::CONFIGUREOPTS,
+    command_type::CROSS_COMPILE,
     command_type::DEPLIBS,
     command_type::ENTITLEMENTS,
     command_type::GENERATE,
@@ -96,7 +97,6 @@ static const std::vector<command_type> all_command_types =
     command_type::SRCDIR,
     command_type::SUBPROJECTS,
     command_type::TESTDEPS,
-    command_type::TESTDIR,
     command_type::TESTEXECS,
     command_type::TESTS,
     command_type::TESTSRC,
@@ -131,6 +131,8 @@ namespace std {
             return "CONFIG";
         case command_type::CONFIGUREOPTS:
             return "CONFIGUREOPTS";
+        case command_type::CROSS_COMPILE:
+            return "CROSS_COMPILE";
         case command_type::DEPLIBS:
             return "DEPLIBS";
         case command_type::ENTITLEMENTS:
@@ -163,8 +165,6 @@ namespace std {
             return "SUBPROJECTS";
         case command_type::TESTDEPS:
             return "TESTDEPS";
-        case command_type::TESTDIR:
-            return "TESTDIR";
         case command_type::TESTEXECS:
             return "TESTEXECS";
         case command_type::TESTS:

@@ -43,7 +43,10 @@ public:
     /* language_bash is the parent of all the base-like languages, these
      * arguments allow children to override some internal functionality so they
      * can compile slightly differently. */
-    virtual std::string compiler_command(void) const { return makefile::tool_command("pbashc"); }
+    virtual std::string
+    default_compiler_command(const context::ptr& ctx __attribute__((unused)))
+    const
+        { return makefile::tool_command("pbashc"); }
     virtual std::string compiler_pretty(void) const { return "BASH"; }
 
     /* Lists all the dependencies of a bash-like file -- these can be any sort

@@ -105,10 +105,39 @@ public:
     std::vector<std::string> compile_opts;
     std::vector<std::string> link_opts;
 
+    /* What to run to compile and link this target, or empty when
+     * whatever language ends up building it should decide.  These sit
+     * on the context rather than on the language because a project
+     * that cross-compiles one binary and builds another for the
+     * machine doing the building is still writing C in both. */
+    std::string compiler;
+    std::string linker;
+
+    /* The name every tool in the toolchain that builds this target
+     * starts with, or empty for the toolchain that builds things for
+     * the machine running the build.  This is the spelling kbuild has
+     * used for as long as anybody has been cross-compiling anything:
+     * a prefix rather than a list of programs, because a toolchain is
+     * a set of programs that were named together.
+     *
+     * It's kept apart from "compiler" on purpose.  Saying which
+     * machine a target is for is a different statement than saying
+     * what program to run, it's the one people actually want to make,
+     * and a language that has no idea what a cross toolchain would
+     * mean for it can ignore this and still be handed a COMPILER. */
+    std::string cross_compile;
+
     /* The list of internal libraries that this target depends on.
      * These need to be both linked in at link-time, and trigger a
      * re-link if they've changed. */
     std::vector<std::string> dep_libs;
+
+    /* The targets that have to exist before this context's tests are
+     * run, named as whole paths rather than as library names.  A test
+     * can want anything at all built first -- a tool that lives in a
+     * sibling project, most of all -- and there's no short name that
+     * covers all of that. */
+    std::vector<std::string> test_deps;
 
     /* The exact command issued, which allows all sorts of debugging
      * later. */
@@ -184,7 +213,11 @@ public:
             const std::string& src_path,
             const std::vector<std::string>& compile_opts,
             const std::vector<std::string>& link_opts,
+            const std::string& compiler,
+            const std::string& linker,
+            const std::string& cross_compile,
             const std::vector<std::string>& dep_libs,
+            const std::vector<std::string>& test_deps,
             const command::ptr& cmd,
             bool verbose,
             bool debug,
@@ -214,7 +247,40 @@ public:
         auto o = this->dup();
         o->compile_opts = std::vector<std::string>();
         o->link_opts = std::vector<std::string>();
+
+        /* Whatever was said about how to build this target was said
+         * to a different language than the one that's about to build
+         * it, and none of it can be expected to mean anything over
+         * there -- which goes for the name of the compiler just as
+         * much as for the options it was going to be handed. */
+        o->drop_toolchain();
         return o;
+    }
+
+    /* Forgets which toolchain builds this context, and everything
+     * under it.
+     *
+     * The sources of a target were copied from the target before any
+     * of this came up, so each of them is carrying its own copy of
+     * the answer and has to be asked again -- otherwise the objects
+     * come out built by one toolchain and the link that gathers them
+     * up is run by another, which fails late and reads like a
+     * corrupted object file rather than like a mistake in a
+     * Configfile.  Copies are made on the way down so that the
+     * context this was called on is left exactly as it was. */
+    void drop_toolchain(void)
+    {
+        compiler = "";
+        linker = "";
+        cross_compile = "";
+
+        auto dropped = std::vector<ptr>();
+        for (const auto& child: children) {
+            auto copy = child->dup();
+            copy->drop_toolchain();
+            dropped.push_back(copy);
+        }
+        children = dropped;
     }
 
     /* Strips this project's base off a directory, giving the path as
@@ -233,6 +299,13 @@ public:
             return dir.substr(base.size());
         return dir;
     }
+
+    /* The paths a TESTDEPS named, spelled the way the Makefile spells
+     * them: relative to where pconfigure ran, with the project this
+     * context belongs to already on the front.  Every one of them
+     * names something inside that project, since a TESTDEPS that
+     * reached outside was refused when it was read. */
+    std::vector<std::string> based_test_deps(void) const;
 
     /* Checks to see if the context matches one of the given types,
      * returning TRUE if it matches, and FALSE if it doesn't. */
@@ -257,6 +330,8 @@ public:
 public:
     void add_compileopt(const std::string& data);
     void add_linkopt(const std::string& data);
+    void set_compiler(const std::string& data) { compiler = data; }
+    void set_linker(const std::string& data) { linker = data; }
     const std::vector<std::string>& list_compile_opts(void) const
         { return compile_opts; }
     const std::vector<std::string>& list_link_opts(void) const

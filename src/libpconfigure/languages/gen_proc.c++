@@ -43,12 +43,7 @@ bool language_gen_proc::can_process(const context::ptr& ctx) const
         return false;
 
     case context_type::GENERATE:
-        return language::all_sources_match(
-            ctx,
-            {
-                std::regex(".*\\.proc"),
-            }
-            );
+        return language::all_sources_match(ctx, {".proc"});
     }
 
     std::cerr << "Internal error: bad context type "

@@ -19,6 +19,7 @@
  */
 
 #include "h.h++"
+#include "cxx.h++"
 #include "../language_list.h++"
 #include <assert.h>
 #include <unistd.h>
@@ -32,48 +33,14 @@ language_h* language_h::clone(void) const
 
 bool language_h::can_process(const context::ptr& ctx) const
 {
-    if(language::all_sources_match(ctx,
-                                   {std::regex(".*\\.h")})) {
-        return true;
-    }
-
-    /* This works around a C++11 regex bug in GCC versions prior to
-     * 4.9 -- specifically, I can't match the "c++" extension because
-     * the old regex implementation doesn't appear to support escaping
-     * the '+' character. */
-    if (language::all_sources_match(ctx, {std::regex(".*\\.h..")})) {
-        for (const auto& child: ctx->children) {
-            switch (child->type) {
-            case context_type::DEFAULT:
-            case context_type::GENERATE:
-            case context_type::LIBRARY:
-            case context_type::BINARY:
-            case context_type::TEST:
-            case context_type::HEADER:
-                break;
-
-            case context_type::SOURCE:
-            {
-                auto file = child->cmd->data();
-                if ((file.find(".h++", file.length() - 5) == std::string::npos)
-                    && (file.find(".h", file.length() - 3) == std::string::npos)) {
-                    return false;
-                }
-            }
-            }
-        }
-
-        return true;
-    }
-
-    return false;
+    /* The headers phc knows what to do with are C and C++ headers, so
+     * which names those go by is the C++ language's to say. */
+    return language::all_sources_match(ctx, cxx_header_extensions());
 }
 
 std::vector<makefile::target::ptr>
 language_h::targets(const context::ptr& ctx) const
 {
-    this->_phc = ctx->phc;
-
     auto bash_targets = language_bash::targets(ctx);
 
     for (const auto& t: bash_targets) {

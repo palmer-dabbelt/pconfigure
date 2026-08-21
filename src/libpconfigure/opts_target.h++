@@ -39,6 +39,13 @@ public:
     virtual void add_compileopt(const std::string& data) = 0;
     virtual void add_linkopt(const std::string& data) = 0;
 
+    /* These replace the command that gets run rather than adding to
+     * what it's handed, which is why they set instead of append:
+     * there's only ever one compiler, and the options are what stack
+     * up on top of it. */
+    virtual void set_compiler(const std::string& data) = 0;
+    virtual void set_linker(const std::string& data) = 0;
+
     /* These produce the current set of compile or link opts for this target,
      * which does enforce that some amount of implementation on the users of
      * this class.. */

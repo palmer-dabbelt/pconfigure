@@ -68,12 +68,7 @@ bool language_pkgconfig::can_process(const context::ptr& ctx) const
         return false;
 
     case context_type::LIBRARY:
-        return language::all_sources_match(
-            ctx,
-            {
-                std::regex(".*\\.pc"),
-            }
-            );
+        return language::all_sources_match(ctx, {".pc"});
     }
 
     std::cerr << "Internal error: bad context type "

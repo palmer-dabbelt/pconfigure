@@ -48,6 +48,7 @@ command_processor::command_processor(const std::string& base,
         _root->phc = defaults->phc;
         _root->verbose = defaults->verbose;
         _root->debug = defaults->debug;
+        _root->cross_compile = defaults->cross_compile;
     }
 
     /* Every project can build a pconfigure subproject without being
@@ -163,7 +164,15 @@ void command_processor::process(const command::ptr& cmd)
         return;
 
     case command_type::COMPILER:
-        goto unimplemented;
+        if (_opts_target == NULL)
+            goto no_opts_target;
+
+        if (cmd->check_operation("=") == false)
+            goto bad_op_eq;
+
+        _opts_target->set_compiler(cmd->data());
+
+        return;
 
     case command_type::CONFIG:
     {
@@ -186,6 +195,25 @@ void command_processor::process(const command::ptr& cmd)
             goto bad_op_pluseq;
 
         _configure_target->add_configureopt(cmd->data());
+
+        return;
+
+    /* Which machine the things below this are being built for, said
+     * the way every cross build has said it since kbuild: the name
+     * the toolchain's programs all start with.
+     *
+     * This lands on whatever context is open rather than on the
+     * current language, which is what makes it mean the same thing at
+     * every scope it can be written at.  At the top of a Configfile
+     * that's the whole project, and a project pulled in by a
+     * SUBPROJECTS inherits it the same way it inherits a PREFIX;
+     * after a BINARIES it's that one binary; after a SOURCES it's
+     * that one file. */
+    case command_type::CROSS_COMPILE:
+        if (cmd->check_operation("=") == false)
+            goto bad_op_eq;
+
+        _stack.top()->cross_compile = cmd->data();
 
         return;
 
@@ -344,7 +372,15 @@ void command_processor::process(const command::ptr& cmd)
     }
 
     case command_type::LINKER:
-        goto unimplemented;
+        if (_opts_target == NULL)
+            goto no_opts_target;
+
+        if (cmd->check_operation("=") == false)
+            goto bad_op_eq;
+
+        _opts_target->set_linker(cmd->data());
+
+        return;
 
     case command_type::LINKOPTS:
         if (_opts_target == NULL)
@@ -488,9 +524,60 @@ void command_processor::process(const command::ptr& cmd)
         return;
     }
 
+    /* Something that has to be built before this target's tests are
+     * run.  This is DEPLIBS' opposite number for the test side, and
+     * it takes a whole path rather than a library name because what a
+     * test wants first is usually a program rather than a library --
+     * and there's no short name that covers everything a test could
+     * possibly need. */
     case command_type::TESTDEPS:
-    case command_type::TESTDIR:
-        goto unimplemented;
+    {
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        if (_stack.top()->check_type({context_type::BINARY,
+                                      context_type::LIBRARY,
+                                      context_type::GENERATE,
+                                      context_type::TEST,}) == false) {
+            std::cerr << "Attempted to add TESTDEPS to a "
+                      << std::to_string(_stack.top()->type)
+                      << " context, which isn't supported"
+                      << "\n";
+            abort();
+        }
+
+        /* A project doesn't get to name anything outside itself.
+         * The question is asked of the path alone rather than of the
+         * path this project happens to sit at, so that it has the
+         * same answer whether this project is being built on its own
+         * or as part of something bigger -- a rule that changed with
+         * where make was run would be no rule at all.
+         *
+         * What a test in one project needs from another is a
+         * dependency of the build rather than of the test, and it
+         * goes on the link line where every other cross-project
+         * dependency goes -- through "ppkg-config", usually.  A test
+         * that really is about two projects at once is an
+         * integration test and belongs to the project that has both
+         * of them, where the path to either one is an ordinary path
+         * that doesn't leave the tree. */
+        auto named = file_utils::normalize_path(cmd->data());
+        if (named.compare(0, 3, "../") == 0
+            || (named.size() > 0 && named[0] == '/')) {
+            std::cerr << "TESTDEPS can't reach outside the project: '"
+                      << std::to_string(cmd->debug())
+                      << "'\n"
+                      << "  a test that needs something another project"
+                      << " builds wants it on the link line,\n"
+                      << "  and a test that's about both of them belongs to"
+                      << " whoever has both of them\n";
+            abort();
+        }
+
+        _stack.top()->test_deps.push_back(cmd->data());
+
+        return;
+    }
 
     case command_type::TESTS:
     {

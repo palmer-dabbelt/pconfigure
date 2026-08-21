@@ -24,6 +24,19 @@
 #include "../language.h++"
 #include <memory>
 
+/* Every name a C or C++ source file goes by, and every name a header
+ * that pairs with one goes by.  Which spelling a project picked is
+ * its own business, and pconfigure has to know all of them: the
+ * source that implements a header is found by taking the header's
+ * name apart, and a project that never wrote either name down still
+ * expects that to work.
+ *
+ * ".c" is missing from the source list on purpose.  That one belongs
+ * to C, and keeping it out of here is the whole of what stops the two
+ * languages from both claiming the same file. */
+const std::vector<std::string>& cxx_source_extensions(void);
+const std::vector<std::string>& cxx_header_extensions(void);
+
 /* C++ is probably the best supported of the pconfigure language
  * implementations, as it's the one that pconfigure itself is written
  * in. */
@@ -42,9 +55,11 @@ public:
 public:
     /* Allows sub-classes of this language to override the compiler and linker
      * strings. */
-    virtual std::string compiler_command(void) const { return "${CXX} -x c++ ${CXXFLAGS}"; }
+    virtual std::string
+    default_compiler_command(const context::ptr& ctx) const;
     virtual std::string compiler_pretty (void) const { return "C++";    }
-    virtual std::string linker_command  (void) const { return "${CXX} ${LDFLAGS} ${CXXFLAGS}"; }
+    virtual std::string
+    default_linker_command(const context::ptr& ctx) const;
     virtual std::string linker_pretty   (void) const { return "LD++";   }
 
 public:

@@ -152,6 +152,13 @@ private:
      * object cache, and undoing a configure. */
     makefile::target::ptr cache_clean_target(const std::vector<ptr>& projects) const;
     makefile::target::ptr distclean_target(const std::vector<ptr>& projects) const;
+
+    /* Writes down where the test results this project is responsible
+     * for end up, so that "ptest" run on its own can find them.  The
+     * Makefile knows this already -- it's the same list its report
+     * rules hand along -- but a report you can only get by running
+     * make is no use on a build that doesn't build. */
+    void write_check_dirs(const std::vector<ptr>& aggregated) const;
 };
 
 #endif

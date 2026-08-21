@@ -58,6 +58,37 @@
  *   --configure OPT=n    .config, a quoted value is a string, and
  *   --configure OPT="s"  anything else is used as a value.  Later
  *                        ones win, so the order matters.
+ *
+ *   --merge-config FILE  Merge a configuration fragment on top of the
+ *                        defconfig, before any --configure is set.
+ *                        The file is named relative to the project
+ *                        that asked for it rather than to the tree,
+ *                        since it's that project's statement about
+ *                        how it wants somebody else's tree built.
+ *
+ *   --make-var NAME=VAL  Put a variable on the sub-make's command
+ *                        line, where it beats whatever the tree's own
+ *                        Makefile has to say about it.
+ *
+ *   --env NAME=VALUE     Put a variable in the environment the tree
+ *                        is built in, where the tree's own Makefile
+ *                        is allowed to disagree with it.  Either of
+ *                        these reaches the Makefile spelled exactly
+ *                        the way it was written, so "$(abspath x)"
+ *                        and "$(PATH)" mean what they say.
+ *
+ *   --target NAME        Ask the tree for a target rather than for
+ *                        whatever it builds when it's asked for
+ *                        nothing.  May be given more than once, and
+ *                        they're asked for one at a time in the order
+ *                        they were given.
+ *
+ *   --depend PATH        Something the build has to wait for, and
+ *   --depend-config PATH something the configuration has to wait for.
+ *                        Either a file, or another vendored
+ *                        subproject of the same project -- which
+ *                        means waiting for that tree to be built
+ *                        rather than for its directory to change.
  */
 class build_system_kconfig: public build_system {
 protected:
@@ -80,6 +111,37 @@ protected:
      * overwrite an earlier one. */
     std::vector<option> _options;
 
+    /* The configuration fragments to merge on top of the defconfig,
+     * in the order they were given, which is the order the tree's own
+     * merge program reads them in and therefore the order in which a
+     * later one wins. */
+    std::vector<std::string> _merges;
+
+    /* Variables to put on the sub-make's command line.  A variable
+     * given to make this way beats whatever the tree's own Makefile
+     * says, which is the point: it's how you tell somebody else's
+     * build system something it never asked to be told. */
+    std::vector<std::string> _make_vars;
+
+    /* The environment the vendored build system runs in.  An
+     * environment variable and a make command-line variable are not
+     * the same thing: the tree's own Makefile is allowed to override
+     * this one and isn't allowed to override a --make-var, which is
+     * exactly the difference you want for a PATH. */
+    std::vector<std::string> _env;
+
+    /* What to ask the vendored tree for.  Empty means whatever its
+     * Makefile does when it's run with no target at all, which is
+     * what a tree that builds one thing wants and what this did
+     * before anybody asked for anything else. */
+    std::vector<std::string> _make_targets;
+
+    /* Edges that nothing can be inferred from: a vendored tree says
+     * nothing about what it reads outside itself, and one vendored
+     * tree says nothing at all about another. */
+    std::vector<std::string> _depends;
+    std::vector<std::string> _config_depends;
+
 public:
     build_system_kconfig(const std::string& name);
     virtual ~build_system_kconfig(void) {}
@@ -89,7 +151,8 @@ public:
     build_system* clone(void) const;
     bool can_build(const std::string& base) const;
     void add_configureopt(const std::string& opt);
-    std::vector<makefile::target::ptr> targets(void) const;
+    std::vector<makefile::target::ptr>
+    targets(const std::vector<build_system::ptr>& peers) const;
 
 protected:
     /* Takes one CONFIGUREOPTS, and answers whether it was one of
@@ -109,6 +172,39 @@ protected:
                                     const std::string& flag);
 
 protected:
+    /* The variables a CONFIGUREOPTS put on the sub-make's command
+     * line, with a leading space.  These come after submake_flags(),
+     * so a tree that insists on something gets to say it first and
+     * the person configuring the build gets the last word -- which is
+     * what a make command-line variable means anyway. */
+    std::string make_var_flags(void) const;
+
+    /* Runs a command with the environment a CONFIGUREOPTS asked for.
+     * These go in front of the whole command rather than after the
+     * program's name, which is what makes them environment variables
+     * rather than arguments -- and the two mean opposite things to
+     * make. */
+    std::string with_env(const std::string& command) const;
+
+    /* A file a CONFIGUREOPTS named, spelled relative to where
+     * pconfigure ran.  These are written relative to the project that
+     * pulled the vendored tree in, the same way a SUBPROJECTS is,
+     * since that's the project they belong to. */
+    std::string based_file(const std::string& flag,
+                           const std::string& path) const;
+
+    /* What one of the --depend paths actually names.  A path that
+     * turns out to be another vendored tree in this run becomes that
+     * tree's stamp rather than its directory, which is the difference
+     * between "wait for it to be built" and "wait for the directory
+     * to change" -- and only the first of those is what anybody
+     * means. */
+    std::string resolve_depend(
+        const std::string& flag,
+        const std::string& path,
+        const std::vector<build_system::ptr>& peers) const;
+
+protected:
     /* The files the dependency guess starts from, which is most of
      * what tells one of these trees from another. */
     virtual kconfig_deps::roots dep_roots(void) const;
@@ -119,6 +215,22 @@ protected:
      * for us. */
     virtual std::string config_tool(void) const
         { return base() + "scripts/config"; }
+
+    /* The tree's own program for merging a fragment into a .config.
+     * Merging isn't appending: a fragment that sets an option the
+     * base file already set has to replace it rather than be read
+     * twice, and working out which lines those are is a job for the
+     * tree's own program the same way editing one is. */
+    virtual std::string merge_config_tool(void) const
+        { return base() + "scripts/kconfig/merge_config.sh"; }
+
+    /* TRUE for a tree that builds what it's asked to build with the
+     * toolchain it's handed, which is what CROSS_COMPILE means and
+     * where everybody else got the spelling from.  A tree that makes
+     * its own toolchain before it makes anything with it has no use
+     * for the one this project was configured with, and says so. */
+    virtual bool wants_cross_compile(void) const
+        { return true; }
 
     /* Anything else the vendored make wants on its command line,
      * with a leading space.  Empty for kbuild, which is told

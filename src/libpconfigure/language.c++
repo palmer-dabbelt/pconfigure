@@ -19,6 +19,7 @@
  */
 
 #include "language.h++"
+#include "string_utils.h++"
 #include <iostream>
 
 language::language(const std::vector<std::string>& compile_opts,
@@ -39,7 +40,7 @@ void language::add_linkopt(const std::string& data)
 }
 
 bool language::all_sources_match(const context::ptr& ctx,
-                                 const std::vector<std::regex>& rxs)
+                                 const std::vector<std::string>& extensions)
 {
     for (const auto& child: ctx->children) {
         switch (child->type) {
@@ -53,13 +54,12 @@ bool language::all_sources_match(const context::ptr& ctx,
         case context_type::HEADER:
         case context_type::SOURCE:
         {
-            size_t matched = 0;
-            for (const auto& rx: rxs) {
-                if (std::regex_match(child->cmd->data(), rx))
-                    matched++;
-            }
+            auto matched = false;
+            for (const auto& extension: extensions)
+                if (string_utils::has_extension(child->cmd->data(), extension))
+                    matched = true;
 
-            if (matched == 0)
+            if (matched == false)
                 return false;
 
             break;
