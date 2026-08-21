@@ -20,6 +20,7 @@
 
 #include "project.h++"
 #include "commands.h++"
+#include "file_utils.h++"
 #include "pick_language.h++"
 #include <cctype>
 #include <iostream>
@@ -34,29 +35,12 @@ project::project(const std::string& base,
 
 std::string project::normalize_base(const std::string& path)
 {
-    auto parts = std::vector<std::string>();
-    auto part = std::string();
+    auto out = file_utils::normalize_path(path);
 
-    for (size_t i = 0; i <= path.size(); ++i) {
-        if (i < path.size() && path[i] != '/') {
-            part += path[i];
-            continue;
-        }
-
-        if (part.size() == 0 || part == ".") {
-            /* "sub//x" and "sub/./x" are just "sub/x". */
-        } else if (part == ".." && parts.size() > 0 && parts.back() != "..") {
-            parts.pop_back();
-        } else {
-            parts.push_back(part);
-        }
-
-        part = "";
-    }
-
-    auto out = std::string();
-    for (const auto& p: parts)
-        out += p + "/";
+    if (out == ".")
+        return "";
+    if (out.size() > 0 && out[out.size() - 1] != '/')
+        out += "/";
     return out;
 }
 
@@ -168,6 +152,15 @@ project::ptr project::read(const std::string& base,
         abort();
     }
 
+    /* Everything here names files relative to where pconfigure ran,
+     * and a Makefile written outside that tree would be talking about
+     * a directory this build doesn't own. */
+    if (normalized.compare(0, 3, "../") == 0) {
+        std::cerr << "SUBPROJECTS can't reach outside the project: '"
+                  << base << "'\n";
+        abort();
+    }
+
     /* A project that two others both pull in is one project, and only
      * gets read once -- which is also what stops a project that
      * somehow reaches itself from recursing forever. */
@@ -182,6 +175,15 @@ project::ptr project::read(const std::string& base,
 
     auto processor = std::make_shared<command_processor>(normalized, defaults);
     return read(processor, seen);
+}
+
+std::set<std::string> project::reachable(void) const
+{
+    auto out = std::set<std::string>{_base};
+    for (const auto& child: _children)
+        for (const auto& base: child->reachable())
+            out.insert(base);
+    return out;
 }
 
 std::vector<project::ptr> project::flatten(const ptr& root)
@@ -326,8 +328,7 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
         out->add_target(target);
 
     for (const auto& dep: implied)
-        if (_by_name.find(dep.target) != _by_name.end())
-            out->add_dep(dep.target, dep.dep);
+        out->add_dep(dep.target, dep.dep);
 
     /* A project's "make check" stamp waits on its children's, so that
      * asking any one project to run its tests runs the tests of

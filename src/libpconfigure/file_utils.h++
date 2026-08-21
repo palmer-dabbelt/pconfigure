@@ -46,6 +46,14 @@ namespace file_utils {
         std::string path,
         std::vector<std::string> args = std::vector<std::string>()
         );
+
+    /* Tidies a path into the one spelling of it that everything else
+     * will use: no "." components, no doubled slashes, and no ".."
+     * that something else can absorb.  Two paths that name the same
+     * file have to come out of here identical, or the things that
+     * match paths against each other will decide they're different
+     * files. */
+    std::string normalize_path(const std::string& path);
 }
 
 #endif

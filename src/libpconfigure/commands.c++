@@ -159,45 +159,37 @@ command::ptr parse_line(const configfile_line& line)
     return cmd;
 }
 
-/* Workaround for non GNU systems */
-#ifndef _GNU_SOURCE
-static char* get_current_dir_name()
-{
-    size_t bufsz = 1024;
-    char *malloced_ptr = (char*) malloc(bufsz);
-    while ((getcwd(malloced_ptr, bufsz) == NULL) && errno == ERANGE)
-        malloced_ptr = (char*) realloc(malloced_ptr, (bufsz *= 2));
-    return malloced_ptr;
-}
-#endif
-
 std::vector<configfile_line> lines_from_file(const std::string& srcpath,
                                              const std::string& filename)
 {
     auto out = std::vector<configfile_line>();
-    auto origpwd = [&]()
-        {
-            auto malloced_ptr = get_current_dir_name();
-            auto strout = std::string(malloced_ptr);
-            free(malloced_ptr);
-            return strout;
-        }();
 
-    auto file = [&]()
+    /* An executable Configfile is a program that prints one, and it
+     * gets run from the directory it lives in: a project's generator
+     * only knows about its own tree, and this repository's own
+     * Configfiles start by cd'ing into "src".
+     *
+     * pconfigure itself deliberately stays where it was started,
+     * since every path it has worked out is relative to there. */
+    auto executable = access(filename.c_str(), X_OK) == 0;
+    auto file = [&]() -> FILE*
         {
-            if (access(("./" + filename).c_str(), X_OK) == 0)
-                return popen(("./" + filename).c_str(), "r");
-            if (access(filename.c_str(), X_OK) == 0) {
-                if (chdir(srcpath.c_str()) != 0) {
-                    perror("Unable to chdir");
-                    abort();
-                }
-                return popen(filename.c_str(), "r");
+            if (executable == true) {
+                auto directory = srcpath;
+                auto script = filename;
+                if (filename.compare(0, srcpath.size() + 1, srcpath + "/") == 0)
+                    script = filename.substr(srcpath.size() + 1);
+                else
+                    directory = ".";
+
+                return popen(("cd " + directory + " && exec ./" + script).c_str(),
+                             "r");
             }
+
             if (access(filename.c_str(), R_OK) == 0)
                 return fopen(filename.c_str(), "r");
 
-            return (FILE*)NULL;
+            return NULL;
         }();
     if (file == NULL)
         return out;
@@ -207,15 +199,10 @@ std::vector<configfile_line> lines_from_file(const std::string& srcpath,
     for (const auto& ln: file_utils::readlines_and_numbers(file))
         out.push_back(configfile_line(filename, ln.number, ln.line));
 
-    if (access(filename.c_str(), X_OK) == 0)
+    if (executable == true)
         pclose(file);
     else
         fclose(file);
-
-    if (chdir(origpwd.c_str()) != 0) {
-        perror("Unable to chdir");
-        abort();
-    }
 
     return out;
 }

@@ -78,3 +78,46 @@ file_utils::execlines(std::string path, std::vector<std::string> args)
 
     return out;
 }
+
+std::string file_utils::normalize_path(const std::string& path)
+{
+    auto absolute = path.size() > 0 && path[0] == '/';
+    auto trailing = path.size() > 0 && path[path.size() - 1] == '/';
+
+    auto parts = std::vector<std::string>();
+    auto part = std::string();
+    for (size_t i = 0; i <= path.size(); ++i) {
+        if (i < path.size() && path[i] != '/') {
+            part += path[i];
+            continue;
+        }
+
+        if (part.size() == 0 || part == ".") {
+            /* "a//b" and "a/./b" are just "a/b". */
+        } else if (part == ".."
+                   && parts.size() > 0
+                   && parts.back() != "..") {
+            parts.pop_back();
+        } else {
+            parts.push_back(part);
+        }
+
+        part = "";
+    }
+
+    auto out = std::string();
+    for (size_t i = 0; i < parts.size(); ++i) {
+        if (i > 0)
+            out += "/";
+        out += parts[i];
+    }
+
+    if (absolute == true)
+        out = "/" + out;
+    if (trailing == true && out.size() > 0 && out != "/")
+        out += "/";
+    if (out.size() == 0 && absolute == false)
+        out = trailing ? "" : ".";
+
+    return out;
+}

@@ -22,6 +22,7 @@
 #include <libmakefile/self_path.h++>
 #include "../language_list.h++"
 #include "../vector_util.h++"
+#include "../file_utils.h++"
 #include "../pick_language.h++"
 #include <pinclude.h++>
 #include <unistd.h>
@@ -436,7 +437,26 @@ language_cxx::link_target::generate_makefile_target(void) const
      * directory. */
     auto local_rpath = [&](const std::string& dir) -> std::string
         {
-            auto from_output = dotdot(_ctx->unbased(_ctx->bin_dir));
+            /* How far the file being linked is from the top of its
+             * own project.  That's the directory it gets copied into
+             * plus whatever directories its own name has in it -- a
+             * LIBEXEC called "sub/tool" lands one deeper than one
+             * called "tool", and has one further to walk back. */
+            auto output_dir = [&](void) -> std::string
+                {
+                    auto dir = (_ctx->type == context_type::LIBRARY)
+                        ? _ctx->unbased(_ctx->lib_dir)
+                        : _ctx->unbased(_ctx->bin_dir);
+
+                    auto name = _ctx->cmd->data();
+                    auto slash = name.find_last_of('/');
+                    if (slash != std::string::npos)
+                        dir += "/" + name.substr(0, slash);
+
+                    return dir;
+                }();
+
+            auto from_output = dotdot(output_dir);
 
             /* Relative to whatever's being loaded rather than to the
              * program doing the loading: a library that a subproject
@@ -1014,6 +1034,13 @@ static std::string relative_to_here(const std::string& dir)
     return dir.substr(here.size());
 }
 
+/* The name to ask for a directory by, which has to be the same name
+ * whoever built it offers it under. */
+static std::string canonical_dir(const std::string& dir)
+{
+    return file_utils::normalize_path(relative_to_here(dir));
+}
+
 /* The suffixes a linker will look for when it's asked for "-lfoo".
  * LIBRARIES are named explicitly in a Configfile, so a project picks
  * its own suffix and all of these are worth recognizing. */
@@ -1026,8 +1053,9 @@ static const std::vector<std::string> library_suffixes = {
 /* Turns a path like "lib/libfoo.so" into the "-Llib -lfoo" that would
  * name it, spelled the way needs() below spells it.  Returns an empty
  * string for a path that no "-l" could ever refer to. */
-static std::string library_capability(const std::string& path)
+static std::string library_capability(const std::string& raw)
 {
+    auto path = file_utils::normalize_path(raw);
     auto slash = path.find_last_of('/');
     auto dir = (slash == std::string::npos)
         ? std::string(".")
@@ -1058,6 +1086,7 @@ std::vector<std::string>
 language_cxx::provides(const makefile::target::ptr& target) const
 {
     auto out = language::provides(target);
+
 
     /* A library offers itself under the name a link line would use to
      * ask for it, so that whether it's called "libfoo.so" or
@@ -1120,7 +1149,7 @@ language_cxx::needs(const makefile::target::ptr& target) const
         if (arg.size() > 0
             && arg[0] != '-'
             && arg.find('/') != std::string::npos)
-            out.push_back("file:" + relative_to_here(arg));
+            out.push_back("file:" + canonical_dir(arg));
     }
 
     /* Which of the search directories a library actually turns up in
@@ -1128,7 +1157,7 @@ language_cxx::needs(const makefile::target::ptr& target) const
      * the ones that nothing builds go unanswered. */
     for (const auto& dir: search_dirs)
         for (const auto& name: library_names)
-            out.push_back("library:" + relative_to_here(dir) + "/" + name);
+            out.push_back("library:" + canonical_dir(dir) + "/" + name);
 
     return out;
 }

@@ -101,10 +101,63 @@ int main(int argc, const char **argv)
             needed.push_back(capability);
     }
 
+    /* Two projects whose directories mangle to the same variable
+     * would each think the variable was theirs, and one of them would
+     * end up building into the other's directory. */
+    auto variables = std::map<std::string, std::string>();
+    for (const auto& project: projects) {
+        auto variable = project::prefix_variable(project->base());
+        auto found = variables.find(variable);
+        if (found != variables.end()) {
+            std::cerr << "'" << found->second << "' and '" << project->base()
+                      << "' both want the make variable '" << variable
+                      << "'\n";
+            abort();
+        }
+        variables[variable] = project->base();
+    }
+
     auto implied = makefile::implied_deps(targets, provided, needed);
 
+    /* A dependency goes in the Makefile of the deepest project that
+     * includes both ends of it.  For a subproject that depends on
+     * something the project above it built, that's the one above --
+     * which is what keeps the subproject's own Makefile free of
+     * targets it has no idea how to build, and so still usable on its
+     * own. */
+    auto reachable = std::map<std::string, std::set<std::string>>();
     for (const auto& project: projects)
-        project->write_makefile(implied, project::flatten(project));
+        reachable[project->base()] = project->reachable();
+
+    auto edges = std::map<std::string, std::vector<makefile::implied_dep>>();
+    for (const auto& dep: implied) {
+        auto target = owner.find(dep.target);
+        auto needed = owner.find(dep.dep);
+        if (target == owner.end() || needed == owner.end())
+            continue;
+
+        auto host = std::string();
+        auto found = false;
+        for (const auto& project: projects) {
+            const auto& below = reachable[project->base()];
+            if (below.find(target->second) == below.end())
+                continue;
+            if (below.find(needed->second) == below.end())
+                continue;
+            if (found == true && project->base().size() <= host.size())
+                continue;
+
+            host = project->base();
+            found = true;
+        }
+
+        if (found == true)
+            edges[host].push_back(dep);
+    }
+
+    for (const auto& project: projects)
+        project->write_makefile(edges[project->base()],
+                                project::flatten(project));
 
     return 0;
 }
