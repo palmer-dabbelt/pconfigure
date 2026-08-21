@@ -42,7 +42,7 @@ bool build_system_pconfigure::can_build(const std::string& base) const
         || access((base + "Configfiles/main").c_str(), R_OK) == 0;
 }
 
-void build_system_pconfigure::add_configureopt(const std::string& opt)
+void build_system_pconfigure::take_configureopt(const std::string& opt)
 {
     std::cerr << "CONFIGUREOPTS doesn't apply to a pconfigure subproject: '"
               << opt << "'\n"

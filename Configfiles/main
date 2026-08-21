@@ -195,6 +195,7 @@ TESTSRC     += osx-nonmacho-sign.bash
 TESTSRC     += testdeps.bash
 TESTSRC     += testdeps-outside.bash
 TESTSRC     += ptest-check-dirs.bash
+TESTSRC     += vendored-configureopts.bash
 
 # These command-line tools are only ever run by the tests below, so
 # they're built but never installed.

@@ -150,11 +150,13 @@ public:
     /* Virtual methods from build_system. */
     build_system* clone(void) const;
     bool can_build(const std::string& base) const;
-    void add_configureopt(const std::string& opt);
     std::vector<makefile::target::ptr>
     targets(const std::vector<build_system::ptr>& peers) const;
+    std::string configure_signature(void) const;
 
 protected:
+    void take_configureopt(const std::string& opt);
+
     /* Takes one CONFIGUREOPTS, and answers whether it was one of
      * these.  A tree with options of its own overrides this, handles
      * what it knows, and hands the rest back here -- which is what
@@ -252,6 +254,13 @@ public:
         { return kbuild_output() + "/.config"; }
     std::string build_stamp(void) const
         { return output_dir() + "/build-stamp"; }
+
+    /* What this run told the tree, which sits beside the stamp
+     * rather than inside kbuild_output(): that directory is handed to
+     * the vendored tree as its O=, so it's the tree's, and nothing of
+     * ours belongs in it. */
+    std::string configureopts_file(void) const
+        { return output_dir() + "/configure-opts"; }
 };
 
 #endif
