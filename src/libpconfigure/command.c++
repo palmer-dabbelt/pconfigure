@@ -135,7 +135,11 @@ command::ptr command::consume_extra_arguments(int& i, int argc,
     if (_needs_data == false)
         return shared_from_this();
 
-    if (i >= argc)
+    /* The argument this wants is the one after the flag, so it's that
+     * one that has to be there.  Asking whether the flag itself is in
+     * range is asking about something already known, and it let a
+     * flag written last on the command line read one past the end. */
+    if (i + 1 >= argc)
         return nullptr;
 
     return std::make_shared<command>(

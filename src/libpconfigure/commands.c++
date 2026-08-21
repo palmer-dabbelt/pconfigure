@@ -78,12 +78,14 @@ std::vector<command::ptr> commands(int argc, const char **argv)
             abort();
         }
         auto ecmd = cmd->consume_extra_arguments(i, argc, argv);
-        if (cmd == NULL) {
-            std::cerr << "Unable to parse extra arguments "
-                      << (i - 1)
-                      << ": '"
+        if (ecmd == NULL) {
+            /* The test above is about "cmd" and this one is about
+             * "ecmd": written the other way it was the same question
+             * asked twice, and the answer to the one nobody asked was
+             * a read off the end of argv. */
+            std::cerr << "Command-line option '"
                       << argv[i]
-                      << "'\n";
+                      << "' needs an argument after it\n";
 
             abort();
         }
