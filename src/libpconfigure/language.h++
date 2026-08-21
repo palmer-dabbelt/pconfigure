@@ -99,6 +99,29 @@ public:
     std::vector<std::string> link_opts(const context::ptr& ctx) const
         { return _link_opts + ctx->link_opts; }
 
+    /* Says what a target this language produced can do for someone
+     * else, and what it wants from someone else.  Matching one
+     * against the other is how dependencies nobody wrote down get
+     * found, including the ones that cross from one project into
+     * another.
+     *
+     * Both sides of that are a language's job, because both mean
+     * knowing the syntax of the tool being run: only the language
+     * that wrote "-Llib -lfoo" onto a link line knows that it wants
+     * whatever produces "lib/libfoo.so".  A language that can't read
+     * its own command lines just wants nothing, and the dependencies
+     * it needs have to be written down by hand.
+     *
+     * Every target offers itself by name, which is what lets a file
+     * that's named outright on a command line be found. */
+    virtual std::vector<std::string>
+    provides(const makefile::target::ptr& target) const
+        { return std::vector<std::string>{"file:" + target->name()}; }
+
+    virtual std::vector<std::string>
+    needs(const makefile::target::ptr& target __attribute__((unused))) const
+        { return std::vector<std::string>(); }
+
     /* Virtual methods from opts_target. */
 public:
     void add_compileopt(const std::string& data);

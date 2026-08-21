@@ -22,6 +22,7 @@
 #include <libpconfigure/command_processor.h++>
 #include <libpconfigure/pick_language.h++>
 #include "version.h"
+#include <libmakefile/implied_deps.h++>
 #include <libmakefile/makefile.h++>
 #include <algorithm>
 #include <iostream>
@@ -84,6 +85,8 @@ int main(int argc, const char **argv)
 
     auto distcleaned = std::map<std::string, bool>();
     auto obj_dirs = std::map<std::string, bool>();
+    auto provided = std::vector<makefile::capability>();
+    auto needed = std::vector<makefile::capability>();
     for (const auto& context: processor->output_contexts()) {
         if (context->debug == true)
             std::cerr << "Building Context: " << context->cmd->data() << "\n";
@@ -99,6 +102,15 @@ int main(int argc, const char **argv)
                 abort();
             }
             targets[target->name()] = target;
+
+            /* Only the language that wrote this recipe knows how to
+             * read it, so it's the one that says what this target
+             * offers and what it wants.  Matching those up is left
+             * until every target is known, below. */
+            for (const auto& name: language->provides(target))
+                provided.push_back(makefile::capability(name, target->name()));
+            for (const auto& name: language->needs(target))
+                needed.push_back(makefile::capability(name, target->name()));
         }
 
         auto to_distclean = std::vector<std::string>{
@@ -111,6 +123,15 @@ int main(int argc, const char **argv)
             distcleaned[dir] = true;
 
         obj_dirs[context->obj_dir] = true;
+    }
+
+    {
+        auto all_targets = std::vector<makefile::target::ptr>();
+        for (const auto& pair: targets)
+            all_targets.push_back(pair.second);
+
+        for (const auto& dep: makefile::implied_deps(all_targets, provided, needed))
+            makefile->add_dep(dep.target, dep.dep);
     }
 
     {
