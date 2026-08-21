@@ -69,7 +69,9 @@ bool makefile::target::has_global_target(const global_targets& g) const
     return false;
 }
 
-void makefile::target::write_to_file(FILE *file, bool verbose) const
+void makefile::target::write_to_file(FILE *file,
+                                     bool verbose,
+                                     const std::string& check_stamp) const
 {
     /* First write a little header that adds the upcoming target to
      * any of the global targets that it may have ended up setting. */
@@ -79,7 +81,7 @@ void makefile::target::write_to_file(FILE *file, bool verbose) const
             fprintf(file, "all: %s\n", _name.c_str());
             break;
         case global_targets::CHECK:
-            fprintf(file, "obj/check-all-done: %s\n", _name.c_str());
+            fprintf(file, "%s: %s\n", check_stamp.c_str(), _name.c_str());
             break;
         case global_targets::CLEAN:
             fprintf(file, ".PHONY: __pconfigure__clean-%s\n", _name.c_str());

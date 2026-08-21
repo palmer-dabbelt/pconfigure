@@ -22,8 +22,9 @@
 #include "self_path.h++"
 #include <iostream>
 
-makefile::makefile::makefile(bool verbose)
-: _verbose(verbose)
+makefile::makefile::makefile(bool verbose, const std::string& obj_dir)
+: _verbose(verbose),
+  _obj_dir(obj_dir)
 {
 }
 
@@ -49,16 +50,22 @@ void makefile::makefile::write_to_file(const std::string& filename)
     fprintf(file, ".PHONY: uninstall\n");
     fprintf(file, "all:\n\n");
 
+    auto stamp = check_stamp();
     for (const auto& target: _targets)
-        target->write_to_file(file, _verbose);
+        target->write_to_file(file, _verbose, stamp);
 
     auto q = _verbose ? "" : "@";
     auto ptest = tool_command("ptest");
-    fprintf(file, "obj/check-all-done:\n\t%smkdir -p obj\n\t%sdate > $@\n\n", q, q);
-    fprintf(file, "obj/check-report-quiet: obj/check-all-done\n\t%s%s --quiet --no-check-make-check > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp; exit 1)\n\n", q, ptest.c_str());
-    fprintf(file, "obj/check-report: obj/check-all-done\n\t%s%s --no-check-make-check > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp; exit 1)\n\n", q, ptest.c_str());
-    fprintf(file, "check: obj/check-report-quiet\n\n");
-    fprintf(file, "report: obj/check-report\n\t%scat obj/check-report\n\n", q);
+    auto quiet_report = _obj_dir + "/check-report-quiet";
+    auto report = _obj_dir + "/check-report";
+    fprintf(file, "%s:\n\t%smkdir -p %s\n\t%sdate > $@\n\n",
+            stamp.c_str(), q, _obj_dir.c_str(), q);
+    fprintf(file, "%s: %s\n\t%s%s --quiet --no-check-make-check > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp; exit 1)\n\n",
+            quiet_report.c_str(), stamp.c_str(), q, ptest.c_str());
+    fprintf(file, "%s: %s\n\t%s%s --no-check-make-check > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp; exit 1)\n\n",
+            report.c_str(), stamp.c_str(), q, ptest.c_str());
+    fprintf(file, "check: %s\n\n", quiet_report.c_str());
+    fprintf(file, "report: %s\n\t%scat %s\n\n", report.c_str(), q, report.c_str());
 
     fclose(file);
 }
