@@ -78,9 +78,15 @@ language_implicit_h::targets(const context::ptr& ctx) const
             ctx->cmd->data()
         };
         
+        /* phc, the same program the explicit "h" language installs a
+         * header with.  This used to be pbashc, which is the compiler
+         * for bash scripts and has no business reading a C header:
+         * every "#include" in one is a directive to pbashc rather
+         * than a line of the file, so what got installed was the
+         * header with all of its includes taken out of it. */
         auto install_commands = std::vector<std::string>{
             "mkdir -p $(dir $@)",
-            makefile::tool_command("pbashc") + " -i " + header_path + " -o " + install_path
+            ctx->phc + " -i " + header_path + " -o " + install_path
         };
 
         auto header_target = std::make_shared<makefile::target>(header_path);
