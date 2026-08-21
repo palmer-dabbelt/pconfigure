@@ -54,6 +54,16 @@ namespace file_utils {
      * match paths against each other will decide they're different
      * files. */
     std::string normalize_path(const std::string& path);
+
+    /* Like normalize_path(), but for a path that names a directory
+     * rather than a file: the result ends with a '/', or is empty for
+     * the directory pconfigure is running in.
+     *
+     * This is the spelling that everything which roots a project at a
+     * directory uses, so that a subproject asked for as "./sub" and
+     * as "sub" is understood to be the same subproject and so that
+     * sticking a filename on the end of one always works. */
+    std::string normalize_directory(const std::string& path);
 }
 
 #endif

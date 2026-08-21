@@ -183,6 +183,7 @@ TESTSRC     += subprojects.bash
 TESTSRC     += subprojects-nested.bash
 TESTSRC     += subprojects-pkgconfig.bash
 TESTSRC     += subprojects-siblings.bash
+TESTSRC     += kconfig.bash
 
 # These command-line tools are only ever run by the tests below, so
 # they're built but never installed.
