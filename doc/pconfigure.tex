@@ -1441,16 +1441,22 @@ ENTITLEMENTS  = vmm.plist
 \end{verbatim}
 
 Only a whole linked binary is signed, so an \texttt{ENTITLEMENTS} that
-landed under a \texttt{SOURCES}, a \texttt{HEADERS}, a
-\texttt{GENERATE} or a \texttt{TESTS} asks for nothing at all -- and
-asking for nothing quietly is worse here than elsewhere, since what
-comes out is a program that runs right up until it reaches the thing
-it wasn't allowed to do.  See Section~\ref{cmd:entitlements}.
+landed under a \texttt{SOURCES}, a \texttt{HEADERS} or a
+\texttt{GENERATE} asks for nothing at all -- and asking for nothing
+quietly is worse here than elsewhere, since what comes out is a
+program that runs right up until it reaches the thing it wasn't
+allowed to do.  See Section~\ref{cmd:entitlements}.
 
 Directly under the \texttt{BINARIES} or \texttt{LIBRARIES} it's about
 is where it belongs, and doesn't warn.  Neither does one written at
 the top of a project, before any target: that one is inherited by
 every target below it, which is a thing somebody meant.
+
+Nor does one under a \texttt{TESTS}, which reads like it ought to.  A
+test is built into a program of its own and that program is linked and
+signed like any other, so an \texttt{ENTITLEMENTS} written there
+reaches the test binary's own signature -- which is exactly how a test
+that has to be allowed to do something says so.
 
 \subsection{\texttt{SOURCES} with no target open above it}
 
@@ -1563,11 +1569,16 @@ BINARIES += hello
 SOURCES  += other.c
 \end{verbatim}
 
-Two targets that come out in the same place are one target: the second
-one's rules are identical to the first's, so they're folded together
-and everything written under the second does nothing -- which looks
-exactly like it worked.  The message names the line that asked for the
-output first.
+Two targets that come out in the same place are one target, and only
+one set of rules can come out of that.  Which way it goes wrong
+depends on whether the two were described the same way.  Rules that
+match -- the same sources built with the same options -- are folded
+together, so the second target does nothing and it looks exactly like
+it worked.  Rules that don't match, as in the fragment above, stop the
+build instead, with \texttt{Mismatched recipe for targets with same
+name} and nothing to say which two lines it meant.  The warning is
+worth having for that case alone, since it names both of them.  The
+message names the line that asked for the output first.
 
 They're compared by where they come out rather than by what they're
 called, which is the whole point: two \texttt{LIBRARIES} of the same
