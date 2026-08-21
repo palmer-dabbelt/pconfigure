@@ -109,8 +109,8 @@ language_pkgconfig::targets(const context::ptr& ctx) const
         auto command = std::string();
         command += "cat " + sources[0]->name();
         command += " | sed 's^@@pconfigure_prefix@@^" + ctx->prefix + "^g'";
-        command += " | sed 's^@@pconfigure_libdir@@^" + ctx->lib_dir + "^g'";
-        command += " | sed 's^@@pconfigure_hdrdir@@^" + ctx->hdr_dir + "^g'";
+        command += " | sed 's^@@pconfigure_libdir@@^" + ctx->unbased(ctx->lib_dir) + "^g'";
+        command += " | sed 's^@@pconfigure_hdrdir@@^" + ctx->unbased(ctx->hdr_dir) + "^g'";
         for (const auto& str: this->clopts(ctx)) {
             if (strncmp(str.c_str(), "-S", 2) == 0)
                 command += " | sed `cat " + str.substr(2) + "`";
@@ -141,7 +141,7 @@ language_pkgconfig::targets(const context::ptr& ctx) const
                                                              commands,
                                                              comment);
 
-        auto install_path = "$(DESTDIR)/" + ctx->prefix + "/" + target;
+        auto install_path = "$(DESTDIR)/" + ctx->prefix + "/" + ctx->unbased(target);
 
         auto install_commands = std::vector<std::string>{
             "mkdir -p $(dir $@)",

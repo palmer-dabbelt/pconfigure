@@ -135,14 +135,14 @@ language_bash::targets(const context::ptr& ctx) const
         if (ctx->install == false)
             return {bin_target};
 
-        auto install_path = "$(DESTDIR)/" + ctx->prefix + "/" + target;
+        auto install_path = "$(DESTDIR)/" + ctx->prefix + "/" + ctx->unbased(target);
 
         auto global_install_targets = std::vector<makefile::global_targets>{
             makefile::global_targets::INSTALL,
         };
 
         auto install_commands = std::vector<std::string>{
-            "mkdir -p $(DESTDIR)/" + ctx->prefix + "/" + bin_subdir,
+            "mkdir -p $(DESTDIR)/" + ctx->prefix + "/" + ctx->unbased(bin_subdir),
 #if defined(__gnu_linux__)
             "cp --reflink=auto -f " + target + " " + install_path
 #else
@@ -163,7 +163,7 @@ language_bash::targets(const context::ptr& ctx) const
     case context_type::TEST:
     {
         auto child_ctx = ctx->dup(context_type::BINARY);
-        child_ctx->bin_dir = ctx->obj_dir + "/" + ctx->check_dir;
+        child_ctx->bin_dir = ctx->obj_dir + "/" + ctx->unbased(ctx->check_dir);
         auto bin_name = ctx->test_binary;
         auto bin_targets = vector_util::map(targets(child_ctx),
                                             [](const makefile::target::ptr& t)
@@ -181,7 +181,7 @@ language_bash::targets(const context::ptr& ctx) const
             makefile::global_targets::CHECK,
             makefile::global_targets::CLEAN
         };
-        auto test_name = ctx->obj_dir + "/" + ctx->check_dir + "/" + ctx->cmd->data();
+        auto test_name = ctx->obj_dir + "/" + ctx->unbased(ctx->check_dir) + "/" + ctx->cmd->data();
         auto commands = std::vector<std::string>{
             "mkdir -p " + ctx->check_dir,
             "+" + makefile::tool_command("ptest") + " --test " + test_name + " --out " + target_name + " --bin " + bin_name

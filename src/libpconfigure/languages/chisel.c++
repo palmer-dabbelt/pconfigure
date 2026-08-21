@@ -179,7 +179,7 @@ language_chisel::targets(const context::ptr& ctx) const
      * that: depends on only the sources, not the binary/library,
      * which allows us to ensure that all these steps are only run
      * once. */
-    auto obj_dir = ctx->obj_dir + "/" + ctx->src_dir;
+    auto obj_dir = ctx->obj_dir + "/" + ctx->unbased(ctx->src_dir);
 
     /* The whole point of this is to go and generate some targets. */
     auto all_targets = std::vector<makefile::target::ptr>();
