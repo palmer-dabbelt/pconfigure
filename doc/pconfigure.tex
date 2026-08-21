@@ -424,6 +424,41 @@ semantics), setting \texttt{LINKOPTS} for a source won't do anything,
 you should instead set it on the target that source will be linked
 into.
 
+\subsection{\texttt{ENTITLEMENTS = \$plist} \label{cmd:entitlements}}
+
+Names the entitlements a binary should carry, as a path to a property
+list relative to the project that asks for it.
+
+Entitlements are a macOS idea: they're how a program says it wants
+something the kernel doesn't hand out by default -- access to the
+hypervisor, for instance -- and the only place they can live is inside
+the program's code signature.  \pconfigure\ signs every Mach-O it
+links, so it's the one that has to put them there; a signature applied
+without them doesn't leave whatever was there before alone, it drops
+it.
+
+\begin{verbatim}
+LANGUAGES    += c
+
+BINARIES     += vmm
+ENTITLEMENTS  = vmm.plist
+SOURCES      += vmm.c
+\end{verbatim}
+
+The plist is a prerequisite of the link, so changing what a program is
+allowed to do re-links and re-signs it.  Nothing else in the project
+is affected: a target that doesn't ask for entitlements doesn't get
+any, and the entitlements one target names aren't inherited by the
+next one.
+
+Note that macOS only reads entitlements off an executable.  Setting
+this on a \texttt{LIBRARIES} target is accepted, and the library is
+still signed, but the entitlements go nowhere.
+
+On every other platform this is parsed and ignored, so a
+\texttt{Configfile} that needs it on macOS doesn't have to know which
+machine is reading it.
+
 \subsection{\texttt{SUBPROJECTS += \$dirname} \label{cmd:subprojects}}
 
 Pulls in another project that lives in a subdirectory -- a git
