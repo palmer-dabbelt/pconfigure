@@ -53,6 +53,10 @@ public:
     virtual language_cxx* clone(void) const;
     virtual bool can_process(const context::ptr& ctx) const;
     virtual std::vector<makefile::target::ptr> targets(const context::ptr& ctx) const;
+    virtual std::vector<std::string>
+    provides(const makefile::target::ptr& target) const;
+    virtual std::vector<std::string>
+    needs(const makefile::target::ptr& target) const;
 
 protected:
     /* This function allows subclasses to override dependency handling: it

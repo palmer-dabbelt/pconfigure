@@ -619,11 +619,12 @@ language_cxx::link_objects(const context::ptr& ctx,
             "-L" + ctx->lib_dir,
         } + vector_util::map(ctx->dep_libs, [](std::string dl){ return "-l" + dl; }));
 
-    auto additional_deps =
-        vector_util::map(ctx->dep_libs,
-                         [&](std::string dl) -> target::ptr {
-                            return std::make_shared<header_target>(ctx->lib_dir + "/lib" + dl + ".so");
-                         });
+    /* Note that there's deliberately nothing here that turns a
+     * DEPLIB into a prerequisite: the "-l" it adds to the link line
+     * above is enough for that dependency to be worked out along with
+     * everyone else's, which means a library that shows up on the
+     * link line some other way gets one too. */
+    auto additional_deps = std::vector<target::ptr>();
 
     /* There's actually two proper targets here: one which generates the link
      * that's targeted for installation, and one that generates the link that's
@@ -857,6 +858,125 @@ std::vector<std::string> language_cxx::dependencies(
                    true);
 
     return all_files;
+}
+
+/* The suffixes a linker will look for when it's asked for "-lfoo".
+ * LIBRARIES are named explicitly in a Configfile, so a project picks
+ * its own suffix and all of these are worth recognizing. */
+static const std::vector<std::string> library_suffixes = {
+    ".so",
+    ".dylib",
+    ".a",
+};
+
+/* Turns a path like "lib/libfoo.so" into the "-Llib -lfoo" that would
+ * name it, spelled the way needs() below spells it.  Returns an empty
+ * string for a path that no "-l" could ever refer to. */
+static std::string library_capability(const std::string& path)
+{
+    auto slash = path.find_last_of('/');
+    auto dir = (slash == std::string::npos)
+        ? std::string(".")
+        : path.substr(0, slash);
+    auto file = (slash == std::string::npos)
+        ? path
+        : path.substr(slash + 1);
+
+    if (file.compare(0, 3, "lib") != 0)
+        return "";
+
+    for (const auto& suffix: library_suffixes) {
+        if (file.size() <= 3 + suffix.size())
+            continue;
+        if (file.compare(file.size() - suffix.size(),
+                         suffix.size(),
+                         suffix) != 0)
+            continue;
+
+        auto name = file.substr(3, file.size() - 3 - suffix.size());
+        return "library:" + dir + "/" + name;
+    }
+
+    return "";
+}
+
+std::vector<std::string>
+language_cxx::provides(const makefile::target::ptr& target) const
+{
+    auto out = language::provides(target);
+
+    /* A library offers itself under the name a link line would use to
+     * ask for it, so that whether it's called "libfoo.so" or
+     * "libfoo.a" is this side's problem rather than the asking
+     * side's. */
+    auto library = library_capability(target->name());
+    if (library.size() > 0)
+        out.push_back(library);
+
+    return out;
+}
+
+std::vector<std::string>
+language_cxx::needs(const makefile::target::ptr& target) const
+{
+    auto args = std::vector<std::string>();
+    for (const auto& cmd: target->cmds()) {
+        std::istringstream ss(cmd);
+        std::string arg;
+        while (ss >> arg)
+            args.push_back(arg);
+    }
+
+    auto search_dirs = std::vector<std::string>();
+    auto library_names = std::vector<std::string>();
+    auto out = std::vector<std::string>();
+
+    /* Both "-L dir" and "-Ldir" are legal, so a flag that's on its own
+     * takes its argument from the next word. */
+    auto pending = std::string();
+    for (const auto& arg: args) {
+        if (pending.size() > 0) {
+            if (pending == "-L")
+                search_dirs.push_back(arg);
+            else
+                library_names.push_back(arg);
+            pending = "";
+            continue;
+        }
+
+        if (arg == "-L" || arg == "-l") {
+            pending = arg;
+            continue;
+        }
+
+        if (arg.compare(0, 2, "-L") == 0) {
+            search_dirs.push_back(arg.substr(2));
+            continue;
+        }
+
+        if (arg.compare(0, 2, "-l") == 0) {
+            library_names.push_back(arg.substr(2));
+            continue;
+        }
+
+        /* Anything that isn't a flag but does look like a path might
+         * name a file outright, which is how a static archive that's
+         * passed positionally gets picked up.  Requiring a '/' keeps
+         * this from matching bare words like "cat" or "mv". */
+        if (arg.size() > 0
+            && arg[0] != '-'
+            && arg.find('/') != std::string::npos)
+            out.push_back("file:" + arg);
+    }
+
+    /* Which of the search directories a library actually turns up in
+     * is the linker's business, so ask for it in all of them and let
+     * the ones that nothing builds go unanswered. */
+    for (const auto& dir: search_dirs)
+        for (const auto& name: library_names)
+            out.push_back("library:" + dir + "/" + name);
+
+    return out;
 }
 
 static void install_cxx(void) __attribute__((constructor));
