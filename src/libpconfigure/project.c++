@@ -83,28 +83,75 @@ std::string project::prefix_variable(const std::string& base)
     return "pconfigure_subdir_" + suffix;
 }
 
+void project::process_line(const ptr& self,
+                           const configfile_line& line,
+                           std::set<std::string>& seen)
+{
+    const auto& processor = self->_processor;
+
+    auto command = parse_line(line);
+    if (command != NULL)
+        processor->process(command);
+
+    /* A CONFIG is read right where it appeared, so its lines land in
+     * the middle of the file that asked for it. */
+    while (true) {
+        auto suffix = processor->take_pending_config();
+        if (suffix.size() == 0)
+            break;
+
+        for (const auto& included: config_lines(processor->srcpath(),
+                                                "Configfile",
+                                                suffix))
+            process_line(self, included, seen);
+    }
+
+    /* A subproject is read before the next line, so that the rest of
+     * this Configfile can ask about what it builds. */
+    while (true) {
+        auto base = processor->take_pending_subproject();
+        if (base.size() == 0)
+            break;
+
+        auto child = read(base, processor->root_context(), seen);
+        if (child != NULL)
+            self->_children.push_back(child);
+    }
+}
+
+void project::read_file(const ptr& self,
+                        const std::string& filename,
+                        std::set<std::string>& seen)
+{
+    for (const auto& line: lines_from_file(self->_processor->srcpath(),
+                                           filename))
+        process_line(self, line, seen);
+}
+
 project::ptr project::read(const command_processor::ptr& processor,
                            std::set<std::string>& seen)
 {
     auto out = std::make_shared<project>(processor->base(), processor);
 
-    for (const auto& command: configfiles(processor->srcpath())) {
-        processor->process(command);
+    /* Anything the command line asked for comes first, since that's
+     * the order it was processed in. */
+    while (true) {
+        auto suffix = processor->take_pending_config();
+        if (suffix.size() == 0)
+            break;
 
-        /* Read a subproject as soon as it's asked for, so that the
-         * rest of this Configfile can refer to what it builds. */
-        while (true) {
-            auto base = processor->take_pending_subproject();
-            if (base.size() == 0)
-                break;
-
-            auto child = read(base,
-                              processor->root_context(),
-                              seen);
-            if (child != NULL)
-                out->_children.push_back(child);
-        }
+        for (const auto& line: config_lines(processor->srcpath(),
+                                            "Configfile",
+                                            suffix))
+            process_line(out, line, seen);
     }
+
+    for (const auto& filename: std::vector<std::string>{
+             processor->srcpath() + "/Configfiles/local",
+             processor->srcpath() + "/Configfile.local",
+             processor->srcpath() + "/Configfiles/main",
+             processor->srcpath() + "/Configfile"})
+        read_file(out, filename, seen);
 
     out->generate_targets();
     return out;
