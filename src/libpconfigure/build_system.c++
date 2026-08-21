@@ -19,6 +19,7 @@
  */
 
 #include "build_system.h++"
+#include "build_systems/buildroot.h++"
 #include "build_systems/kconfig.h++"
 #include "build_systems/pconfigure.h++"
 
@@ -75,11 +76,13 @@ build_system::ptr build_system::create(const std::string& name)
         return std::make_shared<build_system_pconfigure>(name);
     if (name == "kconfig")
         return std::make_shared<build_system_kconfig>(name);
+    if (name == "buildroot")
+        return std::make_shared<build_system_buildroot>(name);
 
     return NULL;
 }
 
 std::vector<std::string> build_system::names(void)
 {
-    return std::vector<std::string>{"pconfigure", "kconfig"};
+    return std::vector<std::string>{"pconfigure", "kconfig", "buildroot"};
 }

@@ -19,9 +19,9 @@
  */
 
 #include "kconfig.h++"
-#include "kconfig_deps.h++"
 #include "../string_utils.h++"
 #include <unistd.h>
+#include <cctype>
 #include <iostream>
 
 build_system_kconfig::build_system_kconfig(const std::string& name)
@@ -48,35 +48,44 @@ bool build_system_kconfig::can_build(const std::string& base) const
         || access((base + "Kbuild").c_str(), R_OK) == 0;
 }
 
-void build_system_kconfig::add_configureopt(const std::string& opt)
+kconfig_deps::roots build_system_kconfig::dep_roots(void) const
 {
-    /* An option is written either as two words or as one with an '='
-     * in the middle, since both spellings turn up in the wild and
-     * neither is any harder to read than the other. */
-    auto split = [&](const std::string& flag) -> std::string {
-        if (opt.compare(0, flag.size(), flag) != 0)
-            return "";
+    /* A kbuild tree is rooted at a Makefile and a Kconfig, and some
+     * trees use a Kbuild alongside the Makefile. */
+    auto out = kconfig_deps::roots();
+    out.config = {base() + "Kconfig"};
+    out.build = {base() + "Makefile", base() + "Kbuild"};
+    return out;
+}
 
-        auto rest = opt.substr(flag.size());
-        if (rest.size() == 0)
-            return "";
-        if (rest[0] != ' ' && rest[0] != '=')
-            return "";
+std::string build_system_kconfig::option_value(const std::string& opt,
+                                               const std::string& flag)
+{
+    if (opt.compare(0, flag.size(), flag) != 0)
+        return "";
 
-        return string_utils::clean_white(rest.substr(1));
-    };
+    auto rest = opt.substr(flag.size());
+    if (rest.size() == 0)
+        return "";
+    if (rest[0] != ' ' && rest[0] != '=')
+        return "";
 
-    auto defconfig = split("--defconfig");
+    return string_utils::clean_white(rest.substr(1));
+}
+
+bool build_system_kconfig::handle_configureopt(const std::string& opt)
+{
+    auto defconfig = option_value(opt, "--defconfig");
     if (defconfig.size() > 0) {
         _defconfig = defconfig;
-        return;
+        return true;
     }
 
-    auto configure = split("--configure");
+    auto configure = option_value(opt, "--configure");
     if (configure.size() > 0) {
         auto equals = configure.find('=');
         if (equals == std::string::npos) {
-            std::cerr << "kconfig: '--configure " << configure
+            std::cerr << name() << ": '--configure " << configure
                       << "' has no value: it should look like"
                       << " '--configure CONFIG_FOO=y'\n";
             abort();
@@ -84,12 +93,26 @@ void build_system_kconfig::add_configureopt(const std::string& opt)
 
         _options.push_back(option(configure.substr(0, equals),
                                   configure.substr(equals + 1)));
-        return;
+        return true;
     }
 
-    std::cerr << "kconfig: unknown CONFIGUREOPTS '" << opt << "'\n"
-              << "  the kconfig build system understands"
-              << " '--defconfig NAME' and '--configure OPTION=y'\n";
+    return false;
+}
+
+std::string build_system_kconfig::configureopt_help(void) const
+{
+    return "  '--defconfig NAME' picks the target that writes the first"
+           " configuration\n"
+           "  '--configure OPTION=y' sets an option on top of it\n";
+}
+
+void build_system_kconfig::add_configureopt(const std::string& opt)
+{
+    if (handle_configureopt(opt) == true)
+        return;
+
+    std::cerr << name() << ": unknown CONFIGUREOPTS '" << opt << "'\n"
+              << configureopt_help();
     abort();
 }
 
@@ -100,14 +123,21 @@ std::vector<makefile::target::ptr> build_system_kconfig::targets(void) const
     auto config = config_file();
     auto stamp = build_stamp();
 
+    /* What make prints while it's configuring the tree.  It's the
+     * name of the build system that's doing it, since that's the
+     * thing whose options went into the .config. */
+    auto label = name();
+    for (auto& c: label)
+        c = toupper(c);
+
     /* kbuild insists on being told where to put its output as an
      * absolute path, and pconfigure only ever works in relative ones
      * -- so make gets to do the conversion, at the point where it
      * knows what directory it's in. */
     auto submake = "$(MAKE) --no-print-directory -C " + srcdir
-                 + " O=$(abspath " + output + ")";
+                 + " O=$(abspath " + output + ")" + submake_flags();
 
-    auto deps = kconfig_deps::chase(base());
+    auto deps = kconfig_deps::chase(base(), dep_roots());
 
     /********************************************************************
      * The configuration                                                *
@@ -128,9 +158,9 @@ std::vector<makefile::target::ptr> build_system_kconfig::targets(void) const
          * rather than ours: a .config isn't a list of settings, it's
          * the answer Kconfig worked out, and editing it by hand gets
          * something subtly wrong every time. */
-        auto tool = base() + "scripts/config";
+        auto tool = config_tool();
         if (access(tool.c_str(), X_OK) != 0) {
-            std::cerr << "kconfig: '--configure' needs '" << tool << "',"
+            std::cerr << name() << ": '--configure' needs '" << tool << "',"
                       << " which this tree doesn't have\n";
             abort();
         }
@@ -144,6 +174,17 @@ std::vector<makefile::target::ptr> build_system_kconfig::targets(void) const
                 command += " --module " + option.name;
             else if (option.value == "n")
                 command += " --disable " + option.name;
+            else if (option.value.size() > 1
+                     && option.value[0] == '"'
+                     && option.value[option.value.size() - 1] == '"')
+                /* A value that was written with quotes around it is a
+                 * string, and a string symbol is the one kind whose
+                 * value goes into the .config with quotes back on --
+                 * which the tree's own program does and we don't.
+                 * The quotes stay on here so that the shell takes
+                 * them off, which is what keeps a string with a space
+                 * in it one argument. */
+                command += " --set-str " + option.name + " " + option.value;
             else
                 command += " --set-val " + option.name + " " + option.value;
 
@@ -164,7 +205,7 @@ std::vector<makefile::target::ptr> build_system_kconfig::targets(void) const
 
     auto config_target = std::make_shared<makefile::target>(
         config,
-        "KCONFIG\t" + srcdir,
+        label + "\t" + srcdir,
         config_deps,
         std::vector<makefile::global_targets>{},
         config_commands,
