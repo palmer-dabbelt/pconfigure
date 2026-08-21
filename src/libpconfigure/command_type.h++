@@ -51,6 +51,7 @@ enum class command_type {
     SRCDIR,
     TESTDEPS,
     TESTDIR,
+    TESTEXECS,
     TESTS,
     TESTSRC,
     TGENERATE,
@@ -88,6 +89,7 @@ static const std::vector<command_type> all_command_types =
     command_type::SRCDIR,
     command_type::TESTDEPS,
     command_type::TESTDIR,
+    command_type::TESTEXECS,
     command_type::TESTS,
     command_type::TESTSRC,
     command_type::TGENERATE,
@@ -147,6 +149,8 @@ namespace std {
             return "TESTDEPS";
         case command_type::TESTDIR:
             return "TESTDIR";
+        case command_type::TESTEXECS:
+            return "TESTEXECS";
         case command_type::TESTS:
             return "TESTS";
         case command_type::TESTSRC:

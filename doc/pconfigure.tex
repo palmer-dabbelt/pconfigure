@@ -194,7 +194,8 @@ in the land of GNU tools.
 \subsection{\texttt{make all} \label{make:all}}
 
 Builds every target specified by \texttt{BINARIES},
-\texttt{LIBRARIES}, \texttt{HEADERS}, and \texttt{LIBEXECS}.
+\texttt{LIBRARIES}, \texttt{HEADERS}, \texttt{LIBEXECS}, and
+\texttt{TESTEXECS}.
 
 \subsection{\texttt{make install} \label{make:install}}
 
@@ -217,7 +218,7 @@ Section~\ref{make:check}).
 \subsection{\texttt{make distclean}}
 
 Recursively removes \texttt{BINDIR}, \texttt{OBJDIR}, \texttt{LIBDIR},
-and \texttt{CHECKDIR}.  This completely removes every file
+\texttt{TESTEXECDIR}, and \texttt{CHECKDIR}.  This completely removes every file
 \pconfigure\ could have touched.
 
 \subsection{\texttt{make uninstall}}
@@ -303,6 +304,20 @@ Exactly the same as \texttt{BINARIES += \$name}, except that the
 resulting output binary is stored to \texttt{\$LIBEXECDIR} instead of
 \texttt{\$BINDIR}.
 
+\subsection{\texttt{TESTEXECS += \$name} \label{cmd:testexecs}}
+
+Exactly the same as \texttt{LIBEXECS += \$name}, except that the
+resulting output binary is stored to \texttt{\$TESTEXECDIR} and is
+never installed: it's built by \texttt{make all} (see
+Section~\ref{make:all}) and removed by \texttt{make clean}, but
+\texttt{make install} (see Section~\ref{make:install}) ignores it
+entirely.  This is meant for binaries that exist only to be run by
+\texttt{TESTS} (see Section~\ref{cmd:tests}), which have no business
+being installed alongside the binaries a user actually wants.  Just
+like every other target, \texttt{TESTS} attached to a
+\texttt{TESTEXECS} target are passed the binary as
+\texttt{\$PTEST\_BINARY}.
+
 \subsection{\texttt{SOURCES += \$name} \label{cmd:sources}}
 
 Adds a \texttt{\$SRCDIR/\$name} to the list of sources that will be
@@ -327,7 +342,7 @@ executable.  Be sure to take this into account when structuring your
 
 Calling \texttt{SOURCES} without a target is a fatal error.
 
-\subsection{\texttt{TESTS += \$name}}
+\subsection{\texttt{TESTS += \$name} \label{cmd:tests}}
 
 \texttt{TESTS} is the same as \texttt{BINARIES} (see
 Section~\ref{cmd:binaries}), but the resulting binary is built at

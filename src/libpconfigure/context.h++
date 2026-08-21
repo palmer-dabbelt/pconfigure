@@ -71,6 +71,10 @@ public:
      * go. */
     std::string libexec_dir;
 
+    /* The location at which the output from TESTEXEC commands should
+     * go. */
+    std::string testexec_dir;
+
     /* The location at which the output of intermediate build steps
      * goes. */
     std::string obj_dir;
@@ -116,6 +120,11 @@ public:
     /* This is TRUE when this target should be built in DEBUG mode. */
     bool debug;
 
+    /* This is FALSE when this target exists only as part of the build
+     * (for example, a binary that only tests are expected to run), in
+     * which case it's built by "make all" but never installed. */
+    bool install;
+
     /* The list of languages that are availiable to be used when trying to link
      * sub-objects and tests and such. */
     const std::shared_ptr<language_list> languages;
@@ -147,6 +156,7 @@ public:
             const std::string& bin_dir,
             const std::string& lib_dir,
             const std::string& libexec_dir,
+            const std::string& testexec_dir,
             const std::string& obj_dir,
             const std::string& src_dir,
             const std::string& hdr_dir,
@@ -160,6 +170,7 @@ public:
             const command::ptr& cmd,
             bool verbose,
             bool debug,
+            bool install,
             const std::shared_ptr<language_list>& languages,
             bool autodeps,
             const std::string& phc,

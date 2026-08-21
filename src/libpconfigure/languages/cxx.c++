@@ -673,7 +673,11 @@ language_cxx::link_objects(const context::ptr& ctx,
 
     /* Here we return all the objects that were generated as part of this
      * linking step: that doesn't include the objects, they're expected to be
-     * used elsewhere. */
+     * used elsewhere.  Targets that are never installed (TESTEXECs) don't need
+     * the install-flavored link at all, as nothing depends on it. */
+    if (ctx->install == false)
+        return {local_target, cp_local_target};
+
     return {install_target, local_target, cp_install_target, cp_local_target};
 }
 
