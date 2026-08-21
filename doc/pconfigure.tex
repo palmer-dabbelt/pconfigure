@@ -169,6 +169,15 @@ Configfiles/main
 Configfile
 \end{verbatim}
 
+\subsection{\texttt{--cross-compile <prefix>} \label{cl:cross_compile}}
+
+Sets \texttt{CROSS\_COMPILE} for the whole project before any
+\texttt{Configfile} is read, see Section~\ref{cmd:cross_compile}.
+Calling \texttt{--cross-compile <prefix>} is exactly the same as
+putting \texttt{CROSS\_COMPILE = <prefix>} at the top of the first
+file that gets read, which is what lets one tree be configured for
+one machine and then for another without editing anything in it.
+
 \subsection{\texttt{--version}}
 
 Prints the version number of \pconfigure\ and exits without touching
@@ -351,6 +360,29 @@ Instead, it is run at \texttt{make check} and the results are
 collected into \texttt{\$CHECKDIR}.  These results can then be listed
 by running \texttt{ptest} (see Section~\ref{prog:ptest}).
 
+A test runs with its working directory set to the directory
+\texttt{make} was run in, which is not necessarily the directory the
+test's own project sits in.  Running \texttt{make} at the top of a
+build runs every subproject's tests from the top; running it inside a
+subproject runs that subproject's tests from there.  Nothing handed to
+the test says which of those happened, so a test that names a file by
+a relative path is asking a question with two answers.
+
+What a test is given instead is \texttt{\$PTEST\_BINARY}, the absolute
+path of the binary the test was attached to.
+\texttt{\$(dirname "\$PTEST\_BINARY")} is therefore the absolute path
+of the directory that binary was built into -- \texttt{\$BINDIR}, or
+\texttt{\$TESTEXECDIR} for a \texttt{TESTEXECS} target (see
+Section~\ref{cmd:testexecs}) -- and everything else in the project sits
+a fixed distance from there.  That is the supported way for a test to
+find its own project, and it reads the same whether the build came
+from the top or from the subproject.
+
+A test is also given \texttt{\$PTEST\_TMPDIR}, an empty directory of
+its own that is removed once the test finishes.  Anything the test
+writes belongs there: the working directory is shared with every other
+test in the build, and with the build itself.
+
 \subsection{\texttt{HEADERS += \$name}}
 
 The \texttt{HEADERS} command creates a target that's meant for
@@ -454,6 +486,16 @@ next one.
 Note that macOS only reads entitlements off an executable.  Setting
 this on a \texttt{LIBRARIES} target is accepted, and the library is
 still signed, but the entitlements go nowhere.
+
+A link that produces something other than a Mach-O -- anything built
+under a \texttt{CROSS\_COMPILE} (see
+Section~\ref{cmd:cross_compile}), or with a \texttt{LINKER} pointed
+somewhere else -- is left unsigned, because there is nothing there for
+a signature to mean.  \texttt{codesign} does not refuse such a file:
+it signs it ``generic'', which hangs an ad-hoc signature off it in
+extended attributes that the machine the thing is going to run on
+knows nothing about, and accepts \texttt{--entitlements} while
+ignoring it.
 
 On every other platform this is parsed and ignored, so a
 \texttt{Configfile} that needs it on macOS doesn't have to know which
@@ -590,13 +632,53 @@ and nothing more: the \texttt{Makefile} dependency on
 library that reaches the link line some other way -- from
 \texttt{LINKOPTS}, or from \texttt{ppkg-config} -- gets one too.
 
-\subsection{\texttt{TESTDEPS += \$path}}
+\subsection{\texttt{TESTDEPS += \$path} \label{cmd:testdeps}}
 
-This is similar to \texttt{DEPLIBS}, except that it adds an internal
-test dependency.  Note that the format is different: this takes a
-whole path (as opposed to \texttt{DEPLIBS}, which just takes the
-library name).  This difference exists so it's possible to depend on
-any sort of target.
+Names something that has to be built before this target's tests are
+run.  This is \texttt{DEPLIBS}' opposite number for the test side, and
+it takes a whole path rather than a library name because what a test
+wants built first is usually a program rather than a library -- and
+there's no short name that covers everything a test could possibly
+need.
+
+\texttt{\$path} is relative to the project that names it, the same way
+a \texttt{SOURCES} is, and it applies to every \texttt{TESTS} written
+underneath the same target -- so the useful place to put one is
+directly after the \texttt{BINARIES} or \texttt{TESTEXECS} line:
+
+\begin{verbatim}
+BINARIES  += vm
+TESTDEPS  += libexec/mkfs
+TESTSRC   += boots.bash
+TESTSRC   += mounts.bash
+\end{verbatim}
+
+\texttt{\$path} has to name something inside the project that wrote
+it.  A \texttt{../} that climbs out of the project, or a path that
+starts from the root, is a fatal error -- and it is one whether the
+project is being built on its own or as part of something bigger,
+since a rule whose meaning changed with where \texttt{make} was run
+would be no rule at all.
+
+There are two things to reach for when what a test needs was built by
+somebody else, and both of them already exist.  If the test needs
+another project's \textit{output}, that is a dependency of the build
+rather than of the test: put it on the link line, where every other
+cross-project dependency goes, usually through \texttt{ppkg-config}
+(see Section~\ref{prog:ppkg-config}).  If the test is really about two
+projects at once, it is an integration test, and it belongs to the
+project that has both of them -- from up there, the path to either
+one is an ordinary path that never leaves the tree:
+
+\begin{verbatim}
+SUBPROJECTS += fs
+SUBPROJECTS += vm
+
+BINARIES    += integration
+TESTDEPS    += fs/libexec/mkfs
+TESTDEPS    += vm/bin/vm
+TESTSRC     += boots-a-real-image.bash
+\end{verbatim}
 
 \subsection{\texttt{AUTODEPS = bool} \label{cmd:autodeps}}
 
@@ -613,17 +695,97 @@ it's easy to write a bash script that generates all the
 \texttt{SOURCES} lines and then disable automatic dependency
 generation all together.
 
-\subsection{\texttt{COMPILER = \$cmd}}
+\subsection{\texttt{CROSS\_COMPILE = \$prefix} \label{cmd:cross_compile}}
 
-Sets the command used to compile for the current language to
-\texttt{\$cmd}.  Calling this without any language set is a fatal
-error.
+Says which machine the targets below this are being built for, by
+naming the toolchain that builds for it.  \texttt{\$prefix} is what
+every program in that toolchain is called before its own name --
+\texttt{aarch64-linux-gnu-}, for a toolchain whose compiler is
+\texttt{aarch64-linux-gnu-gcc}.  This is the spelling \texttt{kbuild}
+has used for as long as anybody has been cross-compiling anything, and
+it's spelled that way here for the same reason: a toolchain is a set of
+programs that were named together, so naming the set is less to say
+and less to get wrong than naming each program.
+
+Unlike \texttt{COMPILEOPTS} this lands on whatever target is open
+rather than on the current language, which is what makes it mean the
+same thing everywhere it can be written:
+
+At the top of a \texttt{Configfile}, before any target, it applies to
+the whole project -- and to every project that \texttt{Configfile}
+pulls in with a \texttt{SUBPROJECTS} after it, the same way a
+\texttt{PREFIX} carries down.
+
+After a \texttt{BINARIES}, \texttt{LIBRARIES}, \texttt{LIBEXECS} or
+\texttt{TESTEXECS} it applies to that one target, and to the
+\texttt{TESTS} written under it.
+
+After a \texttt{SOURCES} it applies to that one file.
+
+Written with nothing after the \texttt{=} it takes back whatever was
+inherited, which is how a project that cross-compiles builds the one
+tool that has to run on the machine doing the building:
+
+\begin{verbatim}
+CROSS_COMPILE  = aarch64-linux-gnu-
+
+TESTEXECS     += guest/hello
+SOURCES       += hello.c
+
+BINARIES      += mkimage
+CROSS_COMPILE  =
+SOURCES       += mkimage.c
+\end{verbatim}
+
+It can also be given on the command line, see
+Section~\ref{cl:cross_compile}, which is how the same tree gets
+configured for one machine and then for another without being edited.
+
+What a prefix means is up to the language: \texttt{c} and \texttt{c++}
+run \texttt{\$prefix gcc} and \texttt{\$prefix g++} in place of
+\texttt{\$\{CC\}} and \texttt{\$\{CXX\}}, a vendored \texttt{kconfig}
+subproject is handed \texttt{CROSS\_COMPILE=\$prefix} on its
+sub-\texttt{make}'s command line (see Section~\ref{buildsys:kconfig}),
+and a language with no notion of a toolchain ignores it.  A target
+that a \texttt{CROSS\_COMPILE} applies to is also left unsigned on
+macOS, since what comes out of the link isn't a Mach-O; see
+Section~\ref{cmd:entitlements}.
+
+\subsection{\texttt{COMPILER = \$cmd} \label{cmd:compiler}}
+
+Sets the command used to compile to \texttt{\$cmd}, replacing whatever
+the language would otherwise have run.  Where a
+\texttt{CROSS\_COMPILE} says which machine something is being built
+for and lets the language work out what to run, this says what to run
+and leaves the rest alone -- so it's the one to reach for when a
+toolchain isn't named the way a toolchain usually is, or when the
+compiler is a wrapper script of your own.
+
+Like \texttt{COMPILEOPTS} (see Section~\ref{cmd:compileopts}) it
+applies to whatever \pconfigure\ is in the middle of:
+
+When \pconfigure\ has a current source, only that source is compiled
+with \texttt{\$cmd}.
+
+When \pconfigure\ has no current source but a current target, every
+source linked into that target -- both the ones written down and the
+ones found -- is compiled with \texttt{\$cmd}.
+
+When \pconfigure\ has no current source or target, every source built
+with the current language is compiled with \texttt{\$cmd}.
+
+When \pconfigure\ has no current source, target, or language then a
+fatal error is thrown.
+
+An object file is named after what built it, so two targets that share
+a source but not a compiler get an object file each rather than
+fighting over one.
 
 \subsection{\texttt{LINKER = \$cmd}}
 
-Sets the command used to link for the current language to
-\texttt{\$cmd}.  Calling this without any language set is a fatal
-error.
+\texttt{LINKER} is just like \texttt{COMPILER}, but it sets the
+command used to link instead of the command used to compile.  See
+Section~\ref{cmd:compiler}.
 
 \subsection{\texttt{PREFIX = \$prefix}}
 
@@ -649,11 +811,6 @@ set to \texttt{lib}.
 
 Sets the \texttt{HDRDIR} variable to \texttt{\$val}.  By default it is
 set to \texttt{include}.
-
-\subsection{\texttt{TESTDIR = \$val}}
-
-Sets the \texttt{TESTDIR} variable to \texttt{\$val}.  By default it is
-set to \texttt{test}.
 
 \subsection{\texttt{SRCDIR = \$val}}
 
@@ -715,7 +872,7 @@ ready, so plan accordingly!
 
 \subsection{\texttt{TGENERATE += \$script}}
 
-Exactly the same as generate, but runs \texttt{\$TESTDIR/\$script}
+Exactly the same as generate, but runs \texttt{test/\$script}
 instead of running \texttt{\$SRCDIR/\$script}.
 
 \section{Supported Languages \label{lang}}
@@ -773,12 +930,27 @@ directly.
 The Chisel C++ backend supports linking against C (for binaries and
 C++ libraries), and against Scala (for Scala libraries).
 
-\subsection{\texttt{c++}: C++}
+\subsection{\texttt{c++}: C++ \label{lang:cxx}}
 
-C++ is almost exactly the same as C, except that there is a wider set
-of file extensions is supported (\texttt{.c++}, \texttt{.cpp},
-\texttt{.cxx}, and \texttt{.c}) and that the code is linked with
+C++ is almost exactly the same as C, except that a wider set of file
+extensions is supported and that the code is compiled and linked with
 \texttt{c++} instead of \texttt{cc}.
+
+A source is C++ when it is called \texttt{.c++}, \texttt{.cpp},
+\texttt{.cxx}, \texttt{.cc}, or \texttt{.C}.  \texttt{.c} is
+deliberately not in that list: it belongs to C (see
+Section~\ref{lang:c}), and keeping it out is the whole of what stops
+the two languages from both claiming the same file.  Which of the
+other spellings a project picked is its own business and none of them
+mean anything different here.
+
+A header is C or C++ when it is called \texttt{.h++}, \texttt{.hpp},
+\texttt{.hxx}, \texttt{.hh}, or \texttt{.h}.  That list is what the
+search for the source behind a header runs through: a header and the
+source that implements it are the same name with a different ending,
+and nobody ever writes down that the two go together.  Every source
+that exists is built, so a project keeping both a \texttt{foo.c} and a
+\texttt{foo.c++} next to \texttt{foo.h} gets both.
 
 Chisel implicit dependency detection works in the same manner as Scala
 (see Section~\ref{lang:scala}): an entire directory of files is built
@@ -797,7 +969,9 @@ The Flo backend supports linking against Flo.
 \subsection{\texttt{h}: C/C++ Header}
 
 This is a simple dummy language that just copies header files for
-installation.
+installation.  The headers it recognizes are the ones C++ recognizes:
+\texttt{.h++}, \texttt{.hpp}, \texttt{.hxx}, \texttt{.hh}, and
+\texttt{.h}.  See Section~\ref{lang:cxx}.
 
 Headers support linking against headers.
 
@@ -871,7 +1045,7 @@ describes.  It takes no \texttt{CONFIGUREOPTS}, since a
 \texttt{pconfigure} project is configured by its own
 \texttt{Configfile}.
 
-\subsection{\texttt{kconfig}: Linux's Build System}
+\subsection{\texttt{kconfig}: Linux's Build System \label{buildsys:kconfig}}
 
 Linux's build system, and everything else that copied it: a
 configuration that comes out of \texttt{Kconfig} files, and a build
@@ -907,7 +1081,92 @@ The options are:
   is a string, and goes in with the quotes back on; anything else is
   used as the option's value.  Later options win, so the order they
   are given in matters.
+
+\item \texttt{--merge-config \$file} merges a configuration fragment
+  on top of that defconfig, using the tree's own
+  \texttt{scripts/kconfig/merge\_config.sh}, and then re-runs
+  \texttt{olddefconfig}.  Merging is not appending: a fragment that
+  sets an option the base file already set has to replace it rather
+  than be read twice, and working out which lines those are is a job
+  for the tree's own program the same way editing one is.  This is
+  the option to reach for when the configuration you want is already
+  written down, rather than transcribing a fragment into a wall of
+  \texttt{--configure} lines and keeping the two in step forever.
+
+  \texttt{\$file} is named relative to the project that asks for it,
+  not to the vendored tree, because a fragment is that project's own
+  statement about how it wants somebody else's tree built.  A
+  fragment that does live inside the tree is named through it:
+  \texttt{--merge-config linux/arch/arm64/configs/virt.config}.  Any
+  fragment named this way is a prerequisite of the
+  \texttt{.config}, so changing one re-configures.  Fragments are
+  merged before any \texttt{--configure} is set, on the grounds that
+  the more specific statement should get the last word.
+
+\item \texttt{--make-var \$name=\$value} puts a variable on the
+  sub-\texttt{make}'s command line, where it beats whatever the
+  tree's own \texttt{Makefile} has to say about it.  This is how a
+  tree gets told something it never asked to be told:
+  \texttt{--make-var ARCH=arm64}.
+
+\item \texttt{--env \$name=\$value} puts a variable in the environment
+  the tree is built in, where the tree's own \texttt{Makefile} is
+  allowed to disagree with it.  That difference is the whole reason
+  both options exist, and it is the difference you want for a
+  \texttt{PATH}: \texttt{--env
+  PATH=/opt/homebrew/opt/coreutils/libexec/gnubin:\$(PATH)}, to put
+  the GNU tools a kbuild-derived tree expects in front of the BSD
+  ones macOS ships.
+
+  Either of these reaches the generated \texttt{Makefile} spelled
+  exactly the way it was written, so \texttt{\$(abspath tests/x)} and
+  \texttt{\$(PATH)} mean what they say and are worked out by
+  \texttt{make}.  Note that this is \texttt{\$(PATH)} and not
+  \texttt{\$PATH}: \texttt{make} reads a lone \texttt{\$} as naming a
+  one-character variable.  Both apply to every invocation of the
+  tree -- the defconfig, the \texttt{olddefconfig} and the build --
+  because a tree told \texttt{ARCH=} for two of the three writes a
+  configuration for one machine and then builds for another.
+
+\item \texttt{--target \$name} asks the tree for a target rather than
+  for whatever it builds when it is asked for nothing.  May be given
+  more than once, in which case they are asked for one at a time in
+  the order they were written: \texttt{make -j} handed several goals
+  is allowed to run them at once, and neither \texttt{kbuild} nor
+  anything that copied it is safe against that at the top of the
+  tree.
+
+\item \texttt{--depend \$path} names something the build has to wait
+  for, and \texttt{--depend-config \$path} names something the
+  configuration has to wait for.  \texttt{\$path} is relative to the
+  project that names it, and is either a file, or the directory of
+  another vendored subproject of the same project -- in which case
+  the wait is for that tree to have been built, rather than for its
+  directory to change.
+
+  Both exist because nothing else can find these edges.  Every other
+  dependency between two things \pconfigure\ builds comes from
+  reading a command line, and a vendored tree has no command line to
+  read: it says nothing about what it reads outside itself, and
+  nothing at all about another vendored tree.  So a kernel that can't
+  be built until a \texttt{buildroot} has produced a toolchain says
+  \texttt{--depend buildroot}, and a root filesystem that has to be
+  rebuilt when a file of your own outside the tree changes says
+  \texttt{--depend \$that\_file}.  Without them, \texttt{make -j}
+  races.
+
+  A \texttt{pconfigure} subproject can't be named this way: it has no
+  one file that says it has been built, so name the file you actually
+  need instead.
 \end{itemize}
+
+A vendored tree is also told the \texttt{CROSS\_COMPILE} the project
+was configured with (see Section~\ref{cmd:cross_compile}), since
+\texttt{kbuild} is where that spelling comes from and a project that
+has said which machine it is building for has already said this.  A
+\texttt{--make-var CROSS\_COMPILE=} of your own overrides that, for a
+vendored tree that has to be built with a different toolchain than the
+project around it.
 
 The dependency guess described in Section~\ref{cmd:build_systems}
 works by following every \texttt{source} out of a \texttt{Kconfig} and
@@ -930,7 +1189,7 @@ it was given -- \texttt{sort}, \texttt{wildcard}, \texttt{strip},
 thrown away, so a whole directory of \texttt{Makefile}s that is
 included at once still gets followed.
 
-\subsection{\texttt{buildroot}: Buildroot}
+\subsection{\texttt{buildroot}: Buildroot \label{buildsys:buildroot}}
 
 Buildroot, which builds a whole embedded Linux system out of a
 kconfig-derived tree.  It took Kconfig and the shape of
@@ -939,17 +1198,19 @@ everything else differently, so this is the \texttt{kconfig} build
 system with the names changed: the top of the configuration is a
 \texttt{Config.in} rather than a \texttt{Kconfig}, the program that
 edits a \texttt{.config} is \texttt{utils/config} rather than
-\texttt{scripts/config}, and the build description is a
-\texttt{.mk} file per package rather than a \texttt{Makefile} per
-directory.  It recognizes a directory with a \texttt{Config.in} and a
+\texttt{scripts/config}, the one that merges a fragment into a
+\texttt{.config} is \texttt{support/kconfig/merge\_config.sh} rather
+than \texttt{scripts/kconfig/merge\_config.sh}, and the build
+description is a \texttt{.mk} file per package rather than a
+\texttt{Makefile} per directory.  It recognizes a directory with a \texttt{Config.in} and a
 \texttt{Makefile} in it alongside a \texttt{package} directory of
 its own, which is what such a tree looks like from outside.
 
 Everything else is as Section~\ref{buildsys} describes for
 \texttt{kconfig}: the same two rules, the same out-of-tree build
 (\texttt{O=}) into \texttt{\$obj\_dir/buildroot/\$dirname}, and the
-same dependency guess.  \texttt{--defconfig} and \texttt{--configure}
-mean what they mean there, and there is one more option:
+same dependency guess.  Every option listed there means what it means
+there, and there is one more:
 
 \begin{itemize}
 \item \texttt{--external \$dirname} adds a \texttt{BR2\_EXTERNAL}
@@ -969,6 +1230,13 @@ is therefore named directly: its \texttt{external.desc},
 \texttt{Config.in} and \texttt{.mk} of every package in it.  Touching
 any of those runs Buildroot again, which is what you want from code
 that is yours.
+
+Buildroot is also the one kconfig-derived tree that is not told the
+project's \texttt{CROSS\_COMPILE}: it builds the toolchain it is going
+to use before it builds anything with it, so a prefix naming some
+other compiler is at best noise, and Buildroot's own manual says in so
+many words not to set it.  Which compiler builds the target is
+something its \texttt{.config} says instead.
 
 \section{Common Error Messages \label{err}}
 
@@ -1006,6 +1274,16 @@ In addition to being used internally by \pconfigure\ to run tests,
 \texttt{stdout}.  You will almost certainly just want to run
 \texttt{ptest} with no arguments, which will print the entire current
 set of test results along with a summary.
+
+Run that way it reports on every project in the build, not just the
+one it was run in: a build with subprojects has its results spread
+across all of them, and \pconfigure\ writes the list of directories
+they land in to \texttt{\$OBJDIR/check-dirs} at the same time as it
+writes the \texttt{Makefile}.  Naming a directory with
+\texttt{--check-dir} overrides that entirely, and may be given more
+than once.
+
+See Section~\ref{cmd:tests} for the environment a test is run in.
 
 \subsection{\texttt{pinclude} \label{prog:pinclude}}
 
