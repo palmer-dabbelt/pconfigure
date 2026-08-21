@@ -23,6 +23,7 @@
 
 #include <memory>
 #include <stack>
+#include "build_system.h++"
 #include "command.h++"
 #include "context.h++"
 #include "language_list.h++"
@@ -42,6 +43,22 @@ private:
 
     /* The object that should be touched for {COMPILE,LINK}OPTS. */
     opts_target::ptr _opts_target;
+
+    /* The build systems that are available to build a SUBPROJECTS,
+     * which is pconfigure plus whatever a BUILD_SYSTEMS asked for.
+     * None of these is bound to a directory: they're the list that a
+     * SUBPROJECTS gets matched against. */
+    std::vector<build_system::ptr> _build_systems;
+
+    /* The third-party trees this project pulled in, one per
+     * SUBPROJECTS that turned out not to be a pconfigure project.
+     * These are bound, and they're what produce targets. */
+    std::vector<build_system::ptr> _vendored;
+
+    /* The object that should be touched for CONFIGUREOPTS, which is
+     * whichever build system or subproject was named most
+     * recently. */
+    build_system::ptr _configure_target;
 
     /* A list of every target that's ever been part of the context
      * stack. */
@@ -90,6 +107,8 @@ public:
     /* Accessor methods. */
     const std::vector<context::ptr>& output_contexts(void) const
         { return _output_contexts; }
+    const std::vector<build_system::ptr>& vendored(void) const
+        { return _vendored; }
     const bool& given_version_command(void) const
         { return _given_version_command; }
     const bool& given_help_command(void) const

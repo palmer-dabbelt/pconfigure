@@ -79,6 +79,17 @@ file_utils::execlines(std::string path, std::vector<std::string> args)
     return out;
 }
 
+std::string file_utils::normalize_directory(const std::string& path)
+{
+    auto out = normalize_path(path);
+
+    if (out == ".")
+        return "";
+    if (out.size() > 0 && out[out.size() - 1] != '/')
+        out += "/";
+    return out;
+}
+
 std::string file_utils::normalize_path(const std::string& path)
 {
     auto absolute = path.size() > 0 && path[0] == '/';
