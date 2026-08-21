@@ -868,8 +868,10 @@ The options are:
   then re-runs \texttt{olddefconfig} so that whatever the option
   turned on gets its dependencies filled in.  A \texttt{\$value} of
   \texttt{y}, \texttt{m} or \texttt{n} means what it means in a
-  \texttt{.config}; anything else is used as the option's value.
-  Later options win, so the order they are given in matters.
+  \texttt{.config}; a \texttt{\$value} written with quotes around it
+  is a string, and goes in with the quotes back on; anything else is
+  used as the option's value.  Later options win, so the order they
+  are given in matters.
 \end{itemize}
 
 The dependency guess described in Section~\ref{cmd:build_systems}
@@ -887,7 +889,51 @@ that is only read when some option is set is still a file this
 configuration might read tomorrow, and a path a variable made
 unreadable -- \texttt{arch/\$(SRCARCH)/Kconfig} -- becomes a glob, on
 the grounds that it names a real file for every value that variable
-could take.
+could take.  A \texttt{make} function that just hands back the paths
+it was given -- \texttt{sort}, \texttt{wildcard}, \texttt{strip},
+\texttt{abspath}, \texttt{realpath} -- is looked through rather than
+thrown away, so a whole directory of \texttt{Makefile}s that is
+included at once still gets followed.
+
+\subsection{\texttt{buildroot}: Buildroot}
+
+Buildroot, which builds a whole embedded Linux system out of a
+kconfig-derived tree.  It took Kconfig and the shape of
+\texttt{kbuild}'s command line from Linux and then spelled almost
+everything else differently, so this is the \texttt{kconfig} build
+system with the names changed: the top of the configuration is a
+\texttt{Config.in} rather than a \texttt{Kconfig}, the program that
+edits a \texttt{.config} is \texttt{utils/config} rather than
+\texttt{scripts/config}, and the build description is a
+\texttt{.mk} file per package rather than a \texttt{Makefile} per
+directory.  It recognizes a directory with a \texttt{Config.in} and a
+\texttt{Makefile} in it alongside a \texttt{package} directory of
+its own, which is what such a tree looks like from outside.
+
+Everything else is as Section~\ref{buildsys} describes for
+\texttt{kconfig}: the same two rules, the same out-of-tree build
+(\texttt{O=}) into \texttt{\$obj\_dir/buildroot/\$dirname}, and the
+same dependency guess.  \texttt{--defconfig} and \texttt{--configure}
+mean what they mean there, and there is one more option:
+
+\begin{itemize}
+\item \texttt{--external \$dirname} adds a \texttt{BR2\_EXTERNAL}
+  tree: a directory of packages, defconfigs and \texttt{Config.in}
+  fragments of your own that Buildroot builds alongside the ones it
+  came with.  It may be given more than once, and Buildroot searches
+  them in the order they were given.  The directory is named relative
+  to the project that pulled the subproject in, the same way a
+  \texttt{SUBPROJECTS} is, because an external tree is that project's
+  own code rather than part of the tree that was vendored.
+\end{itemize}
+
+An external tree is only ever reached through a variable that names
+it, so no amount of reading the vendored tree finds it.  What it holds
+is therefore named directly: its \texttt{external.desc},
+\texttt{external.mk} and \texttt{Config.in}, and the
+\texttt{Config.in} and \texttt{.mk} of every package in it.  Touching
+any of those runs Buildroot again, which is what you want from code
+that is yours.
 
 \section{Common Error Messages \label{err}}
 
