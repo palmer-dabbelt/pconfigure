@@ -691,6 +691,98 @@ to that subproject alone, on top of whatever its build system was
 already given.  What an option means is up to the build system it
 reaches; see Section~\ref{buildsys}.
 
+\subsection{\texttt{MAKEOPS += \$name=\$value} \label{cmd:makeops}}
+
+Puts a variable on the command line of the \texttt{make} that builds a
+vendored subproject, where it beats whatever that tree's own
+\texttt{Makefile} has to say about it.  This is how somebody else's
+build system gets told something it never asked to be told:
+
+\begin{verbatim}
+SUBPROJECTS += linux
+MAKEOPS     += ARCH=arm64
+MAKEOPS     += KCFLAGS=-O2 -g
+\end{verbatim}
+
+Like \texttt{CONFIGUREOPTS} (see Section~\ref{cmd:configureopts}) this
+lands on whichever \texttt{SUBPROJECTS} was written last, or on a whole
+\texttt{BUILD\_SYSTEMS} when it was written after one of those --- in
+which case every subproject built that way gets it.
+
+One \texttt{MAKEOPS} is one variable, whatever is in its value: the
+line reaches \texttt{make} as a single argument, so a value with a
+space in it arrives with the space still in it rather than becoming a
+second word that \texttt{make} reads as a goal or a flag of its own.
+The value is not taken apart in any other way, so
+\texttt{\$(abspath x)} and \texttt{\$(PATH)} mean what they say and
+are worked out by \texttt{make} --- note that this is
+\texttt{\$(PATH)} and not \texttt{\$PATH}, since \texttt{make} reads
+a lone \texttt{\$} as naming a one-character variable.
+
+The variable reaches every invocation of the tree, the configuration
+as well as the build, because a tree told \texttt{ARCH=} for one and
+not the other configures for one machine and then builds for another.
+Changing one re-configures and rebuilds the tree, the same way
+changing a \texttt{CONFIGUREOPTS} does and for the same reason (see
+Section~\ref{cmd:configureopts}).
+
+A \texttt{MAKEOPS} written under a \texttt{pconfigure} subproject is a
+fatal error: there is no \texttt{make} being run there for a variable
+to go on the command line of.
+
+\subsection{\texttt{SUBPROJECT\_TARGETS += \$path}
+\label{cmd:subproject_targets}}
+
+Names a file that a vendored subproject produces, so that the rest of
+the build can wait for that file rather than for the whole tree.
+
+Everything else about such a tree hangs off a single stamp that says
+it has been built, and a stamp is not something anything else can
+usefully name.  This turns a file the tree happens to write into a
+target with a rule behind it, which a \texttt{TESTDEPS}, a
+\texttt{--depend} or a link line can then ask for like any other path:
+
+\begin{verbatim}
+BUILD_SYSTEMS      += kconfig
+
+SUBPROJECTS        += linux
+MAKEOPS            += ARCH=arm64
+SUBPROJECT_TARGETS += arch/arm64/boot/Image
+
+PHONY              += integration
+TESTDEPS           += obj/kconfig/linux/build/arch/arm64/boot/Image
+TESTSRC            += boots.bash
+\end{verbatim}
+
+\texttt{\$path} is relative to the directory the tree builds into,
+which for a \texttt{kconfig} or \texttt{buildroot} tree is the
+\texttt{O=} it was handed:
+\texttt{\$obj\_dir/\$buildsystem/\$dirname/build}.  A path that
+climbs out of there is a fatal error, since it would be claiming that
+this tree builds a file it never touches.
+
+However many of these are named, exactly one rule ever recurses into
+the tree: they all wait on the same stamp, which is the only thing
+that runs the tree's own build system.  A rule per output would be a
+\texttt{make -j} running somebody else's build system several times
+over in the same directory at once.
+
+Naming an output does not make \pconfigure\ believe anything about
+it.  If the tree finishes and the file is not there, the build stops
+and says which \texttt{SUBPROJECT\_TARGETS} was wrong, rather than
+letting whatever wanted the file run without it.  A plain
+\texttt{make} is what asks --- these are part of \texttt{make all},
+which costs nothing since the tree has built them by then --- so a
+name that is wrong is complained about at the first build rather than
+whenever something happens to want that file.
+
+A \texttt{SUBPROJECT\_TARGETS} needs a \texttt{SUBPROJECTS} above it
+rather than a bare \texttt{BUILD\_SYSTEMS}: it names a file in one
+tree's output directory, so it has to say which tree.  It also can't
+be written under a \texttt{pconfigure} subproject, which has no one
+file that says it has been built --- a \texttt{pconfigure} subproject's
+outputs already have rules of their own, so name those instead.
+
 \subsection{\texttt{DEPLIBS += \$libname} \label{cmd:deplibs}}
 
 Adds an internal library dependency to the list of link options.  This
@@ -1205,9 +1297,14 @@ Two rules come out of this.  The first produces a \texttt{.config},
 by running the tree's own \texttt{defconfig} target and then setting
 whatever options were asked for on top of it.  The second runs the
 tree's own \texttt{make} against that configuration.  Both build into
-\texttt{\$obj\_dir/kconfig/\$dirname} in the project that pulled the
-tree in, using an out-of-tree build (\texttt{O=}), so the vendored
-tree itself is never written to.
+\texttt{\$obj\_dir/kconfig/\$dirname/build} in the project that pulled
+the tree in, using an out-of-tree build (\texttt{O=}), so the vendored
+tree itself is never written to.  The \texttt{build} on the end is
+where the tree is handed its \texttt{O=}, which makes it the tree's:
+what \pconfigure\ keeps for itself --- the stamp, and the record of
+what the tree was configured with --- sits in
+\texttt{\$obj\_dir/kconfig/\$dirname} beside it rather than in there
+with the tree's own output.
 
 The options are:
 
@@ -1255,6 +1352,11 @@ The options are:
   tree's own \texttt{Makefile} has to say about it.  This is how a
   tree gets told something it never asked to be told:
   \texttt{--make-var ARCH=arm64}.
+
+  This is the same thing \texttt{MAKEOPS} (see
+  Section~\ref{cmd:makeops}) says, spelled the way the options are.
+  The two share one list and one order, so whichever of them was
+  written last is the one \texttt{make} hears last.
 
 \item \texttt{--env \$name=\$value} puts a variable in the environment
   the tree is built in, where the tree's own \texttt{Makefile} is
