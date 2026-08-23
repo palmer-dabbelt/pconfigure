@@ -161,6 +161,54 @@ std::string file_utils::normalize_path(const std::string& path)
     return out;
 }
 
+/* Splits a normalized directory into its components.  There are no
+ * empty ones and no "." ones to worry about, since normalizing is
+ * what takes those out. */
+static std::vector<std::string> components(const std::string& dir)
+{
+    auto out = std::vector<std::string>();
+    auto part = std::string();
+
+    for (const auto& c: dir) {
+        if (c != '/') {
+            part += c;
+            continue;
+        }
+
+        out.push_back(part);
+        part = "";
+    }
+
+    return out;
+}
+
+std::string file_utils::relative_directory(const std::string& from,
+                                           const std::string& to)
+{
+    auto here = components(normalize_directory(from));
+    auto there = components(normalize_directory(to));
+
+    /* Everything the two have in common is already behind whoever is
+     * standing in "from", so none of it gets walked either way. */
+    size_t same = 0;
+    while (same < here.size()
+           && same < there.size()
+           && here[same] == there[same])
+        same++;
+
+    /* Up out of what's left of "from", then down into what's left of
+     * "to".  A normalized directory has no ".." in it, so climbing is
+     * only ever what this puts there and the answer is normalized
+     * too. */
+    auto out = std::string();
+    for (size_t i = same; i < here.size(); ++i)
+        out += "../";
+    for (size_t i = same; i < there.size(); ++i)
+        out += there[i] + "/";
+
+    return out;
+}
+
 bool file_utils::mkdir_p(const std::string& path)
 {
     if (path.size() == 0)

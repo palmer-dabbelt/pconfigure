@@ -160,7 +160,8 @@ int main(int argc, const char **argv)
 
     for (const auto& project: projects)
         project->write_makefile(edges[project->base()],
-                                project::flatten(project));
+                                project::flatten(project),
+                                projects);
 
     return 0;
 }

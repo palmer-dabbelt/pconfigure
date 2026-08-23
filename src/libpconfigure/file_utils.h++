@@ -65,6 +65,19 @@ namespace file_utils {
      * sticking a filename on the end of one always works. */
     std::string normalize_directory(const std::string& path);
 
+    /* How to get from one directory to another when both of them are
+     * named relative to the same place.  Both arguments and the
+     * answer are spelled the way normalize_directory() spells a
+     * directory: ending with a '/', or empty for the place they're
+     * both named relative to.
+     *
+     * This is what lets one project's Makefile say where another
+     * project is.  pconfigure works out every path from the top of
+     * the tree, and a Makefile that make might be run inside has to
+     * say the same thing from down there instead. */
+    std::string relative_directory(const std::string& from,
+                                   const std::string& to);
+
     /* Makes a directory and every directory above it, the way
      * "mkdir -p" does, and says whether it worked.  A directory that
      * was already there is a success, since what the caller wanted

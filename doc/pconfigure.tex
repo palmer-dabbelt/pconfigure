@@ -543,6 +543,21 @@ its own, so you can \texttt{cd} into a submodule and run
 written relative to a variable that the \texttt{Makefile} defaults to
 nothing and a parent sets before including.
 
+That goes for a path belonging to some \textit{other} project in the
+run too, not just for the project's own.  A header that one
+subproject compiles against and a sibling owns is worked out as
+\texttt{b/src/b.h} from the top, and a \texttt{Makefile} that says
+that is a \texttt{Makefile} that only works from the top --- from
+inside the subproject there is no \texttt{b} to find.  So every
+project in the run gets a variable of its own, each project's
+\texttt{Makefile} says where all of them are as it sees them, and
+every one of those is a default: the first \texttt{Makefile}
+\texttt{make} reads is the project \texttt{make} was run in, so its
+answers are the ones that win.  Saying where another project is does
+not pull that project's rules in; a subproject still has no idea how
+to build a sibling's output, which is what keeps it buildable on its
+own.
+
 Dependencies between projects don't have to be written down.  A
 \texttt{-l} on a link line that names a library some project in the
 build produces becomes a \texttt{Makefile} dependency on it, and

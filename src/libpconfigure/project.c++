@@ -332,7 +332,8 @@ makefile::target::ptr project::distclean_target(const std::vector<ptr>& projects
 }
 
 void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
-                             const std::vector<ptr>& aggregated) const
+                             const std::vector<ptr>& aggregated,
+                             const std::vector<ptr>& everyone) const
 {
     /* FIXME: If any target is verbose, then all are. */
     auto verbose = [&](void) -> bool {
@@ -342,14 +343,49 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
         return false;
         }();
 
+    /* Every project in the run other than the ones this Makefile
+     * includes itself.  A path inside one of those is a path this
+     * project can perfectly well name -- a header a sibling owns, say
+     * -- and one it has no idea how to build, so it gets named
+     * through that project's variable and nothing else. */
+    auto children = std::set<std::string>();
+    for (const auto& child: _children)
+        children.insert(child->base());
+
+    auto peers = std::vector<std::pair<std::string, std::string>>();
+    for (const auto& other: everyone) {
+        if (other->_base == _base)
+            continue;
+        if (children.find(other->_base) != children.end())
+            continue;
+
+        /* The project at the top of the run has no directory of its
+         * own, so there's nothing in a path that says it belongs
+         * there and no variable that could be put in front of it.
+         * Nothing names one of its paths from below anyway: a
+         * project only ever gets to name things inside itself. */
+        if (other->_base.size() == 0)
+            continue;
+
+        peers.push_back(std::make_pair(other->_base,
+                                       prefix_variable(other->_base)));
+    }
+
     auto prefix = _base.size() == 0
         ? makefile::path_prefix()
-        : makefile::path_prefix(_base, prefix_variable(_base));
+        : makefile::path_prefix(_base, prefix_variable(_base), peers);
 
     auto out = std::make_shared<makefile::makefile>(
         verbose,
         _processor->root_context()->obj_dir,
         prefix);
+
+    /* Where each of those projects is, said the way it looks from
+     * here.  Whoever make was actually run in says it first and so
+     * says it for everybody. */
+    for (const auto& peer: peers)
+        out->add_peer(peer.second,
+                      file_utils::relative_directory(_base, peer.first));
 
     for (const auto& child: _children)
         out->add_subproject(prefix_variable(child->base()), child->base());

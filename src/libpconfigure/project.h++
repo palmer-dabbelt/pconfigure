@@ -114,17 +114,17 @@ public:
      * way. */
     void generate_targets(void);
 
-    /* Writes this project's Makefile, along with whichever of the
-     * dependencies that were worked out across the whole run belong
-     * in it. */
     /* Writes this project's Makefile.  "implied" is the dependencies
-     * that belong in this Makefile, and "aggregated" is
-     * every project whose test results and build directories this
-     * one's Makefile is responsible for -- which is all of them for
-     * the project make gets run in, and none of them for a project
-     * that only ever gets included. */
+     * that belong in this Makefile, "aggregated" is every project
+     * whose test results and build directories this one's Makefile is
+     * responsible for -- which is all of them for the project make
+     * gets run in, and none of them for a project that only ever gets
+     * included -- and "everyone" is every project in the run, which
+     * is how a path belonging to a project this one has never heard
+     * of still gets written down in terms of that project. */
     void write_makefile(const std::vector<makefile::implied_dep>& implied,
-                        const std::vector<ptr>& aggregated) const;
+                        const std::vector<ptr>& aggregated,
+                        const std::vector<ptr>& everyone) const;
 
     /* The projects this one pulls in, at any depth, including
      * itself. */

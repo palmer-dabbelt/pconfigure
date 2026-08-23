@@ -61,6 +61,13 @@ namespace makefile {
          * the variables that say where they are. */
         std::vector<std::pair<std::string, std::string>> _subprojects;
 
+        /* The variables that say where the rest of the projects in
+         * the run are, and what this Makefile thinks the answer is.
+         * Nothing here gets included -- these are the projects this
+         * one might name a path inside without knowing how to build
+         * anything of theirs. */
+        std::vector<std::pair<std::string, std::string>> _peers;
+
         /* The stamp files of those projects, which this one's stamp
          * waits on so that "make check" tests everything. */
         std::vector<std::string> _check_stamps;
@@ -105,6 +112,16 @@ namespace makefile {
          * is the make variable it uses to find itself. */
         void add_subproject(const std::string& variable,
                             const std::string& base);
+
+        /* Says where another project in the run is, without pulling
+         * its Makefile in.  This is how a project that names a path
+         * belonging to a sibling gets to say where that sibling is
+         * when make was run here -- and how the project make was
+         * actually run in gets the last word for everybody, since
+         * these are all defaults and the outermost Makefile is read
+         * first. */
+        void add_peer(const std::string& variable,
+                      const std::string& base);
 
         /* Waits on another project's "make check" stamp, and looks in
          * another project's directory for test results. */
