@@ -199,6 +199,7 @@ fi
 test=""
 out=""
 bin=""
+srcdir=""
 command=""
 while [[ "$1" != "" ]]
 do
@@ -215,6 +216,11 @@ do
     elif [[ "$1" == "--bin" ]]
     then
         bin="$2"
+        shift
+        shift
+    elif [[ "$1" == "--srcdir" ]]
+    then
+        srcdir="$2"
         shift
         shift
     elif [[ "$1" == "--args" ]]
@@ -247,11 +253,21 @@ then
     bin="$(abs_path "$bin")"
 fi
 
+# What pconfigure writes here is already absolute -- make worked it
+# out, since only make knows what directory it was run in.  The guard
+# is for a ptest run by hand, which was told nothing and should say
+# nothing rather than name whatever directory it started in.
+if [[ "$srcdir" != "" ]]
+then
+    srcdir="$(abs_path "$srcdir")"
+fi
+
 # This is the regular path where we actually run a test case
 tmpdir=`mktemp -d -t ptest-wrapper.XXXXXXXXXX`
 trap "rm -rf $tmpdir" EXIT
 
 export PTEST_BINARY="$bin"
+export PTEST_SRCDIR="$srcdir"
 export PTEST_TMPDIR="$tmpdir"
 
 "$test" "$@" >&"$tmpdir"/ptest__output

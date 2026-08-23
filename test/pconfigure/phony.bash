@@ -62,10 +62,25 @@ test "\$(./vm/bin/vm)" = "vm-ran"
 # handing over a path to something that isn't one.
 test "\$PTEST_BINARY" = ""
 
+# What it gets instead: the project this test belongs to, absolute, so
+# it reads the same whether make ran here or somewhere above.
+test "\$PTEST_SRCDIR" != ""
+test "\$PTEST_SRCDIR" = "\$(cd "\$PTEST_SRCDIR" && pwd)"
+test -f "\$PTEST_SRCDIR"/Configfile
+test -x "\$PTEST_SRCDIR"/fs/libexec/mkfs
+
 exit 0
 EOF
 
 cat >sub/test/thing/runs.bash <<EOF
+# The anchor a subproject's phony test gets is that subproject, and it
+# is the same absolute path whether make ran up here or down there --
+# which is the whole point of handing one over rather than leaving the
+# test to work it out from a working directory that has two answers.
+test "\$PTEST_SRCDIR" = "\$(cd "\$PTEST_SRCDIR" && pwd)"
+test -f "\$PTEST_SRCDIR"/Configfile
+grep -q "PHONY" "\$PTEST_SRCDIR"/Configfile
+
 exit 0
 EOF
 
@@ -85,14 +100,17 @@ then
     exit 1
 fi
 
-# The test hanging off it gets no binary, because there isn't one.
-grep -q "ptest --test obj/check/integration/boots.bash --out check/integration/boots.bash\$" Makefile
+# The test hanging off it gets no binary, because there isn't one --
+# and it gets the project it belongs to instead, which is the anchor a
+# test with no binary has nothing else to build out of.
+grep -q "ptest --test obj/check/integration/boots.bash --out check/integration/boots.bash --srcdir \\\$(abspath \\.)\$" Makefile
 
 # A phony belongs to the project that asked for it, the same way every
 # other target does -- so two projects can both want one called the
 # same thing, and asking for it from the top or from inside the
 # project reaches the same one.
 grep -q "^\.PHONY: \$(pconfigure_subdir_sub)thing$" sub/Makefile
+grep -q -- "--srcdir \\\$(abspath \\\$(pconfigure_subdir_sub)\\.)$" sub/Makefile
 if grep -q "^\.PHONY: thing$" Makefile
 then
     exit 1

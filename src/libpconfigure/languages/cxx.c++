@@ -318,10 +318,22 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
             for (const auto& dep: ctx->based_test_deps())
                 deps.push_back(std::make_shared<makefile::target>(dep));
 
+            /* Where the project that owns this test is rooted -- whatever its
+             * SRCPATH says, which is its own directory unless it said
+             * otherwise.  make is what makes it absolute, because a test runs
+             * wherever make was run and only make knows where that was.
+             *
+             * A test attached to a program can work this out from
+             * $PTEST_BINARY.  One attached to a PHONY has no program to work
+             * it out from, and this is what it anchors on instead of a
+             * relative path with two answers. */
+            auto srcdir = "$(abspath " + ctx->src_path + ".)";
+
             auto commands = std::vector<std::string>{
                 "mkdir -p " + ctx->check_dir,
                 "+" + makefile::tool_command("ptest") + " --test " + test_name + " --out " + target_name
                 + (bin_name.size() > 0 ? " --bin " + bin_name : "")
+                + " --srcdir " + srcdir
             };
             auto comment = std::vector<std::string>{
                 "language_cxx::targets() CHECK"
