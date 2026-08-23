@@ -80,12 +80,19 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * to, not from wherever pconfigure happens to be running, so
          * that the paths it reads and the paths it prints are the
          * ones it was written against.  For a project that nothing
-         * pulled in those are the same place. */
+         * pulled in those are the same place.
+         *
+         * The '.' on the end is what keeps the trailing '/', which is
+         * the only spelling of a directory that the rewriting on the
+         * way into a Makefile recognizes as a path -- and this
+         * recipe has to say "the project" rather than "sub" for the
+         * same reason every other line in that file does.  It reads
+         * as "sub/." from a parent and as "." from inside the
+         * project, and both of those are the directory meant. */
         auto in_project = [&](const std::string& command) {
             if (ctx->base.size() == 0)
                 return command;
-            return "cd " + ctx->base.substr(0, ctx->base.size() - 1)
-                   + " && " + command;
+            return "cd " + ctx->base + "." + " && " + command;
         };
 
         auto sources = std::vector<makefile::target::ptr>{

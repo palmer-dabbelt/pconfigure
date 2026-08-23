@@ -935,6 +935,11 @@ commands with specific targets in order to keep them seperate.
 \texttt{\$SRCDIR/\$name.proc} is expected to be an executable that has
 two calling formats:
 
+Either call is made from the top of the project that owns the script,
+rather than from wherever \pconfigure\ or \texttt{make} happens to be
+standing, so a script in a subproject reads and prints the same paths
+whether the build was started there or in a parent that pulled it in.
+
 Calling \texttt{\$SRCDIR\$name.proc --deps} prints out the
 dependencies of \texttt{\$name} to \texttt{/dev/stdout}.  It's up to
 the user to keep this dependency list complete and to ensure that all

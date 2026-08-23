@@ -185,6 +185,7 @@ TESTSRC     += subprojects.bash
 TESTSRC     += subprojects-nested.bash
 TESTSRC     += subprojects-pkgconfig.bash
 TESTSRC     += subprojects-siblings.bash
+TESTSRC     += generate-subproject.bash
 TESTSRC     += kconfig.bash
 TESTSRC     += buildroot.bash
 TESTSRC     += kconfig-opts.bash

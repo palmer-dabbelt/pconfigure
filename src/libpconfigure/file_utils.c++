@@ -24,6 +24,8 @@
 #include <sys/types.h>
 #include <cerrno>
 #include <cstdio>
+#include <cstring>
+#include <iostream>
 #include <sstream>
 using namespace file_utils;
 
@@ -61,12 +63,27 @@ std::vector<std::string>
 file_utils::execlines(std::string path, std::vector<std::string> args)
 {
     std::ostringstream cmd;
-    cmd << "\"" + path + "\"" + " ";
+
+    /* Whatever was handed in goes to the shell exactly as it was
+     * written.  Quoting it here would mean deciding that it names one
+     * program, and a caller that has something to say about the
+     * directory the program runs in has already written a compound
+     * command -- which is a perfectly good thing to hand a shell and
+     * not a thing that has a name.  The one caller quotes the
+     * program itself, which is where that belongs: it's the part
+     * that's a path. */
+    cmd << path << " ";
     for (const auto& arg: args)
         cmd << "\"" << arg << "\"" << " ";
 
     std::vector<std::string> out;
     auto file = popen(cmd.str().c_str(), "r");
+    if (file == NULL) {
+        std::cerr << "can't run '" << cmd.str() << "': "
+                  << strerror(errno) << "\n";
+        abort();
+    }
+
     char *lineptr = NULL;
     size_t n = 0;
     while (getline(&lineptr, &n, file) > 0) {
@@ -76,8 +93,16 @@ file_utils::execlines(std::string path, std::vector<std::string> args)
     }
 
     free(lineptr);
-    if (pclose(file) != 0)
+
+    /* The shell has already said what went wrong on stderr, but it
+     * said it about the command rather than about the run: without
+     * this the only other thing anybody gets is a signal. */
+    auto status = pclose(file);
+    if (status != 0) {
+        std::cerr << "'" << cmd.str() << "' failed with status "
+                  << std::to_string(status) << "\n";
         abort();
+    }
 
     return out;
 }
