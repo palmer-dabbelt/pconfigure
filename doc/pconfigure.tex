@@ -1096,10 +1096,9 @@ whether the build was started there or in a parent that pulled it in.
 Calling \texttt{\$SRCDIR\$name.proc --deps} prints out the
 dependencies of \texttt{\$name} to \texttt{/dev/stdout}.  It's up to
 the user to keep this dependency list complete and to ensure that all
-these dependencies are eventually handled by \pconfigure.
-\pconfigure\ provides the \texttt{--binname}, \texttt{--testname}, and
-\texttt{--srcname} arguments to facilitate this, see
-Section~\ref{cl:srcname} for more information.
+these dependencies are eventually handled by \pconfigure.  Everything
+it prints is named relative to the project the script belongs to,
+which is also the directory it was run from.
 
 Calling \texttt{\$SRCDIR\$name.proc --generate} prints the generated
 file to \texttt{/dev/stdout}.  Note that \pconfigure\ may call this
