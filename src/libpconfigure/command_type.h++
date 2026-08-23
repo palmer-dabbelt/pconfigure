@@ -50,12 +50,14 @@ enum class command_type {
     LIBRARIES,
     LINKER,
     LINKOPTS,
+    MAKEOPS,
     PHONY,
     PREFIX,
     SOURCES,
     SRCDIR,
     STRICT,
     SUBPROJECTS,
+    SUBPROJECT_TARGETS,
     TESTDEPS,
     TESTEXECS,
     TESTS,
@@ -94,12 +96,14 @@ static const std::vector<command_type> all_command_types =
     command_type::LIBRARIES,
     command_type::LINKER,
     command_type::LINKOPTS,
+    command_type::MAKEOPS,
     command_type::PHONY,
     command_type::PREFIX,
     command_type::SOURCES,
     command_type::SRCDIR,
     command_type::STRICT,
     command_type::SUBPROJECTS,
+    command_type::SUBPROJECT_TARGETS,
     command_type::TESTDEPS,
     command_type::TESTEXECS,
     command_type::TESTS,
@@ -159,6 +163,8 @@ namespace std {
             return "LINKER";
         case command_type::LINKOPTS:
             return "LINKOPTS";
+        case command_type::MAKEOPS:
+            return "MAKEOPS";
         case command_type::PHONY:
             return "PHONY";
         case command_type::PREFIX:
@@ -171,6 +177,8 @@ namespace std {
             return "STRICT";
         case command_type::SUBPROJECTS:
             return "SUBPROJECTS";
+        case command_type::SUBPROJECT_TARGETS:
+            return "SUBPROJECT_TARGETS";
         case command_type::TESTDEPS:
             return "TESTDEPS";
         case command_type::TESTEXECS:
