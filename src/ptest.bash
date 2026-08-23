@@ -235,8 +235,17 @@ abs_path() {
 }
 
 out="$(abs_path "$out")"
-bin="$(abs_path "$bin")"
 test="$(abs_path "$test")"
+
+# A test that isn't testing any one program -- one written under a
+# PHONY -- gets handed no "--bin" at all.  Making that absolute would
+# turn nothing into the directory ptest was started in, which is a
+# path, exists, and is not a program: a test that reached for it would
+# get something rather than noticing there was nothing.
+if [[ "$bin" != "" ]]
+then
+    bin="$(abs_path "$bin")"
+fi
 
 # This is the regular path where we actually run a test case
 tmpdir=`mktemp -d -t ptest-wrapper.XXXXXXXXXX`

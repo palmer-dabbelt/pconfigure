@@ -23,6 +23,7 @@
 #include "file_utils.h++"
 #include "languages/gen_proc.h++"
 #include "languages/implicit_h.h++"
+#include "languages/phony.h++"
 #include <iostream>
 
 command_processor::command_processor(const std::string& base,
@@ -74,6 +75,10 @@ command_processor::command_processor(const std::string& base,
         std::vector<std::string>{}
     ));
     tos->languages->add(std::make_shared<language_implicit_h>(
+        std::vector<std::string>{},
+        std::vector<std::string>{}
+    ));
+    tos->languages->add(std::make_shared<language_phony>(
         std::vector<std::string>{},
         std::vector<std::string>{}
     ));
@@ -148,6 +153,7 @@ static bool names_a_path(const command_type& type)
     case command_type::LINKER:
     case command_type::LINKOPTS:
     case command_type::PHC:
+    case command_type::PHONY:
     case command_type::STRICT:
     case command_type::VERBOSE:
     case command_type::VERSION:
@@ -556,6 +562,38 @@ void command_processor::process_one(const command::ptr& cmd)
 
         return;
 
+    /* A target that is a name and nothing else.  This exists so that
+     * a project that has tests but nothing to hang them off can still
+     * have them: a TESTS belongs to the thing it exercises, and the
+     * thing an integration test exercises is several other projects
+     * at once rather than any one program.  The alternative was a
+     * binary that does nothing, which builds and installs a program
+     * nobody wants and makes PTEST_BINARY point at it. */
+    case command_type::PHONY:
+    {
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        clear_until({context_type::DEFAULT}, cmd);
+        dup_tos_and_push(context_type::PHONY, cmd);
+
+        auto ctx = _stack.top();
+        _output_contexts.push_back(ctx);
+
+        /* There is no program here, so there is nothing for a test to
+         * be handed.  Saying so outright is the whole difference
+         * between this and the dummy binary it replaces: a test that
+         * reaches for PTEST_BINARY under one of these finds nothing,
+         * rather than finding a path to a program that does nothing.
+         *
+         * An opts target isn't set either.  A COMPILEOPTS here would
+         * have nothing to compile, and the stale-target warning is a
+         * better answer for it than quietly accepting it would be. */
+        ctx->test_binary = "";
+
+        return;
+    }
+
     case command_type::PREFIX:
         if (cmd->check_operation("=") != true)
             goto bad_op_eq;
@@ -734,6 +772,7 @@ void command_processor::process_one(const command::ptr& cmd)
         if (_stack.top()->check_type({context_type::BINARY,
                                       context_type::LIBRARY,
                                       context_type::GENERATE,
+                                      context_type::PHONY,
                                       context_type::TEST,}) == false) {
             std::cerr << "Attempted to add TESTDEPS to a "
                       << std::to_string(_stack.top()->type)
@@ -784,7 +823,8 @@ void command_processor::process_one(const command::ptr& cmd)
                     context_type::GENERATE,
                     context_type::LIBRARY,
                     context_type::BINARY,
-                    context_type::HEADER,}, cmd);
+                    context_type::HEADER,
+                    context_type::PHONY,}, cmd);
         auto parent = _stack.top();
 
         /* A test belongs to the thing it exercises, and with nothing
@@ -800,7 +840,9 @@ void command_processor::process_one(const command::ptr& cmd)
                       << " with no target open above it has nothing to"
                       << " test\n"
                       << "  put it under the BINARIES, LIBRARIES, LIBEXECS"
-                      << " or TESTEXECS whose tests these are\n";
+                      << " or TESTEXECS whose tests these are,\n"
+                      << "  or under a PHONY if what it exercises isn't any"
+                      << " one thing this project builds\n";
             abort();
         }
 

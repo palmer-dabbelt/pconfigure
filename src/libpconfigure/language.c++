@@ -42,6 +42,13 @@ void language::add_linkopt(const std::string& data)
 bool language::all_sources_match(const context::ptr& ctx,
                                  const std::vector<std::string>& extensions)
 {
+    /* A phony target is a name and isn't built out of anything, so no
+     * language that decides by looking at sources gets to claim one:
+     * with no sources at all, every list of extensions matches and
+     * every such language would say yes. */
+    if (ctx->type == context_type::PHONY)
+        return false;
+
     for (const auto& child: ctx->children) {
         switch (child->type) {
         case context_type::DEFAULT:
@@ -49,6 +56,7 @@ bool language::all_sources_match(const context::ptr& ctx,
         case context_type::LIBRARY:
         case context_type::BINARY:
         case context_type::TEST:
+        case context_type::PHONY:
             break;
 
         case context_type::HEADER:
