@@ -308,7 +308,8 @@ std::string build_system_kconfig::configureopt_help(void) const
            " in\n"
            "  '--target NAME' asks the tree for a target rather than for its"
            " default\n"
-           "  '--depend PATH' waits for something else before building\n"
+           "  '--depend PATH' waits for something else before configuring"
+           " and building\n"
            "  '--depend-config PATH' waits for something else before"
            " configuring\n";
 }
@@ -383,6 +384,22 @@ build_system_kconfig::vendored_targets(
     for (const auto& depend: _config_depends)
         config_deps.push_back(std::make_shared<makefile::target>(
             resolve_depend("--depend-config", depend, peers)));
+
+    /* Everything the build waits for, the configuration waits for
+     * too.  Configuring a kbuild tree is a sub-make of that tree with
+     * the project's CROSS_COMPILE on its command line, and Kconfig
+     * asks the compiler what it can do while it is deciding what the
+     * .config says -- so a tree whose toolchain this build produces
+     * needs that toolchain before it can be configured, not just
+     * before it can be built.
+     *
+     * Hanging these off the build alone is what made a fresh checkout
+     * take two passes of make: the first one configured the tree
+     * against a compiler that wasn't there yet and wrote down the
+     * answers Kconfig gives when it can't run one. */
+    for (const auto& depend: _depends)
+        config_deps.push_back(std::make_shared<makefile::target>(
+            resolve_depend("--depend", depend, peers)));
 
     /* What this run was told, which has to be a prerequisite because
      * nothing else here is: every other file above is one the tree or
@@ -517,6 +534,9 @@ build_system_kconfig::vendored_targets(
     auto build_deps = std::vector<makefile::target::ptr>{config_target};
     for (const auto& path: deps.build)
         build_deps.push_back(std::make_shared<makefile::target>(path));
+    /* Said again here rather than left to the configuration this
+     * build already waits for, so that the rule that names the thing
+     * being built is the rule that says what it was built out of. */
     for (const auto& depend: _depends)
         build_deps.push_back(std::make_shared<makefile::target>(
             resolve_depend("--depend", depend, peers)));
