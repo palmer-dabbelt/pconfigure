@@ -40,6 +40,7 @@ bool language_gen_proc::can_process(const context::ptr& ctx) const
     case context_type::SOURCE:
     case context_type::TEST:
     case context_type::HEADER:
+    case context_type::PHONY:
         return false;
 
     case context_type::GENERATE:
@@ -64,6 +65,7 @@ language_gen_proc::targets(const context::ptr& ctx) const
     case context_type::SOURCE:
     case context_type::TEST:
     case context_type::HEADER:
+    case context_type::PHONY:
         std::cerr << "Unimplemented context type: "
                   << std::to_string(ctx->type)
                   << "\n";

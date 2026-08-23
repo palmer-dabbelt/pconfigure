@@ -31,7 +31,8 @@ makefile::target::target(const std::string& name,
       _deps(deps),
       _global(global),
       _cmds(cmds),
-      _comment(comment)
+      _comment(comment),
+      _phony(false)
 {
 }
 
@@ -41,7 +42,8 @@ makefile::target::target(const std::string& name)
       _deps(),
       _global(),
       _cmds(),
-      _comment()
+      _comment(),
+      _phony(false)
 {
 }
 
@@ -58,6 +60,18 @@ makefile::target::ptr makefile::target::without(makefile::global_targets mask) c
                                     global,
                                     _cmds,
                                     _comment);
+}
+
+makefile::target::ptr makefile::target::as_phony(void) const
+{
+    auto out = std::make_shared<target>(_name,
+                                        _short_cmd,
+                                        _deps,
+                                        _global,
+                                        _cmds,
+                                        _comment);
+    out->_phony = true;
+    return out;
 }
 
 bool makefile::target::has_global_target(const global_targets& g) const
@@ -112,19 +126,22 @@ void makefile::target::write_to_file(FILE *file,
     /* This actually writes out the make rule that's necessary  */
     for (const auto& comment: _comment)
         fprintf(file, "# %s\n", comment.c_str());
+    if (_phony == true)
+        fprintf(file, ".PHONY: %s\n", name.c_str());
     fprintf(file, "%s:", name.c_str());
     for (const auto& dep: _deps)
         fprintf(file, " %s", prefix.rewrite(dep->_name).c_str());
     fprintf(file, "\n");
-    if (verbose == false) {
-        fprintf(file, "\t@echo \"%s\"\n", _short_cmd.c_str());
-        for (const auto& cmd: _cmds)
-            fprintf(file, "\t@%s\n", prefix.rewrite(cmd).c_str());
-    } else {
-        fprintf(file, "\techo \"%s\"\n", _short_cmd.c_str());
-        for (const auto& cmd: _cmds)
-            fprintf(file, "\t%s\n", prefix.rewrite(cmd).c_str());
-    }
+    /* A target with nothing to say says nothing.  The echo is what
+     * a build prints while it works, and a rule that does no work
+     * printing an empty line is just a blank line in the log. */
+    if (_short_cmd.size() > 0)
+        fprintf(file, verbose == false ? "\t@echo \"%s\"\n" : "\techo \"%s\"\n",
+                _short_cmd.c_str());
+
+    for (const auto& cmd: _cmds)
+        fprintf(file, verbose == false ? "\t@%s\n" : "\t%s\n",
+                prefix.rewrite(cmd).c_str());
     fprintf(file, "\n");
 }
 

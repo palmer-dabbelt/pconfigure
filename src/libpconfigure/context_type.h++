@@ -35,6 +35,7 @@ enum class context_type {
     BINARY,
     TEST,
     HEADER,
+    PHONY,
 };
 
 /* A utility function that allows one to iterate through all the
@@ -48,6 +49,7 @@ static const std::vector<context_type> all_context_types =
     context_type::BINARY,
     context_type::TEST,
     context_type::HEADER,
+    context_type::PHONY,
 };
 
 /* Converts a command_type to a string, in the standard C++11 way. */
@@ -69,6 +71,8 @@ namespace std {
             return "TEST";
         case context_type::HEADER:
             return "HEADER";
+        case context_type::PHONY:
+            return "PHONY";
         }
 
         throw "Unable to convert " + to_string(static_cast<int>(cmd)) + " to string";

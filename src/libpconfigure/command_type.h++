@@ -50,6 +50,7 @@ enum class command_type {
     LIBRARIES,
     LINKER,
     LINKOPTS,
+    PHONY,
     PREFIX,
     SOURCES,
     SRCDIR,
@@ -93,6 +94,7 @@ static const std::vector<command_type> all_command_types =
     command_type::LIBRARIES,
     command_type::LINKER,
     command_type::LINKOPTS,
+    command_type::PHONY,
     command_type::PREFIX,
     command_type::SOURCES,
     command_type::SRCDIR,
@@ -157,6 +159,8 @@ namespace std {
             return "LINKER";
         case command_type::LINKOPTS:
             return "LINKOPTS";
+        case command_type::PHONY:
+            return "PHONY";
         case command_type::PREFIX:
             return "PREFIX";
         case command_type::SOURCES:

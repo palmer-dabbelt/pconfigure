@@ -154,6 +154,7 @@ language_cxx::shared_target language_cxx::is_shared_target(const context::ptr& c
         case context_type::SOURCE:
         case context_type::TEST:
         case context_type::HEADER:
+        case context_type::PHONY:
             break;
     }
 
@@ -256,6 +257,7 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
                 case context_type::LIBRARY:
                 case context_type::GENERATE:
                 case context_type::HEADER:
+                case context_type::PHONY:
                     std::cerr << "Unable to process " << ctx->cmd->debug() << "\n";
                     abort();
                     break;
@@ -290,9 +292,15 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
                         return !t->has_global_target(makefile::global_targets::INSTALL);
                     });
             auto bin_name = ctx->type == context_type::BINARY ? ctx->test_binary : bin_targets[0]->name();
-            auto deps = std::vector<makefile::target::ptr>{
-                            std::make_shared<makefile::target>(bin_name)
-                        } + bin_targets;
+            /* A test under a PHONY has nothing it's testing, so
+             * there's no program to wait for and none to hand it.
+             * Everywhere else this is the thing the test
+             * exercises. */
+            auto deps = bin_targets;
+            if (bin_name.size() > 0)
+                deps = std::vector<makefile::target::ptr>{
+                           std::make_shared<makefile::target>(bin_name)
+                       } + deps;
 
             auto target_name = ctx->check_dir + "/" + ctx->cmd->data();
             auto short_cmd = "CHECK\t" + ctx->cmd->data();
@@ -312,7 +320,8 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
 
             auto commands = std::vector<std::string>{
                 "mkdir -p " + ctx->check_dir,
-                "+" + makefile::tool_command("ptest") + " --test " + test_name + " --out " + target_name + " --bin " + bin_name
+                "+" + makefile::tool_command("ptest") + " --test " + test_name + " --out " + target_name
+                + (bin_name.size() > 0 ? " --bin " + bin_name : "")
             };
             auto comment = std::vector<std::string>{
                 "language_cxx::targets() CHECK"
@@ -331,6 +340,7 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
         case context_type::GENERATE:
         case context_type::SOURCE:
         case context_type::HEADER:
+        case context_type::PHONY:
             std::cerr
                 << "Unable to build C++ for unsupported context type "
                 << std::to_string(ctx->type)
