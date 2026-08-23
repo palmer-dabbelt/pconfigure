@@ -194,13 +194,13 @@ Prints the version number of \pconfigure\ and exits without touching
 anything else.  Specifically, this doesn't touch the \texttt{Makefile}
 at all.
 
-\subsection{\texttt{--sourcepath <dirname>}}
+\subsection{\texttt{--srcpath <dirname>} \label{cl:srcpath}}
 
 Allows for the seperation of the source and build directories.  By
 default, \pconfigure\ will place output file in the same directory as
 the rest of your project, this allows them to be seperated.  Running
 \begin{verbatim}
-$ pconfigure --sourcepath $DIRNAME
+$ pconfigure --srcpath $DIRNAME
 \end{verbatim}
 duplicates the functionality of running
 \begin{verbatim}
