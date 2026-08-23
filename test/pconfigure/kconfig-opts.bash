@@ -212,14 +212,14 @@ cat bare.rule
 # tree's own Makefile says, which is the whole reason to write one.
 # It goes after the "O=" pconfigure insists on, so a tree that has an
 # opinion about where its output goes still doesn't get to have it.
-grep -q -- '-C sub O=\$(abspath obj/kconfig/sub/build) MY_VAR=\$(abspath tests/x)' Makefile
+grep -q -- "-C sub O=\\\$(abspath obj/kconfig/sub/build) 'MY_VAR=\\\$(abspath tests/x)'" Makefile
 
 # The same variable reaches all three sub-makes, because a tree told
 # something for the defconfig and not for the build configures for one
 # machine and then builds for another.
-grep -q -- '-C sub .*MY_VAR=\$(abspath tests/x) tiny_defconfig$' config.rule
-grep -q -- '-C sub .*MY_VAR=\$(abspath tests/x) olddefconfig$' config.rule
-grep -q -- '-C sub .*MY_VAR=\$(abspath tests/x) sdk$' stamp.rule
+grep -q -- "-C sub .*'MY_VAR=\\\$(abspath tests/x)' tiny_defconfig\$" config.rule
+grep -q -- "-C sub .*'MY_VAR=\\\$(abspath tests/x)' olddefconfig\$" config.rule
+grep -q -- "-C sub .*'MY_VAR=\\\$(abspath tests/x)' sdk\$" stamp.rule
 
 # What was written is what make is told, character for character.
 # Taking the value apart at configure time and putting it back
@@ -230,6 +230,12 @@ if grep -q 'MY_VAR=/' Makefile
 then
     exit 1
 fi
+
+# The quotes around it are the shell's business rather than make's:
+# they keep a value with a space in it one argument, and make has
+# already expanded the line by the time the shell reads them.  Without
+# them a "KCFLAGS=-O2 -g" reaches make as a variable worth "-O2" and a
+# "-g" that make reads as a flag of its own.
 
 ##############################################################################
 # --env                                                                      #

@@ -131,6 +131,7 @@ static bool names_a_path(const command_type& type)
     case command_type::SRCDIR:
     case command_type::SRCPATH:
     case command_type::SUBPROJECTS:
+    case command_type::SUBPROJECT_TARGETS:
     case command_type::TESTDEPS:
     case command_type::TESTEXECS:
     case command_type::TESTS:
@@ -152,6 +153,7 @@ static bool names_a_path(const command_type& type)
     case command_type::LANGUAGES:
     case command_type::LINKER:
     case command_type::LINKOPTS:
+    case command_type::MAKEOPS:
     case command_type::PHC:
     case command_type::PHONY:
     case command_type::STRICT:
@@ -320,6 +322,38 @@ void command_processor::process_one(const command::ptr& cmd)
             goto bad_op_pluseq;
 
         _configure_target->add_configureopt(cmd->data());
+
+        return;
+
+    /* A variable to put on the command line of the make that builds a
+     * vendored tree, where it beats whatever the tree's own Makefile
+     * has to say about it.  Like a CONFIGUREOPTS this lands on
+     * whichever subproject was opened last, or on a whole build
+     * system when it was written after one of those. */
+    case command_type::MAKEOPS:
+        if (_configure_target == NULL)
+            goto no_configure_target;
+
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        _configure_target->add_makeopt(cmd->data());
+
+        return;
+
+    /* A file a vendored tree produces.  Everything else about such a
+     * tree hangs off one stamp that says it has been built, and a
+     * stamp is not something anything else can name: this is what
+     * turns a file the tree happens to write into a target that a
+     * TESTDEPS or a link line can ask for. */
+    case command_type::SUBPROJECT_TARGETS:
+        if (_configure_target == NULL)
+            goto no_configure_target;
+
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        _configure_target->add_subproject_target(cmd->data());
 
         return;
 
