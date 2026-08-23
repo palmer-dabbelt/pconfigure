@@ -423,7 +423,11 @@ Tests written under one are handed \textit{no}
 \texttt{\$PTEST\_BINARY}, because there is no binary --- the variable
 is empty rather than pointing at something that isn't a program.  A
 test under one of these names what it needs by path, which is what its
-\texttt{TESTDEPS} already said.
+\texttt{TESTDEPS} already said, and anchors those paths on
+\texttt{\$PTEST\_SRCDIR} (see Section~\ref{cmd:tests}): the project
+it belongs to, absolute, which is what
+\texttt{\$(dirname "\$PTEST\_BINARY")} is for a test that has a
+binary and cannot be for a test that hasn't.
 
 The name is rooted at the project that asked for it, like every other
 target, so two projects in one build can each have one called
@@ -481,6 +485,16 @@ Section~\ref{cmd:testexecs}) -- and everything else in the project sits
 a fixed distance from there.  That is the supported way for a test to
 find its own project, and it reads the same whether the build came
 from the top or from the subproject.
+
+A test is also given \texttt{\$PTEST\_SRCDIR}, the absolute path of
+the directory the project that owns the test is rooted at -- whatever
+its \texttt{SRCPATH} says, which is the project's own directory unless
+it said otherwise.  That is the same anchor said a different way, and
+it is the only one a test written under a \texttt{PHONY} (see
+Section~\ref{cmd:phony}) has: there is no binary under one of those, so
+\texttt{\$(dirname "\$PTEST\_BINARY")} would be \texttt{dirname ""},
+which is \texttt{.} -- the working directory the paragraph above says
+not to trust, arrived at without anything having gone visibly wrong.
 
 A test is also given \texttt{\$PTEST\_TMPDIR}, an empty directory of
 its own that is removed once the test finishes.  Anything the test
@@ -1492,13 +1506,26 @@ The options are:
   anything that copied it is safe against that at the top of the
   tree.
 
-\item \texttt{--depend \$path} names something the build has to wait
-  for, and \texttt{--depend-config \$path} names something the
+\item \texttt{--depend \$path} names something the tree has to wait
+  for, and \texttt{--depend-config \$path} names something only its
   configuration has to wait for.  \texttt{\$path} is relative to the
   project that names it, and is either a file, or the directory of
   another vendored subproject of the same project -- in which case
   the wait is for that tree to have been built, rather than for its
   directory to change.
+
+  A \texttt{--depend} is waited for by the configuration as well as by
+  the build.  Configuring a \texttt{kbuild} tree is a sub-make of that
+  tree with the project's \texttt{CROSS\_COMPILE} on its command line,
+  and \texttt{Kconfig} asks the compiler what it can do while it is
+  working out what the \texttt{.config} says -- so a kernel whose
+  toolchain this build produces needs that toolchain before it can be
+  configured, not just before it can be compiled.  Hanging it off the
+  build alone is how a fresh checkout ends up needing two passes of
+  \texttt{make}, the first of which writes down the answers
+  \texttt{Kconfig} gives when it cannot run a compiler at all.  A
+  \texttt{--depend-config} reaches the build for the same reason from
+  the other direction: the build already waits for the configuration.
 
   Both exist because nothing else can find these edges.  Every other
   dependency between two things \pconfigure\ builds comes from
