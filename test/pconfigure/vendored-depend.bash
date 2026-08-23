@@ -97,6 +97,17 @@ then
     exit 1
 fi
 
+# It lands on the configuration as well, because configuring a kbuild
+# tree is a sub-make of that tree with the project's CROSS_COMPILE on
+# its command line: Kconfig asks the compiler what it can do while it
+# is deciding what the .config says.  A kernel whose toolchain this
+# build produces therefore needs that toolchain before it can be
+# configured, not just before it can be compiled -- and hanging this
+# off the build alone is what made a fresh checkout take two passes of
+# make, the first of which wrote down the answers Kconfig gives when
+# it can't run a compiler at all.
+grep -q "^obj/kconfig/linux/build/.config:.* obj/kconfig/br/build-stamp" Makefile
+
 # The edge only points one way.  br was told nothing about linux, so
 # nothing about linux may show up in br's rules: an extra edge here
 # would be a loop, and make has nothing useful to say about one of
