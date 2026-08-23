@@ -337,6 +337,52 @@ like every other target, \texttt{TESTS} attached to a
 \texttt{TESTEXECS} target are passed the binary as
 \texttt{\$PTEST\_BINARY}.
 
+\subsection{\texttt{PHONY += \$name} \label{cmd:phony}}
+
+Declares a target that is a name and nothing else: \texttt{make
+\$name} works, nothing is compiled, and nothing is installed.
+
+This exists so that a project with tests and nothing to hang them off
+can still have them.  A \texttt{TESTS} belongs to the thing it
+exercises (see Section~\ref{cmd:tests}), and the thing an integration
+test exercises is several other projects at once rather than any one
+program --- so the project that owns such a test often builds nothing
+itself.  Without this the only way through was a binary that does
+nothing, which builds and installs a program nobody wants:
+
+\begin{verbatim}
+SUBPROJECTS += fs
+SUBPROJECTS += vm
+
+PHONY       += integration
+TESTDEPS    += fs/libexec/mkfs
+TESTDEPS    += vm/bin/vm
+TESTSRC     += boots-a-real-image.bash
+\end{verbatim}
+
+A \texttt{TESTDEPS} (see Section~\ref{cmd:testdeps}) written under one
+of these is the only thing that says what the name stands for, since a
+phony target has no sources to be made out of.  Those are what
+\texttt{make \$name} builds, and they are built before its tests run
+the same way they would be under any other target.
+
+A \texttt{PHONY} is deliberately not part of \texttt{make all}: a name
+that stands for a set of things to build before some tests run has no
+business being built by a plain \texttt{make}, and everything it names
+is built by whoever builds it anyway.
+
+Tests written under one are handed \textit{no}
+\texttt{\$PTEST\_BINARY}, because there is no binary --- the variable
+is empty rather than pointing at something that isn't a program.  A
+test under one of these names what it needs by path, which is what its
+\texttt{TESTDEPS} already said.
+
+The name is rooted at the project that asked for it, like every other
+target, so two projects in one build can each have one called
+\texttt{integration} without arguing about whose rules win.  A
+\texttt{PHONY} has nothing to compile, so a \texttt{SOURCES} under one
+is a mistake and gets the warning in Section~\ref{warn:sources-orphan}.
+
 \subsection{\texttt{SOURCES += \$name} \label{cmd:sources}}
 
 Adds a \texttt{\$SRCDIR/\$name} to the list of sources that will be
@@ -1478,7 +1524,7 @@ signed like any other, so an \texttt{ENTITLEMENTS} written there
 reaches the test binary's own signature -- which is exactly how a test
 that has to be allowed to do something says so.
 
-\subsection{\texttt{SOURCES} with no target open above it}
+\subsection{\texttt{SOURCES} with no target open above it \label{warn:sources-orphan}}
 
 \begin{verbatim}
 LANGUAGES += c
@@ -1493,6 +1539,11 @@ remembered and then dropped without a word.  The usual way to arrive
 here is not writing the target at all, and the second usual way is a
 \texttt{SRCDIR} or a \texttt{LIBDIR} between the target and its
 sources.
+
+A \texttt{SOURCES} under a \texttt{PHONY} (see
+Section~\ref{cmd:phony}) arrives here too, and means the same thing: a
+phony target is a name and has nothing to compile, so the
+\texttt{SOURCES} closes it on the way past and lands on nothing.
 
 \subsection{A value with a space in it}
 
@@ -1628,11 +1679,17 @@ your code (ie, as opposed to your \texttt{Configfile}).
 \subsection{\texttt{TESTS} with no target open above it has nothing to test}
 
 A \texttt{TESTS} or a \texttt{TESTSRC} written with no
-\texttt{BINARIES}, \texttt{LIBRARIES}, \texttt{LIBEXECS} or
-\texttt{TESTEXECS} open above it.  A test belongs to the thing it
-exercises, and with nothing open the thing above it is the project's
-own context, which has no command behind it and no binary to hand the
-test as \texttt{\$PTEST\_BINARY} (see Section~\ref{cmd:tests}).
+\texttt{BINARIES}, \texttt{LIBRARIES}, \texttt{LIBEXECS},
+\texttt{TESTEXECS} or \texttt{PHONY} open above it.  A test belongs to
+the thing it exercises, and with nothing open the thing above it is
+the project's own context, which has no command behind it and no
+binary to hand the test as \texttt{\$PTEST\_BINARY} (see
+Section~\ref{cmd:tests}).
+
+If what the test exercises isn't any one thing this project builds ---
+an integration test that drives several subprojects at once, most of
+all --- then a \texttt{PHONY} (see Section~\ref{cmd:phony}) is what to
+hang it off.
 
 This is a fatal error whatever \texttt{STRICT} says, rather than one
 of the warnings in Section~\ref{warn}: what used to happen here was a
