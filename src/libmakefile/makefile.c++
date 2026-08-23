@@ -53,6 +53,12 @@ void makefile::makefile::add_subproject(const std::string& variable,
     _subprojects.push_back(std::make_pair(variable, base));
 }
 
+void makefile::makefile::add_peer(const std::string& variable,
+                                  const std::string& base)
+{
+    _peers.push_back(std::make_pair(variable, base));
+}
+
 void makefile::makefile::add_check_stamp(const std::string& stamp)
 {
     _check_stamps.push_back(stamp);
@@ -88,16 +94,28 @@ void makefile::makefile::write_to_file(const std::string& filename)
     fprintf(file, ".PHONY: uninstall\n");
     fprintf(file, "all:\n\n");
 
+    /* Where every other project in the run is.  These are defaults,
+     * so the first Makefile make reads is the one that decides -- and
+     * that's the project make was run in, which is exactly whose
+     * answer is right.  All of them are written before any include so
+     * that a subproject's own defaults never get in first: a
+     * subproject knows where its siblings are relative to itself, and
+     * that isn't the answer when the build started above it. */
+    for (const auto& peer: _peers)
+        fprintf(file, "%s ?= %s\n", peer.first.c_str(), peer.second.c_str());
+    for (const auto& subproject: _subprojects)
+        fprintf(file, "%s ?= %s\n",
+                subproject.first.c_str(),
+                _prefix.rewrite(subproject.second).c_str());
+    if (_peers.size() > 0 || _subprojects.size() > 0)
+        fprintf(file, "\n");
+
     /* The subprojects come after "all" so that it stays the rule make
      * picks when it isn't told what to build, and before everything
      * else so that a subproject's rules are in hand by the time
      * anything here refers to them. */
-    for (const auto& subproject: _subprojects) {
-        fprintf(file, "%s ?= %s\n",
-                subproject.first.c_str(),
-                _prefix.rewrite(subproject.second).c_str());
+    for (const auto& subproject: _subprojects)
         fprintf(file, "include $(%s)Makefile\n\n", subproject.first.c_str());
-    }
 
     auto stamp = check_stamp();
     for (const auto& target: _targets)

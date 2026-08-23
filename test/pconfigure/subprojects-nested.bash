@@ -77,10 +77,18 @@ test -f a/Makefile
 test -f a/b/Makefile
 grep -q "^pconfigure_subdir_a ?= a/$" Makefile
 grep -q "^pconfigure_subdir_a_b ?= \$(pconfigure_subdir_a)b/$" a/Makefile
-if grep -q "pconfigure_subdir_a_b" Makefile
+if grep -q "^include.*pconfigure_subdir_a_b" Makefile
 then
     exit 1
 fi
+
+# The top does say where every project in the run is, including the
+# ones it never heard of directly.  These are defaults, so the first
+# Makefile make reads decides -- and that has to be the one make was
+# run in, whoever that is, or a project that names a path belonging
+# to somebody else's subproject would get the answer that subproject's
+# own parent wrote down.  Saying so is not the same as including it.
+grep -q "^pconfigure_subdir_a_b ?= a/b/$" Makefile
 
 make $MAKE_ARGS
 test "$(./bin/test)" = "42"
