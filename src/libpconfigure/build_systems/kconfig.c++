@@ -31,7 +31,6 @@ build_system_kconfig::build_system_kconfig(const std::string& name)
   _defconfig("defconfig"),
   _options(),
   _merges(),
-  _make_vars(),
   _env(),
   _make_targets(),
   _depends(),
@@ -116,20 +115,11 @@ bool build_system_kconfig::handle_configureopt(const std::string& opt)
 
     auto make_var = option_value(opt, "--make-var");
     if (make_var.size() > 0) {
-        if (make_var.find('=') == std::string::npos) {
-            std::cerr << name() << ": '--make-var " << make_var
-                      << "' has no value: it should look like"
-                      << " '--make-var ARCH=arm64'\n";
-            abort();
-        }
-
-        /* What was written is what make is told, character for
-         * character.  Taking this apart here would mean putting it
-         * back together later, and every way of doing that gets a
-         * value with a space or a '$' in it wrong -- while a value
-         * that reaches the Makefile untouched lets whoever wrote it
-         * say "$(abspath x)" and mean it. */
-        _make_vars.push_back(make_var);
+        /* The same thing a MAKEOPS says, spelled the way the options
+         * are.  One list and one order, since two lists would mean an
+         * argument about which of them make hears last -- and the
+         * last one is the one that wins. */
+        add_makeopt(make_var);
         return true;
     }
 
@@ -189,7 +179,7 @@ std::string build_system_kconfig::make_var_flags(void) const
         auto flag = std::string("CROSS_COMPILE=");
 
         auto given = false;
-        for (const auto& make_var: _make_vars)
+        for (const auto& make_var: makeopts())
             if (make_var.compare(0, flag.size(), flag) == 0)
                 given = true;
 
@@ -197,10 +187,7 @@ std::string build_system_kconfig::make_var_flags(void) const
             out += " " + flag + ctx()->cross_compile;
     }
 
-    for (const auto& make_var: _make_vars)
-        out += " " + make_var;
-
-    return out;
+    return out + makeopt_flags();
 }
 
 std::string build_system_kconfig::with_env(const std::string& command) const
@@ -277,6 +264,15 @@ std::string build_system_kconfig::resolve_depend(
         if (peer->base() == dir && peer->build_stamp().size() > 0)
             return peer->build_stamp();
 
+    /* A file another tree in this run says it builds is a target with
+     * a rule behind it, so waiting for it is waiting for that rule.
+     * It doesn't have to exist yet, which is the whole difference
+     * between this and the check below: on a fresh checkout nothing
+     * any of these trees produces exists. */
+    for (const auto& peer: peers)
+        if (peer.get() != this && peer->produces(file) == true)
+            return file;
+
     struct stat buf;
     if (stat(file.c_str(), &buf) == 0 && S_ISREG(buf.st_mode) == true)
         return file;
@@ -344,7 +340,8 @@ void build_system_kconfig::take_configureopt(const std::string& opt)
 }
 
 std::vector<makefile::target::ptr>
-build_system_kconfig::targets(const std::vector<build_system::ptr>& peers) const
+build_system_kconfig::vendored_targets(
+    const std::vector<build_system::ptr>& peers) const
 {
     auto srcdir = source_dir();
     auto output = kbuild_output();

@@ -43,11 +43,15 @@ public:
     build_system* clone(void) const;
     bool can_build(const std::string& base) const;
     bool vendored(void) const { return false; }
-    std::vector<makefile::target::ptr>
-    targets(const std::vector<ptr>& peers) const;
 
 protected:
+    std::vector<makefile::target::ptr>
+    vendored_targets(const std::vector<ptr>& peers) const;
     void take_configureopt(const std::string& opt);
+
+    /* Nothing here is run by make: a pconfigure subproject is read
+     * into this run, and its rules come out of its own contexts. */
+    bool run_by_make(void) const { return false; }
 };
 
 #endif

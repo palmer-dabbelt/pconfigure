@@ -203,6 +203,7 @@ TESTSRC     += strict.bash
 TESTSRC     += strict-opts-target.bash
 TESTSRC     += strict-lint.bash
 TESTSRC     += vendored-configureopts.bash
+TESTSRC     += subproject-targets.bash
 
 # These command-line tools are only ever run by the tests below, so
 # they're built but never installed.

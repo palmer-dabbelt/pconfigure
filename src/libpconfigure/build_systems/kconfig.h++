@@ -68,7 +68,10 @@
  *
  *   --make-var NAME=VAL  Put a variable on the sub-make's command
  *                        line, where it beats whatever the tree's own
- *                        Makefile has to say about it.
+ *                        Makefile has to say about it.  This is the
+ *                        same thing a MAKEOPS says, spelled the way
+ *                        the options are; the two share one list and
+ *                        one order.
  *
  *   --env NAME=VALUE     Put a variable in the environment the tree
  *                        is built in, where the tree's own Makefile
@@ -117,12 +120,6 @@ protected:
      * later one wins. */
     std::vector<std::string> _merges;
 
-    /* Variables to put on the sub-make's command line.  A variable
-     * given to make this way beats whatever the tree's own Makefile
-     * says, which is the point: it's how you tell somebody else's
-     * build system something it never asked to be told. */
-    std::vector<std::string> _make_vars;
-
     /* The environment the vendored build system runs in.  An
      * environment variable and a make command-line variable are not
      * the same thing: the tree's own Makefile is allowed to override
@@ -150,11 +147,11 @@ public:
     /* Virtual methods from build_system. */
     build_system* clone(void) const;
     bool can_build(const std::string& base) const;
-    std::vector<makefile::target::ptr>
-    targets(const std::vector<build_system::ptr>& peers) const;
     std::string configure_signature(void) const;
 
 protected:
+    std::vector<makefile::target::ptr>
+    vendored_targets(const std::vector<build_system::ptr>& peers) const;
     void take_configureopt(const std::string& opt);
 
     /* Takes one CONFIGUREOPTS, and answers whether it was one of
@@ -174,10 +171,10 @@ protected:
                                     const std::string& flag);
 
 protected:
-    /* The variables a CONFIGUREOPTS put on the sub-make's command
-     * line, with a leading space.  These come after submake_flags(),
-     * so a tree that insists on something gets to say it first and
-     * the person configuring the build gets the last word -- which is
+    /* The variables this run put on the sub-make's command line,
+     * with a leading space.  These come after submake_flags(), so a
+     * tree that insists on something gets to say it first and the
+     * person configuring the build gets the last word -- which is
      * what a make command-line variable means anyway. */
     std::string make_var_flags(void) const;
 
@@ -246,6 +243,10 @@ public:
      * than ours -- see targets(). */
     std::string kbuild_output(void) const
         { return output_dir() + "/build"; }
+
+    /* Which is where everything the tree builds lands, since that's
+     * the whole of what O= means. */
+    std::string build_dir(void) const { return kbuild_output(); }
 
     /* The configuration this run asked for, and the stamp that says
      * the vendored build has been run since anything it reads
