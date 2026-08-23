@@ -149,9 +149,57 @@ I'll try to explain each line below.
 
 \section{Command-Line Options \label{cl}}
 
-The set of command-line arguments that \pconfigure\ understands is
-stored in the \texttt{struct clopts} structure and is filled in
-\texttt{clopts\_new()}.
+Almost every option here is a \texttt{Configfile} command that has
+been given a spelling for the command line, and does exactly what
+writing that command at the top of the first file read would do ---
+which is what lets one tree be configured two ways without editing
+anything in it.  \texttt{pconfigure --help} prints the same list in
+short form.
+
+An option that takes a value and is given none is a fatal error that
+says which option wanted one.
+
+\subsection{\texttt{--help} \label{cl:help}}
+
+Prints a short description of every command-line option and exits
+without touching anything else --- the \texttt{Makefile} in particular
+is not written.  \texttt{-h} is the same thing spelled shorter.
+
+\subsection{\texttt{--verbose} \label{cl:verbose}}
+
+Sets \texttt{VERBOSE} for the whole project before any
+\texttt{Configfile} is read, see Section~\ref{cmd:verbose}.  The
+generated \texttt{Makefile} then echoes each command as it runs it,
+rather than the short label that stands in for it.
+
+\subsection{\texttt{--debug} \label{cl:debug}}
+
+Sets \texttt{DEBUG} for the whole project before any
+\texttt{Configfile} is read, see Section~\ref{cmd:debug}.  This is
+about \pconfigure\ rather than about the build: it prints what
+\pconfigure\ is doing while it writes the \texttt{Makefile}, and the
+\texttt{Makefile} it writes is the same one either way.
+
+\subsection{\texttt{--phc <path>} \label{cl:phc}}
+
+Sets \texttt{PHC} for the whole project before any \texttt{Configfile}
+is read, see Section~\ref{cmd:phc}.
+
+\subsection{\texttt{--ppkg-config <path>} \label{cl:ppkg_config}}
+
+Uses \texttt{<path>} as \texttt{ppkg-config} (see
+Section~\ref{prog:ppkg-config}) when a \texttt{Configfile} runs it in
+backticks.  The substitution is textual: the word
+\texttt{ppkg-config} is replaced wherever it appears inside a
+backticked command, so \texttt{`ppkg-config --cflags x`} runs
+\texttt{<path>} instead.  Otherwise the one found on
+\texttt{\$PATH} is what runs.
+
+There is no \texttt{Configfile} command for this one, and it is
+deliberately not one: which \texttt{ppkg-config} answers a question is
+a property of the \pconfigure\ that is running rather than of the
+project being configured, so it is the person running the build who
+gets to say.
 
 \subsection{\texttt{--config <filename>}}
 
@@ -471,7 +519,12 @@ will copy \texttt{\$SRCDIR/class.h} to
 \texttt{\$PREFIX/\$HDRDIR/libname} when \texttt{make install} is run.
 Note that in order for this to work you'll have to include the dummy
 ``h'' language, which includes a ``header compiler'' that really just
-copies the header.
+copies the header --- \texttt{phc}, whose path
+Section~\ref{cmd:phc} says how to change.
+
+When the header is installed under the name it already has, which is
+the usual case, \texttt{HEADERSRC} (see Section~\ref{cmd:headersrc})
+says both of those lines at once.
 
 \subsection{\texttt{COMPILEOPTS += \$opt} \label{cmd:compileopts}}
 
@@ -858,6 +911,34 @@ it's easy to write a bash script that generates all the
 \texttt{SOURCES} lines and then disable automatic dependency
 generation all together.
 
+\subsection{\texttt{VERBOSE} \label{cmd:verbose}}
+
+Writes a \texttt{Makefile} whose recipes are not silenced, so
+\texttt{make} echoes each command as it runs it instead of only the
+short label that stands in for it --- \texttt{cp -f obj/bin/hello/...
+bin/hello} rather than \texttt{CP\ \ \ \ bin/hello}.  What gets built
+is exactly the same either way; only what scrolls past changes.
+
+This is a property of a whole \texttt{Makefile} rather than of one
+target: if any target in a project is verbose then that project's
+\texttt{Makefile} is, so writing it under a \texttt{BINARIES} still
+unsilences everything around it.
+
+\subsection{\texttt{DEBUG} \label{cmd:debug}}
+
+Prints what \pconfigure\ is doing while it writes the
+\texttt{Makefile}: the name of each target as it is built, and the
+paths of the rules that come out of it.  This is about \pconfigure\
+rather than about the build --- the \texttt{Makefile} it writes is the
+same one either way, and \texttt{VERBOSE} is what to reach for when
+the question is about \texttt{make}.
+
+Both of these are written without a value, and writing one at all
+turns it on: \texttt{VERBOSE = false} turns verbose output on just as
+surely as \texttt{VERBOSE = true} does.  See Section~\ref{warn} for
+why that is a warning rather than something \pconfigure\ quietly
+does what you meant with.
+
 \subsection{\texttt{CROSS\_COMPILE = \$prefix} \label{cmd:cross_compile}}
 
 Says which machine the targets below this are being built for, by
@@ -949,6 +1030,20 @@ fighting over one.
 \texttt{LINKER} is just like \texttt{COMPILER}, but it sets the
 command used to link instead of the command used to compile.  See
 Section~\ref{cmd:compiler}.
+
+\subsection{\texttt{PHC = \$path} \label{cmd:phc}}
+
+Sets the header compiler --- the program that installs a
+\texttt{HEADERS} target, which really just copies the file (see
+Section~\ref{prog:phc}).  It defaults to the \texttt{phc} that was
+installed alongside the running \pconfigure, named by its absolute
+path so that the tool matching the \pconfigure\ writing the
+\texttt{Makefile} is the one that runs.
+
+Like \texttt{CROSS\_COMPILE} this lands on whatever context is open,
+so a subproject inherits it from whoever pulled it in until it says
+otherwise.  \texttt{--phc} (see Section~\ref{cl:phc}) sets it for the
+whole project from the command line.
 
 \subsection{\texttt{PREFIX = \$prefix}}
 
@@ -1073,6 +1168,19 @@ This is just a macro that generates
 TESTS   += $name
 SOURCES += $name
 \end{verbatim}
+
+\subsection{\texttt{HEADERSRC += \$name} \label{cmd:headersrc}}
+
+This is just a macro that generates
+\begin{verbatim}
+HEADERS += $name
+SOURCES += $name
+\end{verbatim}
+which installs \texttt{\$SRCDIR/\$name} as
+\texttt{\$PREFIX/\$HDRDIR/\$name} --- the case where a header is
+installed under the name it already has.  It stands in the same
+relation to \texttt{HEADERS} that \texttt{TESTSRC} stands in to
+\texttt{TESTS}.
 
 \subsection{\texttt{GENERATE += \$name.proc}}
 
@@ -1890,6 +1998,20 @@ A bash ``compiler'', which really just does the following
 \item Sets the correct shebang at the beginning of the file
 \item Marks the output as executable
 \end{itemize}
+
+\subsection{\texttt{phc} \label{prog:phc}}
+
+The header ``compiler'', which copies its input to its output and
+nothing else:
+\begin{verbatim}
+$ phc -i $input -o $output
+\end{verbatim}
+
+It exists so that installing a header goes through a program that can
+be replaced, the same way compiling a source file does --- see
+\texttt{PHC} (Section~\ref{cmd:phc}) for replacing it.  A project
+whose headers need generating rather than copying puts its own
+program here.
 
 \subsection{\texttt{pperlc} \label{prog:pperlc}}
 
