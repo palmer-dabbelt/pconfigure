@@ -58,6 +58,19 @@ std::vector<command::ptr> commands(int argc, const char **argv)
         /* FIXME: This doesn't fit into the regular argument parsing framework,
          * so instead I'm just doing this here. */
         if (strcmp(argv[i], "--ppkg-config") == 0) {
+            /* Which is why this needs its own copy of the check every
+             * other option gets from consume_extra_arguments(): the
+             * standard says argv[argc] is a null pointer, so the word
+             * after the last one is not a word, and building a string
+             * out of it is how this used to die of a signal. */
+            if (i + 1 >= argc) {
+                std::cerr << "Command-line option '"
+                          << argv[i]
+                          << "' needs an argument after it\n";
+
+                abort();
+            }
+
             ppkg_config = argv[i+1];
             ++i;
             continue;
