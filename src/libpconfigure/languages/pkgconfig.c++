@@ -65,6 +65,7 @@ bool language_pkgconfig::can_process(const context::ptr& ctx) const
     case context_type::BINARY:
     case context_type::SOURCE:
     case context_type::TEST:
+    case context_type::PHONY:
         return false;
 
     case context_type::LIBRARY:
@@ -89,6 +90,7 @@ language_pkgconfig::targets(const context::ptr& ctx) const
     case context_type::SOURCE:
     case context_type::TEST:
     case context_type::HEADER:
+    case context_type::PHONY:
         std::cerr << "Unimplemented context type: "
                   << std::to_string(ctx->type)
                   << "\n";

@@ -37,6 +37,7 @@ bool language_bash::can_process(const context::ptr& ctx) const
     case context_type::LIBRARY:
     case context_type::GENERATE:
     case context_type::HEADER:
+    case context_type::PHONY:
         return false;
 
     case context_type::BINARY:
@@ -61,6 +62,7 @@ language_bash::targets(const context::ptr& ctx) const
     case context_type::GENERATE:
     case context_type::LIBRARY:
     case context_type::SOURCE:
+    case context_type::PHONY:
         std::cerr << "Unimplemented context type: "
                   << std::to_string(ctx->type)
                   << "\n";
@@ -166,9 +168,14 @@ language_bash::targets(const context::ptr& ctx) const
                                                 return t->without(makefile::global_targets::ALL);
                                             });
         bin_targets = std::vector<makefile::target::ptr>{bin_targets[0]};
-        auto deps = std::vector<makefile::target::ptr>{
-                        std::make_shared<makefile::target>(bin_name)
-                    } + bin_targets;
+        /* A test under a PHONY has nothing it's testing, so there's
+         * no program to wait for and none to hand it.  Everywhere
+         * else this is the thing the test exercises. */
+        auto deps = bin_targets;
+        if (bin_name.size() > 0)
+            deps = std::vector<makefile::target::ptr>{
+                       std::make_shared<makefile::target>(bin_name)
+                   } + deps;
 
         auto target_name = ctx->check_dir + "/" + ctx->cmd->data();
         auto short_cmd = "CHECK\t" + ctx->cmd->data();
@@ -188,7 +195,8 @@ language_bash::targets(const context::ptr& ctx) const
 
         auto commands = std::vector<std::string>{
             "mkdir -p " + ctx->check_dir,
-            "+" + makefile::tool_command("ptest") + " --test " + test_name + " --out " + target_name + " --bin " + bin_name
+            "+" + makefile::tool_command("ptest") + " --test " + test_name + " --out " + target_name
+                + (bin_name.size() > 0 ? " --bin " + bin_name : "")
         };
         auto comment = std::vector<std::string>{
             "language_bash::targets() CHECK"

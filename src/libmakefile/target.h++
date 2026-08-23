@@ -42,6 +42,13 @@ namespace makefile {
         const std::vector<std::string> _cmds;
         const std::vector<std::string> _comment;
 
+        /* TRUE for a target that is a name rather than a file, which
+         * make has to be told outright: otherwise a file that happens
+         * to turn up under that name stops the rule from running, and
+         * a name nobody ever creates gets rebuilt every time whether
+         * anything changed or not. */
+        bool _phony;
+
     public:
         /* Creates a new target fully-fledged target -- this is a
          * target that the Makefile actually knows how to generate. */
@@ -68,6 +75,10 @@ namespace makefile {
     public:
         /* Returns a copy of this target without the given global target. */
         ptr without(global_targets g) const;
+
+        /* Returns a copy of this target that make is told is a name
+         * rather than a file. */
+        ptr as_phony(void) const;
 
         /* Returns TRUE if this target is a dependency of the given global
          * target. */
