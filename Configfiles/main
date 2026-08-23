@@ -199,6 +199,7 @@ TESTSRC     += osx-nonmacho-sign.bash
 TESTSRC     += testdeps.bash
 TESTSRC     += testdeps-outside.bash
 TESTSRC     += ptest-check-dirs.bash
+TESTSRC     += cmdline-args.bash
 TESTSRC     += strict.bash
 TESTSRC     += strict-opts-target.bash
 TESTSRC     += strict-lint.bash
