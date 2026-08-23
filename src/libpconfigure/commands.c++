@@ -145,13 +145,24 @@ std::vector<configfile_line> configfile_lines(const std::string& srcpath)
 
 command::ptr parse_line(const configfile_line& line)
 {
-    auto text = execute(string_utils::clean_white(line.text));
+    auto text = string_utils::clean_white(line.text);
 
     /* Skip empty lines and anything beginning with a '#' --
-     * those are comments. */
+     * those are comments.  This happens before the backticks in the
+     * line get run, because a comment is not a command: a line that
+     * has been commented out has been taken out of the build, and
+     * running half of it anyway is the one thing nobody meant by
+     * putting a '#' in front of it. */
     if (text.size() == 0)
         return NULL;
     if (text[0] == '#')
+        return NULL;
+
+    text = execute(text);
+
+    /* A line that was nothing but a command which printed nothing is
+     * a line with nothing left in it. */
+    if (text.size() == 0)
         return NULL;
 
     auto debug = std::make_shared<debug_info>(line.filename,
@@ -254,6 +265,14 @@ std::string execute(std::string line)
             auto exitcode = pclose(f);
             if (exitcode != 0)
                 std::cerr << "'" << command_str << "': " << std::to_string(exitcode) << "\n";
+
+            /* The closing backtick ends the command and nothing else:
+             * what comes after it is the rest of the line, which is
+             * as much a part of what was written as what came before
+             * it was.  Leaving this set is how "-DA=`echo hi`SUFFIX"
+             * came out as "-DA=hi" and how a PATH built out of one of
+             * these lost everything past the last backtick. */
+            in_command = false;
         } else if (in_command == true) {
             command << c;
         } else if (c == '`') {
@@ -263,6 +282,19 @@ std::string execute(std::string line)
         } else {
             executed << c;
         }
+    }
+
+    /* A backtick that never closes has swallowed the rest of the
+     * line, and there is no way to guess where whoever wrote it meant
+     * the command to stop.  Saying so beats running some prefix of
+     * the line and dropping the rest without a word, which is what
+     * this used to do. */
+    if (in_command == true) {
+        std::cerr << "unterminated '`' in '" << line << "'\n"
+                  << "  everything after a '`' is a command to run until"
+                  << " the next '`',\n"
+                  << "  so this line has no end for the command in it\n";
+        abort();
     }
 
     return executed.str();
