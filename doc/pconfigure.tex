@@ -1073,6 +1073,16 @@ it's easy to write a bash script that generates all the
 \texttt{SOURCES} lines and then disable automatic dependency
 generation all together.
 
+What this turns off is what gets \textit{built}: the sources sitting
+behind a target's headers stop being compiled and linked in alongside
+it.  The headers themselves are still prerequisites of the objects
+built from them either way, since that is a question about when to
+rebuild rather than about what to link, and there is no target that
+wants to be left as it was when a declaration it was compiled against
+moves.  A build that skipped those would hand you a program with one
+translation unit compiled against the old header and the rest against
+the new, which is not a failure \texttt{make} has any way to notice.
+
 \subsection{\texttt{VERBOSE} \label{cmd:verbose}}
 
 Writes a \texttt{Makefile} whose recipes are not silenced, so
