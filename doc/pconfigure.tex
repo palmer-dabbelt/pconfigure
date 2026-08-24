@@ -1083,6 +1083,10 @@ moves.  A build that skipped those would hand you a program with one
 translation unit compiled against the old header and the rest against
 the new, which is not a failure \texttt{make} has any way to notice.
 
+That leaves nothing for this to do on a target where nothing is
+linked, which is what a \texttt{BASH} target is, and writing it there
+is a warning (see Section~\ref{warn}).
+
 \subsection{\texttt{VERBOSE} \label{cmd:verbose}}
 
 Writes a \texttt{Makefile} whose recipes are not silenced, so
@@ -2052,6 +2056,35 @@ one name and two homes, which is a thing somebody meant, and they
 don't warn.  The comparison is within one project, since two projects
 that both build a \texttt{libutil.so} each build it into their own
 \texttt{LIBDIR}.
+
+\subsection{\texttt{AUTODEPS = false} where nothing is linked}
+
+\begin{verbatim}
+LANGUAGES += bash
+
+BINARIES  += app
+AUTODEPS   = false
+SOURCES   += app.bash
+\end{verbatim}
+
+\texttt{AUTODEPS = false} keeps the sources sitting behind a target's
+headers from being built and linked into it, and that is the whole of
+what it is for (see Section~\ref{cmd:autodeps}).  A \texttt{BASH}
+target has no such sources and links nothing at all --- what it has is
+handed to \texttt{pbashc} and one file comes out --- so there is
+nothing here for the line to take away.  What it does instead is stop
+the target being rebuilt when a file it includes changes, which is a
+cost with nothing on the other side of it.
+
+The warning is about the line rather than about any of the targets
+that read it, since one written at the top of a target is read by
+every test underneath and saying it once is the only way it gets
+read.  It is raised only when \textit{nothing} that line reached is
+linked: one written over a compiled binary with \texttt{BASH} tests
+under it was written for the binary, and the tests inherit it the way
+they inherit everything else on that target.  What that costs the
+tests is real, but it is not this warning --- this one is about a
+line that bought nothing at all.
 
 \section{Common Error Messages \label{err}}
 
