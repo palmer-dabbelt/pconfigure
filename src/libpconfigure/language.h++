@@ -132,6 +132,18 @@ public:
      * priority will be picked. */
     virtual int priority(void) const { return 0; }
 
+    /* TRUE when an AUTODEPS decides what gets linked into a target as
+     * well as when that target is rebuilt.
+     *
+     * That is the whole point of the command for a language that
+     * compiles: turning it off keeps the sources behind a target's
+     * headers out of it, which is a thing projects need and have no
+     * other way to say.  A language that only ever concatenates its
+     * sources has no such half, so AUTODEPS = false takes away the
+     * rebuilding and gives nothing back, and whoever wrote it wanted
+     * something else. */
+    virtual bool autodeps_links(void) const { return true; }
+
     /* Returns the targets that this context needs in order to build,
      * as a flattened list. */
     virtual

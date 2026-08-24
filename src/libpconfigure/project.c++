@@ -226,6 +226,76 @@ void project::generate_targets(void)
      * a DEPTESTS is allowed to name a test written further down the
      * Configfile than the line that waits for it. */
     check_test_order();
+
+    /* Same reason: what an AUTODEPS = false was worth depends on
+     * everything it reached, and one line reaches as far down the
+     * file as the target it was written on goes. */
+    check_autodeps();
+}
+
+void project::check_autodeps(void) const
+{
+    /* Everything one AUTODEPS reached, gathered under the line that
+     * wrote it rather than under any of the targets that inherited
+     * it.  A line at the top of a target is read by every test
+     * underneath, so asking the question per target would ask it
+     * fifty times and answer it fifty times the same way.
+     *
+     * Only the contexts a language actually gets picked for: those
+     * are the ones with an opinion about what AUTODEPS means, and
+     * they're the only ones it is safe to ask, since asking anything
+     * else is how you find out there was no language for it. */
+    auto first = std::map<std::string, context::ptr>();
+    auto order = std::vector<std::string>();
+    auto links = std::map<std::string, bool>();
+
+    std::function<void(const context::ptr&)> walk =
+        [&](const context::ptr& ctx)
+        {
+            for (const auto& child: ctx->children)
+                if (child->check_type({context_type::TEST}) == true)
+                    walk(child);
+
+            if (ctx->autodeps == true || ctx->autodeps_debug == NULL)
+                return;
+
+            auto where = std::to_string(ctx->autodeps_debug);
+            if (first.find(where) == first.end()) {
+                first[where] = ctx;
+                order.push_back(where);
+                links[where] = false;
+            }
+
+            if (pick_language(ctx->languages, ctx)->autodeps_links() == true)
+                links[where] = true;
+        };
+
+    for (const auto& ctx: _processor->output_contexts())
+        walk(ctx);
+
+    for (const auto& where: order) {
+        /* One target that links is enough to make the line worth
+         * writing.  A line that covers a compiled binary and the
+         * BASH tests underneath it was written for the binary, and
+         * what it costs the tests is a different complaint than this
+         * one -- this is about a line that bought nothing at all. */
+        if (links[where] == true)
+            continue;
+
+        const auto& ctx = first[where];
+        auto language = pick_language(ctx->languages, ctx);
+
+        ctx->strictness.complain(
+            strict_since::v0_13(),
+            ctx->autodeps_debug,
+            "'AUTODEPS = false' takes nothing out of a " + language->name()
+            + " build: nothing under this line is linked, so all it does"
+            " is stop what it reached being rebuilt when an include"
+            " changes",
+            "drop the line -- what it is for is keeping the sources"
+            " behind a compiled target's headers from being linked into"
+            " it, and there is no such target here");
+    }
 }
 
 void project::check_test_order(void) const

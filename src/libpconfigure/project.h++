@@ -180,6 +180,13 @@ private:
      * first, and quietly dropping an edge for the second -- and
      * neither answer names the Configfile line that caused it. */
     void check_test_order(void) const;
+
+    /* Says so when an AUTODEPS = false reached nothing that links,
+     * which is the only thing turning it off was ever meant to
+     * change.  What's left is a set of targets that have stopped
+     * being rebuilt when what they include changes, in exchange for
+     * nothing at all. */
+    void check_autodeps(void) const;
 };
 
 #endif
