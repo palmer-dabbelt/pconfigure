@@ -198,6 +198,7 @@ TESTSRC     += compiler-linker.bash
 TESTSRC     += osx-nonmacho-sign.bash
 TESTSRC     += testdeps.bash
 TESTSRC     += testdeps-outside.bash
+TESTSRC     += deptests.bash
 TESTSRC     += ptest-check-dirs.bash
 TESTSRC     += cmdline-args.bash
 TESTSRC     += strict.bash

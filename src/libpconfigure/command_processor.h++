@@ -179,6 +179,13 @@ private:
      * argument, and then pushes it onto the stack. */
     void dup_tos_and_push(const context_type& type,
                           const command::ptr& cmd);
+
+    /* The test that's open right now, or NULL when none is.  A
+     * TESTSRC is a TESTS and then a SOURCES, so the line written
+     * directly underneath one has that source sitting between it and
+     * the test it plainly meant -- which is the way anybody who reads
+     * the manual is going to write it. */
+    context::ptr enclosing_test(void) const;
 };
 
 #endif

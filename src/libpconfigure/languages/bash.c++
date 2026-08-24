@@ -177,7 +177,7 @@ language_bash::targets(const context::ptr& ctx) const
                        std::make_shared<makefile::target>(bin_name)
                    } + deps;
 
-        auto target_name = ctx->check_dir + "/" + ctx->cmd->data();
+        auto target_name = ctx->check_target();
         auto short_cmd = "CHECK\t" + ctx->cmd->data();
         auto global_targets = std::vector<makefile::global_targets>{
             makefile::global_targets::CHECK,
@@ -191,6 +191,16 @@ language_bash::targets(const context::ptr& ctx) const
          * project builds, which is what keeps this Makefile usable
          * on its own. */
         for (const auto& dep: ctx->based_test_deps())
+            deps.push_back(std::make_shared<makefile::target>(dep));
+
+        /* A test that reads what another test left behind says so
+         * with a DEPTESTS, and make ordering the two is the whole of
+         * it: the tarball the first one leaves is a prerequisite, so
+         * the second one waits for it and runs again whenever it is
+         * rewritten.  Whether the first one passed is not make's
+         * question -- a failed test is still a finished one, and it's
+         * "make report" that has an opinion about the result. */
+        for (const auto& dep: ctx->based_dep_tests())
             deps.push_back(std::make_shared<makefile::target>(dep));
 
         /* Where the project that owns this test is rooted -- whatever its

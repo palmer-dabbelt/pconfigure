@@ -23,6 +23,8 @@
 #include "language_list.h++"
 #include "vector_util.h++"
 #include <libmakefile/self_path.h++>
+#include <cstdlib>
+#include <iostream>
 #include <sstream>
 
 context::context(const std::string& base)
@@ -48,6 +50,7 @@ context::context(const std::string& base)
       strictness(),
       dep_libs(),
       test_deps(),
+      dep_tests(),
       cmd(NULL),
       verbose(false),
       debug(false),
@@ -83,6 +86,7 @@ context::context(const context_type& _type,
                  const strict& _strictness,
                  const std::vector<std::string>& _dep_libs,
                  const std::vector<std::string>& _test_deps,
+                 const std::vector<std::string>& _dep_tests,
                  const command::ptr& _cmd,
                  bool _verbose,
                  bool _debug,
@@ -115,6 +119,7 @@ context::context(const context_type& _type,
       strictness(_strictness),
       dep_libs(_dep_libs),
       test_deps(_test_deps),
+      dep_tests(_dep_tests),
       cmd(_cmd),
       verbose(_verbose),
       debug(_debug),
@@ -165,6 +170,7 @@ context::ptr context::dup(const context_type& type,
                                      this->strictness,
                                      this->dep_libs,
                                      this->test_deps,
+                                     this->dep_tests,
                                      cmd,
                                      this->verbose,
                                      this->debug,
@@ -187,6 +193,35 @@ std::vector<std::string> context::based_test_deps(void) const
                             [&](const std::string& dep)
                             {
                                 return file_utils::normalize_path(base + dep);
+                            });
+}
+
+std::string context::check_target(void) const
+{
+    if (type != context_type::TEST) {
+        std::cerr << "Asked a " << std::to_string(type)
+                  << " context what its check target is called, and only"
+                  << " a TEST has one\n";
+        abort();
+    }
+
+    return check_dir + "/" + cmd->data();
+}
+
+std::vector<std::string> context::based_dep_tests(void) const
+{
+    /* A DEPTESTS names a test of the same target, so what it names
+     * lands in the same check directory this test's own result does
+     * -- which is how the test being named wrote its own target
+     * down, and so is the one spelling of that path the rest of the
+     * Makefile uses.  A test that lives in a subdirectory of the test
+     * directory keeps that subdirectory in both places, which is what
+     * normalizing is here for. */
+    return vector_util::map(dep_tests,
+                            [&](const std::string& dep)
+                            {
+                                return file_utils::normalize_path(
+                                    check_dir + "/" + dep);
                             });
 }
 
