@@ -788,6 +788,33 @@ void command_processor::process_one(const command::ptr& cmd)
             return;
         }
 
+        /* Two trees that build into the same directory would each
+         * be running somebody else's build system over the other
+         * one's output, and neither of them would say so: the tree
+         * whose turn came second would just find files it didn't put
+         * there.  The names are short enough now to collide, which is
+         * the price of their being short -- what the directory is
+         * called is the subproject with the source directory taken
+         * off, so "src/linux" and "linux" are one name written two
+         * ways. */
+        for (const auto& already: _vendored) {
+            if (already->output_dir() != bound->output_dir())
+                continue;
+
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: this builds into '"
+                      << bound->output_dir() << "', and so does '"
+                      << already->source_dir() << "'\n"
+                      << "  an output directory is named after the tree"
+                      << " with the source directory taken off the"
+                      << " front,\n"
+                      << "  so two trees whose paths differ only by that"
+                      << " ask for the same directory\n"
+                      << "  move or rename one of them: a vendored tree's"
+                      << " output is the tree's alone\n";
+            abort();
+        }
+
         _vendored.push_back(bound);
 
         return;
