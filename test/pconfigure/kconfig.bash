@@ -140,15 +140,15 @@ test ! -e sub/Configfile
 # has to exist before make runs because make is what compares it
 # against the last one.  The build directory itself is still make's to
 # create.
-test -f obj/kconfig/sub/configure-opts
-test ! -e obj/kconfig/sub/build
-test ! -e obj/kconfig/sub/build-stamp
+test -f obj/sub/configure-opts
+test ! -e obj/sub/build
+test ! -e obj/sub/build-stamp
 
 # The rules that drive it live in the Makefile of whoever pulled it
 # in, since there's nowhere else for them to go.
-grep -q "^obj/kconfig/sub/build/.config:" Makefile
-grep -q "^obj/kconfig/sub/build-stamp:" Makefile
-grep -q "^all: obj/kconfig/sub/build-stamp$" Makefile
+grep -q "^obj/sub/build/.config:" Makefile
+grep -q "^obj/sub/build-stamp:" Makefile
+grep -q "^all: obj/sub/build-stamp$" Makefile
 if grep -q "include sub/Makefile" Makefile
 then
     exit 1
@@ -159,7 +159,7 @@ fi
 # the implicit "BUILD_SYSTEMS += pconfigure" doing its job.
 test -f psub/Makefile
 grep -q "^include \$(pconfigure_subdir_psub)Makefile$" Makefile
-if grep -q "obj/kconfig/psub" Makefile
+if grep -q "obj/psub" Makefile
 then
     exit 1
 fi
@@ -167,20 +167,20 @@ fi
 # The dependencies were chased at configure time: every Kconfig the
 # top one reaches, and every source an object could have come from --
 # including the ones behind a config symbol that isn't set yet.
-grep -q "^obj/kconfig/sub/build/.config:.* sub/Kconfig" Makefile
-grep -q "^obj/kconfig/sub/build/.config:.* sub/drivers/Kconfig" Makefile
-grep -q "^obj/kconfig/sub/build/.config:.* sub/configs/tiny_defconfig" Makefile
+grep -q "^obj/sub/build/.config:.* sub/Kconfig" Makefile
+grep -q "^obj/sub/build/.config:.* sub/drivers/Kconfig" Makefile
+grep -q "^obj/sub/build/.config:.* sub/configs/tiny_defconfig" Makefile
 
 # A path a variable made unreadable becomes a glob, since
 # "arch/$(SRCARCH)/Kconfig" names a real file for every value SRCARCH
 # could take and this run has no idea which one it'll be.
-grep -q "^obj/kconfig/sub/build/.config:.* sub/arch/one/Kconfig" Makefile
-grep -q "^obj/kconfig/sub/build/.config:.* sub/arch/two/Kconfig" Makefile
-grep -q "^obj/kconfig/sub/build-stamp:.* sub/Makefile" Makefile
-grep -q "^obj/kconfig/sub/build-stamp:.* sub/drivers/Makefile" Makefile
-grep -q "^obj/kconfig/sub/build-stamp:.* sub/drivers/extra/Makefile" Makefile
-grep -q "^obj/kconfig/sub/build-stamp:.* sub/drivers/driver.c" Makefile
-grep -q "^obj/kconfig/sub/build-stamp:.* sub/drivers/extra/extra.c" Makefile
+grep -q "^obj/sub/build/.config:.* sub/arch/one/Kconfig" Makefile
+grep -q "^obj/sub/build/.config:.* sub/arch/two/Kconfig" Makefile
+grep -q "^obj/sub/build-stamp:.* sub/Makefile" Makefile
+grep -q "^obj/sub/build-stamp:.* sub/drivers/Makefile" Makefile
+grep -q "^obj/sub/build-stamp:.* sub/drivers/extra/Makefile" Makefile
+grep -q "^obj/sub/build-stamp:.* sub/drivers/driver.c" Makefile
+grep -q "^obj/sub/build-stamp:.* sub/drivers/extra/extra.c" Makefile
 
 ##############################################################################
 # Building                                                                   #
@@ -188,11 +188,11 @@ grep -q "^obj/kconfig/sub/build-stamp:.* sub/drivers/extra/extra.c" Makefile
 make $MAKE_ARGS
 
 # The defconfig was applied, and then the options on top of it.
-grep -q "^CONFIG_BASE=y$" obj/kconfig/sub/build/.config
-grep -q "^CONFIG_EXTRA=y$" obj/kconfig/sub/build/.config
-grep -q "^# olddefconfig$" obj/kconfig/sub/build/.config
-test -f obj/kconfig/sub/build/built.txt
-test -f obj/kconfig/sub/build-stamp
+grep -q "^CONFIG_BASE=y$" obj/sub/build/.config
+grep -q "^CONFIG_EXTRA=y$" obj/sub/build/.config
+grep -q "^# olddefconfig$" obj/sub/build/.config
+test -f obj/sub/build/built.txt
+test -f obj/sub/build-stamp
 
 # The pconfigure subproject built too, and the vendored tree is still
 # untouched.
@@ -233,8 +233,8 @@ grep -q "MAKE" fourth.out
 # says nothing about any of it, and throw away a build that's
 # perfectly good.
 make $MAKE_ARGS cache-clean
-test -f obj/kconfig/sub/build/.config
-test -f obj/kconfig/sub/build/built.txt
+test -f obj/sub/build/.config
+test -f obj/sub/build/built.txt
 make $MAKE_ARGS > fifth.out
 if grep -q "MAKE" fifth.out
 then
@@ -248,7 +248,7 @@ make $MAKE_ARGS check
 # Undoing a configure throws away what the vendored build system
 # produced, and leaves the vendored tree exactly as it was.
 make $MAKE_ARGS distclean
-test ! -e obj/kconfig
+test ! -e obj/sub
 test ! -e sub/obj
 test -f sub/Makefile
 test -f sub/Kconfig

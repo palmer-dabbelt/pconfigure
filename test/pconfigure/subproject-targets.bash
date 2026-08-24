@@ -19,8 +19,8 @@ SUBPROJECT_TARGETS += rootfs.cpio.gz
 LANGUAGES          += bash
 
 PHONY              += integration
-TESTDEPS           += obj/kconfig/sub/build/arch/made-up/boot/Image
-TESTDEPS           += obj/kconfig/sub/build/rootfs.cpio.gz
+TESTDEPS           += obj/sub/build/arch/made-up/boot/Image
+TESTDEPS           += obj/sub/build/rootfs.cpio.gz
 TESTSRC            += boots.bash
 EOF
 
@@ -57,12 +57,12 @@ set -e
 # Both named outputs were built before this ran, which is what the
 # TESTDEPS asked for -- and neither of them is a file that any rule
 # other than the vendored tree's own build ever wrote.
-test -f obj/kconfig/sub/build/arch/made-up/boot/Image
-test -f obj/kconfig/sub/build/rootfs.cpio.gz
+test -f obj/sub/build/arch/made-up/boot/Image
+test -f obj/sub/build/rootfs.cpio.gz
 
 # The MAKEOPS reached the tree, both of them, and the one with a space
 # in its value arrived with the space still in it.
-test "\$(cat obj/kconfig/sub/build/arch/made-up/boot/Image)" = "an image"
+test "\$(cat obj/sub/build/arch/made-up/boot/Image)" = "an image"
 
 exit 0
 EOF
@@ -81,8 +81,8 @@ grep -q -- "-C sub .*'ARCH=made-up' 'EXTRA_NAME=an image'" Makefile
 # waits on the one stamp that says the tree has been built.  That is
 # what keeps a parallel make that wants both of them from starting two
 # sub-makes in the same tree.
-grep -q "^obj/kconfig/sub/build/arch/made-up/boot/Image: obj/kconfig/sub/build-stamp$" Makefile
-grep -q "^obj/kconfig/sub/build/rootfs.cpio.gz: obj/kconfig/sub/build-stamp$" Makefile
+grep -q "^obj/sub/build/arch/made-up/boot/Image: obj/sub/build-stamp$" Makefile
+grep -q "^obj/sub/build/rootfs.cpio.gz: obj/sub/build-stamp$" Makefile
 
 # Naming outputs adds no sub-makes at all.  There are two, and there
 # were two before any of this: one writes the configuration and one
@@ -93,26 +93,26 @@ test "$(grep -c -- '$(MAKE) --no-print-directory -C sub ' Makefile)" = "2"
 
 # What an output's rule does is check that the tree really produced it
 # and settle its timestamp against the stamp.  Nothing else.
-grep -A3 "^obj/kconfig/sub/build/rootfs.cpio.gz: " Makefile > rule.out
+grep -A3 "^obj/sub/build/rootfs.cpio.gz: " Makefile > rule.out
 cat rule.out
 if grep -q "MAKE" rule.out
 then
     exit 1
 fi
-grep -q "touch obj/kconfig/sub/build/rootfs.cpio.gz" rule.out
+grep -q "touch obj/sub/build/rootfs.cpio.gz" rule.out
 
 # The options this run gave are written down for make to compare
 # against, and a MAKEOPS is part of that: changing one changes how the
 # tree gets built.
-grep -q "^MAKEOPS ARCH=made-up$" obj/kconfig/sub/configure-opts
+grep -q "^MAKEOPS ARCH=made-up$" obj/sub/configure-opts
 
 make $MAKE_ARGS
-test -f obj/kconfig/sub/build/arch/made-up/boot/Image
-test -f obj/kconfig/sub/build/rootfs.cpio.gz
+test -f obj/sub/build/arch/made-up/boot/Image
+test -f obj/sub/build/rootfs.cpio.gz
 
 # Asking for a named output on its own works, and does not run the
 # tree again now that it is built.
-make $MAKE_ARGS obj/kconfig/sub/build/rootfs.cpio.gz > second.out 2>&1
+make $MAKE_ARGS obj/sub/build/rootfs.cpio.gz > second.out 2>&1
 cat second.out
 if grep -q "MAKE	sub" second.out
 then
@@ -177,7 +177,7 @@ then
     exit 1
 fi
 cat wrong.out
-grep -q "'never-built' is not in 'obj/kconfig/sub/build'" wrong.out
+grep -q "'never-built' is not in 'obj/sub/build'" wrong.out
 grep -q "SUBPROJECT_TARGETS names a file the tree builds" wrong.out
 
 cd $top
@@ -198,7 +198,7 @@ SUBPROJECT_TARGETS += toolchain
 
 SUBPROJECTS        += two
 CONFIGUREOPTS      += --defconfig tiny_defconfig
-CONFIGUREOPTS      += --depend obj/kconfig/one/build/toolchain
+CONFIGUREOPTS      += --depend obj/one/build/toolchain
 EOF
 
 for d in one two
@@ -230,11 +230,11 @@ cat Makefile
 # The second tree waits for the first tree's named output rather than
 # for the first tree's stamp, which is the finer-grained edge that
 # naming it is for.
-grep -q "^obj/kconfig/two/build-stamp:.*obj/kconfig/one/build/toolchain" Makefile
+grep -q "^obj/two/build-stamp:.*obj/one/build/toolchain" Makefile
 
 make $MAKE_ARGS
-test -f obj/kconfig/one/build/toolchain
-test -f obj/kconfig/two/build-stamp
+test -f obj/one/build/toolchain
+test -f obj/two/build-stamp
 
 cd $top
 
@@ -245,6 +245,6 @@ sed -i.bak "s/EXTRA_NAME=an image/EXTRA_NAME=another image/" Configfile
 rm -f Configfile.bak
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
-test "$(cat obj/kconfig/sub/build/arch/made-up/boot/Image)" = "another image"
+test "$(cat obj/sub/build/arch/made-up/boot/Image)" = "another image"
 
 exit 0

@@ -198,9 +198,9 @@ cat Makefile
 # recipe out by hand is worth the trouble: most of what's being tested
 # here is what order things happen in, and a grep over the whole file
 # can't tell "before" from "after".
-awk '/^\t/ { if (p) print; next } { p = 0 } /^obj\/kconfig\/sub\/build\/\.config:/ { p = 1 }' Makefile > config.rule
-awk '/^\t/ { if (p) print; next } { p = 0 } /^obj\/kconfig\/sub\/build-stamp:/ { p = 1 }' Makefile > stamp.rule
-awk '/^\t/ { if (p) print; next } { p = 0 } /^obj\/kconfig\/bare\/build\/\.config:/ { p = 1 }' Makefile > bare.rule
+awk '/^\t/ { if (p) print; next } { p = 0 } /^obj\/sub\/build\/\.config:/ { p = 1 }' Makefile > config.rule
+awk '/^\t/ { if (p) print; next } { p = 0 } /^obj\/sub\/build-stamp:/ { p = 1 }' Makefile > stamp.rule
+awk '/^\t/ { if (p) print; next } { p = 0 } /^obj\/bare\/build\/\.config:/ { p = 1 }' Makefile > bare.rule
 cat config.rule
 cat stamp.rule
 cat bare.rule
@@ -212,7 +212,7 @@ cat bare.rule
 # tree's own Makefile says, which is the whole reason to write one.
 # It goes after the "O=" pconfigure insists on, so a tree that has an
 # opinion about where its output goes still doesn't get to have it.
-grep -q -- "-C sub O=\\\$(abspath obj/kconfig/sub/build) 'MY_VAR=\\\$(abspath tests/x)'" Makefile
+grep -q -- "-C sub O=\\\$(abspath obj/sub/build) 'MY_VAR=\\\$(abspath tests/x)'" Makefile
 
 # The same variable reaches all three sub-makes, because a tree told
 # something for the defconfig and not for the build configures for one
@@ -283,7 +283,7 @@ test "$(cat sdk.at)" -lt "$(cat all.at)"
 # that was asked for succeeded rather than just the first one.
 grep -q '^	@date > \$@$' stamp.rule
 test "$(tail -n 1 stamp.rule)" = "	@date > \$@"
-grep -q '^all: obj/kconfig/sub/build-stamp$' Makefile
+grep -q '^all: obj/sub/build-stamp$' Makefile
 
 ##############################################################################
 # --merge-config                                                             #
@@ -293,14 +293,14 @@ grep -q '^all: obj/kconfig/sub/build-stamp$' Makefile
 # through a readlink only GNU coreutils has, and would say a second
 # thing about the output directory on top of the thing it was asked to
 # say.
-grep -q '^	@MY_ENV=fromenv KCONFIG_CONFIG=obj/kconfig/sub/build/.config sub/scripts/kconfig/merge_config.sh -m obj/kconfig/sub/build/.config frags/net.config$' Makefile
+grep -q '^	@MY_ENV=fromenv KCONFIG_CONFIG=obj/sub/build/.config sub/scripts/kconfig/merge_config.sh -m obj/sub/build/.config frags/net.config$' Makefile
 
 # The fragment is this project's own file, so changing it has to
 # reconfigure the tree; and the merge program is the tree's, so a tree
 # that gets updated underneath us reconfigures too.  Neither is
 # something the Kconfig chase could have found.
-grep -q '^obj/kconfig/sub/build/.config:.* frags/net.config' Makefile
-grep -q '^obj/kconfig/sub/build/.config:.* sub/scripts/kconfig/merge_config.sh' Makefile
+grep -q '^obj/sub/build/.config:.* frags/net.config' Makefile
+grep -q '^obj/sub/build/.config:.* sub/scripts/kconfig/merge_config.sh' Makefile
 
 # A fragment is a general statement and a --configure is a specific
 # one, so the fragment goes on first and the option gets the last
@@ -319,7 +319,7 @@ test "$(cat cfg.at)" -lt "$(cat odc.at)"
 # handles --configure, and moving it out so a --merge-config could ask
 # for it too is exactly the sort of change that leaves it being asked
 # for by nobody.  A tree that was handed neither doesn't get one.
-grep -q '^obj/kconfig/bare/build/.config:' Makefile
+grep -q '^obj/bare/build/.config:' Makefile
 test -s bare.rule
 if grep -q 'olddefconfig' bare.rule
 then
@@ -345,28 +345,28 @@ make $MAKE_ARGS
 
 # The defconfig, then the fragment, then the option, then Kconfig's
 # last word -- in that order, in one file.
-grep -q '^CONFIG_BASE=y$' obj/kconfig/sub/build/.config
-grep -q '^CONFIG_NET=y$' obj/kconfig/sub/build/.config
-grep -q '^CONFIG_EXTRA=y$' obj/kconfig/sub/build/.config
-grep -q '^# olddefconfig$' obj/kconfig/sub/build/.config
+grep -q '^CONFIG_BASE=y$' obj/sub/build/.config
+grep -q '^CONFIG_NET=y$' obj/sub/build/.config
+grep -q '^CONFIG_EXTRA=y$' obj/sub/build/.config
+grep -q '^# olddefconfig$' obj/sub/build/.config
 
 # The extra target really was asked for, and so was the default one:
 # naming targets replaces what the tree does on its own rather than
 # adding to it, so both had to be written out.
-test -f obj/kconfig/sub/build/sdk.txt
-test -f obj/kconfig/sub/build/built.txt
-test -f obj/kconfig/sub/build-stamp
+test -f obj/sub/build/sdk.txt
+test -f obj/sub/build/built.txt
+test -f obj/sub/build-stamp
 
 # What the tree saw.  The environment variable arrived as an
 # environment variable and the make variable arrived on make's command
 # line, and the "$(abspath ...)" was worked out by make rather than by
 # pconfigure -- which is what an absolute path here proves, since
 # pconfigure never wrote one.
-grep -q '^MY_ENV=fromenv$' obj/kconfig/sub/build/built.txt
-grep -q '^MY_VAR=/.*/tests/x$' obj/kconfig/sub/build/built.txt
+grep -q '^MY_ENV=fromenv$' obj/sub/build/built.txt
+grep -q '^MY_VAR=/.*/tests/x$' obj/sub/build/built.txt
 
 # The tree that asked for nothing built anyway.
-test -f obj/kconfig/bare/build/bare.txt
+test -f obj/bare/build/bare.txt
 
 # Nothing was written inside either vendored tree.
 test ! -e sub/obj
@@ -407,8 +407,8 @@ fi
 
 # The reconfiguration ran the whole recipe again rather than picking
 # up where it left off, so the fragment is in the new .config too.
-grep -q '^CONFIG_NET=y$' obj/kconfig/sub/build/.config
-grep -q '^CONFIG_EXTRA=y$' obj/kconfig/sub/build/.config
+grep -q '^CONFIG_NET=y$' obj/sub/build/.config
+grep -q '^CONFIG_EXTRA=y$' obj/sub/build/.config
 
 # Touching the merge program does the same thing, since a tree whose
 # own tools changed is a tree whose .config might come out different.
