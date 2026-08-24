@@ -255,6 +255,80 @@ test -f obj/two/build-stamp
 
 cd $top
 
+# A TESTDEPS is resolved where it's written, so one written above the
+# SUBPROJECT_TARGETS that would have claimed it means the other thing:
+# a path in the project, which nothing builds.  Reading the file in a
+# different order is the whole fix, and neither line says on its own
+# that it's the one in the wrong place.
+mkdir -p $top/order/sub/configs $top/order/test/integration
+cd $top/order
+
+cat >Configfile <<EOF
+BUILD_SYSTEMS      += kconfig
+
+SUBPROJECTS        += sub
+CONFIGUREOPTS      += --defconfig tiny_defconfig
+
+LANGUAGES          += bash
+
+PHONY              += integration
+TESTDEPS           += sub/build/rootfs.cpio.gz
+TESTSRC            += boots.bash
+
+SUBPROJECT_TARGETS += rootfs.cpio.gz
+EOF
+
+cat >sub/Kconfig <<EOF
+config BASE
+	bool "base"
+	default y
+EOF
+
+cat >sub/configs/tiny_defconfig <<EOF
+CONFIG_BASE=y
+EOF
+
+cat >sub/Makefile <<'EOF'
+O ?= $(CURDIR)/build
+
+all: $(O)/.config
+	@mkdir -p $(O)
+	@echo rootfs > $(O)/rootfs.cpio.gz
+
+tiny_defconfig:
+	@mkdir -p $(O)
+	@cp $(CURDIR)/configs/tiny_defconfig $(O)/.config
+EOF
+
+cat >test/integration/boots.bash <<'EOF'
+true
+EOF
+
+# The subshell is the assertion: "set -e" is on, so a command expected
+# to fail has to be somewhere a failure isn't fatal.
+if $PTEST_BINARY $PCONFIGURE_ARGS > order.out 2>&1
+then
+    exit 1
+fi
+cat order.out
+
+# It names both lines, since which of the two moves is the reader's
+# choice and neither one is wrong by itself.
+grep -q "Configfile:9" order.out
+grep -q "SUBPROJECT_TARGETS += rootfs.cpio.gz" order.out
+
+# ... and says what the TESTDEPS ended up meaning instead, which is
+# the part that would otherwise only show up as make refusing to build
+# a file nobody ever wrote a rule for.
+grep -q "obj/sub/build/rootfs.cpio.gz" order.out
+grep -q "above the tests that wait for them" order.out
+
+# It stopped before writing anything, rather than leaving a
+# half-configured tree behind for the next command to trip over.
+test ! -e Makefile
+
+cd $top
+
 # Changing a MAKEOPS reconfigures and rebuilds the tree, and the new
 # value is what the tree gets.
 sleep 2
