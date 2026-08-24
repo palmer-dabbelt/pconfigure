@@ -848,7 +848,7 @@ MAKEOPS            += ARCH=arm64
 SUBPROJECT_TARGETS += arch/arm64/boot/Image
 
 PHONY              += integration
-TESTDEPS           += obj/linux/build/arch/arm64/boot/Image
+TESTDEPS           += linux/build/arch/arm64/boot/Image
 TESTSRC            += boots.bash
 \end{verbatim}
 
@@ -858,6 +858,11 @@ which for a \texttt{kconfig} or \texttt{buildroot} tree is the
 \texttt{\$obj\_dir/\$dirname/build}.  A path that
 climbs out of there is a fatal error, since it would be claiming that
 this tree builds a file it never touches.
+
+A \texttt{TESTDEPS} names the same file with that directory on the
+front, which is what the example above is doing: the \texttt{linux}
+in it is the one in the object directory rather than the vendored
+tree itself (see Section~\ref{cmd:testdeps}).
 
 However many of these are named, exactly one rule ever recurses into
 the tree: they all wait on the same stamp, which is the only thing
@@ -940,6 +945,39 @@ TESTDEPS    += fs/libexec/mkfs
 TESTDEPS    += vm/bin/vm
 TESTSRC     += boots-a-real-image.bash
 \end{verbatim}
+
+A file that a vendored subproject was said to produce (see
+Section~\ref{cmd:subproject_targets}) is named from the object
+directory that tree builds into rather than from the project:
+
+\begin{verbatim}
+SUBPROJECTS        += src/linux
+SUBPROJECT_TARGETS += arch/arm64/boot/Image
+
+PHONY              += integration
+TESTDEPS           += linux/build/arch/arm64/boot/Image
+TESTSRC            += boots.bash
+\end{verbatim}
+
+The object directory is on the front of every one of those paths and
+so tells none of them apart: what it adds to the line is the answer
+to a question --- where does this project keep its build output ---
+that the line was not asking, and the answer is the same one every
+time.  Writing it out anyway still works, and both spellings come out
+as the same prerequisite, since there is one name for that file in
+the \texttt{Makefile} whichever way it was asked for.
+
+Only a file a \texttt{SUBPROJECT\_TARGETS} named is read this way.
+That set is exactly the paths with a rule behind them, so a project
+that has a directory of its own named after one of its vendored trees
+still reaches its own with everything it wrote before.
+
+Like everything else in a \texttt{Configfile} this is read where it
+is written, so the \texttt{SUBPROJECTS} and its
+\texttt{SUBPROJECT\_TARGETS} have to be above the tests that wait for
+them.  A \texttt{TESTDEPS} read first is a fatal error rather than a
+path in the project that nothing builds, since which of the two lines
+should move is not something \pconfigure\ can pick for you.
 
 A \texttt{TESTDEPS} waits for something the \textit{build} makes.  A
 test that has to wait for another \textit{test} --- because what it
