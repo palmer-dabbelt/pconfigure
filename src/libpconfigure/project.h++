@@ -172,6 +172,14 @@ private:
      * things that come out looking like they worked. */
     static void check_target_shape(const context::ptr& ctx,
                                    std::map<std::string, context::ptr>& seen);
+
+    /* Says so when the DEPTESTS in this project don't describe an
+     * order any run of the tests could take: one that waits for a
+     * test nobody wrote, or a set of them that waits in a circle.
+     * make has an answer for both -- "No rule to make target" for the
+     * first, and quietly dropping an edge for the second -- and
+     * neither answer names the Configfile line that caused it. */
+    void check_test_order(void) const;
 };
 
 #endif

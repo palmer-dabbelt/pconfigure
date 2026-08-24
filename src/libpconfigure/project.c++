@@ -26,6 +26,7 @@
 #include <cctype>
 #include <cerrno>
 #include <cstring>
+#include <functional>
 #include <iostream>
 
 project::project(const std::string& base,
@@ -220,6 +221,140 @@ void project::generate_targets(void)
                 _needed.push_back(makefile::capability(name, target->name()));
         }
     }
+
+    /* Now that every test in this project has a name, and not before:
+     * a DEPTESTS is allowed to name a test written further down the
+     * Configfile than the line that waits for it. */
+    check_test_order();
+}
+
+void project::check_test_order(void) const
+{
+    /* Every test this project runs, by the name of the target that
+     * runs it -- which is exactly what a DEPTESTS resolves to, since
+     * both of them are that test's check directory and its own name.
+     *
+     * A test is a child of the thing it exercises rather than an
+     * output context of its own, so this has to go down and look:
+     * asking only the contexts at the top would find no tests at all
+     * and quietly approve every DEPTESTS in the project. */
+    auto tests = std::map<std::string, context::ptr>();
+
+    std::function<void(const context::ptr&)> gather =
+        [&](const context::ptr& ctx)
+        {
+            if (ctx->check_type({context_type::TEST}) == true)
+                tests[ctx->check_target()] = ctx;
+
+            for (const auto& child: ctx->children)
+                gather(child);
+        };
+
+    for (const auto& ctx: _processor->output_contexts())
+        gather(ctx);
+
+    auto waits_for = std::map<std::string, std::vector<std::string>>();
+
+    for (const auto& pair: tests) {
+        const auto& ctx = pair.second;
+        const auto& named = ctx->dep_tests;
+        const auto& based = ctx->based_dep_tests();
+
+        for (size_t i = 0; i < based.size(); ++i) {
+            if (tests.find(based[i]) != tests.end()) {
+                waits_for[pair.first].push_back(based[i]);
+                continue;
+            }
+
+            /* A name that isn't a test is worth stopping for, because
+             * the shape of the mistake is almost always a DEPTESTS
+             * reaching for a test of some other target: the Makefile
+             * that comes out of it is one where "make check" stops
+             * with "No rule to make target", which names a path in a
+             * check directory and nothing at all about the Configfile
+             * that asked for it. */
+            std::cerr << std::to_string(ctx->cmd->debug()) << "\n"
+                      << "  error: DEPTESTS waits for '" << named[i]
+                      << "', which is no test of this target\n"
+                      << "  it would be '" << based[i]
+                      << "', and nothing under this target writes that\n"
+                      << "  a DEPTESTS names a test that shares this check"
+                      << " directory, spelled the way its own TESTS line"
+                      << " spelled it\n";
+            abort();
+        }
+    }
+
+    /* Tests that wait in a circle never run, and make says so by
+     * dropping one of the edges and carrying on -- so the build works
+     * and the order it was asked for silently isn't the one it used.
+     * That's the worst way for this to go wrong, since the whole
+     * point of a DEPTESTS is that the order is load-bearing. */
+    auto walking = std::map<std::string, bool>();
+    auto walked = std::map<std::string, bool>();
+    auto stack = std::vector<std::string>();
+
+    std::function<void(const std::string&)> walk =
+        [&](const std::string& name)
+        {
+            walking[name] = true;
+            stack.push_back(name);
+
+            auto found = waits_for.find(name);
+            if (found != waits_for.end()) {
+                for (const auto& dep: found->second) {
+                    if (walked[dep] == true)
+                        continue;
+
+                    if (walking[dep] == false) {
+                        walk(dep);
+                        continue;
+                    }
+
+                    /* Everything from where this name first went on
+                     * the stack is the circle; whatever came before it
+                     * is just how the walk got here. */
+                    auto cycle = std::vector<std::string>();
+                    auto in = false;
+                    for (const auto& step: stack) {
+                        if (step == dep)
+                            in = true;
+                        if (in == true)
+                            cycle.push_back(step);
+                    }
+
+                    std::cerr << std::to_string(tests[dep]->cmd->debug())
+                              << "\n";
+
+                    if (cycle.size() == 1) {
+                        std::cerr << "  error: this test's DEPTESTS waits"
+                                  << " for itself\n"
+                                  << "  a test can't be its own"
+                                  << " predecessor, so there's no order"
+                                  << " here to run it in\n";
+                        abort();
+                    }
+
+                    std::cerr << "  error: this test's DEPTESTS wait in a"
+                              << " circle, so none of them could ever"
+                              << " run\n";
+                    for (size_t i = 0; i < cycle.size(); ++i)
+                        std::cerr << "    " << cycle[i] << " waits for "
+                                  << cycle[(i + 1) % cycle.size()] << "\n";
+                    std::cerr << "  break the circle: one of these tests has"
+                              << " to be the one that goes first\n";
+                    abort();
+                }
+            }
+
+            stack.pop_back();
+            walking[name] = false;
+            walked[name] = true;
+        };
+
+    for (const auto& pair: tests)
+        if (walked[pair.first] == false)
+            walk(pair.first);
 }
 
 makefile::target::ptr project::cache_clean_target(const std::vector<ptr>& projects) const
