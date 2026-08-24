@@ -102,15 +102,17 @@ fi
 
 # The test hanging off it gets no binary, because there isn't one --
 # and it gets the project it belongs to instead, which is the anchor a
-# test with no binary has nothing else to build out of.
-grep -q "ptest --test obj/check/integration/boots.bash --out check/integration/boots.bash --srcdir \\\$(abspath \\.)\$" Makefile
+# test with no binary has nothing else to build out of.  It gets its
+# check directory either way, which is where a DEPTESTS predecessor's
+# result would be.
+grep -q "ptest --test obj/check/integration/boots.bash --out check/integration/boots.bash --srcdir \\\$(abspath \\.) --checkdir check/integration\$" Makefile
 
 # A phony belongs to the project that asked for it, the same way every
 # other target does -- so two projects can both want one called the
 # same thing, and asking for it from the top or from inside the
 # project reaches the same one.
 grep -q "^\.PHONY: \$(pconfigure_subdir_sub)thing$" sub/Makefile
-grep -q -- "--srcdir \\\$(abspath \\\$(pconfigure_subdir_sub)\\.)$" sub/Makefile
+grep -q -- "--srcdir \\\$(abspath \\\$(pconfigure_subdir_sub)\\.) --checkdir \\\$(pconfigure_subdir_sub)check/thing$" sub/Makefile
 if grep -q "^\.PHONY: thing$" Makefile
 then
     exit 1
