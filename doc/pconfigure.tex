@@ -501,6 +501,17 @@ its own that is removed once the test finishes.  Anything the test
 writes belongs there: the working directory is shared with every other
 test in the build, and with the build itself.
 
+What the test left in there is what gets collected: \texttt{\$CHECKDIR}
+holds one tarball per test, and a test's own is the contents of its
+\texttt{\$PTEST\_TMPDIR} once it has finished.  A test is given
+\texttt{\$PTEST\_CHECKDIR}, the absolute path of the directory its own
+result is about to land in --- which is where every other test of the
+same target lands too, so it is how a test that was ordered after
+another one with a \texttt{DEPTESTS} (see Section~\ref{cmd:deptests})
+reads what that one left behind.  Nothing is there yet for a test with
+no \texttt{DEPTESTS}: what makes a predecessor's result exist by the
+time a test runs is having waited for it.
+
 \subsection{\texttt{HEADERS += \$name}}
 
 The \texttt{HEADERS} command creates a target that's meant for
@@ -909,6 +920,85 @@ TESTDEPS    += fs/libexec/mkfs
 TESTDEPS    += vm/bin/vm
 TESTSRC     += boots-a-real-image.bash
 \end{verbatim}
+
+A \texttt{TESTDEPS} waits for something the \textit{build} makes.  A
+test that has to wait for another \textit{test} --- because what it
+wants is whatever that test left behind rather than anything a rule
+produces --- wants a \texttt{DEPTESTS} instead (see
+Section~\ref{cmd:deptests}).
+
+\subsection{\texttt{DEPTESTS += \$test} \label{cmd:deptests}}
+
+Names a test that has to have run before this one does.  This is what
+to reach for when two tests share something that costs too much to
+make twice: the first one makes it, and the second one reads what the
+first one left behind.
+
+\begin{verbatim}
+PHONY     += integration
+TESTSRC   += builds-an-image.bash
+TESTSRC   += boots-that-image.bash
+DEPTESTS  += builds-an-image.bash
+\end{verbatim}
+
+\texttt{\$test} is a test of the same target, spelled exactly the way
+that test's own \texttt{TESTS} or \texttt{TESTSRC} line spelled it.  A
+path that climbs out of the check directory is a fatal error: it would
+be reaching for a test belonging to some other target, and an order
+between two targets' tests only holds when one \texttt{make} happens to
+build both, which is no order at all.  Two tests that share state are
+one suite however they got written, and a suite belongs to whoever has
+all of it --- which is what a \texttt{PHONY} (see
+Section~\ref{cmd:phony}) is for.
+
+Unlike \texttt{TESTDEPS} (see Section~\ref{cmd:testdeps}) and every
+other command shaped like it, this one goes under a single test rather
+than under the target.  A target-wide one would be read by every test
+underneath it, and one of those tests is the one being waited for ---
+so what it asked for would be a test waiting for itself.  The waiting
+is a property of the one test that does it, so that is where the line
+goes: directly under that test's own \texttt{TESTSRC}, as above.
+Written anywhere else it is a fatal error rather than a line that
+attaches itself to whatever happens to be open.
+
+\subsubsection{What this promises, and what it doesn't}
+
+All \pconfigure\ does here is put the two tests in an order and re-run
+the second one whenever the first one runs.  The tarball the first
+test leaves behind is an ordinary prerequisite of the second test's
+rule, so \texttt{make} orders them, \texttt{make -j} keeps them from
+overlapping, and a change that re-runs the first one re-runs the
+second one too --- a test that passed against state that has since
+been rebuilt would otherwise go on claiming to have passed.
+
+What it does \textit{not} do is look at how the first test went.  A
+test that fails is still a test that finished, and its check target is
+a target that was made: \texttt{make check} builds every result and it
+is \texttt{make report} that has an opinion about what they say (see
+Section~\ref{prog:ptest}).  So a failed predecessor does not stop its
+successors --- they run, and they are the ones that decide what a
+predecessor's failure means to them.  That is deliberate: only the
+tests know whether the state they wanted got made.
+
+Passing the state along is between the two tests as well.  What the
+first test wrote into \texttt{\$PTEST\_TMPDIR} is what \pconfigure\
+collects, so \texttt{\$PTEST\_CHECKDIR} (see Section~\ref{cmd:tests})
+is where the second one finds it:
+
+\begin{verbatim}
+tar -xf "$PTEST_CHECKDIR/builds-an-image.bash" -C "$PTEST_TMPDIR"
+\end{verbatim}
+
+\subsubsection{Orders that can't happen}
+
+A \texttt{DEPTESTS} naming a test no \texttt{TESTS} line ever wrote is
+a fatal error, and so is a set of them that waits in a circle.  Both
+are things \texttt{make} has an answer for --- \texttt{No rule to make
+target} for the first, and quietly dropping an edge for the second ---
+and neither answer names the \texttt{Configfile} line that caused it.
+The second is the worse of the two by a distance: the build works, and
+the order it was asked for silently isn't the order it used, which is
+the whole thing a \texttt{DEPTESTS} was written to be sure of.
 
 \subsection{\texttt{AUTODEPS = bool} \label{cmd:autodeps}}
 
