@@ -989,15 +989,25 @@ language_cxx::compile_source(const context::ptr& ctx,
     /* Recursively walks the list of targets. */
     std::vector<target::ptr> deps;
     std::vector<target::ptr> header_deps;
-    if (ctx->autodeps == true) {
-        for (const auto& header_dep: dependencies(source_path,
-                                                  is_shared,
-                                                  compile_opts)) {
-            {
-                auto t = std::make_shared<header_target>(header_dep);
-                header_deps = header_deps + std::vector<header_target::ptr>{t};
-            }
+    for (const auto& header_dep: dependencies(source_path,
+                                              is_shared,
+                                              compile_opts)) {
+        /* A header this source reads is a prerequisite of the object
+         * built from it whatever else is going on, and AUTODEPS has
+         * nothing to say about that.  What AUTODEPS turns off is the
+         * loop below -- the sources behind those headers getting
+         * built and linked in alongside this one -- and a target that
+         * doesn't want that still wants to be rebuilt when a
+         * declaration it was compiled against moves.  Without this
+         * the object stays as it was, and what comes out is a program
+         * built half against the old header and half against the
+         * new. */
+        {
+            auto t = std::make_shared<header_target>(header_dep);
+            header_deps = header_deps + std::vector<header_target::ptr>{t};
+        }
 
+        if (ctx->autodeps == true) {
             for (const auto& dep: find_files_for_header(header_dep)) {
                 auto dep_out_name =
                     child->obj_dir
