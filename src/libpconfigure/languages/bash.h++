@@ -59,6 +59,12 @@ public:
     virtual language_bash* clone(void) const;
     virtual bool can_process(const context::ptr& ctx) const;
     virtual std::vector<makefile::target::ptr> targets(const context::ptr& ctx) const;
+
+    /* A bash-like language links nothing: the sources are handed to
+     * pbashc and what comes out is one file.  So there is no half of
+     * AUTODEPS here for a "false" to be aimed at, and all it does is
+     * stop the includes being prerequisites. */
+    virtual bool autodeps_links(void) const { return false; }
 };
 
 #endif

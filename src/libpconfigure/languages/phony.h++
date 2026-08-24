@@ -52,6 +52,11 @@ public:
     virtual bool can_process(const context::ptr& ctx) const;
     virtual std::vector<makefile::target::ptr>
     targets(const context::ptr& ctx) const;
+
+    /* A PHONY has no sources, so nothing is compiled here and
+     * nothing is linked.  There is no half of AUTODEPS aimed at
+     * this one either. */
+    virtual bool autodeps_links(void) const { return false; }
 };
 
 #endif
