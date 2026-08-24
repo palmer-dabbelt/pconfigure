@@ -118,6 +118,7 @@ static bool names_a_path(const command_type& type)
 {
     switch (type) {
     case command_type::BINARIES:
+    case command_type::DEPTESTS:
     case command_type::ENTITLEMENTS:
     case command_type::GENERATE:
     case command_type::HDRDIR:
@@ -848,6 +849,73 @@ void command_processor::process_one(const command::ptr& cmd)
         return;
     }
 
+    /* One test waiting on another one, which is the only way to say
+     * that two tests share something expensive to produce: the first
+     * one makes it and the second one reads what the first one left
+     * behind.  What gets handed along is between the two tests -- all
+     * this does is put them in an order and run the second one again
+     * whenever the first one runs. */
+    case command_type::DEPTESTS:
+    {
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        /* This lands on one test rather than on a target, which is
+         * what makes it different from every other DEP- and -DEPS
+         * command.  A target-wide one would be read by every test
+         * underneath, including the test it names -- so the thing it
+         * asked for would be that test waiting for itself, which is
+         * not an order anything could run in.  The waiting is a
+         * property of the one test that does it. */
+        auto test = enclosing_test();
+        if (test == NULL) {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: "
+                      << std::to_string(cmd->type())
+                      << " with no test open above it has nothing that"
+                      << " could wait\n"
+                      << "  put it directly under the TESTS or TESTSRC"
+                      << " line of the test that does the waiting\n"
+                      << "  it can't go on the target the way a TESTDEPS"
+                      << " does: every test under the target would read"
+                      << " it,\n"
+                      << "  and one of those tests is the one being"
+                      << " waited for\n";
+            abort();
+        }
+
+        /* A DEPTESTS names a test of the same target and nothing
+         * else: it is the bare name off that test's own TESTS line,
+         * so a path that climbs out of the check directory is
+         * reaching for somebody else's test.
+         *
+         * The tests under one target are one suite, and whatever they
+         * hand between themselves is that suite's business.  Two
+         * tests under different targets that share state aren't two
+         * suites either -- they're one, and it belongs to whoever has
+         * both of them, which is what a PHONY is for.  Ordering them
+         * across targets instead would be an order that only holds
+         * when one make happens to build both, which is no order at
+         * all. */
+        auto named = file_utils::normalize_path(cmd->data());
+        if (named.compare(0, 3, "../") == 0
+            || (named.size() > 0 && named[0] == '/')) {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: DEPTESTS can't reach outside the"
+                      << " target\n"
+                      << "  it names a test of this same target, spelled"
+                      << " the way that test's own TESTS line spelled"
+                      << " it\n"
+                      << "  two tests under different targets that share"
+                      << " state are one suite: put both under a PHONY\n";
+            abort();
+        }
+
+        test->dep_tests.push_back(cmd->data());
+
+        return;
+    }
+
     case command_type::TESTS:
     {
         if (cmd->check_operation("+=") == false)
@@ -1061,6 +1129,32 @@ void command_processor::clear_until(const std::vector<context_type>& types,
         std::cerr << "Interal error: empty stack\n";
         abort();
     }
+}
+
+context::ptr command_processor::enclosing_test(void) const
+{
+    /* std::stack only shows its top, and what's wanted here is the
+     * context under it -- so this walks a copy down rather than
+     * taking the real one apart and putting it back. */
+    auto rest = _stack;
+
+    while (rest.empty() == false) {
+        if (rest.top()->check_type({context_type::TEST}) == true)
+            return rest.top();
+
+        /* A source is the one thing that can sit between a DEPTESTS
+         * and the test it belongs to, and it gets there because
+         * TESTSRC opens one.  Anything else means the test was closed
+         * before this line was reached, and a DEPTESTS that quietly
+         * attached itself to whatever came next would be worse than
+         * one that says nothing is open. */
+        if (rest.top()->check_type({context_type::SOURCE}) == false)
+            return NULL;
+
+        rest.pop();
+    }
+
+    return NULL;
 }
 
 void command_processor::dup_tos_and_push(const context_type& type,
