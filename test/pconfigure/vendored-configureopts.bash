@@ -127,7 +127,7 @@ EOF
 ##############################################################################
 $PTEST_BINARY $PCONFIGURE_ARGS
 cat Makefile
-cat obj/kconfig/sub/configure-opts
+cat obj/sub/configure-opts
 
 # One raw CONFIGUREOPTS line per line, in the order they were
 # written, and nothing else.  Taking them apart into whatever the
@@ -148,16 +148,16 @@ cat >expected-opts <<'EOF'
 --env MY_ENV=one
 CROSS_COMPILE=
 EOF
-diff expected-opts obj/kconfig/sub/configure-opts
+diff expected-opts obj/sub/configure-opts
 
 # It's written at configure time rather than at build time because
 # make is what compares it against the last one, and make can't
 # compare against a file that isn't there yet.  Everything else about
 # the vendored tree is still make's to create: the output directory
 # belongs to the tree, and the stamp says a build has happened.
-test -f obj/kconfig/sub/configure-opts
-test ! -e obj/kconfig/sub/build
-test ! -e obj/kconfig/sub/build-stamp
+test -f obj/sub/configure-opts
+test ! -e obj/sub/build
+test ! -e obj/sub/build-stamp
 
 ##############################################################################
 # It is a prerequisite of the configuration and nothing else                 #
@@ -167,8 +167,8 @@ test ! -e obj/kconfig/sub/build-stamp
 # standing argument about which half of the state each new option
 # belongs in when --env, --make-var and CROSS_COMPILE all land in
 # both halves.
-grep -q '^obj/kconfig/sub/build/\.config:.* obj/kconfig/sub/configure-opts' Makefile
-if grep -q '^obj/kconfig/sub/build-stamp:.*configure-opts' Makefile
+grep -q '^obj/sub/build/\.config:.* obj/sub/configure-opts' Makefile
+if grep -q '^obj/sub/build-stamp:.*configure-opts' Makefile
 then
     exit 1
 fi
@@ -176,7 +176,7 @@ fi
 # Nothing in the Makefile knows how to build it, which is the point.
 # A file make could rebuild is a file make would rebuild, and then
 # the comparison this exists for would come out equal every time.
-if grep -q '^obj/kconfig/sub/configure-opts:' Makefile
+if grep -q '^obj/sub/configure-opts:' Makefile
 then
     exit 1
 fi
@@ -185,10 +185,10 @@ fi
 # A no-op reconfigure does not touch it                                      #
 ##############################################################################
 make $MAKE_ARGS
-cat obj/kconfig/sub/build/.config
-cat obj/kconfig/sub/build/built.txt
-grep -q '^CONFIG_BASE=y$' obj/kconfig/sub/build/.config
-grep -q '^MY_VAR=first$' obj/kconfig/sub/build/built.txt
+cat obj/sub/build/.config
+cat obj/sub/build/built.txt
+grep -q '^CONFIG_BASE=y$' obj/sub/build/.config
+grep -q '^MY_VAR=first$' obj/sub/build/built.txt
 
 # This is the half a naive fix gets wrong, and it's worth being loud
 # about.  Writing the options out on every run is a line shorter and
@@ -205,8 +205,8 @@ grep -q '^MY_VAR=first$' obj/kconfig/sub/build/built.txt
 touch before-noop
 sleep 2s
 $PTEST_BINARY $PCONFIGURE_ARGS
-diff expected-opts obj/kconfig/sub/configure-opts
-find obj/kconfig/sub/configure-opts -newer before-noop > rewritten.txt
+diff expected-opts obj/sub/configure-opts
+find obj/sub/configure-opts -newer before-noop > rewritten.txt
 cat rewritten.txt
 test ! -s rewritten.txt
 
@@ -258,10 +258,10 @@ SUBPROJECTS   += router
 CONFIGUREOPTS += --defconfig br_defconfig
 EOF
 $PTEST_BINARY $PCONFIGURE_ARGS
-cat obj/kconfig/sub/configure-opts
-grep -q '^--defconfig other_defconfig$' obj/kconfig/sub/configure-opts
-grep -q '^--make-var EXTRA_VAR=added$' obj/kconfig/sub/configure-opts
-find obj/kconfig/sub/configure-opts -newer before-change > changed.txt
+cat obj/sub/configure-opts
+grep -q '^--defconfig other_defconfig$' obj/sub/configure-opts
+grep -q '^--make-var EXTRA_VAR=added$' obj/sub/configure-opts
+find obj/sub/configure-opts -newer before-change > changed.txt
 cat changed.txt
 test -s changed.txt
 
@@ -275,14 +275,14 @@ grep -q 'MAKE' changed.out
 # old one wrote is gone rather than sitting underneath it: asserting
 # on the output is the only way to tell a reconfigure from a rebuild
 # that reused the .config it found lying around.
-cat obj/kconfig/sub/build/.config
-cat obj/kconfig/sub/build/built.txt
-grep -q '^CONFIG_OTHER=y$' obj/kconfig/sub/build/.config
-if grep -q '^CONFIG_BASE=y$' obj/kconfig/sub/build/.config
+cat obj/sub/build/.config
+cat obj/sub/build/built.txt
+grep -q '^CONFIG_OTHER=y$' obj/sub/build/.config
+if grep -q '^CONFIG_BASE=y$' obj/sub/build/.config
 then
     exit 1
 fi
-grep -q '^EXTRA_VAR=added$' obj/kconfig/sub/build/built.txt
+grep -q '^EXTRA_VAR=added$' obj/sub/build/built.txt
 
 ##############################################################################
 # CROSS_COMPILE counts                                                       #
@@ -311,9 +311,9 @@ SUBPROJECTS   += router
 CONFIGUREOPTS += --defconfig br_defconfig
 EOF
 $PTEST_BINARY $PCONFIGURE_ARGS
-cat obj/kconfig/sub/configure-opts
-grep -q '^CROSS_COMPILE=faketc-$' obj/kconfig/sub/configure-opts
-find obj/kconfig/sub/configure-opts -newer before-cross > crossed.txt
+cat obj/sub/configure-opts
+grep -q '^CROSS_COMPILE=faketc-$' obj/sub/configure-opts
+find obj/sub/configure-opts -newer before-cross > crossed.txt
 cat crossed.txt
 test -s crossed.txt
 
@@ -321,8 +321,8 @@ make $MAKE_ARGS > crossed.out
 cat crossed.out
 grep -q 'KCONFIG' crossed.out
 grep -q 'MAKE' crossed.out
-cat obj/kconfig/sub/build/built.txt
-grep -q '^CROSS_COMPILE=faketc-$' obj/kconfig/sub/build/built.txt
+cat obj/sub/build/built.txt
+grep -q '^CROSS_COMPILE=faketc-$' obj/sub/build/built.txt
 
 ##############################################################################
 # Buildroot does not get one                                                 #
@@ -335,12 +335,12 @@ grep -q '^CROSS_COMPILE=faketc-$' obj/kconfig/sub/build/built.txt
 # with, so nothing about it belongs in its file either: a line no
 # recipe reads would reconfigure a tree over a change that can't
 # reach it.
-cat obj/buildroot/router/configure-opts
+cat obj/router/configure-opts
 cat >expected-router <<'EOF'
 --defconfig br_defconfig
 EOF
-diff expected-router obj/buildroot/router/configure-opts
-if grep -q 'CROSS_COMPILE' obj/buildroot/router/configure-opts
+diff expected-router obj/router/configure-opts
+if grep -q 'CROSS_COMPILE' obj/router/configure-opts
 then
     exit 1
 fi
@@ -358,8 +358,8 @@ cat Configfile
 grep -q '^CROSS_COMPILE  = othertc-$' Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 
-find obj/kconfig/sub/configure-opts -newer before-cross-again > sub-again.txt
-find obj/buildroot/router/configure-opts -newer before-cross-again > router-again.txt
+find obj/sub/configure-opts -newer before-cross-again > sub-again.txt
+find obj/router/configure-opts -newer before-cross-again > router-again.txt
 cat sub-again.txt
 cat router-again.txt
 test -s sub-again.txt
@@ -388,8 +388,8 @@ fi
 # fail outright, which is why what's checked here is the build rather
 # than the file.
 make $MAKE_ARGS clean
-test -f obj/kconfig/sub/configure-opts
-test -f obj/buildroot/router/configure-opts
+test -f obj/sub/configure-opts
+test -f obj/router/configure-opts
 
 if make $MAKE_ARGS > after-clean.out 2>&1
 then
@@ -402,8 +402,8 @@ if grep -q 'No rule to make target' after-clean.out
 then
     exit 1
 fi
-test -f obj/kconfig/sub/build-stamp
-test -f obj/buildroot/router/build-stamp
+test -f obj/sub/build-stamp
+test -f obj/router/build-stamp
 
 ##############################################################################
 # Distclean takes it                                                         #
@@ -412,8 +412,8 @@ test -f obj/buildroot/router/build-stamp
 # it holds is what the configure being undone decided, and the object
 # directory it lives in is going with it.
 make $MAKE_ARGS distclean
-test ! -e obj/kconfig/sub/configure-opts
-test ! -e obj/buildroot/router/configure-opts
+test ! -e obj/sub/configure-opts
+test ! -e obj/router/configure-opts
 test ! -e obj
 
 # And neither vendored tree noticed any of this happening, which is

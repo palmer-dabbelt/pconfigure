@@ -83,16 +83,16 @@ cat Makefile
 # directory is also a thing make is happy to call up to date the
 # moment it exists, so getting this wrong doesn't fail loudly -- it
 # just builds the two trees in whatever order it feels like.
-grep -q "^obj/kconfig/linux/build-stamp:.* obj/kconfig/br/build-stamp" Makefile
-if grep -q "^obj/kconfig/linux/build-stamp:.* br/$" Makefile
+grep -q "^obj/linux/build-stamp:.* obj/br/build-stamp" Makefile
+if grep -q "^obj/linux/build-stamp:.* br/$" Makefile
 then
     exit 1
 fi
-if grep -q "^obj/kconfig/linux/build-stamp:.* br$" Makefile
+if grep -q "^obj/linux/build-stamp:.* br$" Makefile
 then
     exit 1
 fi
-if grep -q "^obj/kconfig/linux/build-stamp:.* br " Makefile
+if grep -q "^obj/linux/build-stamp:.* br " Makefile
 then
     exit 1
 fi
@@ -106,17 +106,17 @@ fi
 # off the build alone is what made a fresh checkout take two passes of
 # make, the first of which wrote down the answers Kconfig gives when
 # it can't run a compiler at all.
-grep -q "^obj/kconfig/linux/build/.config:.* obj/kconfig/br/build-stamp" Makefile
+grep -q "^obj/linux/build/.config:.* obj/br/build-stamp" Makefile
 
 # The edge only points one way.  br was told nothing about linux, so
 # nothing about linux may show up in br's rules: an extra edge here
 # would be a loop, and make has nothing useful to say about one of
 # those.
-if grep -q "^obj/kconfig/br/build-stamp:.* linux" Makefile
+if grep -q "^obj/br/build-stamp:.* linux" Makefile
 then
     exit 1
 fi
-if grep -q "^obj/kconfig/br/build/.config:.* overlay/inittab" Makefile
+if grep -q "^obj/br/build/.config:.* overlay/inittab" Makefile
 then
     exit 1
 fi
@@ -128,14 +128,14 @@ fi
 # for the .config -- so the second grep here is the first one's other
 # half, and the two together are why --depend-config doesn't also have
 # to be written as a --depend.
-grep -q "^obj/kconfig/linux/build/.config:.* overlay/inittab" Makefile
-grep -q "^obj/kconfig/linux/build-stamp: obj/kconfig/linux/build/.config" Makefile
+grep -q "^obj/linux/build/.config:.* overlay/inittab" Makefile
+grep -q "^obj/linux/build-stamp: obj/linux/build/.config" Makefile
 
 # Both trees are still built by default: waiting for br is an ordering
 # constraint on linux, not a statement that br is only worth building
 # because linux needs it.
-grep -q "^all: obj/kconfig/linux/build-stamp$" Makefile
-grep -q "^all: obj/kconfig/br/build-stamp$" Makefile
+grep -q "^all: obj/linux/build-stamp$" Makefile
+grep -q "^all: obj/br/build-stamp$" Makefile
 
 ##############################################################################
 # Building                                                                   #
@@ -152,10 +152,10 @@ grep -n "MAKE${tab}br" first.out | cut -d: -f1 > br.at
 grep -n "MAKE${tab}linux" first.out | cut -d: -f1 > linux.at
 test "$(cat br.at)" -lt "$(cat linux.at)"
 
-test -f obj/kconfig/br/build/built.txt
-test -f obj/kconfig/linux/build/built.txt
-test -f obj/kconfig/br/build-stamp
-test -f obj/kconfig/linux/build-stamp
+test -f obj/br/build/built.txt
+test -f obj/linux/build/built.txt
+test -f obj/br/build-stamp
+test -f obj/linux/build-stamp
 
 # An edge between two trees isn't a reason to recurse into either of
 # them a second time: br's stamp got older than nothing, so linux's
