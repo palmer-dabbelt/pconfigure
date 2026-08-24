@@ -254,19 +254,48 @@ std::string build_system::source_dir(void) const
     return trim(_base);
 }
 
+/* Takes the source directory off the front of a path, when it's on
+ * there.  A subproject is usually vendored into the same directory
+ * everything else this project builds from lives in, and "src" said
+ * again on the output side is a word that distinguishes nothing. */
+static std::string unsourced(const context::ptr& ctx,
+                             const std::string& dir)
+{
+    auto src = ctx->unbased(ctx->src_dir) + "/";
+    if (dir.compare(0, src.size(), src) != 0)
+        return dir;
+
+    /* Unless taking it off leaves nothing, which is what a project
+     * whose whole source directory is one vendored tree would get.
+     * A directory has to have a name. */
+    auto out = dir.substr(src.size());
+    if (trim(out) == ".")
+        return dir;
+    return out;
+}
+
 std::string build_system::output_dir(void) const
 {
-    /* The build system comes first so that this can't land on top of
-     * anything pconfigure puts in an object directory, and the
-     * subproject second so that two trees built the same way can't
-     * land on top of each other.
+    /* Named after the tree and after nothing else.  This is a path
+     * people have to write down -- a TESTDEPS waits on what lands in
+     * here, and a link line reaches into it -- so what it says should
+     * be the part they had a choice about.  Which build system builds
+     * the tree isn't that: it was decided by looking at what's in the
+     * directory, and nobody who reads the Configfile picked it.
+     * Neither is the source directory, which every subproject is
+     * under and so tells no two of them apart.
      *
-     * That path is spelled the way it looks from inside the project
-     * that owns the object directory: the object directory is already
-     * based there, and basing the subproject again would produce
-     * "sub/obj/kconfig/sub/linux". */
-    return _context->obj_dir + "/" + _name
-         + "/" + trim(_context->unbased(_base));
+     * That leaves a tree at "src/linux" building into "obj/linux",
+     * which can't land on top of pconfigure's own object files: those
+     * keep the path they were compiled from, so they're all under
+     * "obj/src".
+     *
+     * The subproject is spelled the way it looks from inside the
+     * project that owns the object directory, since the object
+     * directory is already based there and basing the subproject
+     * again would produce "sub/obj/sub/linux". */
+    return _context->obj_dir + "/"
+         + trim(unsourced(_context, _context->unbased(_base)));
 }
 
 build_system::ptr build_system::bind(const std::string& base,

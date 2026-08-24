@@ -175,9 +175,9 @@ test ! -e ext/Makefile
 
 # The rules that drive it live in the Makefile of whoever pulled it
 # in, since there's nowhere else for them to go.
-grep -q "^obj/buildroot/sub/build/.config:" Makefile
-grep -q "^obj/buildroot/sub/build-stamp:" Makefile
-grep -q "^all: obj/buildroot/sub/build-stamp$" Makefile
+grep -q "^obj/sub/build/.config:" Makefile
+grep -q "^obj/sub/build-stamp:" Makefile
+grep -q "^all: obj/sub/build-stamp$" Makefile
 if grep -q "include sub/Makefile" Makefile
 then
     exit 1
@@ -185,42 +185,45 @@ fi
 
 # A tree with a Config.in in it isn't a kbuild tree, so the kconfig
 # build system doesn't get a chance to claim it -- and it wasn't even
-# asked for here.
-if grep -q "obj/kconfig" Makefile
+# asked for here.  Which one claimed it is what make prints while it
+# configures the tree, since the output directory is named after the
+# tree rather than after whatever builds it.
+if grep -q "KCONFIG" Makefile
 then
     exit 1
 fi
+grep -q "BUILDROOT" Makefile
 
 # The whole configuration was chased, out of Config.in rather than out
 # of a Kconfig.
-grep -q "^obj/buildroot/sub/build/.config:.* sub/Config.in" Makefile
-grep -q "^obj/buildroot/sub/build/.config:.* sub/Config.in.legacy" Makefile
-grep -q "^obj/buildroot/sub/build/.config:.* sub/package/Config.in" Makefile
-grep -q "^obj/buildroot/sub/build/.config:.* sub/package/busybox/Config.in" Makefile
-grep -q "^obj/buildroot/sub/build/.config:.* sub/package/dropbear/Config.in" Makefile
-grep -q "^obj/buildroot/sub/build/.config:.* sub/fs/Config.in" Makefile
-grep -q "^obj/buildroot/sub/build/.config:.* sub/configs/tiny_defconfig" Makefile
+grep -q "^obj/sub/build/.config:.* sub/Config.in" Makefile
+grep -q "^obj/sub/build/.config:.* sub/Config.in.legacy" Makefile
+grep -q "^obj/sub/build/.config:.* sub/package/Config.in" Makefile
+grep -q "^obj/sub/build/.config:.* sub/package/busybox/Config.in" Makefile
+grep -q "^obj/sub/build/.config:.* sub/package/dropbear/Config.in" Makefile
+grep -q "^obj/sub/build/.config:.* sub/fs/Config.in" Makefile
+grep -q "^obj/sub/build/.config:.* sub/configs/tiny_defconfig" Makefile
 
 # So was the build description, which a buildroot tree includes by
 # wildcard rather than by naming one file at a time.  A package that
 # isn't even enabled is still a file this configuration might read
 # tomorrow.
-grep -q "^obj/buildroot/sub/build-stamp:.* sub/Makefile" Makefile
-grep -q "^obj/buildroot/sub/build-stamp:.* sub/support/misc/utils.mk" Makefile
-grep -q "^obj/buildroot/sub/build-stamp:.* sub/package/busybox/busybox.mk" Makefile
-grep -q "^obj/buildroot/sub/build-stamp:.* sub/package/dropbear/dropbear.mk" Makefile
-grep -q "^obj/buildroot/sub/build-stamp:.* sub/fs/ext2/ext2.mk" Makefile
-grep -q "^obj/buildroot/sub/build-stamp:.* sub/linux/linux.mk" Makefile
+grep -q "^obj/sub/build-stamp:.* sub/Makefile" Makefile
+grep -q "^obj/sub/build-stamp:.* sub/support/misc/utils.mk" Makefile
+grep -q "^obj/sub/build-stamp:.* sub/package/busybox/busybox.mk" Makefile
+grep -q "^obj/sub/build-stamp:.* sub/package/dropbear/dropbear.mk" Makefile
+grep -q "^obj/sub/build-stamp:.* sub/fs/ext2/ext2.mk" Makefile
+grep -q "^obj/sub/build-stamp:.* sub/linux/linux.mk" Makefile
 
 # An external tree is reached through a variable that names it, so
 # nothing in the vendored tree points at it: what it holds is named
 # because BR2_EXTERNAL says what such a tree is made of.
 grep -q "BR2_EXTERNAL=" Makefile
-grep -q "^obj/buildroot/sub/build/.config:.* ext/Config.in" Makefile
-grep -q "^obj/buildroot/sub/build/.config:.* ext/package/mine/Config.in" Makefile
-grep -q "^obj/buildroot/sub/build-stamp:.* ext/external.desc" Makefile
-grep -q "^obj/buildroot/sub/build-stamp:.* ext/external.mk" Makefile
-grep -q "^obj/buildroot/sub/build-stamp:.* ext/package/mine/mine.mk" Makefile
+grep -q "^obj/sub/build/.config:.* ext/Config.in" Makefile
+grep -q "^obj/sub/build/.config:.* ext/package/mine/Config.in" Makefile
+grep -q "^obj/sub/build-stamp:.* ext/external.desc" Makefile
+grep -q "^obj/sub/build-stamp:.* ext/external.mk" Makefile
+grep -q "^obj/sub/build-stamp:.* ext/package/mine/mine.mk" Makefile
 
 ##############################################################################
 # Building                                                                   #
@@ -228,18 +231,18 @@ grep -q "^obj/buildroot/sub/build-stamp:.* ext/package/mine/mine.mk" Makefile
 make $MAKE_ARGS
 
 # The defconfig was applied, and then the options on top of it.
-grep -q "^BR2_BASE=y$" obj/buildroot/sub/build/.config
-grep -q "^BR2_PACKAGE_BUSYBOX=y$" obj/buildroot/sub/build/.config
-grep -q "^BR2_PACKAGE_DROPBEAR=y$" obj/buildroot/sub/build/.config
-grep -q "^# olddefconfig$" obj/buildroot/sub/build/.config
+grep -q "^BR2_BASE=y$" obj/sub/build/.config
+grep -q "^BR2_PACKAGE_BUSYBOX=y$" obj/sub/build/.config
+grep -q "^BR2_PACKAGE_DROPBEAR=y$" obj/sub/build/.config
+grep -q "^# olddefconfig$" obj/sub/build/.config
 
 # A value that was written with quotes around it is a string, and a
 # string keeps its quotes in a .config -- which is the tree's own
 # program's job, and the reason it gets told which kind this is.
-grep -q '^BR2_TARGET_GENERIC_HOSTNAME="my router"$' obj/buildroot/sub/build/.config
+grep -q '^BR2_TARGET_GENERIC_HOSTNAME="my router"$' obj/sub/build/.config
 
-test -f obj/buildroot/sub/build/images.txt
-test -f obj/buildroot/sub/build-stamp
+test -f obj/sub/build/images.txt
+test -f obj/sub/build-stamp
 test ! -e sub/output
 
 # A second make in a tree that's already built doesn't recurse at all,
@@ -284,8 +287,8 @@ grep -q "MAKE" fifth.out
 # says nothing about any of it, and throw away a build that's
 # perfectly good.
 make $MAKE_ARGS cache-clean
-test -f obj/buildroot/sub/build/.config
-test -f obj/buildroot/sub/build/images.txt
+test -f obj/sub/build/.config
+test -f obj/sub/build/images.txt
 make $MAKE_ARGS > sixth.out
 if grep -q "MAKE" sixth.out
 then
@@ -296,7 +299,7 @@ fi
 # produced, and leaves both the vendored tree and the external tree
 # exactly as they were.
 make $MAKE_ARGS distclean
-test ! -e obj/buildroot
+test ! -e obj/sub
 test ! -e sub/output
 test -f sub/Makefile
 test -f sub/Config.in
