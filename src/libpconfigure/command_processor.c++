@@ -871,6 +871,31 @@ void command_processor::process_one(const command::ptr& cmd)
             abort();
         }
 
+        /* A file a vendored tree was said to produce is spelled from
+         * the object directory that tree builds into, rather than
+         * from the project the way everything else here is.
+         *
+         * The object directory is on the front of every one of those
+         * paths and so tells none of them apart: what it adds to the
+         * line is the answer to a question -- where does this
+         * project keep build output -- that the line wasn't asking.
+         * The tree's name is the part that was being said, and a
+         * TESTDEPS gets to say only that.
+         *
+         * Only a file the tree was said to produce is read this way.
+         * Everything else keeps meaning what it always meant, so a
+         * project with a directory of its own named after one of its
+         * vendored trees still reaches its own. */
+        auto in_obj = _stack.top()->unbased(_stack.top()->obj_dir)
+                    + "/" + named;
+        for (const auto& vendored: _vendored) {
+            if (vendored->produces(_stack.top()->base + in_obj) == false)
+                continue;
+
+            _stack.top()->test_deps.push_back(in_obj);
+            return;
+        }
+
         _stack.top()->test_deps.push_back(cmd->data());
 
         return;
