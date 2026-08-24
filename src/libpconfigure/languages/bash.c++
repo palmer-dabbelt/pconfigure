@@ -209,6 +209,7 @@ language_bash::targets(const context::ptr& ctx) const
             "+" + makefile::tool_command("ptest") + " --test " + test_name + " --out " + target_name
                 + (bin_name.size() > 0 ? " --bin " + bin_name : "")
                 + " --srcdir " + srcdir
+                + " --checkdir " + ctx->check_dir
         };
         auto comment = std::vector<std::string>{
             "language_bash::targets() CHECK"
