@@ -184,6 +184,18 @@ public:
     /* Should automatic dependency resolution be enabled for this target?. */
     bool autodeps;
 
+    /* The AUTODEPS line that last set the above, or NULL when nothing
+     * did and this is still the default.
+     *
+     * A warning about an AUTODEPS wants to point at the AUTODEPS, and
+     * by the time anything is in a position to notice there is
+     * something worth warning about, the line is a long way behind:
+     * one line at the top of a target is read by every source and
+     * every test underneath it.  Keeping it here is also what lets
+     * fifty targets that inherited one line be complained about
+     * once. */
+    debug_info::ptr autodeps_debug;
+
     /* The path to the header compiler. */
     std::string phc;
 
@@ -246,6 +258,7 @@ public:
             const std::string& base,
             const std::shared_ptr<language_list>& languages,
             bool autodeps,
+            const debug_info::ptr& autodeps_debug,
             const std::string& phc,
             const std::string& entitlements,
             const std::vector<ptr>& children);
