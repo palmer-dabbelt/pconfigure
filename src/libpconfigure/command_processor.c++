@@ -199,11 +199,13 @@ void command_processor::process_one(const command::ptr& cmd)
 
         if (cmd->data() == "true") {
             tos->autodeps = true;
+            tos->autodeps_debug = cmd->debug();
             return;
         }
 
         if (cmd->data() == "false") {
             tos->autodeps = false;
+            tos->autodeps_debug = cmd->debug();
             return;
         }
 
