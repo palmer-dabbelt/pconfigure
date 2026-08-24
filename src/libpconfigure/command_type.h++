@@ -40,6 +40,7 @@ enum class command_type {
     CONFIGUREOPTS,
     CROSS_COMPILE,
     DEPLIBS,
+    DEPTESTS,
     ENTITLEMENTS,
     GENERATE,
     HDRDIR,
@@ -86,6 +87,7 @@ static const std::vector<command_type> all_command_types =
     command_type::CONFIGUREOPTS,
     command_type::CROSS_COMPILE,
     command_type::DEPLIBS,
+    command_type::DEPTESTS,
     command_type::ENTITLEMENTS,
     command_type::GENERATE,
     command_type::HDRDIR,
@@ -143,6 +145,8 @@ namespace std {
             return "CROSS_COMPILE";
         case command_type::DEPLIBS:
             return "DEPLIBS";
+        case command_type::DEPTESTS:
+            return "DEPTESTS";
         case command_type::ENTITLEMENTS:
             return "ENTITLEMENTS";
         case command_type::GENERATE:

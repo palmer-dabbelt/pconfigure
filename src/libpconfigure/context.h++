@@ -148,6 +148,16 @@ public:
      * covers all of that. */
     std::vector<std::string> test_deps;
 
+    /* The tests that have to have run before this one does, named the
+     * way their own TESTS line named them.  A test that reads what
+     * another one left behind has to be told to wait for it, and the
+     * Configfile that wrote both is the only thing that can say so.
+     *
+     * Unlike everything else here this belongs to a single test
+     * rather than to a target: a target's copy would be read by every
+     * test under it, including the one being waited for. */
+    std::vector<std::string> dep_tests;
+
     /* The exact command issued, which allows all sorts of debugging
      * later. */
     const command::ptr cmd;
@@ -228,6 +238,7 @@ public:
             const strict& strictness,
             const std::vector<std::string>& dep_libs,
             const std::vector<std::string>& test_deps,
+            const std::vector<std::string>& dep_tests,
             const command::ptr& cmd,
             bool verbose,
             bool debug,
@@ -316,6 +327,18 @@ public:
      * names something inside that project, since a TESTDEPS that
      * reached outside was refused when it was read. */
     std::vector<std::string> based_test_deps(void) const;
+
+    /* What this test's check target is called, which is both the rule
+     * that runs the test and the tarball of whatever it left behind.
+     * Only a TEST context has one. */
+    std::string check_target(void) const;
+
+    /* The check targets a DEPTESTS named, which is that same question
+     * asked of another test of the same target.  A DEPTESTS is a bare
+     * test name rather than a path because the only test it is
+     * allowed to name is one that shares this check directory, so
+     * that directory is the whole of what has to go on the front. */
+    std::vector<std::string> based_dep_tests(void) const;
 
     /* Checks to see if the context matches one of the given types,
      * returning TRUE if it matches, and FALSE if it doesn't. */
