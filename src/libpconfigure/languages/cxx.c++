@@ -334,6 +334,7 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
                 "+" + makefile::tool_command("ptest") + " --test " + test_name + " --out " + target_name
                 + (bin_name.size() > 0 ? " --bin " + bin_name : "")
                 + " --srcdir " + srcdir
+                + " --checkdir " + ctx->check_dir
             };
             auto comment = std::vector<std::string>{
                 "language_cxx::targets() CHECK"

@@ -200,6 +200,7 @@ test=""
 out=""
 bin=""
 srcdir=""
+checkdir=""
 command=""
 while [[ "$1" != "" ]]
 do
@@ -221,6 +222,11 @@ do
     elif [[ "$1" == "--srcdir" ]]
     then
         srcdir="$2"
+        shift
+        shift
+    elif [[ "$1" == "--checkdir" ]]
+    then
+        checkdir="$2"
         shift
         shift
     elif [[ "$1" == "--args" ]]
@@ -262,12 +268,22 @@ then
     srcdir="$(abs_path "$srcdir")"
 fi
 
+# The directory this test's own result lands in, which is where the
+# result of every other test of the same target lands too -- so it's
+# how one test finds what another one left behind.  Same guard, same
+# reason: a ptest run by hand was told nothing and says nothing.
+if [[ "$checkdir" != "" ]]
+then
+    checkdir="$(abs_path "$checkdir")"
+fi
+
 # This is the regular path where we actually run a test case
 tmpdir=`mktemp -d -t ptest-wrapper.XXXXXXXXXX`
 trap "rm -rf $tmpdir" EXIT
 
 export PTEST_BINARY="$bin"
 export PTEST_SRCDIR="$srcdir"
+export PTEST_CHECKDIR="$checkdir"
 export PTEST_TMPDIR="$tmpdir"
 
 "$test" "$@" >&"$tmpdir"/ptest__output
