@@ -738,6 +738,26 @@ the build happens in that project's object directory rather than in
 the tree, and \texttt{make distclean} throws that away without
 touching the tree at all.
 
+Where in there it happens is named after the tree and after nothing
+else: a subproject vendored at \texttt{src/linux} builds into
+\texttt{\$obj\_dir/linux}.  Which build system was picked is not part
+of the name, since nobody chose it --- it was worked out from what is
+in the directory --- and neither is the source directory, which every
+subproject that lives where the sources live is under and which
+therefore tells no two of them apart.  Taking the source directory
+off is also what keeps a vendored tree's output clear of
+\pconfigure's own object files, which keep the path they were
+compiled from and so all live under \texttt{\$obj\_dir/src}.  A tree
+vendored somewhere else keeps the path it was vendored at:
+\texttt{vendor/br} builds into \texttt{\$obj\_dir/vendor/br}.
+
+Two subprojects that would build into the same directory are a fatal
+error.  \texttt{src/linux} and \texttt{linux} differ only by the part
+that comes off the front, so both of them ask for
+\texttt{\$obj\_dir/linux} --- and two trees sharing an output
+directory would each be running somebody else's build system over the
+other one's files, with nothing anywhere saying so.
+
 Unlike a \texttt{pconfigure} subproject, a vendored tree is built with
 a recursive \texttt{make}.  There is no way to fold somebody else's
 build system into this one's dependency graph, so the rule that
@@ -828,14 +848,14 @@ MAKEOPS            += ARCH=arm64
 SUBPROJECT_TARGETS += arch/arm64/boot/Image
 
 PHONY              += integration
-TESTDEPS           += obj/kconfig/linux/build/arch/arm64/boot/Image
+TESTDEPS           += obj/linux/build/arch/arm64/boot/Image
 TESTSRC            += boots.bash
 \end{verbatim}
 
 \texttt{\$path} is relative to the directory the tree builds into,
 which for a \texttt{kconfig} or \texttt{buildroot} tree is the
 \texttt{O=} it was handed:
-\texttt{\$obj\_dir/\$buildsystem/\$dirname/build}.  A path that
+\texttt{\$obj\_dir/\$dirname/build}.  A path that
 climbs out of there is a fatal error, since it would be claiming that
 this tree builds a file it never touches.
 
@@ -1508,13 +1528,13 @@ Two rules come out of this.  The first produces a \texttt{.config},
 by running the tree's own \texttt{defconfig} target and then setting
 whatever options were asked for on top of it.  The second runs the
 tree's own \texttt{make} against that configuration.  Both build into
-\texttt{\$obj\_dir/kconfig/\$dirname/build} in the project that pulled
+\texttt{\$obj\_dir/\$dirname/build} in the project that pulled
 the tree in, using an out-of-tree build (\texttt{O=}), so the vendored
 tree itself is never written to.  The \texttt{build} on the end is
 where the tree is handed its \texttt{O=}, which makes it the tree's:
 what \pconfigure\ keeps for itself --- the stamp, and the record of
 what the tree was configured with --- sits in
-\texttt{\$obj\_dir/kconfig/\$dirname} beside it rather than in there
+\texttt{\$obj\_dir/\$dirname} beside it rather than in there
 with the tree's own output.
 
 The options are:
@@ -1645,7 +1665,7 @@ Alongside those two rules \pconfigure\ writes a third file, which has
 no rule of its own:
 
 \begin{verbatim}
-obj/kconfig/linux/configure-opts
+obj/linux/configure-opts
 \end{verbatim}
 
 It holds what the tree was configured with: one
@@ -1736,7 +1756,7 @@ its own, which is what such a tree looks like from outside.
 
 Everything else is as Section~\ref{buildsys} describes for
 \texttt{kconfig}: the same two rules, the same out-of-tree build
-(\texttt{O=}) into \texttt{\$obj\_dir/buildroot/\$dirname}, and the
+(\texttt{O=}) into \texttt{\$obj\_dir/\$dirname}, and the
 same dependency guess.  Every option listed there means what it means
 there, and there is one more:
 
