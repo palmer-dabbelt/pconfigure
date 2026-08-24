@@ -19,7 +19,7 @@ SUBPROJECT_TARGETS += rootfs.cpio.gz
 LANGUAGES          += bash
 
 PHONY              += integration
-TESTDEPS           += obj/sub/build/arch/made-up/boot/Image
+TESTDEPS           += sub/build/arch/made-up/boot/Image
 TESTDEPS           += obj/sub/build/rootfs.cpio.gz
 TESTSRC            += boots.bash
 EOF
@@ -83,6 +83,23 @@ grep -q -- "-C sub .*'ARCH=made-up' 'EXTRA_NAME=an image'" Makefile
 # sub-makes in the same tree.
 grep -q "^obj/sub/build/arch/made-up/boot/Image: obj/sub/build-stamp$" Makefile
 grep -q "^obj/sub/build/rootfs.cpio.gz: obj/sub/build-stamp$" Makefile
+
+# The two TESTDEPS above name one of those each, and they're spelled
+# differently on purpose: the first from the object directory the tree
+# builds into, the second from the project.  Both are the same file
+# and both come out as the path the rule that builds it is written
+# under, which is the only spelling the rest of the Makefile knows.
+grep -q "^check/integration/boots.bash:.* obj/sub/build/arch/made-up/boot/Image" Makefile
+grep -q "^check/integration/boots.bash:.* obj/sub/build/rootfs.cpio.gz" Makefile
+
+# Naming a tree's output from the object directory is not the same as
+# naming a directory of the project's own: only a file the tree was
+# said to produce is read that way, so nothing that used to mean a
+# path in the project has started meaning something else.
+if grep -q "^check/integration/boots.bash:.* sub/build/" Makefile
+then
+    exit 1
+fi
 
 # Naming outputs adds no sub-makes at all.  There are two, and there
 # were two before any of this: one writes the configuration and one
