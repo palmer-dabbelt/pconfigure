@@ -110,4 +110,78 @@ test -f bin/test
 test ! -e src/linux/build
 test ! -e vendor/br/build
 
+##############################################################################
+# Two trees that want the same output directory                              #
+##############################################################################
+# The name being short is what makes this reachable: "src/linux" and
+# "linux" differ only by the directory that comes off the front, so
+# both of them ask for "obj/linux".  Nothing about the two builds
+# would say so -- each would run somebody else's build system over the
+# other one's output and find files it didn't put there.
+mkdir -p clash
+
+for tree in clash/src/linux clash/linux
+do
+    mkdir -p $tree/configs
+
+    cat >$tree/Kconfig <<'EOF'
+config BASE
+	bool "base"
+	default y
+EOF
+
+    cat >$tree/configs/tiny_defconfig <<'EOF'
+CONFIG_BASE=y
+EOF
+
+    cat >$tree/Makefile <<'EOF'
+O ?= $(CURDIR)/build
+
+all: $(O)/.config
+	@mkdir -p $(O)
+	@cp $(O)/.config $(O)/built.txt
+
+tiny_defconfig:
+	@mkdir -p $(O)
+	@cp $(CURDIR)/configs/tiny_defconfig $(O)/.config
+
+olddefconfig:
+	@mkdir -p $(O)
+	@echo "# olddefconfig" >> $(O)/.config
+EOF
+done
+
+cat >clash/Configfile <<EOF
+BUILD_SYSTEMS += kconfig
+
+SUBPROJECTS   += src/linux
+CONFIGUREOPTS += --defconfig tiny_defconfig
+
+SUBPROJECTS   += linux
+CONFIGUREOPTS += --defconfig tiny_defconfig
+EOF
+
+# The subshell is the assertion: "set -e" is on, so a command expected
+# to fail has to be somewhere a failure isn't fatal.
+if (cd clash && $PTEST_BINARY $PCONFIGURE_ARGS) > clash.out 2>&1
+then
+    exit 1
+fi
+cat clash.out
+
+# It says which line it was reading, which directory both trees want,
+# and which other tree already wanted it -- the last of those being
+# the thing the line itself doesn't say.
+grep -q "Configfile:6" clash.out
+grep -q "obj/linux" clash.out
+grep -q "src/linux" clash.out
+
+# ... and why two paths that don't look alike came out the same, since
+# that is the part nobody would guess.
+grep -q "source directory taken off" clash.out
+
+# It stopped before writing anything, rather than leaving a
+# half-configured tree behind for the next command to trip over.
+test ! -e clash/Makefile
+
 exit 0
