@@ -69,6 +69,21 @@ private:
      * recently. */
     build_system::ptr _configure_target;
 
+    /* Every TESTDEPS that was read as a path in the project, with the
+     * path it would have been read as had it named a file some
+     * vendored tree was already said to produce.
+     *
+     * A Configfile is read top to bottom and a TESTDEPS is resolved
+     * where it's written, so one written above the SUBPROJECT_TARGETS
+     * that claims it means the other thing.  This is what a later
+     * SUBPROJECT_TARGETS checks itself against, so that the answer
+     * doesn't quietly depend on which of the two lines came first. */
+    struct plain_test_dep {
+        command::ptr cmd;
+        std::string in_obj;
+    };
+    std::vector<plain_test_dep> _plain_test_deps;
+
     /* A list of every target that's ever been part of the context
      * stack. */
     std::vector<context::ptr> _all_contexts;

@@ -356,6 +356,29 @@ void command_processor::process_one(const command::ptr& cmd)
 
         _configure_target->add_subproject_target(cmd->data());
 
+        /* A TESTDEPS is resolved where it's written, so one written
+         * above this line was read before the tree had been said to
+         * produce anything -- and a path that could have named this
+         * output was read as a path in the project instead.  Moving
+         * one of the two lines is the whole fix, and nothing further
+         * down would say which two lines they were: what make ends up
+         * complaining about is a file nobody builds. */
+        for (const auto& earlier: _plain_test_deps) {
+            if (_configure_target->produces(earlier.in_obj) == false)
+                continue;
+
+            std::cerr << std::to_string(earlier.cmd->debug()) << "\n"
+                      << "  error: this was read before the tree in '"
+                      << _configure_target->source_dir()
+                      << "' was said to produce it, on "
+                      << std::to_string(cmd->debug()) << "\n"
+                      << "  so it names a path in the project rather than '"
+                      << earlier.in_obj << "'\n"
+                      << "  put the SUBPROJECTS and its SUBPROJECT_TARGETS"
+                      << " above the tests that wait for them\n";
+            abort();
+        }
+
         return;
 
     /* Which machine the things below this are being built for, said
@@ -896,6 +919,7 @@ void command_processor::process_one(const command::ptr& cmd)
             return;
         }
 
+        _plain_test_deps.push_back({cmd, _stack.top()->base + in_obj});
         _stack.top()->test_deps.push_back(cmd->data());
 
         return;
