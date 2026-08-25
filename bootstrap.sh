@@ -27,9 +27,28 @@ do
     *)
         argument="$2"
         shift
-        shift
+
+        # Shifting the argument off as well, unless there wasn't one.
+        # shift fails on an empty argument list, and under "bash -e"
+        # that ends the script having printed nothing whatsoever --
+        # the least useful way there is to be told an option was left
+        # dangling at the end of the line.
+        if [[ "$#" -gt 0 ]]
+        then
+            shift
+        fi
         ;;
     esac
+
+    # Nothing after the '=' counts as no argument too, and it is worth
+    # catching here rather than letting an empty PREFIX or an empty CC
+    # be written down and go wrong much later on.
+    if [[ "$argument" == "" ]]
+    then
+        echo "$0: '$option' needs an argument" >&2
+        echo "  it goes in the next word or after an '=': $option=..." >&2
+        exit 1
+    fi
 
     case "$option" in
     --prefix)
