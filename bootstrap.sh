@@ -1,70 +1,73 @@
 #!/bin/bash -e
 
-if [[ "$1" == "--verbose" ]]
-then
-    shift
-    set -ex
-fi
+# An option's argument can be given in the next word or after an '=',
+# because both spellings are common enough that guessing which one a
+# script takes is a coin flip, and the wrong guess fails in a way that
+# says nothing about the option.  Reading them in a loop also drops the
+# rule that the options had to appear in the order they happen to be
+# written here, which nothing ever said out loud.
+while [[ "$1" == --* ]]
+do
+    option="${1%%=*}"
 
-if [[ "$1" == "--prefix" ]]
-then
-    if test -f Configfiles/local
+    # --verbose is the only option that takes no argument, so it is the
+    # only one that must not eat the word after it.
+    if [[ "$option" == "--verbose" ]]
     then
-        echo "Configfiles/local exists, not overwriting"
-        exit 1
+        shift
+        set -ex
+        continue
     fi
 
-    cat > Configfiles/local <<EOF
-PREFIX = $2
+    case "$1" in
+    *=*)
+        argument="${1#*=}"
+        shift
+        ;;
+    *)
+        argument="$2"
+        shift
+        shift
+        ;;
+    esac
+
+    case "$option" in
+    --prefix)
+        if test -f Configfiles/local
+        then
+            echo "Configfiles/local exists, not overwriting"
+            exit 1
+        fi
+
+        cat > Configfiles/local <<EOF
+PREFIX = $argument
 LANGUAGES += c
 EOF
-
-    shift
-    shift
-fi
-
-if [[ "$1" == "--cc" ]]
-then
-    CC="$2"
-    shift
-    shift
-fi
-
-if [[ "$1" == "--cxx" ]]
-then
-    CXX="$2"
-    shift
-    shift
-fi
-
-if [[ "$1" == "--cflags" ]]
-then
-    CFLAGS="$2"
-    shift
-    shift
-fi
-
-if [[ "$1" == "--cxxflags" ]]
-then
-    CXXFLAGS="$2"
-    shift
-    shift
-fi
-
-# Anything left over that still looks like an option is one this
-# script doesn't know.  It used to fall through to SOURCE_PATH, so a
-# mistyped option quietly became the directory the sources were read
-# from, and the first thing to go wrong was a path with the option
-# glued onto the front of it -- a "No such file or directory" naming a
-# file nobody had asked for, several lines away from the word that
-# caused it.
-if [[ "$1" == --* ]]
-then
-    echo "$0: unrecognized option '$1'" >&2
-    echo "  the options are --verbose, --prefix, --cc, --cxx, --cflags and --cxxflags" >&2
-    echo "  each one takes its argument in the next word: --prefix /usr/local" >&2
-    exit 1
-fi
+        ;;
+    --cc)
+        CC="$argument"
+        ;;
+    --cxx)
+        CXX="$argument"
+        ;;
+    --cflags)
+        CFLAGS="$argument"
+        ;;
+    --cxxflags)
+        CXXFLAGS="$argument"
+        ;;
+    *)
+        # An option this script doesn't know used to fall through to
+        # SOURCE_PATH, so a typo quietly became the directory the
+        # sources were read from and came back as a path with the
+        # option glued onto the front of it.
+        echo "$0: unrecognized option '$option'" >&2
+        echo "  the options are --verbose, --prefix, --cc, --cxx, --cflags and --cxxflags" >&2
+        echo "  an argument goes in the next word or after an '=': --prefix /usr/local" >&2
+        exit 1
+        ;;
+    esac
+done
 
 SOURCE_PATH="$1"
 BOOTSTRAP_DIR=bootstrap_bin
