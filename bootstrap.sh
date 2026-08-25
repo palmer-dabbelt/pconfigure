@@ -51,6 +51,21 @@ then
     shift
 fi
 
+# Anything left over that still looks like an option is one this
+# script doesn't know.  It used to fall through to SOURCE_PATH, so a
+# mistyped option quietly became the directory the sources were read
+# from, and the first thing to go wrong was a path with the option
+# glued onto the front of it -- a "No such file or directory" naming a
+# file nobody had asked for, several lines away from the word that
+# caused it.
+if [[ "$1" == --* ]]
+then
+    echo "$0: unrecognized option '$1'" >&2
+    echo "  the options are --verbose, --prefix, --cc, --cxx, --cflags and --cxxflags" >&2
+    echo "  each one takes its argument in the next word: --prefix /usr/local" >&2
+    exit 1
+fi
+
 SOURCE_PATH="$1"
 BOOTSTRAP_DIR=bootstrap_bin
 
