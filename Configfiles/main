@@ -145,6 +145,7 @@ TESTSRC     += version.bash
 TESTSRC     += simple-c.bash
 TESTSRC     += tek.bash
 TESTSRC     += bash-deps.bash
+TESTSRC     += bash-comment-deps.bash
 TESTSRC     += c-cxx.bash
 TESTSRC     += c-ifndef.bash
 TESTSRC     += syshdr.bash
