@@ -413,17 +413,17 @@ static void check_line(const std::string& line, const std::string& pp, const std
     while (i < line.size() && isspace(line[i]))
         i++;
 
-    /* Checks to see if there's any comments, and strip those. */
-    auto comment_i = i;
-    while (comment_i < line.size()) {
-        if (line.substr(comment_i, 2) == "//")
-            break;
-        if (line.substr(comment_i, 2) == "/*")
-            break;
-        comment_i++;
-    }
+    /* By the time a line gets here its comments have already been
+     * blanked out, so looking for the start of one finds nothing and
+     * what a trailing comment leaves behind is whitespace.  That has to
+     * go: the include parser reads the last character of what it's
+     * handed as the closing quote, and trailing space makes it read a
+     * quote that is still in the middle of the string. */
+    auto end = line.size();
+    while (end > i && isspace(line[end - 1]))
+        end--;
 
-    return on_match(line.substr(i, comment_i - i));
+    return on_match(line.substr(i, end - i));
 }
 
 static bool resolve_pp_function(
