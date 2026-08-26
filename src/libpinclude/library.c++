@@ -203,7 +203,11 @@ int list_overwrite_defines(std::string filename,
         out = line;
         lineno++;
 
-        while (line[line.size() - 1] == '\\') {
+        /* An empty line has no last character, and asking for one
+         * indexes off the front of the string.  Blank lines turn up in
+         * every header there is, so this is worth a guard rather than
+         * an argument about what the read happens to land on. */
+        while (line.size() > 0 && line[line.size() - 1] == '\\') {
             if (!std::getline(file, line))
                 return true;
 
