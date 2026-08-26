@@ -237,6 +237,48 @@ void project::generate_targets(void)
     check_autodeps();
 }
 
+std::map<std::string, context::ptr> project::tests(void) const
+{
+    auto out = std::map<std::string, context::ptr>();
+
+    std::function<void(const context::ptr&)> gather =
+        [&](const context::ptr& ctx)
+        {
+            if (ctx->check_type({context_type::TEST}) == true)
+                out[ctx->check_target()] = ctx;
+
+            for (const auto& child: ctx->children)
+                gather(child);
+        };
+
+    for (const auto& ctx: _processor->output_contexts())
+        gather(ctx);
+
+    return out;
+}
+
+/* The suites a project has, said the way a complaint about a name
+ * that isn't one of them wants to say it. */
+static void print_suites(const std::vector<test_suite::ptr>& suites)
+{
+    if (suites.size() == 0) {
+        std::cerr << "  this project declares no test suites at all: a"
+                  << " TEST_SUITES line is what makes one\n";
+        return;
+    }
+
+    if (suites.size() == 1) {
+        std::cerr << "  the only suite here is '"
+                  << suites[0]->name() << "'\n";
+        return;
+    }
+
+    std::cerr << "  the suites here are:";
+    for (const auto& suite: suites)
+        std::cerr << " '" << suite->name() << "'";
+    std::cerr << "\n";
+}
+
 void project::check_test_suites(void) const
 {
     for (const auto& suite: _processor->test_suites()) {
@@ -260,18 +302,33 @@ void project::check_test_suites(void) const
                       << " spelled the way that suite's own TEST_SUITES"
                       << " line spelled it\n";
 
-            if (_processor->test_suites().size() == 1) {
-                std::cerr << "  the only suite here is '"
-                          << suite->name() << "'\n";
-            } else {
-                std::cerr << "  the suites here are:";
-                for (const auto& other: _processor->test_suites())
-                    std::cerr << " '" << other->name() << "'";
-                std::cerr << "\n";
-            }
-
+            print_suites(_processor->test_suites());
             abort();
         }
+    }
+
+    for (const auto& pair: tests()) {
+        const auto& ctx = pair.second;
+        if (ctx->test_suite_name.size() == 0)
+            continue;
+        if (_processor->test_suite_named(ctx->test_suite_name) != NULL)
+            continue;
+
+        /* The same silence as above, arrived at from the other side:
+         * a test that joined a suite nobody declared is a test in no
+         * suite, and a suite with one fewer test in it is not
+         * something any report could notice. */
+        std::cerr << std::to_string(ctx->cmd->debug()) << "\n"
+                  << "  error: "
+                  << std::to_string(ctx->cmd->type())
+                  << " names the suite '" << ctx->test_suite_name
+                  << "', which is no test suite of this project\n"
+                  << "  a test joins a suite of this same project,"
+                  << " spelled the way that suite's own TEST_SUITES line"
+                  << " spelled it\n";
+
+        print_suites(_processor->test_suites());
+        abort();
     }
 }
 
@@ -342,28 +399,11 @@ void project::check_autodeps(void) const
 
 void project::check_test_order(void) const
 {
-    /* Every test this project runs, by the name of the target that
-     * runs it -- which is exactly what a DEPTESTS resolves to, since
-     * both of them are that test's check directory and its own name.
-     *
-     * A test is a child of the thing it exercises rather than an
-     * output context of its own, so this has to go down and look:
-     * asking only the contexts at the top would find no tests at all
-     * and quietly approve every DEPTESTS in the project. */
-    auto tests = std::map<std::string, context::ptr>();
-
-    std::function<void(const context::ptr&)> gather =
-        [&](const context::ptr& ctx)
-        {
-            if (ctx->check_type({context_type::TEST}) == true)
-                tests[ctx->check_target()] = ctx;
-
-            for (const auto& child: ctx->children)
-                gather(child);
-        };
-
-    for (const auto& ctx: _processor->output_contexts())
-        gather(ctx);
+    /* A DEPTESTS resolves to the name of the target that runs the
+     * test it waits for, since both of them are that test's check
+     * directory and its own name -- so what it names is either in
+     * here or is nothing at all. */
+    auto tests = this->tests();
 
     auto waits_for = std::map<std::string, std::vector<std::string>>();
 

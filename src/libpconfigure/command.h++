@@ -38,20 +38,30 @@ private:
     const debug_info::ptr _debug_info;
     const bool _needs_data;
 
+    /* The name the command was written with in brackets, or empty
+     * when it was written without one.  This is part of the command
+     * rather than of its value: "TESTS[network]" is a TESTS, and what
+     * the brackets hold says which of several things of that kind the
+     * line lands on. */
+    const std::string _qualifier;
+
 public:
     command(const command_type& type,
             const std::string& op,
             const std::string& data,
-            const debug_info::ptr& debug_info);
+            const debug_info::ptr& debug_info,
+            const std::string& qualifier = "");
     command(const command_type& type,
             const std::string& op,
-            const debug_info::ptr& debug_info);
+            const debug_info::ptr& debug_info,
+            const std::string& qualifier = "");
 
 public:
     command_type type(void) const { return _type; }
     const std::string& operation(void) const { return _op; }
     const std::string data(void) const { return _data; }
     const debug_info::ptr& debug(void) const { return _debug_info; }
+    const std::string& qualifier(void) const { return _qualifier; }
 
 public:
     ptr consume_extra_arguments(int& i, int argc, const char **argv);
