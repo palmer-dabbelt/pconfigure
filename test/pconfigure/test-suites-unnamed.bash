@@ -50,11 +50,11 @@ cat Makefile
 # arrived at a step later -- and a step is what makes this worth
 # writing down, since working out the first one and stopping would
 # leave the second in every suite.
-grep -q "^obj/check-network-done: check/suite/anywhere.bash check/suite/chained.bash check/suite/network-test-dep.bash check/suite/network-test.bash$" Makefile
+grep -q "^obj/check-suite-network-done: check/suite/anywhere.bash check/suite/chained.bash check/suite/network-test-dep.bash check/suite/network-test.bash$" Makefile
 
 # "anywhere.bash" waits for nothing, so nothing keeps it out of a
 # suite -- and it's the only one of the four that "quick" gets.
-grep -q "^obj/check-quick-done: check/suite/anywhere.bash$" Makefile
+grep -q "^obj/check-suite-quick-done: check/suite/anywhere.bash$" Makefile
 
 ##############################################################################
 # Running                                                                    #

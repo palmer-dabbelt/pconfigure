@@ -188,9 +188,16 @@ void makefile::makefile::write_to_file(const std::string& filename)
      * out is about the run that happened rather than about every
      * result that happens to be on disk. */
     for (const auto& suite: _test_suites) {
-        auto suite_stamp = obj_dir + "/check-" + suite.first + "-done";
-        auto suite_quiet = obj_dir + "/check-" + suite.first + "-report-quiet";
-        auto suite_report = obj_dir + "/check-" + suite.first + "-report";
+        /* "check-suite-" rather than "check-", because "check-all" is
+         * the stamp every project has had all along and a suite is
+         * allowed to be called "all" -- which would otherwise be two
+         * rules for one file, and a "make check-all" that quietly ran
+         * more than the suite it named. */
+        auto suite_stamp = obj_dir + "/check-suite-" + suite.first + "-done";
+        auto suite_quiet = obj_dir + "/check-suite-" + suite.first
+                         + "-report-quiet";
+        auto suite_report = obj_dir + "/check-suite-" + suite.first
+                          + "-report";
 
         auto results = std::string(" --check-suite " + suite.first);
         for (const auto& result: suite.second)
