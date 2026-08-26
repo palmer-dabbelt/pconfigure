@@ -19,7 +19,7 @@ CDIR=`pwd`
 export LD_LIBRARY_PATH=`pwd`/lib
 
 cd $tempdir/input
-$PTEST_BINARY $(cat $tempdir/filename) |& sort > $tempdir/stdout.test
+$PTEST_BINARY $(cat $tempdir/filename) 2>&1 | sort > $tempdir/stdout.test
 
 cd $tempdir
 cat $tempdir/stdout.gold | sort > $tempdir/stdout.gold.sorted
@@ -74,7 +74,7 @@ CDIR=`pwd`
 export LD_LIBRARY_PATH=`pwd`/lib
 
 cd $tempdir/input
-valgrind -q $PTEST_BINARY $(cat $tempdir/filename) |& sort > $tempdir/stdout.test
+valgrind -q $PTEST_BINARY $(cat $tempdir/filename) 2>&1 | sort > $tempdir/stdout.test
 
 cd $tempdir
 cat $tempdir/stdout.gold | sort > $tempdir/stdout.gold.sorted
