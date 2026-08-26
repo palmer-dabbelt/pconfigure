@@ -84,6 +84,10 @@ namespace makefile {
         std::vector<std::pair<std::string,
                               std::vector<std::string>>> _test_suites;
 
+        /* The one of those that "make check" runs, or empty for a
+         * "make check" that means every test in the build. */
+        std::string _default_test_suite;
+
     public:
         /* Creates a new "empty" Makefile -- note that this actually
          * contains some about of default targets and such that you
@@ -144,6 +148,10 @@ namespace makefile {
          * that name to run. */
         void add_test_suite(const std::string& name,
                             const std::vector<std::string>& results);
+
+        /* Points "make check" and "make report" at one of those
+         * rather than at every test in the build. */
+        void set_default_test_suite(const std::string& name);
 
         /* Writes this makefilie out to a text file. */
         void write_to_file(const std::string& filename);

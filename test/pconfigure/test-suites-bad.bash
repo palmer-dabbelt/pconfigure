@@ -201,6 +201,29 @@ refuses
 grep -q "this project declares no test suites at all" out
 
 ##############################################################################
+# Making a suite nobody declared the default                                 #
+##############################################################################
+# This one has a symptom, and it's the worst of them: a "make check"
+# that runs no tests at all and says they all passed.
+setup
+cat >case/Configfile <<EOF
+LANGUAGES          += c
+LANGUAGES          += bash
+
+TEST_SUITES        += quick
+
+DEFAULT_TEST_SUITE  = quik
+
+BINARIES           += suite
+SOURCES            += suite.c
+TESTSRC[quick]     += a.bash
+EOF
+
+refuses
+grep -q "DEFAULT_TEST_SUITE names 'quik', which is no test suite of this project" out
+grep -q "leave the line out entirely" out
+
+##############################################################################
 # Brackets where they mean nothing                                           #
 ##############################################################################
 # What the brackets say is which suite a test joins, so a line that

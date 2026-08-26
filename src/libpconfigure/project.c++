@@ -446,6 +446,25 @@ void project::check_test_suites(void) const
         print_suites(_processor->test_suites());
         abort();
     }
+
+    const auto& fallback = _processor->default_test_suite();
+    if (fallback.size() > 0
+        && _processor->test_suite_named(fallback) == NULL) {
+        /* This one has a symptom, and it's the worst of the three: a
+         * "make check" that runs nothing at all and says everything
+         * passed. */
+        std::cerr << std::to_string(_processor->default_test_suite_cmd()->debug())
+                  << "\n"
+                  << "  error: DEFAULT_TEST_SUITE names '" << fallback
+                  << "', which is no test suite of this project\n"
+                  << "  it names a suite of this same project, spelled the"
+                  << " way that suite's own TEST_SUITES line spelled it\n"
+                  << "  leave the line out entirely for a \"make check\""
+                  << " that runs every test\n";
+
+        print_suites(_processor->test_suites());
+        abort();
+    }
 }
 
 void project::check_autodeps(void) const
@@ -662,6 +681,9 @@ makefile::target::ptr project::cache_clean_target(const std::vector<ptr>& projec
         prune += " -not -path '"
               + project->_processor->root_context()->obj_dir
               + "/check-dirs'";
+        prune += " -not -path '"
+              + project->_processor->root_context()->obj_dir
+              + "/check-stamp'";
 
         for (const auto& pair: obj_dirs) {
             const auto& dir = pair.first;
@@ -822,12 +844,19 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
         for (const auto& suite: project->test_suite_members())
             out->add_test_suite(suite.first, suite.second);
 
+    /* Which of them "make check" means, which is this project's
+     * answer rather than the aggregate: the rule belongs to whoever
+     * make was run in, and a subproject that has an opinion about its
+     * own "make check" doesn't get to have one about a parent's. */
+    out->set_default_test_suite(_processor->default_test_suite());
+
     out->add_standalone_target(cache_clean_target(aggregated));
     out->add_standalone_target(distclean_target(aggregated));
 
     out->write_to_file(makefile_path());
 
     write_check_dirs(aggregated);
+    write_check_stamp();
     write_configureopts();
 }
 
@@ -892,6 +921,31 @@ void project::check_target_shape(const context::ptr& ctx,
             " and if the two disagree at all the build stops here");
 
     seen[output] = ctx;
+}
+
+void project::write_check_stamp(void) const
+{
+    const auto& root = _processor->root_context();
+
+    mkdir(root->obj_dir.c_str(), 0777);
+
+    auto path = root->obj_dir + "/check-stamp";
+    auto file = fopen(path.c_str(), "w");
+    if (file == NULL) {
+        std::cerr << "Unable to open " << path << "\n";
+        abort();
+    }
+
+    const auto& suite = _processor->default_test_suite();
+    if (suite.size() > 0)
+        fprintf(file, "%s\n",
+                root->unbased(root->obj_dir + "/check-suite-" + suite
+                              + "-done").c_str());
+    else
+        fprintf(file, "%s\n",
+                root->unbased(root->obj_dir + "/check-all-done").c_str());
+
+    fclose(file);
 }
 
 void project::write_configureopts(void) const
