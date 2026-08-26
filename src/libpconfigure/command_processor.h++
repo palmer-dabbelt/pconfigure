@@ -75,6 +75,13 @@ private:
      * in, so it has to be stable. */
     std::vector<test_suite::ptr> _test_suites;
 
+    /* The suite that "make check" runs, as a DEFAULT_TEST_SUITE named
+     * it, or empty when nothing said and "make check" means every
+     * test the project has.  The command is kept alongside it because
+     * a complaint about the name has to point at the line. */
+    std::string _default_test_suite;
+    command::ptr _default_test_suite_cmd;
+
     /* The suite that an INCLUDE_TEST_SUITES lands on, which is
      * whichever one a TEST_SUITES named most recently.  It's dropped
      * whenever a line opens a target, so a subcommand that ended up
@@ -164,6 +171,11 @@ public:
         { return _root; }
     const std::vector<test_suite::ptr>& test_suites(void) const
         { return _test_suites; }
+
+    const std::string& default_test_suite(void) const
+        { return _default_test_suite; }
+    const command::ptr& default_test_suite_cmd(void) const
+        { return _default_test_suite_cmd; }
 
     /* The suite of the given name, or NULL when this project has
      * never declared one. */

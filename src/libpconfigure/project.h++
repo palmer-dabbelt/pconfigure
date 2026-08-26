@@ -176,6 +176,13 @@ private:
      * make is no use on a build that doesn't build. */
     void write_check_dirs(const std::vector<ptr>& aggregated) const;
 
+    /* Writes down which stamp "make check" builds here, for the same
+     * reason and to be read by the same program: "ptest" run on its
+     * own says whether the results it is reporting are current, and
+     * the file it has to ask make about is the one this project's
+     * "make check" actually builds. */
+    void write_check_stamp(void) const;
+
     /* Writes down what this run told each vendored tree, so that make
      * has something to compare against.  A vendored tree's rules are
      * built out of its CONFIGUREOPTS, and a rule whose recipe changed

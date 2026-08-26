@@ -65,6 +65,23 @@ then
     check_dirs=(check)
 fi
 
+# The stamp "make check" builds here, which is what says whether the
+# results being reported are current.  A project that has told make
+# which suite "make check" means builds that suite's stamp and never
+# touches the one everything else builds, so asking about the wrong
+# one would warn that the build is stale every single time.
+check_stamp="obj/check-all-done"
+if [[ -r obj/check-stamp ]]
+then
+    while read -r line
+    do
+        if [[ "$line" != "" ]]
+        then
+            check_stamp="$line"
+        fi
+    done <obj/check-stamp
+fi
+
 if [[ "$1" == "--check" ]]
 then
     make check
@@ -75,7 +92,7 @@ if [[ "$1" == "" ]]
 then
     if [[ "$check_make_check" == "true" ]]
     then
-        if ! make -q obj/check-all-done 2>/dev/null
+        if ! make -q "$check_stamp" 2>/dev/null
         then
             echo "*** WARNING: 'make check' is not up to date ***"
             echo ""
@@ -247,7 +264,7 @@ then
 
     if [[ "$check_make_check" == "true" ]]
     then
-        if ! make -q obj/check-all-done 2>/dev/null
+        if ! make -q "$check_stamp" 2>/dev/null
         then
             echo ""
             echo ""
