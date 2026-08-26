@@ -86,6 +86,7 @@ SOURCES	    += pnasm.bash
 
 BINARIES    += ptest
 SOURCES	    += ptest.bash
+TESTSRC     += check-result.bash
 
 BINARIES    += pinclude
 DEPLIBS     += pinclude

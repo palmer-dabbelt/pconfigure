@@ -2,6 +2,8 @@ verbose="false"
 quiet="false"
 check_make_check="true"
 check_dirs=()
+check_suite=""
+check_results=()
 while [[ "$1" == --* ]]
 do
     if [[ "$1" == "--verbose" ]]
@@ -19,6 +21,19 @@ do
         # results spread across all of them.
         shift
         check_dirs+=("$1")
+    elif [[ "$1" == "--check-suite" ]]
+    then
+        # Reports one named set of tests rather than everything that
+        # has been run.  Which tests are in a suite is something the
+        # build was told and this was handed: a directory of tarballs
+        # says nothing about which of them belong together.
+        shift
+        check_suite="$1"
+    elif [[ "$1" == "--check-result" ]]
+    then
+        # One test of that set, named outright.
+        shift
+        check_results+=("$1")
     else
         break
     fi
@@ -79,7 +94,16 @@ then
         fi
     done
 
-    if [[ "${#existing[@]}" == "0" ]]
+    # A suite that nobody joined has nothing to say, and says the same
+    # true thing in the same words as a tree that was never tested.
+    if [[ "$check_suite" == "" ]]
+    then
+        found="${#existing[@]}"
+    else
+        found="${#check_results[@]}"
+    fi
+
+    if [[ "$found" == "0" ]]
     then
         echo "No tests"
         exit 0
@@ -101,15 +125,55 @@ then
         fi
     }
 
+    # Which check directory a result named outright was found under,
+    # which is what a whole run gets for free by walking down from the
+    # directory itself.  The longest one that matches, so that a
+    # project nested inside another is named as itself.
+    result_dir() {
+        local file="$1"
+        local out="."
+        local dir
+
+        for dir in "${check_dirs[@]}"
+        do
+            if [[ "$file" == "$dir"/* ]] && [[ "${#dir}" -gt "${#out}" ]]
+            then
+                out="$dir"
+            fi
+        done
+
+        echo "$out"
+    }
+
+    # The results this run is reporting on, each with the directory it
+    # belongs to.  A whole run is everything in those directories; a
+    # suite is exactly the results it was named, since a tarball on
+    # disk carries no record of which suites ran the test that left
+    # it.
+    results() {
+        if [[ "$check_suite" != "" ]]
+        then
+            local f
+            for f in "${check_results[@]}"
+            do
+                printf '%s\t%s\n' "$(result_dir "$f")" "$f"
+            done | sort -k 2
+            return
+        fi
+
+        local dir
+        for dir in "${existing[@]}"
+        do
+            find "$dir" -type f | sort | while read f
+            do
+                printf '%s\t%s\n' "$dir" "$f"
+            done
+        done
+    }
+
     # This subshell is necessary to keep these variables after the
     # loop terminates
-    for dir in "${existing[@]}"
-    do
-        find "$dir" -type f | sort | while read f
-        do
-            printf '%s\t%s\n' "$dir" "$f"
-        done
-    done | {
+    results | {
         run="0"
         pass="0"
         fail="0"
