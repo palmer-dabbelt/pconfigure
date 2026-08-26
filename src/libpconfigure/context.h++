@@ -158,6 +158,16 @@ public:
      * test under it, including the one being waited for. */
     std::vector<std::string> dep_tests;
 
+    /* The test suite this test was written into, as the name in the
+     * brackets of its TESTS line spelled it, or empty for a test that
+     * was written without one.
+     *
+     * Like the DEPTESTS above this belongs to a single test rather
+     * than to a target: which tests of a target can be run on a given
+     * machine is a question about the tests, and a target whose tests
+     * are all in one suite is a target that says so once per test. */
+    std::string test_suite_name;
+
     /* The exact command issued, which allows all sorts of debugging
      * later. */
     const command::ptr cmd;
@@ -251,6 +261,7 @@ public:
             const std::vector<std::string>& dep_libs,
             const std::vector<std::string>& test_deps,
             const std::vector<std::string>& dep_tests,
+            const std::string& test_suite_name,
             const command::ptr& cmd,
             bool verbose,
             bool debug,

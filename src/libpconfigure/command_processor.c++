@@ -171,6 +171,64 @@ static bool names_a_path(const command_type& type)
     return false;
 }
 
+/* Which commands take a name in brackets.  The name says which test
+ * suite a test joins, so the lines that write a test are the ones
+ * with somewhere to put one -- everything else names a thing there is
+ * only ever one of. */
+static bool takes_a_qualifier(const command_type& type)
+{
+    switch (type) {
+    case command_type::TESTS:
+    case command_type::TESTSRC:
+        return true;
+
+    case command_type::AUTODEPS:
+    case command_type::BINARIES:
+    case command_type::BUILD_SYSTEMS:
+    case command_type::COMPAT:
+    case command_type::COMPILEOPTS:
+    case command_type::COMPILER:
+    case command_type::CONFIG:
+    case command_type::CONFIGUREOPTS:
+    case command_type::CROSS_COMPILE:
+    case command_type::DEBUG:
+    case command_type::DEPLIBS:
+    case command_type::DEPTESTS:
+    case command_type::ENTITLEMENTS:
+    case command_type::GENERATE:
+    case command_type::HDRDIR:
+    case command_type::HEADERS:
+    case command_type::HEADERSRC:
+    case command_type::HELP:
+    case command_type::INCLUDE_TEST_SUITES:
+    case command_type::LANGUAGES:
+    case command_type::LIBDIR:
+    case command_type::LIBEXECS:
+    case command_type::LIBRARIES:
+    case command_type::LINKER:
+    case command_type::LINKOPTS:
+    case command_type::MAKEOPS:
+    case command_type::PHC:
+    case command_type::PHONY:
+    case command_type::PREFIX:
+    case command_type::SOURCES:
+    case command_type::SRCDIR:
+    case command_type::SRCPATH:
+    case command_type::STRICT:
+    case command_type::SUBPROJECTS:
+    case command_type::SUBPROJECT_TARGETS:
+    case command_type::TESTDEPS:
+    case command_type::TESTEXECS:
+    case command_type::TEST_SUITES:
+    case command_type::TGENERATE:
+    case command_type::VERBOSE:
+    case command_type::VERSION:
+        return false;
+    }
+
+    return false;
+}
+
 /* TRUE when a string is a name a test suite could have.  The name is
  * what the suite's make targets are called, so a character make reads
  * as something other than itself makes a rule nobody can ask for --
@@ -194,6 +252,25 @@ void command_processor::process(const command::ptr& cmd)
      * HEADERSRC are each two commands wearing one hat and go through
      * process_one() twice: this is about the line as it was written,
      * and the line was written once. */
+    /* Also about the line as it was written, and for the same
+     * reason: the brackets are on the line once however many commands
+     * that line turns out to be. */
+    if (cmd->qualifier().size() > 0
+        && takes_a_qualifier(cmd->type()) == false) {
+        std::cerr << std::to_string(cmd->debug()) << "\n"
+                  << "  error: "
+                  << std::to_string(cmd->type())
+                  << " takes no name in brackets\n"
+                  << "  only TESTS and TESTSRC take one, and what it says"
+                  << " is which test suite the test joins\n"
+                  << "  write '"
+                  << std::to_string(cmd->type())
+                  << " " << cmd->operation()
+                  << "' with nothing between the command and the"
+                  << " operator\n";
+        abort();
+    }
+
     if (names_a_path(cmd->type()) == true
         && cmd->data().find(' ') != std::string::npos) {
         _stack.top()->strictness.complain(
@@ -1133,6 +1210,12 @@ void command_processor::process_one(const command::ptr& cmd)
         auto child = _stack.top();
         child->src_dir = parent->test_dir + "/" + parent->cmd->data();
         child->check_dir = parent->check_dir + "/" + parent->cmd->data();
+
+        /* Which suite this test is in, or empty for a test that was
+         * written without a name in brackets.  Whether the suite
+         * exists is not asked here: a project's suites are a set, and
+         * a test is allowed to join one that a later line declares. */
+        child->test_suite_name = cmd->qualifier();
 
         set_opts_target(_stack.top());
 
