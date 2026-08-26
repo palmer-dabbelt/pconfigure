@@ -20,6 +20,7 @@
 
 #include "bash.h++"
 #include "../language_list.h++"
+#include "../pick_language.h++"
 #include <pinclude.h++>
 #include <assert.h>
 #include <iostream>
@@ -82,12 +83,32 @@ language_bash::targets(const context::ptr& ctx) const
 
         auto sources = std::vector<makefile::target::ptr>();
         auto deps = std::vector<makefile::target::ptr>();
+        auto tests = std::vector<makefile::target::ptr>();
         for (const auto& child: ctx->children) {
             if (child->type == context_type::SOURCE) {
                 auto path = child->src_dir + "/" + child->cmd->data();
                 sources.push_back(std::make_shared<makefile::target>(path));
                 if (ctx->autodeps == true)
                     deps = deps + dependencies(path);
+            }
+
+            /* A test is a child of the thing it tests, and the project
+             * only ever hands a language its output contexts -- so the
+             * tests of a BASH binary are reached from here or they are
+             * not reached at all.  They were not, and a TESTSRC under a
+             * BASH binary built nothing and said nothing about it.  The
+             * language is picked per test, because the test of a BASH
+             * binary needn't be written in BASH. */
+            if (child->type == context_type::TEST) {
+                auto l = pick_language(ctx->languages, child);
+                auto filtered_child = [&]() -> context::ptr
+                    {
+                        if (l->name() == this->name())
+                            return child;
+
+                        return child->without_clopts();
+                    }();
+                tests = tests + l->targets(filtered_child);
             }
         }
 
@@ -130,7 +151,7 @@ language_bash::targets(const context::ptr& ctx) const
         /* Targets that are never installed (TESTEXECs) just get built in
          * place, there's no install rule to go along with them. */
         if (ctx->install == false)
-            return {bin_target};
+            return std::vector<makefile::target::ptr>{bin_target} + tests;
 
         auto install_path = "$(DESTDIR)/" + ctx->prefix + "/" + ctx->unbased(target);
 
@@ -154,7 +175,8 @@ language_bash::targets(const context::ptr& ctx) const
                                                                 install_commands,
                                                                 comment);
 
-        return {bin_target, install_target};
+        return std::vector<makefile::target::ptr>{bin_target, install_target}
+               + tests;
     }
 
     case context_type::TEST:
