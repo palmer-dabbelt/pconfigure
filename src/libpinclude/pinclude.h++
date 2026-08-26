@@ -31,29 +31,38 @@ namespace pinclude {
      * callback for any included file that exists inside one of the given
      * include_dirs.  This handles some simple CPP #define-related things, the
      * list of default definitions is given in defined.  Any non-zero return
-     * value from the callback stops parsing and returns that value. */
+     * value from the callback stops parsing and returns that value.
+     *
+     * bare_directives asks for the stricter reading of what counts as a
+     * directive: a # in the first column with the keyword written
+     * against it, and nothing else.  That is what a shell script needs,
+     * where # otherwise starts a comment. */
     int list(std::string filename,
              std::vector<std::string> include_dirs,
              std::vector<std::string> defined,
              std::function<int(std::string)> callback,
-             bool skip_missing_files);
+             bool skip_missing_files,
+             bool bare_directives = false);
 
     int list(std::string filename,
              std::vector<std::string> include_dirs,
              std::unordered_set<std::string> defined,
              std::function<int(std::string)> callback,
-             bool skip_missing_files);
+             bool skip_missing_files,
+             bool bare_directives = false);
 
     static inline
     int list(std::string filename,
              std::function<int(std::string)> callback,
-             bool skip_missing_files)
+             bool skip_missing_files,
+             bool bare_directives = false)
     {
         return list(filename,
                     std::vector<std::string>{},
                     std::vector<std::string>{},
                     callback,
-                    skip_missing_files
+                    skip_missing_files,
+                    bare_directives
                 );
     }
 }
