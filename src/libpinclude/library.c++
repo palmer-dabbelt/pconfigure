@@ -29,7 +29,8 @@ int pinclude::list(std::string filename,
                    std::vector<std::string> include_dirs,
                    std::vector<std::string> defines,
                    std::function<int(std::string)> callback,
-                   bool skip_missing_files)
+                   bool skip_missing_files,
+                   bool bare_directives)
 {
     std::unordered_set<std::string> define_set;
     for (const auto& define: defines)
@@ -39,7 +40,8 @@ int pinclude::list(std::string filename,
                 include_dirs,
                 define_set,
                 callback,
-                skip_missing_files);
+                skip_missing_files,
+                bare_directives);
 }
 
 enum class state {
@@ -70,7 +72,8 @@ public:
 static void check_line(
     const std::string& line,
     const std::string& pp, 
-    const std::function<void(std::string)> on_match
+    const std::function<void(std::string)> on_match,
+    bool bare_directives
 );
 
 static bool resolve_pp_function(
@@ -109,20 +112,23 @@ int list_overwrite_defines(std::string filename,
                            std::vector<std::string> include_dirs_without_cwd,
                            std::unordered_set<std::string>& defines,
                            std::function<int(std::string)> callback,
-                           bool skip_missing_files);
+                           bool skip_missing_files,
+                           bool bare_directives);
 
 int pinclude::list(std::string filename,
                    std::vector<std::string> include_dirs_without_cwd,
                    std::unordered_set<std::string> defines,
                    std::function<int(std::string)> callback,
-                   bool skip_missing_files)
+                   bool skip_missing_files,
+                   bool bare_directives)
 {
     return list_overwrite_defines(
         filename,
         include_dirs_without_cwd,
         defines,
         callback,
-        skip_missing_files
+        skip_missing_files,
+        bare_directives
     );
 }
 
@@ -130,7 +136,8 @@ int list_overwrite_defines(std::string filename,
                            std::vector<std::string> include_dirs,
                            std::unordered_set<std::string>& defines,
                            std::function<int(std::string)> callback,
-                           bool skip_missing_files)
+                           bool skip_missing_files,
+                           bool bare_directives)
 {
     std::ifstream file(filename);
     std::string line;
@@ -254,17 +261,17 @@ int list_overwrite_defines(std::string filename,
         check_line(line, "if", [&](std::string rest) {
             auto resolved = resolve_pp_function(rest, defines);
             state_stack.push(resolved ? state::OUTPUT : state::ELSE);
-        });
+        }, bare_directives);
 
         check_line(line, "ifdef", [&](std::string rest) {
             auto resolved = resolve_pp_function("defined(" + rest + ")", defines);
             state_stack.push(resolved ? state::OUTPUT : state::ELSE);
-        });
+        }, bare_directives);
 
         check_line(line, "ifndef", [&](std::string rest) {
             auto resolved = resolve_pp_function("!defined(" + rest + ")", defines);
             state_stack.push(resolved ? state::OUTPUT : state::ELSE);
-        });
+        }, bare_directives);
 
         check_line(line, "define", [&](std::string rest) {
             auto after = [&]() {
@@ -278,7 +285,7 @@ int list_overwrite_defines(std::string filename,
                 ? rest
                 : (rest.substr(0, after));
             defines.insert(define);
-        });
+        }, bare_directives);
 
         check_line(line, "else", [&](std::string rest) {
             for (const auto r: rest) {
@@ -305,7 +312,7 @@ int list_overwrite_defines(std::string filename,
                 state_stack.push(state::OUTPUT);
                 break;
             }
-        });
+        }, bare_directives);
 
         check_line(line, "endif", [&](std::string rest) {
             if (rest != "") {
@@ -323,7 +330,7 @@ int list_overwrite_defines(std::string filename,
                 abort();
             }
             state_stack.pop();
-        });
+        }, bare_directives);
 
         check_line(line, "include", [&](std::string rest) {
             if (state_stack.top() != state::OUTPUT)
@@ -371,19 +378,20 @@ int list_overwrite_defines(std::string filename,
                     include_dirs,
                     defines,
                     callback,
-                    skip_missing_files
+                    skip_missing_files,
+                    bare_directives
                 );
                 if (rout != 0) {
                     std::cerr << "Early out no longer supported in pinclude::list\n";
                     abort();
                 }
             }
-        });
+        }, bare_directives);
     }
     return 0;
 }
 
-static void check_line(const std::string& line, const std::string& pp, const std::function<void(std::string)> on_match)
+static void check_line(const std::string& line, const std::string& pp, const std::function<void(std::string)> on_match, bool bare_directives)
 {
     size_t i = 0;
 
@@ -393,10 +401,23 @@ static void check_line(const std::string& line, const std::string& pp, const std
     if (line[i] != '#')
         return;
 
+    /* In a shell script a # starts a comment, and the only thing that
+     * saves one from being a comment is looking exactly like what
+     * pbashc goes looking for: a # in the first column with the
+     * keyword written against it.  A comment that wraps onto a line
+     * beginning "# include time, rather than..." is not an include and
+     * has no business being read as one.  C is more relaxed -- this
+     * tree's own sources indent a "# ifdef" inside a conditional -- so
+     * the relaxed reading stays the default and the callers that know
+     * they are reading a script ask for the other one. */
+    if (bare_directives && i != 0)
+        return;
+
     /* After the # there can be any number of spaces, so we just skip them. */
     i++;
-    while (i < line.size() && isspace(line[i]))
-        i++;
+    if (bare_directives == false)
+        while (i < line.size() && isspace(line[i]))
+            i++;
 
     /* Sometimes this exactly matches the proprocessor declaration. */
     if (line.substr(i) == pp)
