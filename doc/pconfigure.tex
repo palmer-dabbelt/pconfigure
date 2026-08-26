@@ -274,7 +274,24 @@ depends on the language, see Section~\ref{lang} for more information.
 
 \subsection{\texttt{make check} \label{make:check}}
 
-Builds and runs every test specified by the \texttt{Configfile}.
+Builds and runs every test specified by the \texttt{Configfile}, or
+just the tests of one test suite when the project named one with
+\texttt{DEFAULT\_TEST\_SUITE} (see Section~\ref{cmd:default_test_suite}).
+
+\subsection{\texttt{make check-\$suite} \label{make:check_suite}}
+
+Builds and runs the tests of one test suite (see
+Section~\ref{cmd:test_suites}).  There is one of these per suite the
+build declares, and a suite nobody joined has one too --- it runs
+nothing and reports that nothing ran.
+
+\subsection{\texttt{make report-\$suite} \label{make:report_suite}}
+
+Reports on the tests of one test suite, the way \texttt{make report}
+reports on the whole build.  What it prints is that suite's tests and
+no others: every suite's results land in \texttt{\$CHECKDIR}
+together, so a report that read the directory would say the same thing
+whichever suite it was asked about.
 
 \subsection{\texttt{make clean}}
 
@@ -467,6 +484,12 @@ Section~\ref{cmd:binaries}), but the resulting binary is built at
 Instead, it is run at \texttt{make check} and the results are
 collected into \texttt{\$CHECKDIR}.  These results can then be listed
 by running \texttt{ptest} (see Section~\ref{prog:ptest}).
+
+Written as \texttt{TESTS[\$suite]} the test joins a test suite (see
+Section~\ref{cmd:test_suites}) rather than only being part of every
+test the project has.  The name in the brackets belongs to the command
+rather than to the value: what comes after the operator is a filename
+either way.
 
 A test runs with its working directory set to the directory
 \texttt{make} was run in, which is not necessarily the directory the
@@ -1058,6 +1081,145 @@ The second is the worse of the two by a distance: the build works, and
 the order it was asked for silently isn't the order it used, which is
 the whole thing a \texttt{DEPTESTS} was written to be sure of.
 
+\subsection{\texttt{TEST\_SUITES += \$name} \label{cmd:test_suites}}
+
+Declares a test suite: a name for some of the project's tests, which
+\texttt{make check-\$name} runs and \texttt{make report-\$name}
+reports on (see Sections~\ref{make:check_suite}
+and~\ref{make:report_suite}).
+
+A project that can't run all of its tests everywhere has nowhere to
+say so while there is only one set of them.  \texttt{make check} has
+to mean the same thing on every machine it is typed on, so the tests
+that want a network, or a card, or an hour go in under the same name
+as the ones that want nothing --- and what usually happens next is
+that they are left out of the \texttt{Configfile} entirely, which
+means nobody runs them at all.
+
+\begin{verbatim}
+TEST_SUITES      += network
+
+BINARIES         += crawler
+SOURCES          += crawler.c
+TESTSRC          += parses-a-page.bash
+TESTSRC[network] += fetches-a-page.bash
+\end{verbatim}
+
+\texttt{\$name} is what the suite's \texttt{make} targets are called,
+so it holds letters, digits, \texttt{-}, \texttt{\_} and \texttt{.}
+and nothing else.  Naming a suite that has already been declared gets
+back to it rather than declaring a second one, the same way a second
+\texttt{BUILD\_SYSTEMS} line does.
+
+A suite that nothing joined is not an error: the name is a promise
+about what \texttt{make check-\$name} means, and an empty suite keeps
+it by running nothing.
+
+\subsubsection{Which tests are in a suite}
+
+A test is in a suite four ways.  Three of them are things somebody
+wrote down, and the fourth is not a choice.
+
+The first is the ordinary one: the test said so, with
+\texttt{TESTS[\$name]} or \texttt{TESTSRC[\$name]} (see
+Sections~\ref{cmd:tests} and~\ref{cmd:testsrc}).  A name no
+\texttt{TEST\_SUITES} line declared is a fatal error --- it would be a
+test in no suite at all, which is indistinguishable from a suite
+nobody has joined yet.
+
+The second is \texttt{INCLUDE\_TEST\_SUITES} (see
+Section~\ref{cmd:include_test_suites}).
+
+The third is being written without a suite.  Most tests can run
+anywhere, and a project where every one of them has to name every
+suite is a project whose lists drift apart the first time somebody
+adds one --- so a plain \texttt{TESTS} or \texttt{TESTSRC} is in
+every suite it could run in.  Every suite it \textit{could} run in:
+a test that waits for another one with a \texttt{DEPTESTS} (see
+Section~\ref{cmd:deptests}) can't run where the test it waits for
+doesn't, so it joins the suites that already have all of them.  That
+is the case this is really for --- one expensive test that needs the
+network and a handful of cheap ones that read what it left behind:
+
+\begin{verbatim}
+TEST_SUITES      += network
+
+BINARIES         += crawler
+SOURCES          += crawler.c
+TESTSRC[network] += fetches-a-page.bash
+TESTSRC          += parses-what-was-fetched.bash
+DEPTESTS         += fetches-a-page.bash
+\end{verbatim}
+
+\texttt{parses-what-was-fetched.bash} is in \texttt{network} and in
+no other suite, because the only test it waits for is only there.  It
+did not have to say so, and it does not have to be edited when a
+second suite shows up.
+
+The fourth is being waited for by a test that is in the suite, which
+follows from what a \texttt{DEPTESTS} is: \texttt{make} builds the
+result of the test being waited for before it runs the test that
+waits.  A suite that didn't claim it would run it anyway and then not
+report it.
+
+\subsubsection{\texttt{INCLUDE\_TEST\_SUITES += \$name}
+              \label{cmd:include_test_suites}}
+
+Says that this suite runs another suite's tests as well as its own.
+The machine with the network can also run everything the machine
+without it can, and writing that down as membership means naming every
+test twice:
+
+\begin{verbatim}
+TEST_SUITES         += quick
+
+TEST_SUITES         += everything
+INCLUDE_TEST_SUITES += quick
+INCLUDE_TEST_SUITES += network
+\end{verbatim}
+
+This says nothing about order and nothing about when anything runs.
+The tests of an included suite are the same tests, run once, reported
+under both names; making one test wait for another is what a
+\texttt{DEPTESTS} is for.
+
+The line goes directly under the \texttt{TEST\_SUITES} line of the
+suite that does the including.  Written anywhere else it is a fatal
+error rather than a line that attaches itself to whichever suite was
+declared furthest up the file.
+
+Naming a suite the project never declared is a fatal error.  A suite
+is allowed to include one that a line further down declares, though:
+the suites of a project are a set, and nothing about them depends on
+which line came first.  Two suites that include each other are two
+names for one set of tests, which is a strange thing to write and a
+perfectly clear thing to mean, so it is allowed.
+
+\subsubsection{\texttt{DEFAULT\_TEST\_SUITE = \$name}
+              \label{cmd:default_test_suite}}
+
+Says which suite \texttt{make check} and \texttt{make report} mean.
+Without one they mean every test the project has, which is what they
+have always meant.
+
+\begin{verbatim}
+TEST_SUITES        += quick
+
+DEFAULT_TEST_SUITE  = quick
+\end{verbatim}
+
+This is for the project whose tests mostly can't be run on a fresh
+checkout.  The tests that need something special are exactly the ones
+a stranger to the project should not be handed by default, and a
+sentence in a \texttt{README} about it is a sentence that gets read
+after the build has already gone red.  Nothing is taken away: the
+machine that can run the rest asks for them by name.
+
+Naming a suite the project never declared is a fatal error, and this
+is the one of the three where it has a symptom worth naming: a
+\texttt{make check} that runs no tests at all and says they all
+passed.
+
 \subsection{\texttt{AUTODEPS = bool} \label{cmd:autodeps}}
 
 Allows the automatic dependency generation inside \texttt{pconfigure}
@@ -1337,13 +1499,17 @@ parsing the current file at the next line.  This is effectively C's
 
 When \texttt{Configfiles/\$file} does not exist, a fatal error occurs.
 
-\subsection{\texttt{TESTSRC += \$name}}
+\subsection{\texttt{TESTSRC += \$name} \label{cmd:testsrc}}
 
 This is just a macro that generates
 \begin{verbatim}
 TESTS   += $name
 SOURCES += $name
 \end{verbatim}
+
+\texttt{TESTSRC[\$suite]} generates \texttt{TESTS[\$suite]} and a
+plain \texttt{SOURCES}, since a test suite is a thing tests are in
+rather than a thing source files are in.
 
 \subsection{\texttt{HEADERSRC += \$name} \label{cmd:headersrc}}
 
@@ -2150,6 +2316,21 @@ they land in to \texttt{\$OBJDIR/check-dirs} at the same time as it
 writes the \texttt{Makefile}.  Naming a directory with
 \texttt{--check-dir} overrides that entirely, and may be given more
 than once.
+
+It also says whether what it is reporting is current, by asking
+\texttt{make} about the stamp that \texttt{make check} builds here.
+Which stamp that is depends on whether the project named a
+\texttt{DEFAULT\_TEST\_SUITE} (see
+Section~\ref{cmd:default_test_suite}), so \pconfigure\ writes it
+down in \texttt{\$OBJDIR/check-stamp} alongside the directories.
+
+A report about one test suite is asked for with
+\texttt{--check-suite \$name} and the results to report, one
+\texttt{--check-result} each.  The set has to arrive that way: a
+result on disk records the exit status of the test that left it and
+nothing about why the test was run, so there is nothing in
+\texttt{\$CHECKDIR} to pick a suite out by.  This is what
+\texttt{make report-\$name} runs, and it is easier to type that.
 
 See Section~\ref{cmd:tests} for the environment a test is run in.
 
