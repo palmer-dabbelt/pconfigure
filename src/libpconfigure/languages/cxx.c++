@@ -741,13 +741,28 @@ makefile::target::ptr
 language_cxx::cp_target::generate_makefile_target(void) const
 {
     auto deps = vector_util::make(_source->generate_makefile_target());
+
+    /* Copied next to where it goes and then renamed over it, rather
+     * than written straight through the file that's already there.
+     *
+     * A rebuild replaces a program or a library that something may
+     * well have open, and "cp" opens the destination and truncates it
+     * -- so what used to be there and what is there now are one file,
+     * and everything with it mapped is running against pages that
+     * have changed underneath it.  On macOS the kernel has already
+     * checked that file's code signature and remembered the answer
+     * against that file, so the next thing to exec or load it dies of
+     * SIGKILL with nothing printed at all.  A rename leaves the old
+     * file alone for whoever still has it, and gives the new one its
+     * own identity to be checked. */
     auto cmds = std::vector<std::string>{
         "mkdir -p $(dir $@)",
 #if defined(__gnu_linux__)
-        "cp --reflink=auto -f " + _source->path() + " " + _target_path
+        "cp --reflink=auto -f " + _source->path() + " $@.tmp",
 #else
-        "cp -f " + _source->path() + " " + _target_path
+        "cp -f " + _source->path() + " $@.tmp",
 #endif
+        "mv -f $@.tmp $@"
     };
 
     auto global = [&]()
