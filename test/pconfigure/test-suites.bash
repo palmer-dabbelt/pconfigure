@@ -23,6 +23,9 @@ INCLUDE_TEST_SUITES += network
 
 TEST_SUITES         += nobody
 
+TEST_SUITES         += all
+INCLUDE_TEST_SUITES += quick
+
 BINARIES            += suite
 SOURCES             += suite.c
 TESTSRC[quick]      += fast.bash
@@ -50,9 +53,9 @@ cat Makefile
 # A suite's stamp is what makes asking for it build the tests in it
 # and nothing else, so the whole of which-tests-are-in-which-suite is
 # these three lines.
-grep -q "^obj/check-quick-done: check/suite/fast.bash check/suite/needs-slow.bash check/suite/slow.bash$" Makefile
-grep -q "^obj/check-network-done: check/suite/only-network.bash check/suite/slow.bash$" Makefile
-grep -q "^obj/check-everything-done: check/suite/fast.bash check/suite/needs-slow.bash check/suite/only-network.bash check/suite/slow.bash$" Makefile
+grep -q "^obj/check-suite-quick-done: check/suite/fast.bash check/suite/needs-slow.bash check/suite/slow.bash$" Makefile
+grep -q "^obj/check-suite-network-done: check/suite/only-network.bash check/suite/slow.bash$" Makefile
+grep -q "^obj/check-suite-everything-done: check/suite/fast.bash check/suite/needs-slow.bash check/suite/only-network.bash check/suite/slow.bash$" Makefile
 
 # "slow.bash" is in "quick" because a test in "quick" waits for it.
 # make builds what a DEPTESTS names before it runs the test that
@@ -62,13 +65,13 @@ grep -q "^check/suite/needs-slow.bash:.* check/suite/slow.bash$" Makefile
 
 # A suite nobody joined still has its rules: the name is a promise
 # about what it means, and an empty run keeps it.
-grep -q "^obj/check-nobody-done:$" Makefile
+grep -q "^obj/check-suite-nobody-done:$" Makefile
 
 # Both of the rules that get typed are names rather than files.
 grep -q "^.PHONY: check-quick$" Makefile
-grep -q "^check-quick: obj/check-quick-report-quiet$" Makefile
+grep -q "^check-quick: obj/check-suite-quick-report-quiet$" Makefile
 grep -q "^.PHONY: report-quick$" Makefile
-grep -q "^report-quick: obj/check-quick-report$" Makefile
+grep -q "^report-quick: obj/check-suite-quick-report$" Makefile
 
 # The report is over the results the suite ran rather than over the
 # directory they landed in, which is the only way it could be: the
@@ -133,6 +136,27 @@ make $MAKE_ARGS check
 make $MAKE_ARGS report > all.out
 cat all.out
 grep -q "^NRUN	4$" all.out
+
+##############################################################################
+# A suite called "all"                                                       #
+##############################################################################
+# "obj/check-all-done" is the stamp every project has had all along,
+# and a suite is allowed to be called "all" -- so the files a suite
+# gets are named out of its way.  Written the other way this is two
+# rules for one file: make picks one of them, says so in a warning
+# nobody reads, and runs more tests than the suite has.
+grep -q "^obj/check-suite-all-done: check/suite/fast.bash check/suite/needs-slow.bash check/suite/slow.bash$" Makefile
+
+make $MAKE_ARGS check-all > called-all.out 2>&1
+cat called-all.out
+if grep -q "overriding recipe" called-all.out
+then
+    exit 1
+fi
+
+make $MAKE_ARGS report-all > called-all.report
+cat called-all.report
+grep -q "^NRUN	3$" called-all.report
 
 ##############################################################################
 # Re-running one                                                             #
