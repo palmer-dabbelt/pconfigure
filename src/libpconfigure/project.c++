@@ -291,16 +291,25 @@ project::test_suite_members(void) const
         include(suite->name(), members[suite->name()], seen);
     }
 
-    /* ... plus whatever the tests in it wait for.  A DEPTESTS is a
-     * prerequisite, so asking make for a suite runs every test its
-     * tests wait for whether or not the suite claims them.  Leaving
-     * them out of the report wouldn't stop any of that happening; it
-     * would just stop it being reported. */
+    /* ... plus whatever the tests in it wait for, plus every test
+     * that was written without a suite and could run here.
+     *
+     * Both of those grow the set, and each can feed the other, so
+     * they go around together until nothing moves.  A test that waits
+     * for one that has just joined is a test that has just become
+     * runnable here, and asking the two questions once each in some
+     * order would answer whichever one went second against a set that
+     * was still growing. */
     for (auto& pair: members) {
         auto growing = true;
         while (growing == true) {
             growing = false;
 
+            /* A DEPTESTS is a prerequisite, so asking make for a
+             * suite runs every test its tests wait for whether or not
+             * the suite claims them.  Leaving one out of the report
+             * wouldn't stop any of that happening; it would just stop
+             * it being reported. */
             for (const auto& member: std::set<std::string>(pair.second)) {
                 auto found = tests.find(member);
                 if (found == tests.end())
@@ -309,6 +318,30 @@ project::test_suite_members(void) const
                 for (const auto& dep: found->second->based_dep_tests())
                     if (pair.second.insert(dep).second == true)
                         growing = true;
+            }
+
+            /* A test written without a suite is a test with nothing
+             * to say about where it can run, so it runs everywhere --
+             * except that a test which waits for one it can't run
+             * beside is a test that can't run there either.  What it
+             * waits for is the only thing about it that ever named a
+             * suite, so it's the only thing there is to go on. */
+            for (const auto& test: tests) {
+                if (test.second->test_suite_name.size() > 0)
+                    continue;
+                if (pair.second.find(test.first) != pair.second.end())
+                    continue;
+
+                auto runnable = true;
+                for (const auto& dep: test.second->based_dep_tests())
+                    if (pair.second.find(dep) == pair.second.end())
+                        runnable = false;
+
+                if (runnable == false)
+                    continue;
+
+                pair.second.insert(test.first);
+                growing = true;
             }
         }
     }
