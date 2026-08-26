@@ -210,20 +210,36 @@ int list_overwrite_defines(std::string filename,
             out = out.substr(0, out.size() - 1) + line;
         }
 
+        /* The comment state has to survive between calls, because a
+         * block comment can span lines.  A line comment cannot: it
+         * ends at the newline, so it gets a state of its own rather
+         * than sharing the block comment's.  1 is the closing slash of
+         * a block comment, which is still part of the comment; 2 is
+         * inside a block comment; 3 is inside a line comment.  The
+         * guards matter as much as the states do: a line comment
+         * opened inside a block comment doesn't start anything, and
+         * neither does a block comment opened inside a line one. */
         for (size_t i = 0; i < out.size(); ++i) {
             bool was_comment = comment > 0;
             if (comment == 1)
                comment = 0;
-            if (out[i] == '/' && out[i+1] == '/')
+            if (comment == 0 && out[i] == '/' && out[i+1] == '/')
+              comment = 3;
+            if (comment == 0 && out[i] == '/' && out[i+1] == '*')
               comment = 2;
-            if (out[i] == '/' && out[i+1] == '*')
-              comment = 2;
-            if (out[i] == '*' && out[i+1] == '/')
+            if (comment == 2 && out[i] == '*' && out[i+1] == '/')
               comment = 1;
 
             if (was_comment || comment > 0)
               out[i] = ' ';
         }
+
+        /* Whatever a line comment was hiding, it stops hiding it here.
+         * Leaving the state set would blank every line that follows,
+         * to the end of the file or to whatever stray close of a block
+         * comment happened to turn up first. */
+        if (comment == 3)
+            comment = 0;
 
         return true;
     };
