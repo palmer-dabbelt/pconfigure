@@ -2209,10 +2209,16 @@ A wrapper around \texttt{llvm-config} that does the same thing as
 
 A bash ``compiler'', which really just does the following
 \begin{itemize}
-\item Allows \texttt{\#include} (with the same semantics as in the C
-  compiler) to be used from within BASH files.  This is a way to avoid
-  \texttt{source}ing BASH files, which can be a pain when you don't
-  know where they'll end up installed.
+\item Allows \texttt{\#include} to be used from within BASH files.
+  This is a way to avoid \texttt{source}ing BASH files, which can be a
+  pain when you don't know where they'll end up installed.  Unlike the
+  C preprocessor, which will take a directive with whitespace anywhere
+  before or after the \texttt{\#}, this wants the directive written
+  bare at the start of the line.  A \texttt{\#} is how BASH starts a
+  comment, and a looser reading finds directives in prose.
+  \pconfigure\ follows the same rule when it works out what a script
+  depends on, so the files it writes down as dependencies are the ones
+  that actually get pasted in.
 \item Sets the correct shebang at the beginning of the file
 \item Marks the output as executable
 \end{itemize}
