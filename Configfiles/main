@@ -212,6 +212,7 @@ TESTSRC     += deptests-bad.bash
 TESTSRC     += test-suites.bash
 TESTSRC     += test-suites-unnamed.bash
 TESTSRC     += default-test-suite.bash
+TESTSRC     += test-suites-subprojects.bash
 TESTSRC     += test-suites-bad.bash
 TESTSRC     += ptest-check-dirs.bash
 TESTSRC     += makeflags.bash
