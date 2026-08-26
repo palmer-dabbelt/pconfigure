@@ -70,6 +70,8 @@ int main(int argc, char **argv)
     int dirs_count;
     int defs_count;
     int i;
+    char *tmpout;
+    int tmpout_size;
     char *chmod;
     int chmod_size;
     int ret;
@@ -121,9 +123,30 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    outfile = fopen(output, "w");
+    /* Written beside where it goes and renamed over it at the end,
+     * rather than through whatever is already there.
+     *
+     * The output of a compile is a program, and a program is a thing
+     * something may well be running: opening it and writing through
+     * it doesn't replace it, it changes the file that is already
+     * open.  On macOS that is fatal rather than merely rude, since
+     * the kernel checks a program's code signature once and remembers
+     * the answer against that file -- so a file whose contents
+     * changed while the answer stayed behind is one the next exec of
+     * kills with SIGKILL and nothing printed.
+     *
+     * It is also what keeps a compile that fails from leaving
+     * anything behind.  The output is written as it goes, so at the
+     * point one gives up there is a shebang and however far it got on
+     * disk; that used to be dealt with by deleting the output, which
+     * threw away the last one that worked along with it. */
+    tmpout_size = strlen(output) + strlen(".tmp") + 1;
+    tmpout = malloc(tmpout_size);
+    snprintf(tmpout, tmpout_size, "%s.tmp", output);
+
+    outfile = fopen(tmpout, "w");
     if (outfile == NULL) {
-        fprintf(stderr, "unable to write '%s'\n", output);
+        fprintf(stderr, "unable to write '%s'\n", tmpout);
         exit(1);
     }
 
@@ -132,26 +155,40 @@ int main(int argc, char **argv)
     if (pinclude_lines(input, NULL, NULL, &write_line, defs, (const char **)dirs, (const char **)defs, 1) != 0) {
         fprintf(stderr, "unable to expand '%s'\n", input);
 
-        /* The output is written as it goes, so what's on disk now is
-         * however far this got: a shebang and whatever came before
-         * the line that failed.  Leaving that behind would be worse
-         * than writing nothing, because it is a file with a fresh
-         * mtime that make would take for a finished one and never
-         * build again. */
         fclose(outfile);
-        unlink(output);
+        unlink(tmpout);
 
         exit(1);
     }
 
     fclose(outfile);
 
-    chmod_size = strlen("chmod oug+x ") + strlen(output) + 1;
+    /* Made executable before it is put in place, so that it is never
+     * there as a file nobody can run. */
+    chmod_size = strlen("chmod oug+x ") + strlen(tmpout) + 1;
     chmod = malloc(chmod_size);
-    snprintf(chmod, chmod_size, "chmod oug+x %s", output);
+    snprintf(chmod, chmod_size, "chmod oug+x %s", tmpout);
     ret = system(chmod);
     free(chmod);
-    return ret;
+
+    /* Whatever system() hands back is a wait status rather than an
+     * exit code, so returning it from main() reported a chmod that
+     * exited 1 as a pbashc that exited 0.  Nothing here has any use
+     * for which signal it was either way. */
+    if (ret != 0) {
+        fprintf(stderr, "unable to make '%s' executable\n", tmpout);
+        unlink(tmpout);
+        exit(1);
+    }
+
+    if (rename(tmpout, output) != 0) {
+        fprintf(stderr, "unable to rename '%s' to '%s'\n", tmpout, output);
+        unlink(tmpout);
+        exit(1);
+    }
+
+    free(tmpout);
+    return 0;
 }
 
 int write_line(const char *line, void *defs_uncast)
