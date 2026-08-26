@@ -237,6 +237,89 @@ void project::generate_targets(void)
     check_autodeps();
 }
 
+std::map<std::string, std::vector<std::string>>
+project::test_suite_members(void) const
+{
+    auto tests = this->tests();
+
+    /* The tests that named each suite themselves.  Every suite gets
+     * an entry whether or not anything joined it, since the rules
+     * that come out of this are what a name means. */
+    auto named = std::map<std::string, std::set<std::string>>();
+    for (const auto& suite: _processor->test_suites())
+        named[suite->name()] = std::set<std::string>();
+
+    for (const auto& pair: tests) {
+        const auto& ctx = pair.second;
+        if (ctx->test_suite_name.size() == 0)
+            continue;
+
+        named[ctx->test_suite_name].insert(pair.first);
+    }
+
+    /* ... plus everything in the suites each one includes, at any
+     * depth.  Two suites that include each other are two names for
+     * one set of tests, which is a strange thing to write and a
+     * perfectly clear thing to mean, so the walk keeps track of where
+     * it has been rather than refusing to go. */
+    auto members = std::map<std::string, std::set<std::string>>();
+
+    std::function<void(const std::string&,
+                       std::set<std::string>&,
+                       std::set<std::string>&)> include =
+        [&](const std::string& name,
+            std::set<std::string>& out,
+            std::set<std::string>& seen)
+        {
+            if (seen.insert(name).second == false)
+                return;
+
+            for (const auto& member: named[name])
+                out.insert(member);
+
+            auto suite = _processor->test_suite_named(name);
+            if (suite == NULL)
+                return;
+
+            for (const auto& included: suite->includes())
+                include(included->data(), out, seen);
+        };
+
+    for (const auto& suite: _processor->test_suites()) {
+        auto seen = std::set<std::string>();
+        members[suite->name()] = std::set<std::string>();
+        include(suite->name(), members[suite->name()], seen);
+    }
+
+    /* ... plus whatever the tests in it wait for.  A DEPTESTS is a
+     * prerequisite, so asking make for a suite runs every test its
+     * tests wait for whether or not the suite claims them.  Leaving
+     * them out of the report wouldn't stop any of that happening; it
+     * would just stop it being reported. */
+    for (auto& pair: members) {
+        auto growing = true;
+        while (growing == true) {
+            growing = false;
+
+            for (const auto& member: std::set<std::string>(pair.second)) {
+                auto found = tests.find(member);
+                if (found == tests.end())
+                    continue;
+
+                for (const auto& dep: found->second->based_dep_tests())
+                    if (pair.second.insert(dep).second == true)
+                        growing = true;
+            }
+        }
+    }
+
+    auto out = std::map<std::string, std::vector<std::string>>();
+    for (const auto& pair: members)
+        out[pair.first] = std::vector<std::string>(pair.second.begin(),
+                                                   pair.second.end());
+    return out;
+}
+
 std::map<std::string, context::ptr> project::tests(void) const
 {
     auto out = std::map<std::string, context::ptr>();
@@ -696,6 +779,15 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
      * build, so a parent's copies are what run when there is one. */
     for (const auto& project: aggregated)
         out->add_check_dir(project->processor()->root_context()->check_dir);
+
+    /* Same reason, and the same list: a suite is a name make can be
+     * asked for, so the Makefile that gets asked is the one that has
+     * to know about every test in it.  Two projects that both declare
+     * a suite of one name have one suite here, since there is one
+     * rule with that name to run. */
+    for (const auto& project: aggregated)
+        for (const auto& suite: project->test_suite_members())
+            out->add_test_suite(suite.first, suite.second);
 
     out->add_standalone_target(cache_clean_target(aggregated));
     out->add_standalone_target(distclean_target(aggregated));

@@ -69,6 +69,21 @@ void makefile::makefile::add_check_dir(const std::string& dir)
     _check_dirs.push_back(dir);
 }
 
+void makefile::makefile::add_test_suite(const std::string& name,
+                                        const std::vector<std::string>& results)
+{
+    for (auto& suite: _test_suites) {
+        if (suite.first != name)
+            continue;
+
+        for (const auto& result: results)
+            suite.second.push_back(result);
+        return;
+    }
+
+    _test_suites.push_back(std::make_pair(name, results));
+}
+
 void makefile::makefile::write_to_file(const std::string& filename)
 {
     auto file = fopen(filename.c_str(), "w");
@@ -166,6 +181,47 @@ void makefile::makefile::write_to_file(const std::string& filename)
             report.c_str(), stamp.c_str(), q, ptest.c_str(), check_dirs.c_str());
     fprintf(file, "check: %s\n\n", quiet_report.c_str());
     fprintf(file, "report: %s\n\t%scat %s\n\n", report.c_str(), q, report.c_str());
+
+    /* A named set of tests is the same pair of rules over a smaller
+     * pile of results: its own stamp, so that asking for it builds
+     * only the tests in it, and its own reports, so that what comes
+     * out is about the run that happened rather than about every
+     * result that happens to be on disk. */
+    for (const auto& suite: _test_suites) {
+        auto suite_stamp = obj_dir + "/check-" + suite.first + "-done";
+        auto suite_quiet = obj_dir + "/check-" + suite.first + "-report-quiet";
+        auto suite_report = obj_dir + "/check-" + suite.first + "-report";
+
+        auto results = std::string(" --check-suite " + suite.first);
+        for (const auto& result: suite.second)
+            results += " --check-result " + _prefix.rewrite(result);
+
+        fprintf(file, "%s:", suite_stamp.c_str());
+        for (const auto& result: suite.second)
+            fprintf(file, " %s", _prefix.rewrite(result).c_str());
+        fprintf(file, "\n\t%smkdir -p %s\n\t%sdate > $@\n\n",
+                q, obj_dir.c_str(), q);
+
+        fprintf(file, "%s: %s\n\t%s%s --quiet --no-check-make-check%s%s > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp; exit 1)\n\n",
+                suite_quiet.c_str(), suite_stamp.c_str(), q, ptest.c_str(),
+                check_dirs.c_str(), results.c_str());
+        fprintf(file, "%s: %s\n\t%s%s --no-check-make-check%s%s > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp; exit 1)\n\n",
+                suite_report.c_str(), suite_stamp.c_str(), q, ptest.c_str(),
+                check_dirs.c_str(), results.c_str());
+
+        /* Both of these are names rather than files, and unlike
+         * "check" there is no directory that happens to be called
+         * this -- so saying so is what keeps a stray file of the name
+         * from stopping the rule, rather than what fixes anything
+         * that has gone wrong. */
+        fprintf(file, ".PHONY: check-%s\n", suite.first.c_str());
+        fprintf(file, "check-%s: %s\n\n",
+                suite.first.c_str(), suite_quiet.c_str());
+        fprintf(file, ".PHONY: report-%s\n", suite.first.c_str());
+        fprintf(file, "report-%s: %s\n\t%scat %s\n\n",
+                suite.first.c_str(), suite_report.c_str(), q,
+                suite_report.c_str());
+    }
 
     if (_prefix.included() == true)
         fprintf(file, "endif\n\n");
