@@ -99,6 +99,7 @@ TESTSRC     += existafter.bash
 TESTSRC     += comment.bash
 TESTSRC     += line-comment.bash
 TESTSRC     += trailing-comment.bash
+TESTSRC     += directive-spacing.bash
 
 BINARIES    += pllvm-config
 SOURCES     += pllvm-config.bash
