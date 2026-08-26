@@ -173,6 +173,14 @@ private:
     static void check_target_shape(const context::ptr& ctx,
                                    std::map<std::string, context::ptr>& seen);
 
+    /* Says so when an INCLUDE_TEST_SUITES names a suite this project
+     * never declared.  It's asked here rather than where the line was
+     * read because a suite is allowed to include one that a later
+     * line declares: the suites of a project are a set, and nothing
+     * about them depends on the order the file happens to name them
+     * in. */
+    void check_test_suites(void) const;
+
     /* Says so when the DEPTESTS in this project don't describe an
      * order any run of the tests could take: one that waits for a
      * test nobody wrote, or a set of them that waits in a circle.
