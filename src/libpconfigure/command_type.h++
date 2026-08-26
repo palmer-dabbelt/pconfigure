@@ -45,6 +45,7 @@ enum class command_type {
     GENERATE,
     HDRDIR,
     HEADERS,
+    INCLUDE_TEST_SUITES,
     LANGUAGES,
     LIBDIR,
     LIBEXECS,
@@ -63,6 +64,7 @@ enum class command_type {
     TESTEXECS,
     TESTS,
     TESTSRC,
+    TEST_SUITES,
     TGENERATE,
     VERBOSE,
     VERSION,
@@ -92,6 +94,7 @@ static const std::vector<command_type> all_command_types =
     command_type::GENERATE,
     command_type::HDRDIR,
     command_type::HEADERS,
+    command_type::INCLUDE_TEST_SUITES,
     command_type::LANGUAGES,
     command_type::LIBDIR,
     command_type::LIBEXECS,
@@ -110,6 +113,7 @@ static const std::vector<command_type> all_command_types =
     command_type::TESTEXECS,
     command_type::TESTS,
     command_type::TESTSRC,
+    command_type::TEST_SUITES,
     command_type::TGENERATE,
     command_type::VERBOSE,
     command_type::VERSION,
@@ -155,6 +159,8 @@ namespace std {
             return "HDRDIR";
         case command_type::HEADERS:
             return "HEADERS";
+        case command_type::INCLUDE_TEST_SUITES:
+            return "INCLUDE_TEST_SUITES";
         case command_type::LANGUAGES:
             return "LANGUAGES";
         case command_type::LIBDIR:
@@ -191,6 +197,8 @@ namespace std {
             return "TESTS";
         case command_type::TESTSRC:
             return "TESTSRC";
+        case command_type::TEST_SUITES:
+            return "TEST_SUITES";
         case command_type::TGENERATE:
             return "TGENERATE";
         case command_type::VERBOSE:

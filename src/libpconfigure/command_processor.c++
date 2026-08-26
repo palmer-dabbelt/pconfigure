@@ -24,6 +24,7 @@
 #include "languages/gen_proc.h++"
 #include "languages/implicit_h.h++"
 #include "languages/phony.h++"
+#include <cctype>
 #include <iostream>
 
 command_processor::command_processor(const std::string& base,
@@ -35,6 +36,8 @@ command_processor::command_processor(const std::string& base,
       _build_systems(),
       _vendored(),
       _configure_target(NULL),
+      _test_suites(),
+      _test_suite_target(NULL),
       _given_version_command(false),
       _given_help_command(false),
       _given_srcpath(false),
@@ -151,6 +154,7 @@ static bool names_a_path(const command_type& type)
     case command_type::DEBUG:
     case command_type::DEPLIBS:
     case command_type::HELP:
+    case command_type::INCLUDE_TEST_SUITES:
     case command_type::LANGUAGES:
     case command_type::LINKER:
     case command_type::LINKOPTS:
@@ -158,12 +162,30 @@ static bool names_a_path(const command_type& type)
     case command_type::PHC:
     case command_type::PHONY:
     case command_type::STRICT:
+    case command_type::TEST_SUITES:
     case command_type::VERBOSE:
     case command_type::VERSION:
         return false;
     }
 
     return false;
+}
+
+/* TRUE when a string is a name a test suite could have.  The name is
+ * what the suite's make targets are called, so a character make reads
+ * as something other than itself makes a rule nobody can ask for --
+ * and one that make may well have taken apart into several rules on
+ * the way in. */
+static bool names_a_suite(const std::string& str)
+{
+    if (str.size() == 0)
+        return false;
+
+    for (const auto& c: str)
+        if (isalnum(c) == 0 && c != '-' && c != '_' && c != '.')
+            return false;
+
+    return true;
 }
 
 void command_processor::process(const command::ptr& cmd)
@@ -994,6 +1016,87 @@ void command_processor::process_one(const command::ptr& cmd)
         return;
     }
 
+    /* The sets this project's tests are divided into.  A project with
+     * tests that can't be run everywhere -- the ones that want a
+     * network, or a card, or an hour -- has nowhere to say so while
+     * there is only one set of them: whatever "make check" means has
+     * to mean the same thing on every machine it gets run on.  A
+     * suite is a name for some of the tests, and a project gets as
+     * many of them as it has answers to "which tests can this machine
+     * run".
+     *
+     * The line only declares the name.  Which tests are in the suite
+     * is said by the tests, so a suite that nothing joined is empty
+     * rather than wrong: it's a promise about what "make check-<name>"
+     * means, kept by a run with nothing to do. */
+    case command_type::TEST_SUITES:
+    {
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        clear_until({context_type::DEFAULT}, cmd);
+
+        if (names_a_suite(cmd->data()) == false) {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: '" << cmd->data() << "' is not a name a"
+                      << " test suite can have\n"
+                      << "  the name is what the suite's make targets are"
+                      << " called, so it holds letters, digits, '-', '_'"
+                      << " and '.' and nothing else\n"
+                      << "  name the suite after the thing its tests need,"
+                      << " the way a target is named after what it"
+                      << " builds\n";
+            abort();
+        }
+
+        /* Naming one that's already here is how you get back to it to
+         * say something more about it, which is exactly what a second
+         * BUILD_SYSTEMS line does. */
+        for (const auto& existing: _test_suites) {
+            if (existing->name() != cmd->data())
+                continue;
+            _test_suite_target = existing;
+            return;
+        }
+
+        auto added = std::make_shared<test_suite>(cmd->data(), cmd);
+        _test_suites.push_back(added);
+        _test_suite_target = added;
+
+        return;
+    }
+
+    /* One suite running another's tests along with its own.  Two
+     * machines that can run overlapping sets of tests is the ordinary
+     * case -- the machine with the network can also run everything
+     * the machine without it can -- and writing that down as
+     * membership would mean naming every test twice.
+     *
+     * This says nothing about order and nothing about when anything
+     * runs: the tests of the included suite are the same tests, run
+     * once, reported under both names.  Making one test wait for
+     * another is what a DEPTESTS is for. */
+    case command_type::INCLUDE_TEST_SUITES:
+    {
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        if (_test_suite_target == NULL) {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: "
+                      << std::to_string(cmd->type())
+                      << " with no test suite open above it has nothing"
+                      << " to include anything into\n"
+                      << "  put it directly under the TEST_SUITES line of"
+                      << " the suite that does the including\n";
+            abort();
+        }
+
+        _test_suite_target->add_include(cmd);
+
+        return;
+    }
+
     case command_type::TESTS:
     {
         if (cmd->check_operation("+=") == false)
@@ -1157,6 +1260,16 @@ no_configure_target:
     abort();
 }
 
+test_suite::ptr
+command_processor::test_suite_named(const std::string& name) const
+{
+    for (const auto& suite: _test_suites)
+        if (suite->name() == name)
+            return suite;
+
+    return NULL;
+}
+
 std::string command_processor::take_pending_subproject(void)
 {
     if (_pending_subprojects.size() == 0)
@@ -1180,6 +1293,12 @@ std::string command_processor::take_pending_config(void)
 void command_processor::clear_until(const std::vector<context_type>& types,
                                     const command::ptr& by)
 {
+    /* A line that opens a target has left whatever suite was being
+     * declared behind it, whether or not it pops anything: the
+     * declaration is a top-level statement, and the only lines that
+     * belong to it are the ones directly underneath. */
+    _test_suite_target = NULL;
+
     while ((_stack.size() > 0) && (_stack.top()->check_type(types) == false)) {
         auto top = _stack.top();
         _stack.pop();
