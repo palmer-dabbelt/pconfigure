@@ -210,6 +210,7 @@ TESTSRC     += testdeps-outside.bash
 TESTSRC     += deptests.bash
 TESTSRC     += deptests-bad.bash
 TESTSRC     += test-suites.bash
+TESTSRC     += test-suites-unnamed.bash
 TESTSRC     += test-suites-bad.bash
 TESTSRC     += ptest-check-dirs.bash
 TESTSRC     += makeflags.bash
