@@ -97,6 +97,7 @@ TESTSRC     += samedir2.bash
 TESTSRC     += indir.bash
 TESTSRC     += existafter.bash
 TESTSRC     += comment.bash
+TESTSRC     += line-comment.bash
 
 BINARIES    += pllvm-config
 SOURCES     += pllvm-config.bash
