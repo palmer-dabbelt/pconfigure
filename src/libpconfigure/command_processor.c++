@@ -37,6 +37,8 @@ command_processor::command_processor(const std::string& base,
       _vendored(),
       _configure_target(NULL),
       _test_suites(),
+      _default_test_suite(),
+      _default_test_suite_cmd(NULL),
       _test_suite_target(NULL),
       _given_version_command(false),
       _given_help_command(false),
@@ -152,6 +154,7 @@ static bool names_a_path(const command_type& type)
     case command_type::CONFIGUREOPTS:
     case command_type::CROSS_COMPILE:
     case command_type::DEBUG:
+    case command_type::DEFAULT_TEST_SUITE:
     case command_type::DEPLIBS:
     case command_type::HELP:
     case command_type::INCLUDE_TEST_SUITES:
@@ -192,6 +195,7 @@ static bool takes_a_qualifier(const command_type& type)
     case command_type::CONFIGUREOPTS:
     case command_type::CROSS_COMPILE:
     case command_type::DEBUG:
+    case command_type::DEFAULT_TEST_SUITE:
     case command_type::DEPLIBS:
     case command_type::DEPTESTS:
     case command_type::ENTITLEMENTS:
@@ -1139,6 +1143,28 @@ void command_processor::process_one(const command::ptr& cmd)
         auto added = std::make_shared<test_suite>(cmd->data(), cmd);
         _test_suites.push_back(added);
         _test_suite_target = added;
+
+        return;
+    }
+
+    /* Which suite "make check" means.  A project that has a set of
+     * tests every machine can run wants that set to be what happens
+     * when somebody types the two words they already know, rather
+     * than something they have to be told about -- and the tests that
+     * only some machines can run are exactly the ones a stranger to
+     * the project shouldn't be handed by default.
+     *
+     * With nothing said "make check" means every test, which is what
+     * it has always meant. */
+    case command_type::DEFAULT_TEST_SUITE:
+    {
+        if (cmd->check_operation("=") == false)
+            goto bad_op_eq;
+
+        clear_until({context_type::DEFAULT}, cmd);
+
+        _default_test_suite = cmd->data();
+        _default_test_suite_cmd = cmd;
 
         return;
     }

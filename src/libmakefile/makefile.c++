@@ -84,6 +84,11 @@ void makefile::makefile::add_test_suite(const std::string& name,
     _test_suites.push_back(std::make_pair(name, results));
 }
 
+void makefile::makefile::set_default_test_suite(const std::string& name)
+{
+    _default_test_suite = name;
+}
+
 void makefile::makefile::write_to_file(const std::string& filename)
 {
     auto file = fopen(filename.c_str(), "w");
@@ -179,8 +184,22 @@ void makefile::makefile::write_to_file(const std::string& filename)
             quiet_report.c_str(), stamp.c_str(), q, ptest.c_str(), check_dirs.c_str());
     fprintf(file, "%s: %s\n\t%s%s --no-check-make-check%s > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp; exit 1)\n\n",
             report.c_str(), stamp.c_str(), q, ptest.c_str(), check_dirs.c_str());
-    fprintf(file, "check: %s\n\n", quiet_report.c_str());
-    fprintf(file, "report: %s\n\t%scat %s\n\n", report.c_str(), q, report.c_str());
+    /* "make check" runs one named set of tests when the project said
+     * which, and every test it has when it didn't.  "make report"
+     * follows it: a report about a run that didn't happen is a report
+     * of results left over from some earlier one. */
+    auto check_quiet = quiet_report;
+    auto check_report = report;
+    if (_default_test_suite.size() > 0) {
+        check_quiet = obj_dir + "/check-suite-" + _default_test_suite
+                    + "-report-quiet";
+        check_report = obj_dir + "/check-suite-" + _default_test_suite
+                     + "-report";
+    }
+
+    fprintf(file, "check: %s\n\n", check_quiet.c_str());
+    fprintf(file, "report: %s\n\t%scat %s\n\n",
+            check_report.c_str(), q, check_report.c_str());
 
     /* A named set of tests is the same pair of rules over a smaller
      * pile of results: its own stamp, so that asking for it builds
