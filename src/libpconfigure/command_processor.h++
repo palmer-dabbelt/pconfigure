@@ -28,6 +28,7 @@
 #include "context.h++"
 #include "language_list.h++"
 #include "opts_target.h++"
+#include "test_suite.h++"
 
 /* Contains the entire state of the build system.  This processes a
  * list of commands and converts it into a graph of dependencies that
@@ -68,6 +69,19 @@ private:
      * whichever build system or subproject was named most
      * recently. */
     build_system::ptr _configure_target;
+
+    /* The sets this project's tests are divided into, in the order
+     * they were declared -- which is the order their rules come out
+     * in, so it has to be stable. */
+    std::vector<test_suite::ptr> _test_suites;
+
+    /* The suite that an INCLUDE_TEST_SUITES lands on, which is
+     * whichever one a TEST_SUITES named most recently.  It's dropped
+     * whenever a line opens a target, so a subcommand that ended up
+     * somewhere else is a subcommand with nothing above it rather
+     * than one that quietly joined a suite from further up the
+     * file. */
+    test_suite::ptr _test_suite_target;
 
     /* Every TESTDEPS that was read as a path in the project, with the
      * path it would have been read as had it named a file some
@@ -148,6 +162,12 @@ public:
         { return _base; }
     const context::ptr& root_context(void) const
         { return _root; }
+    const std::vector<test_suite::ptr>& test_suites(void) const
+        { return _test_suites; }
+
+    /* The suite of the given name, or NULL when this project has
+     * never declared one. */
+    test_suite::ptr test_suite_named(const std::string& name) const;
 
     /* Hands back a subproject that a SUBPROJECTS command asked for,
      * or an empty string once there aren't any left.  The path is

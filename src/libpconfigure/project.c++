@@ -222,6 +222,10 @@ void project::generate_targets(void)
         }
     }
 
+    /* Every suite this project has is declared by the time the last
+     * Configfile line has been read, which is all this needs. */
+    check_test_suites();
+
     /* Now that every test in this project has a name, and not before:
      * a DEPTESTS is allowed to name a test written further down the
      * Configfile than the line that waits for it. */
@@ -231,6 +235,44 @@ void project::generate_targets(void)
      * everything it reached, and one line reaches as far down the
      * file as the target it was written on goes. */
     check_autodeps();
+}
+
+void project::check_test_suites(void) const
+{
+    for (const auto& suite: _processor->test_suites()) {
+        for (const auto& include: suite->includes()) {
+            if (_processor->test_suite_named(include->data()) != NULL)
+                continue;
+
+            /* What make would do with this is nothing at all: the
+             * suite that was named has no tests because it has no
+             * existence, so the rule that runs it comes out empty and
+             * the tests somebody meant to include quietly don't run.
+             * A suite that reports "no tests" is exactly what a suite
+             * nobody has joined yet looks like, so there is nothing
+             * downstream that could tell the two apart. */
+            std::cerr << std::to_string(include->debug()) << "\n"
+                      << "  error: "
+                      << std::to_string(include->type())
+                      << " names '" << include->data()
+                      << "', which is no test suite of this project\n"
+                      << "  it names a suite of this same project,"
+                      << " spelled the way that suite's own TEST_SUITES"
+                      << " line spelled it\n";
+
+            if (_processor->test_suites().size() == 1) {
+                std::cerr << "  the only suite here is '"
+                          << suite->name() << "'\n";
+            } else {
+                std::cerr << "  the suites here are:";
+                for (const auto& other: _processor->test_suites())
+                    std::cerr << " '" << other->name() << "'";
+                std::cerr << "\n";
+            }
+
+            abort();
+        }
+    }
 }
 
 void project::check_autodeps(void) const
