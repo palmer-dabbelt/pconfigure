@@ -141,11 +141,12 @@ public:
      * about what a name means, and an empty one keeps it.
      *
      * A test is in a suite because it said so, because a suite this
-     * one includes has it, or because a test that is in the suite
-     * waits for it -- that last one because make builds what a
-     * DEPTESTS names before it runs the test that waits, so a suite
-     * that left it out would be reporting on a smaller run than the
-     * one that happened. */
+     * one includes has it, because a test that is in the suite waits
+     * for it, or because it was written without a suite and every
+     * test it waits for is in this one.  The third of those isn't a
+     * choice: make builds what a DEPTESTS names before it runs the
+     * test that waits, so a suite that left it out would be reporting
+     * on a smaller run than the one that happened. */
     std::map<std::string, std::vector<std::string>>
     test_suite_members(void) const;
 
