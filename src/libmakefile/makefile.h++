@@ -76,6 +76,14 @@ namespace makefile {
          * which is one per project. */
         std::vector<std::string> _check_dirs;
 
+        /* The named sets of tests this Makefile can be asked to run
+         * on their own, each with the test results that are in it.
+         * The results are named outright rather than described,
+         * because which tests are in a suite is something the
+         * Configfiles said and nothing on disk records. */
+        std::vector<std::pair<std::string,
+                              std::vector<std::string>>> _test_suites;
+
     public:
         /* Creates a new "empty" Makefile -- note that this actually
          * contains some about of default targets and such that you
@@ -127,6 +135,15 @@ namespace makefile {
          * another project's directory for test results. */
         void add_check_stamp(const std::string& stamp);
         void add_check_dir(const std::string& dir);
+
+        /* Adds the results of one named set of tests, which get their
+         * own "check-<name>" and "report-<name>" rules.  A name that
+         * has already been added is added to rather than added again:
+         * two projects with a suite of the same name have one suite
+         * as far as make is concerned, since there is one rule with
+         * that name to run. */
+        void add_test_suite(const std::string& name,
+                            const std::vector<std::string>& results);
 
         /* Writes this makefilie out to a text file. */
         void write_to_file(const std::string& filename);

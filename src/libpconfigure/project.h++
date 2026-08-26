@@ -134,6 +134,21 @@ public:
     /* A project and everything below it, parents before children. */
     static std::vector<ptr> flatten(const ptr& root);
 
+public:
+    /* Which of this project's tests each of its suites runs, named by
+     * the target that runs them.  Every suite the project declared is
+     * in here, including the ones nothing joined: a suite is a promise
+     * about what a name means, and an empty one keeps it.
+     *
+     * A test is in a suite because it said so, because a suite this
+     * one includes has it, or because a test that is in the suite
+     * waits for it -- that last one because make builds what a
+     * DEPTESTS names before it runs the test that waits, so a suite
+     * that left it out would be reporting on a smaller run than the
+     * one that happened. */
+    std::map<std::string, std::vector<std::string>>
+    test_suite_members(void) const;
+
 private:
     /* Processes one Configfile line and everything it asks for: a
      * CONFIG is read where it appears, and a SUBPROJECTS is read
