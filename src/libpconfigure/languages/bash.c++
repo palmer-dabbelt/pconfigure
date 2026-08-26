@@ -159,13 +159,20 @@ language_bash::targets(const context::ptr& ctx) const
             makefile::global_targets::INSTALL,
         };
 
+        /* Copied next to where it goes and then renamed over it, for
+         * the reason languages/cxx.c++ gives at more length: a "cp"
+         * writes through the file that's already there, so a program
+         * something has open is a program that changes underneath it
+         * -- and on macOS, one whose code signature the kernel has
+         * already checked and remembered against that same file. */
         auto install_commands = std::vector<std::string>{
             "mkdir -p $(DESTDIR)/" + ctx->prefix + "/" + ctx->unbased(bin_subdir),
 #if defined(__gnu_linux__)
-            "cp --reflink=auto -f " + target + " " + install_path
+            "cp --reflink=auto -f " + target + " $@.tmp",
 #else
-            "cp -f " + target + " " + install_path
+            "cp -f " + target + " $@.tmp",
 #endif
+            "mv -f $@.tmp $@"
         };
 
         auto install_target = std::make_shared<makefile::target>(install_path,
