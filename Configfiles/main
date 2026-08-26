@@ -207,6 +207,7 @@ TESTSRC     += testdeps-outside.bash
 TESTSRC     += deptests.bash
 TESTSRC     += deptests-bad.bash
 TESTSRC     += ptest-check-dirs.bash
+TESTSRC     += makeflags.bash
 TESTSRC     += cmdline-args.bash
 TESTSRC     += strict.bash
 TESTSRC     += strict-opts-target.bash
