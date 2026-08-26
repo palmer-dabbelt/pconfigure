@@ -25,23 +25,27 @@
 command::command(const command_type& type,
                  const std::string& op,
                  const std::string& data,
-                 const debug_info::ptr& debug_info)
+                 const debug_info::ptr& debug_info,
+                 const std::string& qualifier)
     : _type(type),
       _op(op),
       _data(data),
       _debug_info(debug_info),
-      _needs_data(false)
+      _needs_data(false),
+      _qualifier(qualifier)
 {
 }
 
 command::command(const command_type& type,
                  const std::string& op,
-                 const debug_info::ptr& debug_info)
+                 const debug_info::ptr& debug_info,
+                 const std::string& qualifier)
     : _type(type),
       _op(op),
       _data(),
       _debug_info(debug_info),
-      _needs_data(true)
+      _needs_data(true),
+      _qualifier(qualifier)
 {
 }
 
@@ -51,13 +55,15 @@ command::ptr command::with_type(const command_type& type)
         return std::make_shared<command>(
             type,
             this->_op,
-            this->_debug_info);
+            this->_debug_info,
+            this->_qualifier);
     else
         return std::make_shared<command>(
             type,
             this->_op,
             this->_data,
-            this->_debug_info);
+            this->_debug_info,
+            this->_qualifier);
 }
 
 command::ptr command::parse(const std::string& str,
@@ -110,13 +116,51 @@ command::ptr command::parse(const std::string& str,
 
     auto cmdstr = split[0];
     auto op = split[1];
+
+    /* A command can be written with a name in brackets, which says
+     * which of several things of that kind the line lands on.  It
+     * belongs to the command rather than to the value: everything
+     * after the operator is what the line is about, and the brackets
+     * come before it.
+     *
+     * The name ends the command, so a line that opens the brackets
+     * and doesn't close them is a line with no command on it at all.
+     * Reading it as far as the '[' and carrying on would take a
+     * mistyped name as a command written without one, which is a
+     * different command that works. */
+    auto qualifier = std::string();
+    auto open = cmdstr.find('[');
+    if (open != std::string::npos) {
+        if (cmdstr[cmdstr.size() - 1] != ']') {
+            std::cerr << std::to_string(d) << "\n"
+                      << "  error: '" << cmdstr << "' opens a name in"
+                      << " brackets and never closes it\n"
+                      << "  a command that carries a name ends at the"
+                      << " ']', so everything from the '[' onwards is"
+                      << " part of the command\n";
+            abort();
+        }
+
+        qualifier = cmdstr.substr(open + 1, cmdstr.size() - open - 2);
+        cmdstr = cmdstr.substr(0, open);
+
+        if (qualifier.size() == 0) {
+            std::cerr << std::to_string(d) << "\n"
+                      << "  error: '" << cmdstr << "[]' has nothing"
+                      << " between its brackets\n"
+                      << "  write the name in them, or leave the brackets"
+                      << " off: an empty name is not the same thing as"
+                      << " no name\n";
+            abort();
+        }
+    }
     auto arg = sets_nothing
         ? std::string()
         : std::string(str, split[0].size() + split[1].size() + 2);
 
     try {
         auto cmd = check_command_type(cmdstr);
-        return std::make_shared<command>(cmd, op, arg, d);
+        return std::make_shared<command>(cmd, op, arg, d, qualifier);
     } catch (const char *e) {
         std::cerr << "Unable to parse command: '" << e << "'\n";
         return NULL;
@@ -146,6 +190,7 @@ command::ptr command::consume_extra_arguments(int& i, int argc,
         this->_type,
         this->_op,
         argv[++i],
-        this->_debug_info
+        this->_debug_info,
+        this->_qualifier
     );
 }

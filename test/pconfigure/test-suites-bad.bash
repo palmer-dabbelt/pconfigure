@@ -143,6 +143,122 @@ refuses
 grep -q "the only suite here is 'slow'" out
 
 ##############################################################################
+# Joining a suite nobody declared                                            #
+##############################################################################
+# The same silence arrived at from the other side: a test that joined
+# a suite nobody declared is a test in no suite, and a suite with one
+# fewer test in it is not a thing any report could notice.
+setup
+cat >case/Configfile <<EOF
+LANGUAGES   += c
+LANGUAGES   += bash
+
+TEST_SUITES += network
+
+BINARIES    += suite
+SOURCES     += suite.c
+TESTS       += a.bash
+SOURCES     += a.bash
+TESTS[netwrk] += b.bash
+SOURCES     += b.bash
+EOF
+
+refuses
+grep -q "TESTS names the suite 'netwrk', which is no test suite of this project" out
+grep -q "the only suite here is 'network'" out
+
+# A TESTSRC is a TESTS and then a SOURCES, so it goes through this
+# twice and the brackets are on the line once.  A copy of the check
+# that only saw one of them would either miss this or say it twice.
+setup
+cat >case/Configfile <<EOF
+LANGUAGES   += c
+LANGUAGES   += bash
+
+TEST_SUITES += network
+
+BINARIES    += suite
+SOURCES     += suite.c
+TESTSRC[netwrk] += a.bash
+EOF
+
+refuses
+grep -q "TESTS names the suite 'netwrk'" out
+
+# With no suites at all there is no list to print, and the thing the
+# project is missing is the declaration rather than a better spelling.
+setup
+cat >case/Configfile <<EOF
+LANGUAGES   += c
+LANGUAGES   += bash
+
+BINARIES    += suite
+SOURCES     += suite.c
+TESTSRC[network] += a.bash
+EOF
+
+refuses
+grep -q "this project declares no test suites at all" out
+
+##############################################################################
+# Brackets where they mean nothing                                           #
+##############################################################################
+# What the brackets say is which suite a test joins, so a line that
+# doesn't write a test has nowhere to put one.  Reading them as
+# decoration would make this a BINARIES that builds "suite" and looks
+# like it built something else.
+setup
+cat >case/Configfile <<EOF
+LANGUAGES   += c
+LANGUAGES   += bash
+
+TEST_SUITES += network
+
+BINARIES[network] += suite
+SOURCES     += suite.c
+EOF
+
+refuses
+grep -q "BINARIES takes no name in brackets" out
+grep -q "only TESTS and TESTSRC take one" out
+
+# The name ends the command, so brackets that never close leave the
+# line with no command on it at all.  Reading as far as the '[' and
+# carrying on would take this as a TESTSRC written without a name,
+# which is a different line that works.
+setup
+cat >case/Configfile <<EOF
+LANGUAGES   += c
+LANGUAGES   += bash
+
+TEST_SUITES += network
+
+BINARIES    += suite
+SOURCES     += suite.c
+TESTSRC[network += a.bash
+EOF
+
+refuses
+grep -q "opens a name in brackets and never closes it" out
+
+# An empty name is not the same thing as no name: one of them is a
+# line that was finished and the other is a line that wasn't.
+setup
+cat >case/Configfile <<EOF
+LANGUAGES   += c
+LANGUAGES   += bash
+
+TEST_SUITES += network
+
+BINARIES    += suite
+SOURCES     += suite.c
+TESTSRC[]   += a.bash
+EOF
+
+refuses
+grep -q "has nothing between its brackets" out
+
+##############################################################################
 # The suites a project is allowed to declare                                 #
 ##############################################################################
 # The negative that keeps all of the above from being checks that
@@ -161,7 +277,7 @@ TEST_SUITES         += quick
 
 BINARIES            += suite
 SOURCES             += suite.c
-TESTSRC             += a.bash
+TESTSRC[quick]      += a.bash
 TESTSRC             += b.bash
 EOF
 

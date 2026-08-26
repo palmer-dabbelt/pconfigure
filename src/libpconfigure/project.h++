@@ -173,12 +173,22 @@ private:
     static void check_target_shape(const context::ptr& ctx,
                                    std::map<std::string, context::ptr>& seen);
 
-    /* Says so when an INCLUDE_TEST_SUITES names a suite this project
+    /* Every test this project runs, by the name of the target that
+     * runs it -- which is what a DEPTESTS resolves to, and what a
+     * suite's rule hangs its tests off.
+     *
+     * A test is a child of the thing it exercises rather than an
+     * output context of its own, so this has to go down and look:
+     * asking only the contexts at the top finds no tests at all. */
+    std::map<std::string, context::ptr> tests(void) const;
+
+    /* Says so when an INCLUDE_TEST_SUITES or a TESTS names a suite
+     * this project
      * never declared.  It's asked here rather than where the line was
-     * read because a suite is allowed to include one that a later
-     * line declares: the suites of a project are a set, and nothing
-     * about them depends on the order the file happens to name them
-     * in. */
+     * read because a suite is allowed to be named by a line above the
+     * one that declares it: the suites of a project are a set, and
+     * nothing about them depends on the order the file happens to
+     * name them in. */
     void check_test_suites(void) const;
 
     /* Says so when the DEPTESTS in this project don't describe an
