@@ -61,6 +61,7 @@ TESTSRC     += define.bash
 TESTSRC     += define2.bash
 TESTSRC     += missing-include.bash
 TESTSRC     += tempdir.bash
+TESTSRC     += replaces-output.bash
 
 BINARIES    += pperlc
 DEPLIBS     += pinclude
