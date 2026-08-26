@@ -242,12 +242,14 @@ language_bash::targets(const context::ptr& ctx) const
 std::vector<makefile::target::ptr> language_bash::dependencies(const std::string& path) const
 {
     std::vector<makefile::target::ptr> out;
+    /* A shell script's # is a comment leader, so nothing but the bare
+     * "#include" that pbashc expands may be read as a directive here. */
     pinclude::list(path,
                    [&](std::string p) {
                        auto t = std::make_shared<makefile::target>(p);
                        out.push_back(t);
                        return 0;
-                   }, true);
+                   }, true, true);
     return out;
 }
 
