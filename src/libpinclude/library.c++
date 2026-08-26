@@ -429,7 +429,17 @@ static void check_line(const std::string& line, const std::string& pp, const std
         return;
     if (line.substr(i, pp.size()) != pp)
         return;
-    if (!isspace(line[i + pp.size()]))
+
+    /* A directive's name ends where an identifier ends, which is not
+     * the same as needing whitespace after it.  The C preprocessor
+     * tokenizes, so a quote or an angle bracket ends the name just as
+     * well as a space does and '#include"a.h"' is a perfectly ordinary
+     * include.  What may not follow is another identifier character:
+     * without that much, '#ifdef' would match as '#if', and
+     * '#include_next' -- a directive in its own right, and not this
+     * one -- would match as '#include'. */
+    auto after = (unsigned char)line[i + pp.size()];
+    if (isalnum(after) || after == '_')
         return;
 
     /* Here we strip the extra whitespace before after the directive before
