@@ -281,6 +281,17 @@ fi
 tmpdir=`mktemp -d -t ptest-wrapper.XXXXXXXXXX`
 trap "rm -rf $tmpdir" EXIT
 
+# A test that builds anything runs a make of its own, and it must not
+# inherit this one's flags.  make puts them in the environment of every
+# recipe it runs, so a "make -B" out here arrives in there as an order
+# to rebuild everything -- which is the one thing the tests that check
+# what gets rebuilt are looking at, and they fail for a reason that has
+# nothing to do with what they test.  "-n" and "-k" are no better.
+# Nothing about the outer make's command line means anything to a test.
+unset MAKEFLAGS
+unset MFLAGS
+unset MAKELEVEL
+
 export PTEST_BINARY="$bin"
 export PTEST_SRCDIR="$srcdir"
 export PTEST_CHECKDIR="$checkdir"
