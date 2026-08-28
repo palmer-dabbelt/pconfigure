@@ -255,7 +255,11 @@ int list_overwrite_defines(std::string filename,
         return true;
     };
 
-    int lineno = 1;
+    /* Counted up as a line is read rather than after it has been
+     * dealt with, so the count starts one behind what it names: the
+     * first line of a file is line 1, and the counter has to have
+     * reached it by the time anything is said about that line. */
+    int lineno = 0;
     int comment = 0;
     while (next_logical_line(file, line, comment, lineno)) {
         check_line(line, "if", [&](std::string rest) {
