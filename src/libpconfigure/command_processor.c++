@@ -28,7 +28,6 @@
 #include <pinclude.h++>
 #include <cctype>
 #include <iostream>
-#include <strings.h>
 
 command_processor::command_processor(const std::string& base,
                                      const context::ptr& defaults)
@@ -1498,22 +1497,95 @@ void command_processor::process_directives(const std::string& path)
                                                       directive.line_number,
                                                       directive.line);
 
-            /* A TESTDEPS is the whole of what a test gets to say
-             * about itself for now.  Everything else a Configfile can
-             * write is about a target rather than about one of its
-             * tests, and reading it from in here would land it on
-             * whichever test happened to be open. */
-            auto split = string_utils::split_char(directive.data, " ");
-            if (split.size() == 0)
-                return;
-            if (strcasecmp(split[0].c_str(),
-                           std::to_string(command_type::TESTDEPS).c_str())
-                != 0)
-                return;
+            /* What to say about a TESTDEPS that wasn't written as
+             * one, which is a thing two checks below both find: the
+             * operator has to be there, and it has to be spaced out
+             * from what's on either side of it.  A shell script's own
+             * habits produce neither, since nothing else in a test
+             * file spaces an '=' apart from anything. */
+            auto not_a_command = [&]() {
+                std::cerr << std::to_string(debug) << "\n"
+                          << "  error: this isn't a command\n"
+                          << "  write it as 'TESTDEPS += path', with"
+                          << " the operator and the path spaced apart"
+                          << " from each other and from the command\n";
+                abort();
+            };
 
+            auto split = string_utils::split_char(directive.data, " ");
+            if (split.size() == 0 || split[0].size() == 0) {
+                std::cerr << std::to_string(debug) << "\n"
+                          << "  error: this #pconfigure says nothing\n"
+                          << "  a directive carries a command, and the"
+                          << " only one a test can carry is a"
+                          << " 'TESTDEPS += path' naming something that"
+                          << " has to be built before the test runs\n";
+                abort();
+            }
+
+            /* A name in brackets belongs to the command rather than
+             * to this, so it comes off before working out which
+             * command was written.  What to say about a command that
+             * was handed a name it doesn't take is the same question
+             * here as it is in a Configfile, and it's answered in the
+             * same place. */
+            auto name = split[0];
+            auto open = name.find('[');
+            if (open != std::string::npos)
+                name = name.substr(0, open);
+
+            auto type = [&]() {
+                try {
+                    return check_command_type(name);
+                } catch (...) {
+                    std::cerr << std::to_string(debug) << "\n"
+                              << "  error: '" << name << "' is not a"
+                              << " command\n"
+                              << "  a '#pconfigure' written against the"
+                              << " first column of a shell script is a"
+                              << " directive rather than a comment\n"
+                              << "  put a space after the '#' if this"
+                              << " was meant to be one\n";
+                    abort();
+                }
+            }();
+
+            /* A TESTDEPS is the whole of what a test gets to say
+             * about itself.  Everything else a Configfile can write
+             * is about a target rather than about one of its tests,
+             * so a directive is the wrong place to write it: what it
+             * would land on is whichever test was open when the file
+             * was read, which is this one and none of the others.
+             *
+             * The message names no other command that could go here,
+             * because there isn't one yet.  A directive that says
+             * something else about a test is a directive somebody has
+             * a use for, and it can be let through when it turns
+             * up. */
+            if (type != command_type::TESTDEPS) {
+                std::cerr << std::to_string(debug) << "\n"
+                          << "  error: "
+                          << std::to_string(type)
+                          << " can't be written in a #pconfigure\n"
+                          << "  a TESTDEPS is the whole of what a test"
+                          << " gets to say about itself here: what has"
+                          << " to be built before it runs\n"
+                          << "  everything else goes in the Configfile,"
+                          << " under the target it's about\n";
+                abort();
+            }
+
+            if (split.size() < 3)
+                not_a_command();
+
+            /* Nothing above got this far without the command being a
+             * TESTDEPS written with an operator and a value, which is
+             * everything the parser could turn its nose up at -- so
+             * this is here to keep a parser that grows a new opinion
+             * from being answered with a null dereference. */
             auto cmd = command::parse(directive.data, debug);
             if (cmd == NULL)
-                return;
+                not_a_command();
 
             process(cmd);
         }
