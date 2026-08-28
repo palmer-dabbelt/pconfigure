@@ -209,6 +209,7 @@ TESTSRC     += compiler-linker.bash
 TESTSRC     += osx-nonmacho-sign.bash
 TESTSRC     += testdeps.bash
 TESTSRC     += testdeps-outside.bash
+TESTSRC     += testdeps-directive.bash
 TESTSRC     += deptests.bash
 TESTSRC     += deptests-bad.bash
 TESTSRC     += test-suites.bash

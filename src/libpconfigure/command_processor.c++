@@ -24,8 +24,11 @@
 #include "languages/gen_proc.h++"
 #include "languages/implicit_h.h++"
 #include "languages/phony.h++"
+#include "string_utils.h++"
+#include <pinclude.h++>
 #include <cctype>
 #include <iostream>
+#include <strings.h>
 
 command_processor::command_processor(const std::string& base,
                                      const context::ptr& defaults)
@@ -793,6 +796,15 @@ void command_processor::process_one(const command::ptr& cmd)
                 " in between -- a SRCDIR or a LIBDIR -- closed that"
                 " target first");
 
+        /* A test source gets read for what it has to say about
+         * itself, which is where a test's own dependencies are
+         * written.  This is done here rather than after the push
+         * because what it says lands on the test: a SOURCE is a copy
+         * of the test's context that nothing ever asks for a check
+         * target. */
+        if (_stack.top()->check_type({context_type::TEST}) == true)
+            process_directives(_stack.top()->src_dir + "/" + cmd->data());
+
         dup_tos_and_push(context_type::SOURCE, cmd);
 
         set_opts_target(_stack.top());
@@ -1461,6 +1473,51 @@ context::ptr command_processor::enclosing_test(void) const
     }
 
     return NULL;
+}
+
+void command_processor::process_directives(const std::string& path)
+{
+    pinclude::list(
+        path,
+        [](std::string) { return 0; },
+        true,
+
+        /* The strict reading of what counts as a directive: a '#' in
+         * the first column with the word written against it.  A
+         * "#pconfigure" is a line pconfigure reads rather than one
+         * the compiler does, and that spelling is the one that means
+         * the same thing whatever the test is written in -- it's what
+         * a shell script has to use, since a '#' anywhere else on a
+         * line of shell is a comment, and it's the only way a C file
+         * could write one that its own compiler wouldn't choke on
+         * first. */
+        true,
+
+        [&](const pinclude::directive& directive) {
+            auto debug = std::make_shared<debug_info>(directive.filename,
+                                                      directive.line_number,
+                                                      directive.line);
+
+            /* A TESTDEPS is the whole of what a test gets to say
+             * about itself for now.  Everything else a Configfile can
+             * write is about a target rather than about one of its
+             * tests, and reading it from in here would land it on
+             * whichever test happened to be open. */
+            auto split = string_utils::split_char(directive.data, " ");
+            if (split.size() == 0)
+                return;
+            if (strcasecmp(split[0].c_str(),
+                           std::to_string(command_type::TESTDEPS).c_str())
+                != 0)
+                return;
+
+            auto cmd = command::parse(directive.data, debug);
+            if (cmd == NULL)
+                return;
+
+            process(cmd);
+        }
+    );
 }
 
 void command_processor::dup_tos_and_push(const context_type& type,
