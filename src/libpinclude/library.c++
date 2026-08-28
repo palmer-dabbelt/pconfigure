@@ -30,7 +30,8 @@ int pinclude::list(std::string filename,
                    std::vector<std::string> defines,
                    std::function<int(std::string)> callback,
                    bool skip_missing_files,
-                   bool bare_directives)
+                   bool bare_directives,
+                   pinclude::directive_callback on_directive)
 {
     std::unordered_set<std::string> define_set;
     for (const auto& define: defines)
@@ -41,7 +42,8 @@ int pinclude::list(std::string filename,
                 define_set,
                 callback,
                 skip_missing_files,
-                bare_directives);
+                bare_directives,
+                on_directive);
 }
 
 enum class state {
@@ -113,14 +115,16 @@ int list_overwrite_defines(std::string filename,
                            std::unordered_set<std::string>& defines,
                            std::function<int(std::string)> callback,
                            bool skip_missing_files,
-                           bool bare_directives);
+                           bool bare_directives,
+                           const pinclude::directive_callback& on_directive);
 
 int pinclude::list(std::string filename,
                    std::vector<std::string> include_dirs_without_cwd,
                    std::unordered_set<std::string> defines,
                    std::function<int(std::string)> callback,
                    bool skip_missing_files,
-                   bool bare_directives)
+                   bool bare_directives,
+                   pinclude::directive_callback on_directive)
 {
     return list_overwrite_defines(
         filename,
@@ -128,7 +132,8 @@ int pinclude::list(std::string filename,
         defines,
         callback,
         skip_missing_files,
-        bare_directives
+        bare_directives,
+        on_directive
     );
 }
 
@@ -137,7 +142,8 @@ int list_overwrite_defines(std::string filename,
                            std::unordered_set<std::string>& defines,
                            std::function<int(std::string)> callback,
                            bool skip_missing_files,
-                           bool bare_directives)
+                           bool bare_directives,
+                           const pinclude::directive_callback& on_directive)
 {
     std::ifstream file(filename);
     std::string line;
@@ -336,6 +342,29 @@ int list_overwrite_defines(std::string filename,
             state_stack.pop();
         }, bare_directives);
 
+        /* Read before the #include below, so that the lines of one
+         * file come out in the order they were written in it: an
+         * #include is followed all the way down before the line after
+         * it is looked at, and a directive further up the same file
+         * was written first. */
+        check_line(line, "pconfigure", [&](std::string rest) {
+            if (state_stack.top() != state::OUTPUT)
+                return;
+
+            /* A caller that didn't ask has nowhere to be told, and a
+             * file it was reading for the includes alone is not a
+             * file it has any opinion about the directives in. */
+            if (on_directive == nullptr)
+                return;
+
+            on_directive(pinclude::directive{
+                filename,
+                (size_t)lineno,
+                line,
+                rest
+            });
+        }, bare_directives);
+
         check_line(line, "include", [&](std::string rest) {
             if (state_stack.top() != state::OUTPUT)
                 return;
@@ -383,7 +412,8 @@ int list_overwrite_defines(std::string filename,
                     defines,
                     callback,
                     skip_missing_files,
-                    bare_directives
+                    bare_directives,
+                    on_directive
                 );
                 if (rout != 0) {
                     std::cerr << "Early out no longer supported in pinclude::list\n";
