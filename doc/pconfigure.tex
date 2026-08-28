@@ -1002,6 +1002,12 @@ them.  A \texttt{TESTDEPS} read first is a fatal error rather than a
 path in the project that nothing builds, since which of the two lines
 should move is not something \pconfigure\ can pick for you.
 
+A \texttt{TESTDEPS} can also be written in the test itself, as a
+\texttt{\#pconfigure} directive (see Section~\ref{directive}).  That is
+what to reach for when one test of a target needs something and the
+others don't: written here the line lands on the target, and every
+test underneath reads it.
+
 A \texttt{TESTDEPS} waits for something the \textit{build} makes.  A
 test that has to wait for another \textit{test} --- because what it
 wants is whatever that test left behind rather than anything a rule
@@ -1563,6 +1569,68 @@ ready, so plan accordingly!
 Exactly the same as generate, but runs \texttt{test/\$script}
 instead of running \texttt{\$SRCDIR/\$script}.
 
+\section{Source File Directives \label{directive}}
+
+A source file can say something to \pconfigure\ about itself, on a
+line that begins \texttt{\#pconfigure} and carries a command:
+
+\begin{verbatim}
+#pconfigure TESTDEPS += testexec/mkfs
+\end{verbatim}
+
+This is the same shape as the \texttt{\#include} that \texttt{pbashc}
+expands (see Section~\ref{lang:bash}): a statement about the file it
+is written in, read by whatever is building that file.  It is read out
+of whatever the file includes as well, which is where it belongs once
+several tests share the code that needs the thing --- the helper knows
+what it needs, and a test that pulls the helper in gets the dependency
+along with the code it came for.
+
+\subsection{What can be written in one}
+
+A \texttt{TESTDEPS} (see Section~\ref{cmd:testdeps}), and nothing
+else.  Anything else a \texttt{Configfile} can say is about a target
+rather than about one of its tests, and what a directive would put it
+on is the one test whose source it was read from --- so it is a fatal
+error rather than a line that means something different depending on
+where it was written.
+
+\texttt{\$path} is spelled exactly the way the \texttt{Configfile}
+spells it: from the top of the project, rather than from the test's
+own directory.  Where a project builds a program is not a question
+about which of its tests is doing the asking, so the answer had better
+not depend on where the test happens to live.  Everything
+Section~\ref{cmd:testdeps} says about what a \texttt{TESTDEPS} may
+name holds here too, including that it may not climb out of the
+project.
+
+\subsection{Where one may be written}
+
+In the source of a test --- a file a \texttt{TESTS} or a
+\texttt{TESTSRC} named (see Sections~\ref{cmd:tests}
+and~\ref{cmd:testsrc}), or a file that one of those includes.  Nothing
+else is read for directives: a program's sources are about the
+program, and a \texttt{TESTDEPS} found in one would have to land on
+every test of the target, which is what writing it in the
+\texttt{Configfile} already does.
+
+In practice that means the tests written in \texttt{bash} (see
+Section~\ref{lang:bash}).  The \texttt{\#} has to be in the first
+column with \texttt{pconfigure} written against it, which is the one
+spelling a shell script can use --- a \texttt{\#} anywhere else on a
+line of shell starts a comment --- and it is not a line a C compiler
+would accept at all.
+
+That last point is worth writing down, because it is also how a
+directive gets written by accident.  A note about \pconfigure\ at the
+top of a test, with no space after the \texttt{\#}, is a directive;
+\pconfigure\ says so, and says to put the space in.
+
+A directive is read whether or not \texttt{AUTODEPS} (see
+Section~\ref{cmd:autodeps}) is on.  \texttt{AUTODEPS} turns off the
+dependencies \pconfigure\ works out for itself, and a directive is
+not one of those: it is a line somebody wrote down on purpose.
+
 \section{Supported Languages \label{lang}}
 
 A number of \pconfigure\ specifics are determined
@@ -1585,7 +1653,11 @@ Section~\ref{prog:pnasm} for more information.
 This uses \texttt{pbashc}, a dummy BASH compiler to build BASH code.
 See Section~\ref{prog:pbashc} for more information.  BASH parses
 \texttt{pbashc} \texttt{\#include} directives to discover a list of
-implicit dependencies.
+implicit dependencies.  A test written in BASH is also the one place a
+\texttt{\#pconfigure} directive (see Section~\ref{directive}) can be
+written, since a \texttt{\#} against the first column is a line the
+shell reads as a comment and every other language reads as something
+it does not understand.
 
 \texttt{bash} supports linking against BASH.
 
