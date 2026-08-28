@@ -227,6 +227,18 @@ private:
     void dup_tos_and_push(const context_type& type,
                           const command::ptr& cmd);
 
+    /* Reads the "#pconfigure" lines out of a test's source, and out
+     * of everything that source includes, processing each of them as
+     * though it had been written in the Configfile at the point the
+     * source was named.
+     *
+     * That point is what makes this worth doing: the test is open, so
+     * a line read here lands on the test that carried it rather than
+     * on whatever else happened to be nearby.  A Configfile saying
+     * the same thing has to say it somewhere both the test and the
+     * reader can be got to from, which is somewhere else. */
+    void process_directives(const std::string& path);
+
     /* The test that's open right now, or NULL when none is.  A
      * TESTSRC is a TESTS and then a SOURCES, so the line written
      * directly underneath one has that source sitting between it and
