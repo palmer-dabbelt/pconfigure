@@ -158,6 +158,12 @@ int main(int argc, const char **argv)
             edges[host].push_back(dep);
     }
 
+    /* Before a line of any Makefile is written, so that a build whose
+     * "make check" would reach no test at all stops without leaving a
+     * half-written set of them behind. */
+    for (const auto& project: projects)
+        project->check_default_test_suite(project::flatten(project));
+
     for (const auto& project: projects)
         project->write_makefile(edges[project->base()],
                                 project::flatten(project),

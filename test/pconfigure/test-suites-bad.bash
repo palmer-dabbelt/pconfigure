@@ -224,6 +224,165 @@ grep -q "DEFAULT_TEST_SUITE names 'quik', which is no test suite of this project
 grep -q "leave the line out entirely" out
 
 ##############################################################################
+# Making a suite with nothing in it the default                              #
+##############################################################################
+# The same symptom, reached with the name spelled right.  A suite
+# nobody joined is a fine thing to declare -- the name is a promise
+# about what "make check-$name" means, and an empty one keeps it by
+# running nothing -- but "make check" is not a promise anybody made,
+# and nothing coming back from the two words everybody types reads as
+# the tests having passed.
+setup
+cat >case/Configfile <<EOF
+LANGUAGES          += c
+LANGUAGES          += bash
+
+TEST_SUITES        += quick
+
+TEST_SUITES        += gpu
+
+DEFAULT_TEST_SUITE  = gpu
+
+BINARIES           += suite
+SOURCES            += suite.c
+TESTSRC[quick]     += a.bash
+EOF
+
+refuses
+grep -q "DEFAULT_TEST_SUITE names 'gpu', which no test of this build is in" out
+grep -q "run no tests at all and report that they all passed" out
+grep -q "the only suite here with tests in it is 'quick'" out
+
+# Where the tests did go is the useful thing to say, so every suite
+# that has any gets named and the empty ones stay out of the list --
+# including the one that was asked about.
+setup
+cat >case/Configfile <<EOF
+LANGUAGES          += c
+LANGUAGES          += bash
+
+TEST_SUITES        += quick
+TEST_SUITES        += slow
+
+TEST_SUITES        += gpu
+
+DEFAULT_TEST_SUITE  = gpu
+
+BINARIES           += suite
+SOURCES            += suite.c
+TESTSRC[quick]     += a.bash
+TESTSRC[slow]      += b.bash
+EOF
+
+refuses
+grep -q "the suites here with tests in them are: 'quick' 'slow'" out
+
+# A project with no tests at all has no list to print, and what it is
+# short of is a test rather than a better name.
+setup
+cat >case/Configfile <<EOF
+LANGUAGES          += c
+LANGUAGES          += bash
+
+TEST_SUITES        += gpu
+
+DEFAULT_TEST_SUITE  = gpu
+
+BINARIES           += suite
+SOURCES            += suite.c
+EOF
+
+refuses
+grep -q "no suite of this build has a test in it" out
+
+##############################################################################
+# The empty suites a project is allowed to have                              #
+##############################################################################
+# The negative that keeps the three above from being checks that
+# refuse everything.  A suite nobody joined is only a problem when it
+# is the one "make check" means, so one that isn't is left alone.
+setup
+cat >case/Configfile <<EOF
+LANGUAGES          += c
+LANGUAGES          += bash
+
+TEST_SUITES        += quick
+
+TEST_SUITES        += gpu
+
+BINARIES           += suite
+SOURCES            += suite.c
+TESTSRC[quick]     += a.bash
+EOF
+
+(cd case && $PTEST_BINARY $PCONFIGURE_ARGS)
+test -e case/Makefile
+
+# A default suite that only has tests because of what it includes has
+# tests: what make runs is the whole expanded set, so that is the set
+# worth counting.
+setup
+cat >case/Configfile <<EOF
+LANGUAGES           += c
+LANGUAGES           += bash
+
+TEST_SUITES         += quick
+
+TEST_SUITES         += everything
+INCLUDE_TEST_SUITES += quick
+
+DEFAULT_TEST_SUITE   = everything
+
+BINARIES            += suite
+SOURCES             += suite.c
+TESTSRC[quick]      += a.bash
+EOF
+
+(cd case && $PTEST_BINARY $PCONFIGURE_ARGS)
+test -e case/Makefile
+
+# A suite that is empty here and full one directory down is a suite
+# make has plenty to run: two projects that declare a suite of one
+# name have one suite, because there is one rule with that name.
+# Asking this project about its own tests alone would refuse a build
+# whose "make check" runs every test the suite has.
+setup
+mkdir -p case/sub/src case/sub/test/inner
+cat >case/Configfile <<EOF
+LANGUAGES          += c
+LANGUAGES          += bash
+
+SUBPROJECTS        += sub
+
+TEST_SUITES        += quick
+
+DEFAULT_TEST_SUITE  = quick
+
+BINARIES           += suite
+SOURCES            += suite.c
+EOF
+
+cat >case/sub/Configfile <<EOF
+LANGUAGES          += c
+LANGUAGES          += bash
+
+TEST_SUITES        += quick
+
+BINARIES           += inner
+SOURCES            += inner.c
+TESTSRC[quick]     += inner-a.bash
+EOF
+
+cat >case/sub/src/inner.c <<EOF
+int main(void) { return 0; }
+EOF
+
+echo true > case/sub/test/inner/inner-a.bash
+
+(cd case && $PTEST_BINARY $PCONFIGURE_ARGS)
+test -e case/Makefile
+
+##############################################################################
 # Brackets where they mean nothing                                           #
 ##############################################################################
 # What the brackets say is which suite a test joins, so a line that

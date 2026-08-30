@@ -130,6 +130,12 @@ public:
      * itself. */
     std::set<std::string> reachable(void) const;
 
+    /* Complains if this project's "make check" would run no tests at
+     * all.  "aggregated" is the same list write_makefile gets, and for
+     * the same reason: the tests a suite runs here are the tests every
+     * project this Makefile is responsible for put into it. */
+    void check_default_test_suite(const std::vector<ptr>& aggregated) const;
+
 public:
     /* A project and everything below it, parents before children. */
     static std::vector<ptr> flatten(const ptr& root);
