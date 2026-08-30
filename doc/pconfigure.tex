@@ -1119,7 +1119,9 @@ back to it rather than declaring a second one, the same way a second
 
 A suite that nothing joined is not an error: the name is a promise
 about what \texttt{make check-\$name} means, and an empty suite keeps
-it by running nothing.
+it by running nothing.  Making that suite the one \texttt{make check}
+means is an error, though, and Section~\ref{cmd:default_test_suite}
+says why.
 
 \subsubsection{Which tests are in a suite}
 
@@ -1225,6 +1227,18 @@ Naming a suite the project never declared is a fatal error, and this
 is the one of the three where it has a symptom worth naming: a
 \texttt{make check} that runs no tests at all and says they all
 passed.
+
+Naming a suite that is declared and has no tests in it is a fatal
+error for the same reason, since it is the same \texttt{make check}.
+An empty suite is otherwise fine (see
+Section~\ref{cmd:test_suites}) --- \texttt{make check-\$name} was
+asked for by name, and running nothing is what the name was promised
+to mean.  Nobody asks for \texttt{make check} by name, so nothing
+coming back from it is read as the tests having passed rather than as
+there being none.  What counts as having tests is every test the rule
+would run, which includes the ones an
+\texttt{INCLUDE\_TEST\_SUITES} brought in and the ones a subproject
+put in a suite of the same name.
 
 \subsection{\texttt{AUTODEPS = bool} \label{cmd:autodeps}}
 
