@@ -467,6 +467,86 @@ void project::check_test_suites(void) const
     }
 }
 
+/* The suites of a build that have tests in them, said the way a
+ * complaint about one that hasn't wants to say it.  Which suites
+ * exist isn't the question here -- the name in hand is one of them --
+ * so what's worth printing is which of them would have run
+ * something. */
+static void print_populated_suites(
+    const std::map<std::string, size_t>& members)
+{
+    auto populated = std::vector<std::string>();
+    for (const auto& pair: members)
+        if (pair.second > 0)
+            populated.push_back(pair.first);
+
+    if (populated.size() == 0) {
+        std::cerr << "  no suite of this build has a test in it: a"
+                  << " TESTS[$name] or TESTSRC[$name] line is what puts"
+                  << " one there\n";
+        return;
+    }
+
+    if (populated.size() == 1) {
+        std::cerr << "  the only suite here with tests in it is '"
+                  << populated[0] << "'\n";
+        return;
+    }
+
+    std::cerr << "  the suites here with tests in them are:";
+    for (const auto& name: populated)
+        std::cerr << " '" << name << "'";
+    std::cerr << "\n";
+}
+
+void project::check_default_test_suite(const std::vector<ptr>& aggregated) const
+{
+    const auto& fallback = _processor->default_test_suite();
+    if (fallback.size() == 0)
+        return;
+
+    /* How many tests each suite of this build runs, counted across
+     * every project whose results this one's Makefile is responsible
+     * for.  A suite that is empty here can still be full a directory
+     * down -- two projects that declare a suite of one name have one
+     * suite once there is one rule to run it -- so asking this
+     * project on its own would refuse a build that runs plenty. */
+    auto members = std::map<std::string, size_t>();
+    for (const auto& project: aggregated)
+        for (const auto& suite: project->test_suite_members())
+            members[suite.first] += suite.second.size();
+
+    if (members[fallback] > 0)
+        return;
+
+    /* A suite nothing joined is a perfectly good thing to declare:
+     * the name is a promise about what "make check-$name" means, and
+     * an empty one keeps it by running nothing.  Being the suite that
+     * "make check" means is the one place that stops being true,
+     * because the two words nobody has to be told to type stop
+     * reaching any test the project has and start reporting that
+     * every one of them passed.
+     *
+     * That symptom is why a DEFAULT_TEST_SUITE naming a suite this
+     * project never declared is fatal.  Spelling the name right is no
+     * comfort to whoever reads the green report, so it is fatal
+     * here too. */
+    std::cerr << std::to_string(_processor->default_test_suite_cmd()->debug())
+              << "\n"
+              << "  error: DEFAULT_TEST_SUITE names '" << fallback
+              << "', which no test of this build is in\n"
+              << "  \"make check\" would run no tests at all and report"
+              << " that they all passed\n"
+              << "  put a test in it with TESTS[" << fallback
+              << "] or TESTSRC[" << fallback
+              << "], or name a suite that already has one\n"
+              << "  leave the line out entirely for a \"make check\""
+              << " that runs every test\n";
+
+    print_populated_suites(members);
+    abort();
+}
+
 void project::check_autodeps(void) const
 {
     /* Everything one AUTODEPS reached, gathered under the line that
