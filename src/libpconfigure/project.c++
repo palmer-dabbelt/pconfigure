@@ -178,6 +178,31 @@ std::vector<project::ptr> project::flatten(const ptr& root)
 
 void project::generate_targets(void)
 {
+    /* Which directories this project actually puts a library in.
+     * That's a set rather than a single answer because a LIBDIR
+     * means one project can have more than one of them, and a target
+     * written above that line has nothing to do with what came out
+     * below it. */
+    auto lib_dirs = std::set<std::string>();
+    for (const auto& context: _processor->output_contexts())
+        if (context->check_type({context_type::LIBRARY}) == true)
+            lib_dirs.insert(context->lib_dir);
+
+    /* Every context gets told, not just the ones a Configfile named
+     * outright: a test is built like a binary, by a context that
+     * hangs off the target it tests, and it gets linked the same way
+     * everything else does. */
+    std::function<void(const context::ptr&)> mark =
+        [&](const context::ptr& ctx)
+        {
+            ctx->lib_dir_built = lib_dirs.find(ctx->lib_dir) != lib_dirs.end();
+            for (const auto& child: ctx->children)
+                mark(child);
+        };
+
+    for (const auto& context: _processor->output_contexts())
+        mark(context);
+
     /* A vendored tree's rules belong to this project: the tree
      * already has a Makefile and it's the tree's own, so there's
      * nowhere else for them to go. */
