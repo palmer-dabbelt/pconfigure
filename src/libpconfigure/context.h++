@@ -223,6 +223,21 @@ public:
     /* The children of this context. */
     std::vector<ptr> children;
 
+    /***************************************************************
+     * Filled in after project::generate_targets                   *
+     ***************************************************************/
+
+    /* TRUE when something this project builds actually lands in
+     * lib_dir.
+     *
+     * No context can work this out on its own: the one being linked
+     * knows where a library would go, but not whether the project
+     * ever asked for one, and that question isn't answered until the
+     * last Configfile line has been read.  The project fills this in
+     * for every context it knows about, and a link line reads it to
+     * decide whether the directory is worth searching. */
+    bool lib_dir_built;
+
 public:
     /* Creates a new context with everything filled in to the default
      * values.  Note that you probably don't want to use this unless
@@ -272,7 +287,8 @@ public:
             const debug_info::ptr& autodeps_debug,
             const std::string& phc,
             const std::string& entitlements,
-            const std::vector<ptr>& children);
+            const std::vector<ptr>& children,
+            bool lib_dir_built);
 
     virtual ~context(void) {}
 
