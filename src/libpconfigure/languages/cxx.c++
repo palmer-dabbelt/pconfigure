@@ -853,11 +853,20 @@ language_cxx::link_objects(const context::ptr& ctx,
         });
     };
 
+    /* The lib directory is only worth searching when something in
+     * this project builds a library into it.  A project that builds
+     * none never creates the directory, and a linker handed a "-L"
+     * naming one that isn't there warns about it -- a warning about a
+     * directory pconfigure invented, which leaves whoever reads it
+     * with nothing to go fix. */
+    auto lib_dir_opts = ctx->lib_dir_built
+        ? std::vector<std::string>{"-L" + ctx->lib_dir}
+        : std::vector<std::string>();
+
     auto all_opts = dedup_link_opts(
         reroot_link_opts(link_opts() + ctx->link_opts, ctx->base) +
-        std::vector<std::string>{
-            "-L" + ctx->lib_dir,
-        } + vector_util::map(ctx->dep_libs, [](std::string dl){ return "-l" + dl; }));
+        lib_dir_opts +
+        vector_util::map(ctx->dep_libs, [](std::string dl){ return "-l" + dl; }));
 
     /* Note that there's deliberately nothing here that turns a
      * DEPLIB into a prerequisite: the "-l" it adds to the link line

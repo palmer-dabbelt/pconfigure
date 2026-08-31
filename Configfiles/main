@@ -188,6 +188,7 @@ TESTSRC     += putil.bash
 TESTSRC     += cxx14.bash
 TESTSRC     += swig.bash
 TESTSRC     += libdir.bash
+TESTSRC     += unused-libdir.bash
 TESTSRC     += srcdir.bash
 TESTSRC     += cflags.bash
 TESTSRC     += testexec.bash
