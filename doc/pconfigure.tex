@@ -1423,6 +1423,13 @@ information.
 Sets the \texttt{LIBDIR} variable to \texttt{\$val}.  By default it is
 set to \texttt{lib}.
 
+A target is linked with its \texttt{LIBDIR} on the library search
+path, which is how a \texttt{DEPLIBS} finds a library this build
+produced without anybody having to say where it came out.  A
+\texttt{LIBDIR} that nothing in the project builds into is left off:
+the directory is never created, and a linker asked to search one that
+isn't there warns about it.
+
 \subsection{\texttt{HDRDIR = \$val}}
 
 Sets the \texttt{HDRDIR} variable to \texttt{\$val}.  By default it is
