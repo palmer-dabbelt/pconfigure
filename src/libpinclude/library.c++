@@ -71,9 +71,25 @@ public:
     const T& data(void) const { return _data; }
 };
 
+/* A heredoc whose body has started arriving and whose end hasn't. */
+struct heredoc {
+    /* The word that ends it: a heredoc ends at a line that says
+     * exactly this and nothing else. */
+    std::string delim;
+
+    /* Whether that line is allowed to be indented with tabs, which is
+     * what a "<<-" asks for. */
+    bool strip_tabs;
+};
+
+static void open_heredocs(const std::string& line,
+                          std::vector<heredoc>& open);
+
+static bool closes_heredoc(const std::string& line, const heredoc& open);
+
 static void check_line(
     const std::string& line,
-    const std::string& pp, 
+    const std::string& pp,
     const std::function<void(std::string)> on_match,
     bool bare_directives
 );
@@ -267,7 +283,29 @@ int list_overwrite_defines(std::string filename,
      * reached it by the time anything is said about that line. */
     int lineno = 0;
     int comment = 0;
+    std::vector<heredoc> heredocs;
     while (next_logical_line(file, line, comment, lineno)) {
+        /* A heredoc's body is text the script writes out rather than
+         * script, so an "#include" in one is a line meant for
+         * whatever compiles the file being written and not a file
+         * this one reads.  Counted as a dependency it makes make
+         * rebuild a script whenever some file it only ever mentions
+         * changes, and it disagrees with pbashc, which leaves the
+         * same line alone.
+         *
+         * Only for a script: heredocs are a thing shells have, and
+         * "bare_directives" is already the question of whether this
+         * is reading one. */
+        if (bare_directives == true) {
+            if (heredocs.empty() == false) {
+                if (closes_heredoc(line, heredocs.front()) == true)
+                    heredocs.erase(heredocs.begin());
+                continue;
+            }
+
+            open_heredocs(line, heredocs);
+        }
+
         check_line(line, "if", [&](std::string rest) {
             auto resolved = resolve_pp_function(rest, defines);
             state_stack.push(resolved ? state::OUTPUT : state::ELSE);
@@ -423,6 +461,143 @@ int list_overwrite_defines(std::string filename,
         }, bare_directives);
     }
     return 0;
+}
+
+/* TRUE for a character that ends a word on a shell command line,
+ * which is where a heredoc's delimiter ends too. */
+static bool ends_shell_word(char c)
+{
+    if (isspace((unsigned char)c))
+        return true;
+
+    switch (c) {
+    case ';':
+    case '&':
+    case '|':
+    case '<':
+    case '>':
+    case '(':
+    case ')':
+        return true;
+    default:
+        return false;
+    }
+}
+
+/* Adds the heredocs a line opens to the ones still waiting for a
+ * body, in the order those bodies arrive.
+ *
+ * What this recognizes is the shape of a redirection and nothing
+ * more, which is the same reading pbashc does -- the two have to
+ * agree about where a body starts and ends, or the file make is told
+ * about is not the file that gets compiled. */
+void open_heredocs(const std::string& line, std::vector<heredoc>& open)
+{
+    char quoted = '\0';
+
+    for (size_t i = 0; i < line.size(); ++i) {
+        /* Quoting is followed so that a "<<" written inside a string
+         * is left alone, which matters because writing a script out
+         * of another script is most of what a heredoc gets used for.
+         * Within the line only: a string that runs across several of
+         * them is followed by nothing here. */
+        if (line[i] == '\\' && quoted != '\'' && i + 1 < line.size()) {
+            ++i;
+            continue;
+        }
+
+        if (quoted != '\0') {
+            if (line[i] == quoted)
+                quoted = '\0';
+            continue;
+        }
+
+        if (line[i] == '\'' || line[i] == '"') {
+            quoted = line[i];
+            continue;
+        }
+
+        /* A '#' that starts a word starts a comment, and what a
+         * comment has to say about redirection is nothing. */
+        if (line[i] == '#'
+            && (i == 0 || isspace((unsigned char)line[i - 1])))
+            return;
+
+        if (line[i] != '<' || i + 1 >= line.size() || line[i + 1] != '<')
+            continue;
+
+        /* A "<<<" is a here-string, which carries its body on the line
+         * it's written on and so never waits for one.  All three
+         * characters get stepped over rather than one: leaving the
+         * second '<' to be looked at again finds a "<<" in what's left
+         * of it, and then reads the here-string's text as a
+         * delimiter. */
+        if (i + 2 < line.size() && line[i + 2] == '<') {
+            i += 2;
+            continue;
+        }
+
+        /* A "<<" with a word character against its left is a shift
+         * rather than a redirection: "$((1<<20))" is arithmetic. */
+        if (i > 0 && (isalnum((unsigned char)line[i - 1])
+                      || line[i - 1] == '_'))
+            continue;
+
+        i += 2;
+
+        /* A "<<-" says the line that ends the heredoc may be indented
+         * with tabs, so that a heredoc can be indented along with the
+         * code around it. */
+        auto strip_tabs = false;
+        if (i < line.size() && line[i] == '-') {
+            strip_tabs = true;
+            ++i;
+        }
+
+        while (i < line.size() && isspace((unsigned char)line[i]))
+            ++i;
+
+        /* Quoting the delimiter asks for a body the shell expands
+         * nothing in, which makes no difference to where that body
+         * ends -- the word inside the quotes is what ends it either
+         * way. */
+        char delim_quote = '\0';
+        if (i < line.size() && (line[i] == '\'' || line[i] == '"')) {
+            delim_quote = line[i];
+            ++i;
+        }
+
+        auto start = i;
+        while (i < line.size()
+               && (delim_quote == '\0'
+                   ? ends_shell_word(line[i]) == false
+                   : line[i] != delim_quote))
+            ++i;
+
+        /* A "<<" with nothing after it isn't a script the shell would
+         * run either, so there's nothing here to be right about. */
+        if (i == start)
+            continue;
+
+        open.push_back(heredoc{line.substr(start, i - start), strip_tabs});
+    }
+}
+
+bool closes_heredoc(const std::string& line, const heredoc& open)
+{
+    size_t begin = 0;
+
+    /* A "<<-" strips the leading tabs from every line of the body,
+     * and the line that ends it is one of those. */
+    if (open.strip_tabs == true)
+        while (begin < line.size() && line[begin] == '\t')
+            ++begin;
+
+    auto end = line.size();
+    while (end > begin && (line[end - 1] == '\r' || line[end - 1] == '\n'))
+        --end;
+
+    return line.compare(begin, end - begin, open.delim) == 0;
 }
 
 static void check_line(const std::string& line, const std::string& pp, const std::function<void(std::string)> on_match, bool bare_directives)
