@@ -136,6 +136,14 @@ public:
      * project this Makefile is responsible for put into it. */
     void check_default_test_suite(const std::vector<ptr>& aggregated) const;
 
+    /* Complains if the Makefile this project is about to write over
+     * is one that a project above it includes.  That means pconfigure
+     * was run inside a subproject, and the Makefile it would leave
+     * there is one that only works from there -- which is a thing
+     * nothing else would notice until the parent's build started
+     * going into the wrong directories. */
+    void check_makefile_shape(void) const;
+
 public:
     /* A project and everything below it, parents before children. */
     static std::vector<ptr> flatten(const ptr& root);

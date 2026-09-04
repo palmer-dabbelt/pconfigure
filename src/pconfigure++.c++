@@ -158,6 +158,13 @@ int main(int argc, const char **argv)
             edges[host].push_back(dep);
     }
 
+    /* Before anything is said about what these projects build, since
+     * a tree that shouldn't be configured from where this is standing
+     * is not a tree whose contents are worth having an opinion
+     * about. */
+    for (const auto& project: projects)
+        project->check_makefile_shape();
+
     /* Before a line of any Makefile is written, so that a build whose
      * "make check" would reach no test at all stops without leaving a
      * half-written set of them behind. */
