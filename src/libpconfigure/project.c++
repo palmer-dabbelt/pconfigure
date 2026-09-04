@@ -572,6 +572,79 @@ void project::check_default_test_suite(const std::vector<ptr>& aggregated) const
     abort();
 }
 
+void project::check_makefile_shape(void) const
+{
+    /* Only the project make would be run in has no directory of its
+     * own, and so only that one writes a Makefile whose paths are
+     * spelled bare.  Every other project in a run is a subproject and
+     * is busy writing exactly the file this complains about finding,
+     * which is the right thing for it to be doing. */
+    if (_base.size() > 0)
+        return;
+
+    auto file = fopen(makefile_path().c_str(), "r");
+    if (file == NULL)
+        return;
+
+    auto lines = file_utils::readlines(file);
+    fclose(file);
+
+    /* Spelled through the same function that builds the name, so the
+     * two can't drift apart: a project with no directory has nothing
+     * to put on the end, which leaves the part every one of them
+     * starts with. */
+    const auto marker = prefix_variable("");
+    const auto assign = std::string(" ?=");
+
+    auto variable = std::string();
+    for (const auto& read: lines) {
+        auto line = read;
+        while (line.size() > 0
+               && isspace((unsigned char)line[line.size() - 1]) != 0)
+            line.pop_back();
+
+        if (line.compare(0, marker.size(), marker) != 0)
+            continue;
+
+        /* The one declared with nothing after it is the project's own,
+         * which is what makes building it where it sits the default.
+         * The lines that say where some other project is have that
+         * project's directory on the end, and those turn up in every
+         * Makefile pconfigure writes -- including the ones there is
+         * nothing wrong with. */
+        if (line.size() <= marker.size() + assign.size())
+            continue;
+        if (line.compare(line.size() - assign.size(),
+                         assign.size(), assign) != 0)
+            continue;
+
+        variable = line.substr(0, line.size() - assign.size());
+        break;
+    }
+
+    if (variable.size() == 0)
+        return;
+
+    /* There is no writing the right file from here.  What the paths
+     * in a subproject's Makefile have to be prefixed with is the
+     * directory it sits in as the parent sees it, and standing in the
+     * subproject that directory is not a thing anything knows -- the
+     * name in the file that's already here says what the parent calls
+     * it, and the name is not something a directory can be recovered
+     * from. */
+    std::cerr << "'" << makefile_path() << "' was written to be included by"
+              << " the project above this one\n"
+              << "  the '" << variable << " ?=' at the top of it is what a"
+              << " parent sets to say where this project is, and every path"
+              << " in the file is written through it\n"
+              << "  configuring from in here would write those paths bare,"
+              << " and the parent that includes the file would build this"
+              << " project into its own directories\n"
+              << "  run pconfigure at the top of the tree instead, or delete"
+              << " this Makefile first if nothing includes it any more\n";
+    abort();
+}
+
 void project::check_autodeps(void) const
 {
     /* Everything one AUTODEPS reached, gathered under the line that
