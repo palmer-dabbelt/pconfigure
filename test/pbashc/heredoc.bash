@@ -145,4 +145,54 @@ cat after.out.bash
 grep -q '^#include "does_not_exist.h"$' after.out.bash
 grep -q '^echo included$' after.out.bash
 
+##############################################################################
+# A heredoc that never ends                                                  #
+##############################################################################
+# Deciding a "<<" opens a heredoc when it doesn't is the same silent
+# failure the other way round: everything after it becomes a body, and
+# every include down there stops being expanded.  Nothing pbashc can
+# read tells the two "<<" apart in every case, so what settles it is
+# the delimiter never turning up.
+printf 'cat >x <<EOF\n#include "beside.bash"\necho tail\n' > runaway.bash
+
+if $PTEST_BINARY -i runaway.bash -o runaway.out.bash > runaway.out 2>&1
+then
+    exit 1
+fi
+cat runaway.out
+
+# The line that stopped being a directive, because that's the line
+# whose meaning changed and the one worth going to look at.
+grep -q '^runaway\.bash:2: ' runaway.out
+grep -q '#include "beside.bash"' runaway.out
+
+# The heredoc that took it, and what would have ended that heredoc.
+# "line 1" and "EOF" are the two halves of going and fixing it.
+grep -q 'line 1' runaway.out
+grep -q "no 'EOF' after it" runaway.out
+
+# And both ways out, since one of them is "that was never a heredoc"
+# and no amount of staring at the heredoc leads there.
+grep -q 'end the heredoc' runaway.out
+grep -q "write the '<<' some other way" runaway.out
+
+# Nothing left behind, for the same reason a failed include leaves
+# nothing behind: a half-written output with a fresh mtime is one make
+# never builds again.
+test ! -e runaway.out.bash
+
+##############################################################################
+# ... with nothing in it worth saying so about                               #
+##############################################################################
+# A body of plain text came out as plain text, which is what it was
+# going to be either way.  Complaining here would mean a script that
+# shifts an integer and never mentions an include could no longer be
+# compiled at all, which is a worse bug than the one being guarded
+# against.
+printf 'echo $((a << b))\necho only text\n' > quiet.bash
+
+$PTEST_BINARY -i quiet.bash -o quiet.out.bash
+cat quiet.out.bash
+grep -q '^echo only text$' quiet.out.bash
+
 exit 0

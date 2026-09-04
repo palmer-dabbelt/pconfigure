@@ -60,15 +60,30 @@ struct heredoc {
     /* Whether that line is allowed to be indented with tabs, which is
      * what a "<<-" asks for. */
     bool strip_tabs;
+
+    /* The line the "<<" was written on, so that a heredoc which turns
+     * out never to end can be pointed at. */
+    size_t lineno;
+
+    /* The first line of the body that would have been a directive
+     * somewhere else, and where it was.  This is what says whether
+     * reading these lines as text changed anything: a body of nothing
+     * but text is a body that came out the same either way.  NULL
+     * until one turns up. */
+    char *swallowed;
+    size_t swallowed_lineno;
 };
 
 static void str_chomp(char *str);
 
 static int streqcmp(const char *str, const char *eq);
 
-static void open_heredocs(const char *line, struct heredoc *open, int *count);
+static void open_heredocs(const char *line, size_t lineno,
+                          struct heredoc *open, int *count);
 
 static bool closes_heredoc(const char *line, const struct heredoc *open);
+
+static bool reads_as_directive(const char *line);
 
 static int _pinclude_lines(const char *input,
                            pinclude_callback_t per_include,
@@ -132,10 +147,23 @@ static int _pinclude_lines(const char *input,
         }
 
         if (in_heredoc == true) {
+            /* What this heredoc has to answer for if it turns out
+             * never to end.  Only the first one is kept: a heredoc
+             * that ate the whole rest of the file has as many of
+             * these as the file had left, and naming one of them is
+             * what points at where things went wrong. */
+            if (heredocs[0].swallowed == NULL
+                && reads_as_directive(buffer) == true) {
+                heredocs[0].swallowed = strdup(buffer);
+                str_chomp(heredocs[0].swallowed);
+                heredocs[0].swallowed_lineno = lineno;
+            }
+
             if (closes_heredoc(buffer, &heredocs[0]) == true) {
                 int h;
 
                 free(heredocs[0].delim);
+                free(heredocs[0].swallowed);
                 for (h = 1; h < heredocs_open; h++)
                     heredocs[h - 1] = heredocs[h];
                 heredocs_open--;
@@ -225,7 +253,7 @@ static int _pinclude_lines(const char *input,
          * the body of.  Asked after the line has been let through the
          * #ifdef state above, since a heredoc written in a branch
          * that isn't taken is one whose body never arrives. */
-        open_heredocs(buffer, heredocs, &heredocs_open);
+        open_heredocs(buffer, lineno, heredocs, &heredocs_open);
 
         /* Here's a hack: treat <> includes just like "" includes.
          *
@@ -444,8 +472,41 @@ static int _pinclude_lines(const char *input,
         }
     }
 
-    for (i = 0; i < (size_t)heredocs_open; i++)
+    /* A heredoc that nothing ever ended has taken the rest of the
+     * file for its body, and every directive down there has quietly
+     * stopped being one.  That is exactly the failure this whole
+     * business exists to avoid, arrived at from the other side, so it
+     * has to stop rather than hand back a file with the includes
+     * missing from it.
+     *
+     * A body of nothing but text is left alone.  Reading it as text
+     * is what it was going to get either way, so there is nothing
+     * here that came out differently and nothing to complain about --
+     * which matters, because the "<<" that opens a heredoc is not
+     * always distinguishable from the one that shifts. */
+    if (heredocs_open > 0 && heredocs[0].swallowed != NULL) {
+        fprintf(stderr, "%s:%zu: '%s' was read as the body of a heredoc\n",
+                input, heredocs[0].swallowed_lineno, heredocs[0].swallowed);
+        fprintf(stderr, "  the '<<' on line %zu has no '%s' after it, so"
+                " everything below it is that heredoc's body\n",
+                heredocs[0].lineno, heredocs[0].delim);
+        fprintf(stderr, "  end the heredoc, or write the '<<' some other"
+                " way if it was never the start of one\n");
+
+        for (i = 0; i < (size_t)heredocs_open; i++) {
+            free(heredocs[i].delim);
+            free(heredocs[i].swallowed);
+        }
+
+        fclose(infile);
+
+        return -1;
+    }
+
+    for (i = 0; i < (size_t)heredocs_open; i++) {
         free(heredocs[i].delim);
+        free(heredocs[i].swallowed);
+    }
 
     fclose(infile);
 
@@ -516,7 +577,8 @@ static bool ends_shell_word(char c)
     }
 }
 
-void open_heredocs(const char *line, struct heredoc *open, int *count)
+void open_heredocs(const char *line, size_t lineno,
+                   struct heredoc *open, int *count)
 {
     size_t i;
     char quoted;
@@ -622,6 +684,9 @@ void open_heredocs(const char *line, struct heredoc *open, int *count)
 
         open[*count].delim = strndup(line + start, i - start);
         open[*count].strip_tabs = strip_tabs;
+        open[*count].lineno = lineno;
+        open[*count].swallowed = NULL;
+        open[*count].swallowed_lineno = 0;
         (*count)++;
     }
 }
@@ -648,6 +713,34 @@ bool closes_heredoc(const char *line, const struct heredoc *open)
         i++;
 
     return line[i] == '\0';
+}
+
+bool reads_as_directive(const char *line)
+{
+    static const char *const directives[] = {
+        "#include", "#ifdef", "#ifndef", "#if", "#else", "#endif", NULL
+    };
+    size_t i;
+
+    for (i = 0; directives[i] != NULL; i++) {
+        size_t length;
+        char after;
+
+        length = strlen(directives[i]);
+        if (strncmp(line, directives[i], length) != 0)
+            continue;
+
+        /* A directive's name ends where an identifier ends, so that
+         * "#included" is a word which starts with one rather than one
+         * of them. */
+        after = line[length];
+        if (isalnum((unsigned char)after) || after == '_')
+            continue;
+
+        return true;
+    }
+
+    return false;
 }
 
 void str_chomp(char *str)
