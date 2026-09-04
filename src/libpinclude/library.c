@@ -50,9 +50,25 @@
 # endif
 #endif
 
+/* A heredoc whose body has started arriving and whose end hasn't. */
+struct heredoc {
+    /* The word that ends it.  A heredoc ends at a line that says
+     * exactly this and nothing else, which is the only thing about
+     * one that has to be understood here. */
+    char *delim;
+
+    /* Whether that line is allowed to be indented with tabs, which is
+     * what a "<<-" asks for. */
+    bool strip_tabs;
+};
+
 static void str_chomp(char *str);
 
 static int streqcmp(const char *str, const char *eq);
+
+static void open_heredocs(const char *line, struct heredoc *open, int *count);
+
+static bool closes_heredoc(const char *line, const struct heredoc *open);
 
 static int _pinclude_lines(const char *input,
                            pinclude_callback_t per_include,
@@ -69,6 +85,9 @@ static int _pinclude_lines(const char *input,
     bool found;
     bool state[NEST_MAX];
     int state_i;
+    struct heredoc heredocs[NEST_MAX];
+    int heredocs_open;
+    bool in_heredoc;
 
 #ifdef DEBUG_LIBPINCLUDE_DEFINE
     fprintf(stderr, "input: '%s'\n", input);
@@ -82,6 +101,7 @@ static int _pinclude_lines(const char *input,
     state_i = 0;
     state[state_i] = true;
     lineno = 0;
+    heredocs_open = 0;
 
     while (fgets(buffer, LINE_MAX, infile) != NULL) {
         lineno++;
@@ -90,12 +110,38 @@ static int _pinclude_lines(const char *input,
         fprintf(stderr, "    %s", buffer);
 #endif
 
+        /* Everything between a "<<EOF" and the line that ends it is
+         * text the script writes out rather than script, so nothing
+         * in it is a directive.  A C file written into a heredoc
+         * brings its own "#include" lines along with it, and those
+         * belong to whatever compiles that file rather than to this
+         * -- read as directives they would be expanded away, and the
+         * file the script wrote would come out with them missing. */
+        in_heredoc = heredocs_open > 0;
+
         if (per_line != NULL) {
-            if (strncmp(buffer, "#include", 8) != 0) {
+            /* An "#include" is a directive rather than text and so
+             * never reaches the output.  Inside a heredoc it is
+             * neither, which means it goes out exactly as it came
+             * in. */
+            if (in_heredoc == true || strncmp(buffer, "#include", 8) != 0) {
                 if ((err = per_line(buffer, line_priv)) != 0) {
                     return err;
                 }
             }
+        }
+
+        if (in_heredoc == true) {
+            if (closes_heredoc(buffer, &heredocs[0]) == true) {
+                int h;
+
+                free(heredocs[0].delim);
+                for (h = 1; h < heredocs_open; h++)
+                    heredocs[h - 1] = heredocs[h];
+                heredocs_open--;
+            }
+
+            continue;
         }
 
         /* Here's where we handle the #if{,n}def preprocessor
@@ -174,6 +220,12 @@ static int _pinclude_lines(const char *input,
         /* If we're #ifdef'd out then skip the line. */
         if (state[state_i] == false)
             continue;
+
+        /* What this line opens, which is what the lines after it are
+         * the body of.  Asked after the line has been let through the
+         * #ifdef state above, since a heredoc written in a branch
+         * that isn't taken is one whose body never arrives. */
+        open_heredocs(buffer, heredocs, &heredocs_open);
 
         /* Here's a hack: treat <> includes just like "" includes.
          *
@@ -392,6 +444,9 @@ static int _pinclude_lines(const char *input,
         }
     }
 
+    for (i = 0; i < (size_t)heredocs_open; i++)
+        free(heredocs[i].delim);
+
     fclose(infile);
 
 #ifdef DEBUG_LIBPINCLUDE_DEFINE
@@ -437,6 +492,162 @@ int pinclude_lines(const char *filename,
             free(included[i]);
 
     return err;
+}
+
+/* TRUE for a character that ends a word on a shell command line,
+ * which is where a heredoc's delimiter ends too. */
+static bool ends_shell_word(char c)
+{
+    if (isspace((unsigned char)c))
+        return true;
+
+    switch (c) {
+    case '\0':
+    case ';':
+    case '&':
+    case '|':
+    case '<':
+    case '>':
+    case '(':
+    case ')':
+        return true;
+    default:
+        return false;
+    }
+}
+
+void open_heredocs(const char *line, struct heredoc *open, int *count)
+{
+    size_t i;
+    char quoted;
+
+    quoted = '\0';
+
+    for (i = 0; line[i] != '\0'; i++) {
+        size_t start;
+        bool strip_tabs;
+        char delim_quote;
+
+        /* Quoting is followed only so that a "<<" written inside a
+         * string is left alone, which matters because writing one
+         * script out of another is exactly what a heredoc gets used
+         * for.  Only within the line: a string that runs across
+         * several of them is followed by nothing here, and the check
+         * at the end of the file is what that answers to. */
+        if (line[i] == '\\' && quoted != '\'' && line[i + 1] != '\0') {
+            i++;
+            continue;
+        }
+
+        if (quoted != '\0') {
+            if (line[i] == quoted)
+                quoted = '\0';
+            continue;
+        }
+
+        if (line[i] == '\'' || line[i] == '"') {
+            quoted = line[i];
+            continue;
+        }
+
+        /* A '#' that starts a word starts a comment, and what a
+         * comment has to say about redirection is nothing. */
+        if (line[i] == '#'
+            && (i == 0 || isspace((unsigned char)line[i - 1])))
+            return;
+
+        if (line[i] != '<' || line[i + 1] != '<')
+            continue;
+
+        /* A "<<<" is a here-string, which carries its body on the
+         * line it's written on and so never waits for one.  All three
+         * characters get stepped over rather than one: leaving the
+         * second '<' to be looked at again finds a "<<" in what is
+         * left of it, and then the here-string's own text is read as
+         * a delimiter. */
+        if (line[i + 2] == '<') {
+            i += 2;
+            continue;
+        }
+
+        /* A "<<" with a word character against its left is a shift
+         * rather than a redirection: "$((1<<20))" is arithmetic, and
+         * reading it as the start of a heredoc would swallow the rest
+         * of the file. */
+        if (i > 0 && (isalnum((unsigned char)line[i - 1])
+                      || line[i - 1] == '_'))
+            continue;
+
+        i += 2;
+
+        /* A "<<-" says the line that ends the heredoc may be indented
+         * with tabs, so that a heredoc can be indented along with the
+         * code around it. */
+        strip_tabs = false;
+        if (line[i] == '-') {
+            strip_tabs = true;
+            i++;
+        }
+
+        while (line[i] != '\0' && isspace((unsigned char)line[i]))
+            i++;
+
+        /* Quoting the delimiter is how a script asks for a body that
+         * the shell expands nothing in.  It makes no difference to
+         * where the body ends, which is all that's being read here:
+         * either way the word inside the quotes is what ends it. */
+        delim_quote = '\0';
+        if (line[i] == '\'' || line[i] == '"') {
+            delim_quote = line[i];
+            i++;
+        }
+
+        start = i;
+        while (line[i] != '\0'
+               && (delim_quote == '\0'
+                   ? ends_shell_word(line[i]) == false
+                   : line[i] != delim_quote))
+            i++;
+
+        /* A "<<" with nothing after it isn't a script the shell would
+         * run either, so there's nothing here to be right about. */
+        if (i == start)
+            continue;
+
+        /* More heredocs open at once than anything writes.  Reading
+         * any further would be writing past the end of the list, and
+         * whatever this file is it is not a shell script. */
+        if (*count >= NEST_MAX)
+            return;
+
+        open[*count].delim = strndup(line + start, i - start);
+        open[*count].strip_tabs = strip_tabs;
+        (*count)++;
+    }
+}
+
+bool closes_heredoc(const char *line, const struct heredoc *open)
+{
+    size_t i;
+
+    i = 0;
+
+    /* A "<<-" strips the leading tabs from every line of the body,
+     * and the line that ends it is one of those. */
+    if (open->strip_tabs == true)
+        while (line[i] == '\t')
+            i++;
+
+    if (strncmp(line + i, open->delim, strlen(open->delim)) != 0)
+        return false;
+    i += strlen(open->delim);
+
+    /* The line still has the newline fgets read, and the last line of
+     * a file needn't have one at all. */
+    while (line[i] == '\n' || line[i] == '\r')
+        i++;
+
+    return line[i] == '\0';
 }
 
 void str_chomp(char *str)
