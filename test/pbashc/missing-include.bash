@@ -15,12 +15,11 @@
 # so it never got the "set -e" or the "cd" into a temporary directory,
 # and it ran its whole body wherever it happened to be standing.
 # Written with printf rather than a heredoc, and that is not a style
-# choice: pbashc compiles this test too, and it only treats a line as
-# a directive when the "#include" starts at column zero.  A heredoc
-# would put one there and pbashc would go looking for
-# does_not_exist.bash while building the test that exists to prove it
-# can't find it.  The other tests in the tree dodge the same thing by
-# indenting the "#include <stdio.h>" in their C heredocs by a space.
+# choice: pbashc compiles this test too.  What pbashc does with a
+# heredoc is a thing heredoc.bash exists to pin down, so writing the
+# input here with one would leave this test saying nothing on its own
+# -- a mistake over there would turn into a failure here, pointing at
+# the wrong file.  A printf is just the input and nothing else.
 printf '#include "does_not_exist.bash"\necho hello\n' > t.bash
 
 if $PTEST_BINARY -i t.bash -o out.bash > t.out 2>&1

@@ -69,16 +69,12 @@ EOF
 # different ending, and that's the only thing saying the two go
 # together -- nobody writes it down.  So every spelling of the header
 # end has to be tried against every spelling of the source end.
-#
-# The indentation on the include lines below is load-bearing: this
-# file is fed through pbashc first, and pbashc eats a "#include" that
-# starts a line no matter what quoting the heredoc around it had.
 cat >src/uses.c++ <<'EOF'
-  #include "phpp.hpp"
-  #include "phh.hh"
-  #include "phxx.hxx"
-  #include "phplus.h++"
-  #include "pplain.h"
+#include "phpp.hpp"
+#include "phh.hh"
+#include "phxx.hxx"
+#include "phplus.h++"
+#include "pplain.h"
 int main(void) { return phpp() + phh() + phxx() + phplus() + pplain(); }
 EOF
 
