@@ -2493,6 +2493,23 @@ A bash ``compiler'', which really just does the following
   \pconfigure\ follows the same rule when it works out what a script
   depends on, so the files it writes down as dependencies are the ones
   that actually get pasted in.
+\item Leaves a heredoc's body alone.  The lines between a
+  \texttt{<<EOF} and the \texttt{EOF} that ends it are text the script
+  writes out rather than script, so a C file written that way keeps
+  the \texttt{\#include} lines it was written with, and \pconfigure\
+  does not count them among the files the script reads.  What gets
+  recognized is the shape of a redirection and nothing more: a
+  \texttt{<<<} is a here-string and carries its body on its own line,
+  a \texttt{<<} with a word character written against its left is a
+  shift rather than a redirection, and a \texttt{<<} inside quotes is
+  text.  Quoting is followed within a line and not across lines.
+
+  A heredoc that no line ever ends has taken the rest of the file for
+  its body.  If a directive went down with it \texttt{pbashc} says
+  which one and stops, because that is a file which would otherwise
+  have come out with an include silently missing from it; if the body
+  was nothing but text then it was going to be treated as text either
+  way, and nothing is said.
 \item Sets the correct shebang at the beginning of the file
 \item Marks the output as executable
 \end{itemize}
