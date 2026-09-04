@@ -690,6 +690,20 @@ its own, so you can \texttt{cd} into a submodule and run
 written relative to a variable that the \texttt{Makefile} defaults to
 nothing and a parent sets before including.
 
+\texttt{make} there, and not \pconfigure.  Configuring from inside
+the subproject would write that \texttt{Makefile} again with no
+variable in it at all --- from down there the subproject is the top
+of the tree and has no directory to be found through --- while the
+parent goes on including the file, so every path in it starts meaning
+something in the parent's directory instead: the subproject's objects
+land in the parent's object directory, its rules collide with the
+parent's, and its sources get looked for one directory too high.  The
+subproject would configure and build perfectly well; it is the parent
+that breaks, the next time anybody builds it.  So \pconfigure\
+refuses, and says to run it at the top of the tree.  A tree that used
+to be a subproject and is not one any more gets past that by deleting
+the \texttt{Makefile} first.
+
 That goes for a path belonging to some \textit{other} project in the
 run too, not just for the project's own.  A header that one
 subproject compiles against and a sibling owns is worked out as
