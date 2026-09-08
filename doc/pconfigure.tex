@@ -1210,8 +1210,21 @@ suite that does the including.  Written anywhere else it is a fatal
 error rather than a line that attaches itself to whichever suite was
 declared furthest up the file.
 
-Naming a suite the project never declared is a fatal error.  A suite
-is allowed to include one that a line further down declares, though:
+What gets included is every test of the build that is in the suite
+named, not just the ones that live beside the line that named it.  A
+suite of one name is one suite in a build with subprojects (see
+Section~\ref{cmd:subprojects}), because there is one rule with that
+name for somebody to run --- so a subproject's test that joined
+\texttt{quick} is in this \texttt{everything} for the same reason it
+is in this \texttt{quick}.  The subproject does not have to have heard
+of \texttt{everything}, and a build whose subprojects each declare
+every suite the top includes is a build where they didn't have to.
+
+Naming a suite this project never declared is a fatal error, which the
+paragraph above does not take back: what an inclusion reaches across a
+build is tests, so the suite being included still has to be one this
+project's own \texttt{TEST\_SUITES} declared.  A suite is allowed to
+include one that a line further down declares, though:
 the suites of a project are a set, and nothing about them depends on
 which line came first.  Two suites that include each other are two
 names for one set of tests, which is a strange thing to write and a
