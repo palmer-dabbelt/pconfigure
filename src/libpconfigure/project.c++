@@ -378,6 +378,81 @@ project::test_suite_members(void) const
     return out;
 }
 
+std::map<std::string, std::vector<std::string>>
+project::aggregate_test_suite_members(const std::vector<ptr>& aggregated)
+{
+    /* What each project put in each suite when asked on its own,
+     * gathered under the one name make will know it by.  Every suite
+     * any of them declared has an entry, empty ones included: the
+     * rule that runs nothing is still a rule, and it is still the
+     * answer to what the name means. */
+    auto named = std::map<std::string, std::set<std::string>>();
+    for (const auto& project: aggregated)
+        for (const auto& suite: project->test_suite_members())
+            named[suite.first].insert(suite.second.begin(),
+                                      suite.second.end());
+
+    /* Which suites each one includes, gathered the same way.  A
+     * suite two projects declared is one suite, so it includes
+     * whatever either of them said it includes -- the alternative is
+     * a name whose meaning depends on which directory you read, and
+     * there is only one rule to run. */
+    auto includes = std::map<std::string, std::set<std::string>>();
+    for (const auto& project: aggregated)
+        for (const auto& suite: project->processor()->test_suites())
+            for (const auto& include: suite->includes())
+                includes[suite->name()].insert(include->data());
+
+    /* The same walk each project already did over its own suites,
+     * over all of them at once.  Two suites that include each other
+     * are two names for one set of tests, so it keeps track of where
+     * it has been rather than refusing to go.
+     *
+     * Nothing grows here except by inclusion, and that is deliberate:
+     * the other three ways into a suite are questions about one
+     * project's tests.  A DEPTESTS names a test of the same target,
+     * so what waits for what never crosses a project boundary, and a
+     * test written without a suite joins the suites of the project
+     * that wrote it -- a project that never declared a suite has no
+     * opinion about which of its tests could run in it.  Both were
+     * answered before this was called, and a set that arrives from
+     * another project arrives already closed. */
+    auto members = std::map<std::string, std::set<std::string>>();
+
+    std::function<void(const std::string&,
+                       std::set<std::string>&,
+                       std::set<std::string>&)> include =
+        [&](const std::string& name,
+            std::set<std::string>& out,
+            std::set<std::string>& seen)
+        {
+            if (seen.insert(name).second == false)
+                return;
+
+            for (const auto& member: named[name])
+                out.insert(member);
+
+            auto found = includes.find(name);
+            if (found == includes.end())
+                return;
+
+            for (const auto& included: found->second)
+                include(included, out, seen);
+        };
+
+    for (const auto& pair: named) {
+        auto seen = std::set<std::string>();
+        members[pair.first] = std::set<std::string>();
+        include(pair.first, members[pair.first], seen);
+    }
+
+    auto out = std::map<std::string, std::vector<std::string>>();
+    for (const auto& pair: members)
+        out[pair.first] = std::vector<std::string>(pair.second.begin(),
+                                                   pair.second.end());
+    return out;
+}
+
 std::map<std::string, context::ptr> project::tests(void) const
 {
     auto out = std::map<std::string, context::ptr>();
@@ -537,9 +612,8 @@ void project::check_default_test_suite(const std::vector<ptr>& aggregated) const
      * suite once there is one rule to run it -- so asking this
      * project on its own would refuse a build that runs plenty. */
     auto members = std::map<std::string, size_t>();
-    for (const auto& project: aggregated)
-        for (const auto& suite: project->test_suite_members())
-            members[suite.first] += suite.second.size();
+    for (const auto& suite: aggregate_test_suite_members(aggregated))
+        members[suite.first] = suite.second.size();
 
     if (members[fallback] > 0)
         return;
@@ -1017,10 +1091,11 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
      * asked for, so the Makefile that gets asked is the one that has
      * to know about every test in it.  Two projects that both declare
      * a suite of one name have one suite here, since there is one
-     * rule with that name to run. */
-    for (const auto& project: aggregated)
-        for (const auto& suite: project->test_suite_members())
-            out->add_test_suite(suite.first, suite.second);
+     * rule with that name to run -- which is also why the asking is
+     * done of the whole list at once rather than of each project in
+     * turn: a suite that includes another includes all of it. */
+    for (const auto& suite: aggregate_test_suite_members(aggregated))
+        out->add_test_suite(suite.first, suite.second);
 
     /* Which of them "make check" means, which is this project's
      * answer rather than the aggregate: the rule belongs to whoever
