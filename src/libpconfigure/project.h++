@@ -164,6 +164,23 @@ public:
     std::map<std::string, std::vector<std::string>>
     test_suite_members(void) const;
 
+    /* The same question asked of a whole build: which tests each
+     * suite runs, across every project whose results one Makefile is
+     * responsible for.  "aggregated" is the list write_makefile gets,
+     * and the answer is what its suite rules hang their tests off.
+     *
+     * This is not the union of the per-project answers, which is why
+     * it exists.  A suite of one name is one suite here -- one rule,
+     * with one set of prerequisites -- so a suite that includes
+     * another runs every test of that name in the build, not just
+     * the ones that happen to live beside the line that said so.  A
+     * subproject's test that joined "smoke" is in the parent's
+     * "overnight" for the same reason it is in the parent's "smoke":
+     * there is one "smoke" here, and "overnight" was told it runs
+     * it. */
+    static std::map<std::string, std::vector<std::string>>
+    aggregate_test_suite_members(const std::vector<ptr>& aggregated);
+
 private:
     /* Processes one Configfile line and everything it asks for: a
      * CONFIG is read where it appears, and a SUBPROJECTS is read
