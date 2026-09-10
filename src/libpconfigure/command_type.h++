@@ -32,6 +32,7 @@
 enum class command_type {
     AUTODEPS,
     BINARIES,
+    BOOTSTRAP,
     BUILD_SYSTEMS,
     COMPAT,
     COMPILEOPTS,
@@ -82,6 +83,7 @@ static const std::vector<command_type> all_command_types =
 {
     command_type::AUTODEPS,
     command_type::BINARIES,
+    command_type::BOOTSTRAP,
     command_type::BUILD_SYSTEMS,
     command_type::COMPAT,
     command_type::COMPILEOPTS,
@@ -135,6 +137,8 @@ namespace std {
             return "AUTODEPS";
         case command_type::BINARIES:
             return "BINARIES";
+        case command_type::BOOTSTRAP:
+            return "BOOTSTRAP";
         case command_type::BUILD_SYSTEMS:
             return "BUILD_SYSTEMS";
         case command_type::COMPAT:
