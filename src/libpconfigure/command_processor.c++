@@ -360,6 +360,13 @@ void command_processor::process_one(const command::ptr& cmd)
 
         _autoreconfigure = cmd->data() == "true";
         _autoreconfigure_cmd = cmd;
+
+        /* Said again on the root context, which is the only thing a
+         * subproject is handed: project::read() gives the child its
+         * parent's root_context() and nothing else, so a value that
+         * lives only on the processor is a value the tree below can't
+         * see.  Nothing reads it there yet. */
+        _root->autoreconfigure = _autoreconfigure;
         return;
     }
 
