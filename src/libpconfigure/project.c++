@@ -646,31 +646,6 @@ void project::check_default_test_suite(const std::vector<ptr>& aggregated) const
     abort();
 }
 
-void project::check_bootstrap(const std::vector<ptr>& everyone) const
-{
-    const auto& srcpath = _processor->bootstrap();
-    if (srcpath.size() == 0)
-        return;
-
-    for (const auto& other: everyone) {
-        if (other->_base != srcpath)
-            continue;
-
-        std::cerr << std::to_string(_processor->bootstrap_cmd()->debug())
-                  << "\n"
-                  << "  error: '" << srcpath << "' is a subproject of this"
-                  << " build as well as the pconfigure it bootstraps\n"
-                  << "  as a subproject the tree gets configured from here,"
-                  << " into this build's directories; bootstrapping it"
-                  << " configures it for itself, and each of those writes"
-                  << " the Makefile the other reads\n"
-                  << "  a vendored pconfigure is one or the other: drop the"
-                  << " SUBPROJECTS line, or drop this one and let the"
-                  << " project be built the way any other is\n";
-        abort();
-    }
-}
-
 void project::check_makefile_shape(void) const
 {
     /* Only the project make would be run in has no directory of its
@@ -1300,7 +1275,7 @@ void project::write_bootstrap_makefile(void) const
            " because this is\n";
     out += "# about the file existing and not about it being newer"
            " than anything.\n";
-    out += "Makefile.pconfigure: | $(PCONFIGURE)\n";
+    out += "Makefile.pconfigure: | $(PCONFIGURE_SRCPATH)Makefile\n";
     out += "\t$(PCONFIGURE) $(PCONFIGURE_ARGS)\n";
     out += "\n";
     out += "# Asking for it again, which is the other half of that:"
@@ -1311,43 +1286,27 @@ void project::write_bootstrap_makefile(void) const
            " pointed at the\n";
     out += "# pconfigure this one builds rather than at the PATH.\n";
     out += ".PHONY: reconfigure\n";
-    out += "reconfigure:\n";
+    out += "reconfigure: $(PCONFIGURE)\n";
     out += "\t@echo \"PCONFIGURE\"\n";
     out += "\t@$(PCONFIGURE) $(PCONFIGURE_ARGS)\n";
     out += "\n";
-    out += "# The first run has no pconfigure to configure the"
-           " vendored tree with, so the\n";
-    out += "# tree builds one straight from its own source.  Its"
-           " Makefile is what says\n";
-    out += "# that has happened, because bootstrap.sh is what writes"
-           " it.\n";
+    out += "# The one thing that can't be done by a build: the first"
+           " run has no\n";
+    out += "# pconfigure to configure anything with, so the vendored"
+           " tree builds one\n";
+    out += "# straight from its own source.  Its Makefile is what says"
+           " that has\n";
+    out += "# happened, because bootstrap.sh is what writes it.\n";
+    out += "#\n";
+    out += "# After that the tree is an ordinary subproject."
+           "  Makefile.pconfigure\n";
+    out += "# includes the Makefile below and builds the pconfigure in"
+           " it out of the\n";
+    out += "# same dependency graph as everything else, which is why"
+           " nothing here\n";
+    out += "# recurses into it on every build.\n";
     out += "$(PCONFIGURE_SRCPATH)Makefile:\n";
     out += "\t+cd $(PCONFIGURE_SRCPATH) && ./bootstrap.sh\n";
-    out += "\n";
-    out += "# After that pconfigure is built like anything else, which"
-           " is what picks up an\n";
-    out += "# edit to its own sources.  Asking every time costs a make"
-           " that finds nothing\n";
-    out += "# to do; it doesn't cost a configure, because a build that"
-           " changed nothing\n";
-    out += "# leaves the binary's timestamp alone and the rule above"
-           " is reading that\n";
-    out += "# timestamp.\n";
-    out += "#\n";
-    out += "# It is asked quietly because it is asked on every build"
-           " and almost always\n";
-    out += "# has nothing to say.  When it does have something to say"
-           " -- a compile, or a\n";
-    out += "# compile that failed -- that still comes out.  To watch"
-           " it properly, build\n";
-    out += "# the tree on its own: make -C " + srcpath + "\n";
-    out += "$(PCONFIGURE): $(PCONFIGURE_SRCPATH)Makefile"
-           " pconfigure-force\n";
-    out += "\t+@$(MAKE) -s --no-print-directory"
-           " -C $(PCONFIGURE_SRCPATH)\n";
-    out += "\n";
-    out += ".PHONY: pconfigure-force\n";
-    out += "pconfigure-force:\n";
 
     /* Written only when it would say something new, because this is
      * the file make was started on: rewriting it on every configure
