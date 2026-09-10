@@ -64,6 +64,21 @@ command_processor::command_processor(const std::string& base,
         _root->debug = defaults->debug;
         _root->cross_compile = defaults->cross_compile;
 
+        /* Who works out the dependencies is a property of the build
+         * rather than of one Configfile.  A subproject's Makefile is
+         * included by the one make was actually run on, so both
+         * halves land in the same make either way -- and a tree whose
+         * parent asked for its dependencies to be worked out by the
+         * build is a tree whose sources nobody is going to configure
+         * again by hand.
+         *
+         * Said on the root context too, so that it reaches a
+         * subproject of a subproject.  A tree with its own
+         * AUTORECONFIGURE line still wins, the way it does with a
+         * PREFIX. */
+        _autoreconfigure = defaults->autoreconfigure;
+        _root->autoreconfigure = defaults->autoreconfigure;
+
         /* How loudly a project wants to be told about the things
          * below is a property of the build rather than of one
          * Configfile, so a subproject is as strict as whoever pulled
