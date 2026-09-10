@@ -182,6 +182,38 @@ void makefile::makefile::write_to_file(const std::string& filename)
     for (const auto& subproject: _subprojects)
         fprintf(file, "include $(%s)Makefile\n\n", subproject.first.c_str());
 
+    /* The targets that are themselves pieces of Makefile, which have
+     * to be included as well as built.  make remakes what it includes
+     * before it reads it, so a fragment that says what a source
+     * depends on is written by the same run of make that is about to
+     * need the answer -- and then make starts again, with the answer
+     * in hand.
+     *
+     * The guard is what stops that going round in a circle.  A
+     * fragment names the fragments of the sources behind its headers,
+     * and two sources that include each other's headers describe a
+     * loop; whoever is about to include one says so first, so the
+     * second time round there is nothing left to do.  Both halves of
+     * that are spelled the same way here and in pdeps, because they
+     * are the same variable.
+     *
+     * These come before the rules rather than after out of
+     * politeness: nothing depends on the order, since what a fragment
+     * adds is prerequisites, and make collects those from wherever it
+     * finds them. */
+    for (const auto& target: _targets) {
+        if (target->included() == false)
+            continue;
+
+        auto name = _prefix.rewrite(target->name());
+        auto guard = "__pconfigure__deps-" + name;
+
+        fprintf(file, "ifndef %s\n", guard.c_str());
+        fprintf(file, "%s := 1\n", guard.c_str());
+        fprintf(file, "include %s\n", name.c_str());
+        fprintf(file, "endif\n\n");
+    }
+
     auto stamp = check_stamp();
     for (const auto& target: _targets)
         target->write_to_file(file, _verbose, stamp, _prefix);
