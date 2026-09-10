@@ -66,4 +66,100 @@ refuses
 grep -q "'yes' is not 'true' or 'false'" out
 grep -q "Configfile:3" out
 
+##############################################################################
+# Below a subproject it was supposed to reach                                #
+##############################################################################
+# A subproject is read where its line appears, so a tree named above
+# this one was read while the answer was still the other one.  Left
+# alone that writes the parent's Makefile one way and the child's the
+# other and says nothing about it, which looks exactly like a tree
+# where the mode does not work.
+setup
+mkdir -p case/sub/src
+cat >case/sub/Configfile <<EOF
+LANGUAGES       += c
+
+BINARIES        += sub
+SOURCES         += sub.c
+EOF
+
+cat >case/sub/src/sub.c <<EOF
+int main(void) { return 0; }
+EOF
+
+cat >case/Configfile <<EOF
+SUBPROJECTS     += sub
+
+AUTORECONFIGURE  = true
+
+LANGUAGES       += c
+
+BINARIES        += main
+SOURCES         += main.c
+EOF
+
+refuses
+grep -q "a subproject has already been read" out
+grep -q "move it above the first SUBPROJECTS or BOOTSTRAP line" out
+grep -q "Configfile:3" out
+
+##############################################################################
+# Below the tree a BOOTSTRAP named                                           #
+##############################################################################
+# The same mistake in the spelling nobody expects: a BOOTSTRAP names a
+# vendored pconfigure and reads it as a subproject, so a Configfile
+# that opens with one and says AUTORECONFIGURE underneath has already
+# read a tree by line two.
+setup
+mkdir -p case/vendor/pconfigure
+echo "#!/bin/bash" > case/vendor/pconfigure/bootstrap.sh
+chmod +x case/vendor/pconfigure/bootstrap.sh
+
+cat >case/Configfile <<EOF
+BOOTSTRAP        = vendor/pconfigure
+
+AUTORECONFIGURE  = true
+
+LANGUAGES       += c
+
+BINARIES        += main
+SOURCES         += main.c
+EOF
+
+refuses
+grep -q "a subproject has already been read" out
+
+##############################################################################
+# Saying again what was already true                                         #
+##############################################################################
+# Not every line below a subproject is a mistake.  A Configfile that
+# writes down the default it was already getting has changed nothing,
+# and refusing it would be refusing a project for being explicit.
+setup
+mkdir -p case/sub/src
+cat >case/sub/Configfile <<EOF
+LANGUAGES       += c
+
+BINARIES        += sub
+SOURCES         += sub.c
+EOF
+
+cat >case/sub/src/sub.c <<EOF
+int main(void) { return 0; }
+EOF
+
+cat >case/Configfile <<EOF
+SUBPROJECTS     += sub
+
+AUTORECONFIGURE  = false
+
+LANGUAGES       += c
+
+BINARIES        += main
+SOURCES         += main.c
+EOF
+
+(cd case && $PTEST_BINARY $PCONFIGURE_ARGS)
+test -e case/Makefile
+
 exit 0
