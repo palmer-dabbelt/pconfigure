@@ -811,6 +811,40 @@ language_cxx::header_target::generate_makefile_target(void) const
     return std::make_shared<makefile::target>(_path);
 }
 
+std::string language_cxx::output_dir(const context::ptr& ctx) const
+{
+    switch (ctx->type) {
+    case context_type::BINARY:
+        return ctx->bin_dir;
+    case context_type::LIBRARY:
+        return ctx->lib_dir;
+
+    case context_type::DEFAULT:
+    case context_type::GENERATE:
+    case context_type::SOURCE:
+    case context_type::TEST:
+    case context_type::HEADER:
+    case context_type::PHONY:
+        break;
+    }
+
+    std::cerr << "language_cxx: Internal error in output_dir()\n";
+    abort();
+    return "";
+}
+
+/* The link options are hashed into this so that the same target
+ * linked two ways lands in two directories rather than one of them
+ * quietly overwriting the other. */
+std::string language_cxx::link_dir(const context::ptr& ctx) const
+{
+    return ctx->obj_dir
+        + "/" + ctx->unbased(output_dir(ctx))
+        + "/" + ctx->cmd->data()
+        + "/" + hash_link_options(ctx)
+        + "/";
+}
+
 std::vector<language_cxx::target::ptr>
 language_cxx::link_objects(const context::ptr& ctx,
                            const std::vector<language_cxx::target::ptr>& objects)
@@ -821,27 +855,8 @@ language_cxx::link_objects(const context::ptr& ctx,
         "language_cxx::link_objects()",
     };
  
-    auto bin_dir = [&]() -> std::string
-        {
-            switch (ctx->type) {
-            case context_type::BINARY:
-                return ctx->bin_dir;
-            case context_type::LIBRARY:
-                return ctx->lib_dir;
-            default: break;
-            }
-            
-            std::cerr << "language_cxx: Internal error\n";
-            abort();
-            return "";
-        }();
-        
-    auto shared_link_dir =
-        ctx->obj_dir
-        + "/" + ctx->unbased(bin_dir)
-        + "/" + ctx->cmd->data()
-        + "/" + hash_link_options(ctx)
-        + "/";
+    auto bin_dir = output_dir(ctx);
+    auto shared_link_dir = link_dir(ctx);
 
     auto dedup_link_opts = [](std::vector<std::string> opts) {
         std::vector<std::string> tokens;
@@ -943,12 +958,10 @@ language_cxx::link_objects(const context::ptr& ctx,
 }
 
 
-std::vector<language_cxx::target::ptr>
-language_cxx::compile_source(const context::ptr& ctx,
-                             const context::ptr& child,
-                             std::vector<std::string>& processed,
-                             const shared_target& is_shared)
-                             const
+std::vector<std::string>
+language_cxx::compile_options(const context::ptr& ctx,
+                              const context::ptr& child)
+                              const
 {
     auto filter_compile_opts = [&](const std::vector<std::string> compile_opts)
         {
@@ -983,17 +996,9 @@ language_cxx::compile_source(const context::ptr& ctx,
             return out;
         };
 
-    auto shared_link_dir =
-        child->obj_dir
-        + "/" + ctx->cmd->data()
-        + "/" + hash_link_options(ctx)
-        + "/";
-
-    auto source_path = child->src_dir + "/" + child->cmd->data();
-
     auto full_libexec_path = child->prefix + "/" + child->unbased(child->libexec_dir);
 
-    auto compile_opts =
+    return
         filter_compile_opts(this->compile_opts()) +
         filter_compile_opts(child->compile_opts) +
         std::vector<std::string>{
@@ -1004,6 +1009,18 @@ language_cxx::compile_source(const context::ptr& ctx,
             "-D__PCONFIGURE__PREFIX=\\\"" + ctx->prefix + "\\\""
         };
 
+}
+
+std::vector<language_cxx::target::ptr>
+language_cxx::compile_source(const context::ptr& ctx,
+                             const context::ptr& child,
+                             std::vector<std::string>& processed,
+                             const shared_target& is_shared)
+                             const
+{
+    auto source_path = child->src_dir + "/" + child->cmd->data();
+
+    auto compile_opts = compile_options(ctx, child);
     auto shared_comments = std::vector<std::string>{
         std::to_string(child->cmd->debug()),
         "language_cxx::compile_source()",

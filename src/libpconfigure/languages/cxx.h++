@@ -108,6 +108,25 @@ private:
         TRUE,
     };
 
+    /* The command line one source gets compiled with, which is the
+     * project's options rerooted onto wherever this project's sources
+     * are plus the handful pconfigure adds itself.
+     *
+     * It is worked out in one place because two things need it and
+     * have to agree: the rule that compiles the source, and the file
+     * that says which headers the source reads.  A "-I" that only one
+     * of them knew about is a header that is found by the compiler and
+     * is not a prerequisite of anything. */
+    std::vector<std::string> compile_options(const context::ptr& ctx,
+                                             const context::ptr& child) const;
+
+    /* Where what this target builds ends up, and the directory the
+     * link steps for it go in.  Both are named from more than one
+     * place, and a second spelling of either is a build putting files
+     * somewhere nothing looks for them. */
+    std::string output_dir(const context::ptr& ctx) const;
+    std::string link_dir(const context::ptr& ctx) const;
+
     /* Hashes the link options that are relevant to this command's linking
      * (or compiling) phase. */
     std::string hash_link_options(const context::ptr& ctx) const;
@@ -252,6 +271,19 @@ protected:
         std::vector<std::string>& already_processed,
         const shared_target& is_shared
     ) const;
+
+    /* The piece of Makefile that says what one source depends on,
+     * which is what a project that asked for AUTORECONFIGURE gets
+     * instead of a compile rule with the answer already in it.
+     *
+     * Nothing is scanned here.  What comes back is a target that runs
+     * pdeps, and a context file written beside it saying what pdeps
+     * needs to know -- so the walk that compile_source() does with a
+     * function calling itself is done by make, reading one of these
+     * after another. */
+    makefile::target::ptr deps_source(const context::ptr& ctx,
+                                      const context::ptr& child,
+                                      const shared_target& is_shared) const;
 
     /* Lists the dependencies of a since source file. */
     std::vector<std::string> dependencies(
