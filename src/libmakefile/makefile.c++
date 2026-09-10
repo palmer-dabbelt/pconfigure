@@ -105,6 +105,45 @@ void makefile::makefile::write_to_file(const std::string& filename)
 
     fprintf(file, "SHELL=/bin/bash\n\n");
 
+    /* GNU make ships pattern rules that build a program out of a
+     * source file sitting next to it, and they fire on any
+     * prerequisite that has no rule of its own.  A generated Makefile
+     * says what builds what, so one of these firing is never the
+     * right answer -- it means pconfigure was asked for a file it
+     * wrote no rule for, and the useful outcome there is the error
+     * that says so.
+     *
+     * What they do instead is silent.  Buildroot keeps an
+     * arch/Config.in.sh next to its arch/Config.in -- the kconfig for
+     * SuperH, whose Buildroot name is "sh", and not a shell script --
+     * and "%: %.sh" happily overwrites the second with the first.
+     * The build that follows configures with no target architecture
+     * and dies minutes later on a cross compiler called
+     * "/-linux-gcc", which is a sentence about a toolchain in a tree
+     * that never asked for one.
+     *
+     * A pattern rule with no recipe cancels the built-in of the same
+     * name, and unlike --no-builtin-rules it stays in this Makefile
+     * rather than riding MAKEFLAGS down into every vendored build
+     * system underneath it. */
+    for (const auto& suffix: {"c", "C", "cc", "cpp", "f", "F", "m",
+                              "mod", "o", "p", "r", "s", "S", "sh"})
+        fprintf(file, "%%: %%.%s\n", suffix);
+
+    /* The same for the RCS and SCCS rules, which are match-anything
+     * rules rather than suffix ones: they are cancelled by spelling
+     * them with the double colon they were declared with. */
+    fprintf(file, "%%:: %%,v\n");
+    fprintf(file, "%%:: RCS/%%,v\n");
+    fprintf(file, "%%:: RCS/%%\n");
+    fprintf(file, "%%:: s.%%\n");
+    fprintf(file, "%%:: SCCS/s.%%\n");
+
+    /* And the old-style suffix rules, which are a separate mechanism
+     * from pattern rules and are turned off by emptying the list of
+     * suffixes they are built out of. */
+    fprintf(file, ".SUFFIXES:\n\n");
+
     /* A project that a parent can include finds itself through a
      * variable, which is empty when make is run here and set by the
      * parent when it isn't.  Everything below is written in terms of
