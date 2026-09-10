@@ -1134,6 +1134,13 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
      * own "make check" doesn't get to have one about a parent's. */
     out->set_default_test_suite(_processor->default_test_suite());
 
+    /* A project that bootstraps its own pconfigure has the rule that
+     * runs it in the Makefile it keeps beside this one, since that is
+     * where the pconfigure to run is named.  Two of them would be two
+     * recipes for the one name. */
+    if (_processor->bootstrap().size() > 0)
+        out->skip_reconfigure();
+
     out->add_standalone_target(cache_clean_target(aggregated));
     out->add_standalone_target(distclean_target(aggregated));
 
@@ -1285,8 +1292,28 @@ void project::write_bootstrap_makefile(void) const
     out += "# \"make\" with nothing after it means.\n";
     out += "include Makefile.pconfigure\n";
     out += "\n";
-    out += "Makefile.pconfigure: $(PCONFIGURE)\n";
+    out += "# Written when it isn't there, and left alone once it is."
+           "  What a Makefile\n";
+    out += "# says is what the Configfiles said the last time somebody"
+           " ran pconfigure,\n";
+    out += "# here as everywhere else: the prerequisite is order-only"
+           " because this is\n";
+    out += "# about the file existing and not about it being newer"
+           " than anything.\n";
+    out += "Makefile.pconfigure: | $(PCONFIGURE)\n";
     out += "\t$(PCONFIGURE) $(PCONFIGURE_ARGS)\n";
+    out += "\n";
+    out += "# Asking for it again, which is the other half of that:"
+           " the build doesn't\n";
+    out += "# decide when a tree gets reconfigured, so there has to be"
+           " a way to say so.\n";
+    out += "# This is the same rule every pconfigure project has,"
+           " pointed at the\n";
+    out += "# pconfigure this one builds rather than at the PATH.\n";
+    out += ".PHONY: reconfigure\n";
+    out += "reconfigure:\n";
+    out += "\t@echo \"PCONFIGURE\"\n";
+    out += "\t@$(PCONFIGURE) $(PCONFIGURE_ARGS)\n";
     out += "\n";
     out += "# The first run has no pconfigure to configure the"
            " vendored tree with, so the\n";
