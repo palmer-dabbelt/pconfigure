@@ -228,4 +228,57 @@ test "$(find on/obj -name 'deps-context-*' | wc -l)" -ne 0
 (cd on && make $MAKE_ARGS)
 test "$(./on/bin/app)" = "15"
 
+##############################################################################
+# One source compiled two ways                                               #
+##############################################################################
+# The context file pdeps reads is written per set of compile options
+# rather than per source, because that is the granularity the object
+# names already have.  Two targets that compile the same source with
+# different options are two objects, two walks and two context files,
+# and getting that wrong would link one flavour into both programs --
+# which is a mistake that builds, runs, and prints the wrong number.
+mkdir -p flavours/src
+cd flavours
+
+cat >Configfile <<'CONFIGFILE'
+AUTORECONFIGURE  = true
+LANGUAGES       += c++
+
+BINARIES        += one
+COMPILEOPTS     += -DFLAVOUR=1
+SOURCES         += main.c++
+
+BINARIES        += two
+COMPILEOPTS     += -DFLAVOUR=2
+SOURCES         += main.c++
+CONFIGFILE
+
+cat >src/main.c++ <<'SOURCE'
+  #include "shared.h++"
+  #include <cstdio>
+int main(void) { printf("%d\n", FLAVOUR * shared()); return 0; }
+SOURCE
+
+cat >src/shared.h++ <<'SOURCE'
+int shared(void);
+SOURCE
+
+cat >src/shared.c++ <<'SOURCE'
+int shared(void) { return 10; }
+SOURCE
+
+$PTEST_BINARY $PCONFIGURE_ARGS
+make $MAKE_ARGS
+
+test "$(./bin/one)" = "10"
+test "$(./bin/two)" = "20"
+
+# Four objects: both sources, once per set of options.  The source
+# behind the header is walked twice because the options it inherits
+# differ, which is what pconfigure does with it too.
+test "$(find obj -name '*.o' | wc -l)" -eq 4
+test "$(find obj -name 'deps-context-*' | wc -l)" -eq 2
+
+cd ..
+
 exit 0
