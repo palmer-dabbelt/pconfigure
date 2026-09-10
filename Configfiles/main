@@ -238,6 +238,7 @@ TESTSRC     += configfile-backticks.bash
 TESTSRC     += bootstrap.bash
 TESTSRC     += reconfigure.bash
 TESTSRC     += bootstrap-bad.bash
+TESTSRC     += bootstrap-subproject.bash
 TESTSRC     += pdeps.bash
 TESTSRC     += psubdeps.bash
 TESTSRC     += psubdeps-build.bash
