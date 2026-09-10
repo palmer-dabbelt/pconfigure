@@ -207,6 +207,27 @@ SOURCE
 test "$(./on/bin/app)" = "15"
 
 ##############################################################################
+# A source the Configfile named that went away                               #
+##############################################################################
+# The same argument one step over.  A source found behind a header is
+# named through $(wildcard) because it might not be there any more;
+# one a Configfile named is no more certain to still exist, and it was
+# being named outright -- so deleting it stopped the build with "No
+# rule to make target", naming a fragment rather than the file that
+# went missing.
+#
+# "second.c++" is nothing else's prerequisite, so removing it is a
+# change the build can absorb.  Whether the Configfile still asks for
+# it is a question for the next configure, not a reason make cannot
+# run.
+sleep 1
+rm on/src/second.c++
+
+(cd on && make $MAKE_ARGS) > on/deleted.log 2>&1
+cat on/deleted.log
+test "$(./on/bin/app)" = "15"
+
+##############################################################################
 # Collecting the object cache                                                #
 ##############################################################################
 # "make cache-clean" keeps what the build still knows how to make.

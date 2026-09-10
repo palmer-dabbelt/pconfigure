@@ -1151,8 +1151,14 @@ language_cxx::deps_source(const context::ptr& ctx,
     file_utils::mkdir_p(link);
     file_utils::write_if_changed(context_path, out);
 
+    /* Through "$(wildcard)", which is how pdeps names the sources it
+     * finds behind a header, and for the same reason: a source that
+     * has been deleted since is a prerequisite make has no rule for,
+     * and naming it outright stops the build rather than asking the
+     * question again.  A Configfile naming a source is no guarantee
+     * the source is still there. */
     auto deps = std::vector<makefile::target::ptr>{
-        std::make_shared<makefile::target>(source_path),
+        std::make_shared<makefile::target>("$(wildcard " + source_path + ")"),
         std::make_shared<makefile::target>(context_path)
     };
 
