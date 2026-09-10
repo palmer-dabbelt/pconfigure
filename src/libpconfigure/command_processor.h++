@@ -75,6 +75,14 @@ private:
      * in, so it has to be stable. */
     std::vector<test_suite::ptr> _test_suites;
 
+    /* The vendored pconfigure source a BOOTSTRAP named, spelled the
+     * way every other directory in a run is: ending with a '/', and
+     * empty when nothing said.  The command is kept alongside it
+     * because a complaint about the tree it points at has to point
+     * at the line that named it. */
+    std::string _bootstrap;
+    command::ptr _bootstrap_cmd;
+
     /* The suite that "make check" runs, as a DEFAULT_TEST_SUITE named
      * it, or empty when nothing said and "make check" means every
      * test the project has.  The command is kept alongside it because
@@ -171,6 +179,11 @@ public:
         { return _root; }
     const std::vector<test_suite::ptr>& test_suites(void) const
         { return _test_suites; }
+
+    const std::string& bootstrap(void) const
+        { return _bootstrap; }
+    const command::ptr& bootstrap_cmd(void) const
+        { return _bootstrap_cmd; }
 
     const std::string& default_test_suite(void) const
         { return _default_test_suite; }

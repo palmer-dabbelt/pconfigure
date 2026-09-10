@@ -28,6 +28,7 @@
 #include <pinclude.h++>
 #include <cctype>
 #include <iostream>
+#include <unistd.h>
 
 command_processor::command_processor(const std::string& base,
                                      const context::ptr& defaults)
@@ -125,6 +126,7 @@ static bool names_a_path(const command_type& type)
 {
     switch (type) {
     case command_type::BINARIES:
+    case command_type::BOOTSTRAP:
     case command_type::DEPTESTS:
     case command_type::ENTITLEMENTS:
     case command_type::GENERATE:
@@ -189,6 +191,7 @@ static bool takes_a_qualifier(const command_type& type)
 
     case command_type::AUTODEPS:
     case command_type::BINARIES:
+    case command_type::BOOTSTRAP:
     case command_type::BUILD_SYSTEMS:
     case command_type::COMPAT:
     case command_type::COMPILEOPTS:
@@ -332,6 +335,91 @@ void command_processor::process_one(const command::ptr& cmd)
 
         auto ctx = _stack.top();
         ctx->test_binary = ctx->bin_dir + "/" + ctx->cmd->data();
+
+        return;
+    }
+
+    /* The vendored pconfigure source this project builds itself with.
+     *
+     * A project whose build system has to be built first hands
+     * whoever clones it a problem before it hands them a build: they
+     * have to find out that pconfigure exists, get one, and get the
+     * right one.  Naming a tree here moves that into the Makefile,
+     * where it is one more thing make knows how to build.
+     *
+     * The line points at a source tree rather than at a binary
+     * because a binary is a thing somebody already built, which is
+     * exactly what a fresh checkout hasn't got. */
+    case command_type::BOOTSTRAP:
+    {
+        if (cmd->check_operation("=") == false)
+            goto bad_op_eq;
+
+        clear_until({context_type::DEFAULT}, cmd);
+
+        /* Only the project make gets run in has a Makefile anybody
+         * types "make" at.  A subproject's Makefile is included by
+         * that one, so a second set of these rules down there would
+         * be a second recipe for the same file -- and make would
+         * quietly pick one of them. */
+        if (_base.size() != 0) {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: " << std::to_string(cmd->type())
+                      << " in a subproject has no Makefile to write\n"
+                      << "  the rules it writes go in the Makefile make"
+                      << " is run at, which is the one above this\n"
+                      << "  move the line to the Configfile of the"
+                      << " project that pulls this one in\n";
+            abort();
+        }
+
+        auto path = file_utils::normalize_directory(cmd->data());
+
+        if (path.size() == 0) {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: " << std::to_string(cmd->type())
+                      << " can't point at the project itself\n"
+                      << "  it names the vendored pconfigure this"
+                      << " project is built with, which is a tree"
+                      << " inside this one\n";
+            abort();
+        }
+
+        /* Everything here is named relative to where pconfigure ran,
+         * and this one ends up in a Makefile that gets committed --
+         * so a path that leaves the tree is a path that only means
+         * anything on the machine it was written on. */
+        if (path.compare(0, 3, "../") == 0) {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: " << std::to_string(cmd->type())
+                      << " can't reach outside the project\n"
+                      << "  the Makefile it writes is meant to be"
+                      << " committed, and a path out of the tree names"
+                      << " nothing on anybody else's machine\n"
+                      << "  vendor the pconfigure source into this tree"
+                      << " and name it from here\n";
+            abort();
+        }
+
+        /* Asked now rather than left to make, because the usual way
+         * to get here is a submodule nobody has checked out yet --
+         * and an empty directory turns into a make error about a
+         * missing Makefile, which says nothing about submodules. */
+        if (access((path + "bootstrap.sh").c_str(), X_OK) != 0) {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: '" << path << "' has no executable"
+                      << " bootstrap.sh in it\n"
+                      << "  that's the script that builds a pconfigure"
+                      << " without one, so a tree without it can't be"
+                      << " the tree this project bootstraps from\n"
+                      << "  if it's a submodule, check it out: git"
+                      << " submodule update --init " << cmd->data()
+                      << "\n";
+            abort();
+        }
+
+        _bootstrap = path;
+        _bootstrap_cmd = cmd;
 
         return;
     }
