@@ -95,6 +95,12 @@ void makefile::makefile::skip_reconfigure(void)
     _write_reconfigure = false;
 }
 
+void makefile::makefile::reconfigure_on(
+    const std::vector<std::string>& configfiles)
+{
+    _configfiles = configfiles;
+}
+
 void makefile::makefile::write_to_file(const std::string& filename)
 {
     auto file = fopen(filename.c_str(), "w");
@@ -290,6 +296,38 @@ void makefile::makefile::write_to_file(const std::string& filename)
         fprintf(file, "reconfigure:\n");
         fprintf(file, "\t%secho \"PCONFIGURE\"\n", q);
         fprintf(file, "\t%spconfigure $(PCONFIGURE_ARGS)\n\n", q);
+    }
+
+    /* What this Makefile was written out of, so that a Configfile
+     * somebody edited is a Configfile the build reads again.  make
+     * remakes the makefiles it was given before it reads them, which
+     * is what makes this work at all.
+     *
+     * Every name goes through $(wildcard), and both halves of that
+     * matter.  A name that is not there expands to nothing, which is
+     * the only way to mention a Configfile.local that does not exist
+     * -- naming it outright is a hard error, and giving it an empty
+     * rule instead is the remake loop that never settles.  And
+     * $(wildcard) is expanded afresh on every run, so the day such a
+     * file is created it is a prerequisite newer than this Makefile.
+     *
+     * A project that keeps its committed Makefile beside this one
+     * says the prerequisites here and leaves the recipe there, where
+     * the pconfigure to run is named.  One target with its
+     * prerequisites in two places is ordinary; two recipes would not
+     * be. */
+    if (_configfiles.size() > 0) {
+        fprintf(file, "%s:", filename.c_str());
+        for (const auto& configfile: _configfiles)
+            fprintf(file, " $(wildcard %s)", configfile.c_str());
+        fprintf(file, "\n");
+
+        if (_write_reconfigure == true) {
+            fprintf(file, "\t%secho \"PCONFIGURE\"\n", q);
+            fprintf(file, "\t%spconfigure $(PCONFIGURE_ARGS)\n", q);
+        }
+
+        fprintf(file, "\n");
     }
 
     fprintf(file, "check: %s\n\n", check_quiet.c_str());
