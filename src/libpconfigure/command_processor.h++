@@ -80,10 +80,15 @@ private:
      * The command is kept alongside it because a complaint about what
      * the mode can't do has to point at the line that asked for it.
      *
-     * This is a property of one project rather than of a run: a
-     * subproject is a tree with its own Configfile and its own
-     * answer, and a parent that included it has no business changing
-     * how it decides what to rebuild. */
+     * A subproject inherits this from whoever pulled it in, because
+     * it is a property of the build rather than of one Configfile:
+     * the subproject's Makefile is included by the one make was run
+     * on, so both halves are read by the same make.  A tree that says
+     * it itself still wins.
+     *
+     * The inheritance is positional, since a subproject is read where
+     * its line appears: one read above the line was read without
+     * it. */
     bool _autoreconfigure;
     command::ptr _autoreconfigure_cmd;
 
