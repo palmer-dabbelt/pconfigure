@@ -346,22 +346,24 @@ int main(int argc, const char **argv)
                 say("ifndef " + g);
                 say(g + " := 1");
 
-                /* "$(wildcard)" rather than the path, because the
-                 * path may stop existing.  A source can be deleted
-                 * without anything that reads it changing -- what
-                 * pulled it in was a header, and the header is still
-                 * there -- so this fragment goes on naming it after
-                 * it is gone, and make reads this fragment before it
-                 * reads whatever has since stopped naming it.
-                 *
-                 * Naming a file that is not there is a build that
-                 * stops on "No rule to make target".  Giving it a
-                 * rule with nothing in it is worse: make would decide
-                 * this fragment needs remaking, remake it, start
-                 * over, decide again, and never stop.  Asking whether
-                 * the file exists has neither problem, and when the
-                 * file comes back it is a prerequisite again. */
                 if (ctx.named.count(sibling) == 0) {
+                    /* "$(wildcard)" rather than the path, because
+                     * the path may stop existing.  A source can be
+                     * deleted without anything that reads it
+                     * changing -- what pulled it in was a header,
+                     * and the header is still there -- so this
+                     * fragment goes on naming it after it is gone,
+                     * and make reads this fragment before it reads
+                     * whatever has since stopped naming it.
+                     *
+                     * Naming a file that is not there is a build
+                     * that stops on "No rule to make target".
+                     * Giving it a rule with nothing in it is worse:
+                     * make would decide this fragment needs
+                     * remaking, remake it, start over, decide again,
+                     * and never stop.  Asking whether the file
+                     * exists has neither problem, and when the file
+                     * comes back it is a prerequisite again. */
                     say(sibling_deps + ": $(wildcard " + behind + ") "
                         + ctx.path);
                     out += "\t" + ctx.at + "echo \"DEPS\t" + sibling
@@ -370,6 +372,18 @@ int main(int argc, const char **argv)
                     out += "\t" + ctx.at + prefix.rewrite(
                                ctx.pdeps + " --context " + ctx.path
                                + " --source " + sibling) + "\n";
+
+                    /* And "make clean" takes it, the way it takes the
+                     * fragments pconfigure named -- which have a rule
+                     * of their own, and a clean rule of their own
+                     * along with it.  That is why this is in here
+                     * rather than beside the include: writing a
+                     * second clean rule for a fragment the Makefile
+                     * already cleans is two recipes for one name. */
+                    auto c = guard("clean", prefix.rewrite(sibling_deps));
+                    say(".PHONY: " + c);
+                    say(c + ":; @rm -fr " + sibling_deps);
+                    say("clean: " + c);
                 }
 
                 say("include " + sibling_deps);
@@ -423,9 +437,10 @@ int main(int argc, const char **argv)
 
         say("ifndef " + g);
         say(g + " := 1");
-        say(".PHONY: " + guard("clean", object));
-        say(guard("clean", object) + ":; @rm -fr " + object);
-        say("clean: " + guard("clean", object));
+        auto c = guard("clean", prefix.rewrite(object));
+        say(".PHONY: " + c);
+        say(c + ":; @rm -fr " + object);
+        say("clean: " + c);
         say(object + ":");
         out += "\t" + ctx.at + "echo \"" + ctx.pretty + "\t" + name + "\"\n";
         out += "\t" + ctx.at + "mkdir -p $(dir $@)\n";
