@@ -241,6 +241,25 @@ then
     exit 1
 fi
 
+##############################################################################
+# A chased file that went away                                               #
+##############################################################################
+# What went into the Makefile is every path that existed when
+# pconfigure looked, and a vendored tree is exactly the sort of thing
+# that gets bumped to a version with different files in it.  Named
+# outright, one of them disappearing stops make from building
+# anything at all -- not just this subproject -- with an error whose
+# way out ("make reconfigure") it does not mention.
+sleep 1
+rm sub/arch/two/Kconfig
+
+make $MAKE_ARGS > gone.out 2>&1
+cat gone.out
+
+# Which works because the whole list is named through one $(wildcard),
+# re-expanded every run rather than fixed when pconfigure looked.
+grep -q "^obj/sub/build/.config: \$(wildcard " Makefile
+
 # make check still works in a project that vendors something, even
 # though the vendored tree has no tests pconfigure knows how to run.
 make $MAKE_ARGS check
