@@ -3,39 +3,42 @@
 # A project that vendors pconfigure and keeps the Makefile that builds
 # it in revision control.  What's being checked here is the Makefile
 # pconfigure writes rather than pconfigure's own bootstrap.sh, so the
-# vendored tree is a stand-in: a bootstrap.sh, a Makefile it writes,
-# and a pconfigure that is the real one wearing a different path.
+# vendored tree is a stand-in: a Configfile that builds a pconfigure,
+# a bootstrap.sh that can build one without a pconfigure, and a
+# "pconfigure" that is the real one wearing a different path.
 #
-# Both of them keep a log, because the whole question is what runs
-# when.  A "make" that re-bootstraps or re-configures every time works
-# and is useless.
+# Both of those keep a log, because the whole question is what runs
+# when.  Bootstrapping is the one thing a build can't do for itself,
+# and it should happen exactly once; configuring is something a person
+# asks for, and should happen only when asked.
 
 here="$(pwd)"
 
-mkdir -p src test/hello vendor/pconfigure
+mkdir -p src test/hello vendor/pconfigure/src
 
-cat >vendor/pconfigure/pconfigure.in <<EOF
-#!/bin/bash
+cat >vendor/pconfigure/src/pconfigure.bash <<EOF
 echo ran >> "$here/configures"
 exec "$PTEST_BINARY" "\$@"
 EOF
 
-cat >vendor/pconfigure/Makefile.in <<'EOF'
-all: bin/pconfigure
+# An ordinary pconfigure project, which is the point: after the
+# bootstrap this tree is built like any other subproject.
+cat >vendor/pconfigure/Configfile <<EOF
+LANGUAGES += bash
 
-bin/pconfigure: pconfigure.in
-	mkdir -p bin
-	cp pconfigure.in $@
-	chmod +x $@
+BINARIES  += pconfigure
+SOURCES   += pconfigure.bash
 EOF
 
-# The one thing a vendored pconfigure has to be able to do without a
-# pconfigure: build itself and write down how to do it again.
+# The one thing it has to be able to do without a pconfigure: produce
+# one, and leave a Makefile behind saying it has been here.
 cat >vendor/pconfigure/bootstrap.sh <<EOF
 #!/bin/bash -e
 echo ran >> "$here/bootstraps"
-cp Makefile.in Makefile
-make
+mkdir -p bin
+{ echo '#!/bin/bash'; cat src/pconfigure.bash; } > bin/pconfigure
+chmod +x bin/pconfigure
+echo "# bootstrapped" > Makefile
 EOF
 chmod +x vendor/pconfigure/bootstrap.sh
 
@@ -69,15 +72,33 @@ cat Makefile
 # that says how to get a pconfigure.
 grep -q "^include Makefile.pconfigure$" Makefile
 grep -q "^PCONFIGURE_SRCPATH  = vendor/pconfigure/$" Makefile
-grep -q "^Makefile.pconfigure: | \$(PCONFIGURE)$" Makefile
+grep -q "^Makefile.pconfigure: | \$(PCONFIGURE_SRCPATH)Makefile$" Makefile
 grep -q "^\$(PCONFIGURE_SRCPATH)Makefile:$" Makefile
 grep -q "bootstrap.sh$" Makefile
+
+# Nothing in it recurses into the vendored tree, because the vendored
+# tree is a subproject: its Makefile is included, and the pconfigure
+# in it is built out of the same graph as everything else.
+if grep -q "\$(MAKE)" Makefile
+then
+    exit 1
+fi
+grep -q "^pconfigure_subdir_vendor_pconfigure ?= vendor/pconfigure/$" Makefile.pconfigure
+grep -q "^include \$(pconfigure_subdir_vendor_pconfigure)Makefile$" Makefile.pconfigure
 
 # The generated half is an ordinary pconfigure Makefile, and it is the
 # only one of the two that knows anything about this project.
 grep -q "^all:$" Makefile.pconfigure
 grep -q "^bin/hello:" Makefile.pconfigure
 if grep -q "hello" Makefile
+then
+    exit 1
+fi
+
+# The rule that runs pconfigure again lives in the committed file,
+# where the pconfigure to run is named, and nowhere else.
+grep -q "^reconfigure: \$(PCONFIGURE)$" Makefile
+if grep -q "^reconfigure:" Makefile.pconfigure
 then
     exit 1
 fi
@@ -93,7 +114,7 @@ test ! -e configures
 # else.  This is the state a stranger to the project arrives in.
 cp Makefile Makefile.committed
 rm -rf Makefile.pconfigure obj bin check
-rm -rf vendor/pconfigure/Makefile vendor/pconfigure/bin
+rm -rf vendor/pconfigure/Makefile vendor/pconfigure/bin vendor/pconfigure/obj
 
 make $MAKE_ARGS
 
@@ -106,23 +127,37 @@ test "$(./bin/hello)" = "hello"
 # it only when it would say something new.
 cmp Makefile Makefile.committed
 
+# The Makefile bootstrap.sh left behind has been taken over by the
+# configure that followed it: what is there now is a subproject's
+# Makefile, written to be included from up here.
+if grep -q "^# bootstrapped$" vendor/pconfigure/Makefile
+then
+    exit 1
+fi
+grep -q "^pconfigure_subdir_vendor_pconfigure ?=$" vendor/pconfigure/Makefile
+
 ##############################################################################
 # The second make                                                            #
 ##############################################################################
 # A build that reconfigures every time is a build that rebuilds
-# everything every time.  The vendored tree gets asked -- that's how
-# an edit to pconfigure's own sources is noticed -- but asking is all
-# it costs when the answer is no.
+# everything every time, and a build that bootstraps every time is
+# worse.
 make $MAKE_ARGS > second.out 2>&1
 cat second.out
 test "$(wc -l < bootstraps)" -eq 1
 test "$(wc -l < configures)" -eq 1
 
-# And it says nothing about the vendored tree while it's at it.  A
-# build that has nothing to do is a build that prints nothing, and
-# four lines of somebody else's make on every one of them would be
-# four lines nobody reads.
+# And it says nothing about the vendored tree while it's at it.  There
+# is no make being run in there to say anything: the tree's rules are
+# in this make, which is the whole point of it being a subproject.
 if grep -q "Entering directory" second.out
+then
+    exit 1
+fi
+
+# Nor does it rebuild the pconfigure in there, which is what makes the
+# next section mean anything.
+if grep -q "pconfigure$" second.out
 then
     exit 1
 fi
@@ -138,22 +173,30 @@ grep -q "PASS	hello/works.bash" report.out
 test "$(wc -l < configures)" -eq 1
 
 ##############################################################################
-# A new pconfigure                                                           #
+# An edit to pconfigure's own sources                                        #
 ##############################################################################
-# Which is not a reason to configure again.  What a Makefile says is
-# what the Configfiles said the last time somebody ran pconfigure, and
-# a bootstrapping project is no different from any other one about
-# that -- the vendored pconfigure being part of the build is not the
-# build being allowed to decide when the build gets reconfigured.
+# Which rebuilds it, because it is a subproject and that is what a
+# subproject does -- and does not reconfigure anything, because a
+# build doesn't decide when a tree gets reconfigured.
 sleep 1
-touch vendor/pconfigure/pconfigure.in
+touch vendor/pconfigure/src/pconfigure.bash
 
-make $MAKE_ARGS
+make $MAKE_ARGS > edit.out 2>&1
+cat edit.out
+grep -q "pconfigure$" edit.out
+if grep -q "Entering directory" edit.out
+then
+    exit 1
+fi
 test "$(wc -l < bootstraps)" -eq 1
 test "$(wc -l < configures)" -eq 1
 
-# Asking is what does it, and the pconfigure that runs is the vendored
-# one rather than whatever the PATH happens to hold.
+##############################################################################
+# Asking for a reconfigure                                                   #
+##############################################################################
+# The pconfigure that runs is the vendored one rather than whatever
+# the PATH happens to hold, since the vendored one is the whole reason
+# this project pinned a pconfigure at all.
 make $MAKE_ARGS reconfigure > reconfigure.out 2>&1
 cat reconfigure.out
 grep -q "^PCONFIGURE$" reconfigure.out

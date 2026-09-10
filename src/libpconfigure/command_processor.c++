@@ -373,6 +373,24 @@ void command_processor::process_one(const command::ptr& cmd)
             abort();
         }
 
+        /* The tree is read as a subproject, so it inherits the same
+         * restriction: a project that moved its source root can't
+         * also root subprojects, because a subproject's sources and
+         * its build output would stop being in the same place and one
+         * variable can't mean both. */
+        if (_srcpath != ".") {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: " << std::to_string(cmd->type())
+                      << " doesn't work alongside SRCPATH, which has"
+                      << " rooted this project at '" << _srcpath
+                      << "'\n"
+                      << "  the vendored tree is built where it sits,"
+                      << " like any other subproject, and a project"
+                      << " whose sources are somewhere else has no one"
+                      << " directory to build it in\n";
+            abort();
+        }
+
         auto path = file_utils::normalize_directory(cmd->data());
 
         if (path.size() == 0) {
@@ -420,6 +438,19 @@ void command_processor::process_one(const command::ptr& cmd)
 
         _bootstrap = path;
         _bootstrap_cmd = cmd;
+
+        /* Everything after the bootstrap is an ordinary subproject:
+         * the tree is read the way any other one is, its Makefile
+         * gets included, and the pconfigure in it is built by the
+         * same dependency graph as everything else.  What is special
+         * about it is only the two things nothing else needs -- a way
+         * to build a first one with no pconfigure in hand, and a
+         * Makefile that says so -- and neither of those is a reason
+         * to invent a second way of tracking what the tree builds.
+         *
+         * A tree that a SUBPROJECTS also names is read once, since
+         * that is true of any project two lines ask for. */
+        _pending_subprojects.push_back(path);
 
         return;
     }

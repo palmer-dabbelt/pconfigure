@@ -165,12 +165,6 @@ int main(int argc, const char **argv)
     for (const auto& project: projects)
         project->check_makefile_shape();
 
-    /* Asked of the whole run rather than of each project as it was
-     * read, because a BOOTSTRAP and the SUBPROJECTS it collides with
-     * are allowed to be written in either order. */
-    for (const auto& project: projects)
-        project->check_bootstrap(projects);
-
     /* Before a line of any Makefile is written, so that a build whose
      * "make check" would reach no test at all stops without leaving a
      * half-written set of them behind. */
