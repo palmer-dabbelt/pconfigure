@@ -2336,6 +2336,43 @@ it was given -- \texttt{sort}, \texttt{wildcard}, \texttt{strip},
 thrown away, so a whole directory of \texttt{Makefile}s that is
 included at once still gets followed.
 
+\subsubsection{What the tree says it read}
+
+The guess is a seed rather than the answer.  A kconfig tree decides
+which files it reads by reading them, and it writes down what it read
+--- \texttt{kbuild} into
+\texttt{include/config/auto.conf.cmd} under its output directory, and
+the older writer Buildroot carries into a \texttt{..config.tmp} beside
+the \texttt{.config}.  Both hold one assignment with one path a line,
+which is a far more rigid thing to read than a \texttt{Kconfig}.
+
+That file exists only once the tree has been configured, so reading it
+is a job for the build rather than for \pconfigure.  What does it is
+\texttt{psubdeps}, which lives next to \pconfigure\ and is not
+something to run by hand: \pconfigure\ writes it a context file at
+configure time, and \texttt{psubdeps} turns the tree's list into a
+piece of \texttt{Makefile} that the build includes, naming those
+files as prerequisites of the \texttt{.config}.
+
+It happens whether or not the project asked for
+\texttt{AUTORECONFIGURE} (Section~\ref{cmd:autoreconfigure}).  On a
+clean checkout the tree has not said anything yet, so there is no
+answer to be had at configure time, and gating this would be choosing
+whether to be right rather than when.  A tree that has never been
+built gets a fragment saying so, and the same command runs again at
+the end of the rules that configure and build the tree --- so the
+first \texttt{make} finishes with the fragment already saying what the
+tree just said, rather than what it said last time.
+
+Three kinds of path in such a list are dropped.  An absolute one names
+nothing on anybody else's machine; one that climbs above the directory
+\texttt{make} runs in names nothing either; and one that lands inside
+the tree's own output directory is a clock rather than a dependency
+--- Buildroot rewrites its \texttt{.br2-external.in.*} every time
+\texttt{make} is run, so a rule waiting on one would never be up to
+date again.  A path that merely leaves the vendored tree is kept: it
+is still somewhere in this build.
+
 \subsection{\texttt{buildroot}: Buildroot \label{buildsys:buildroot}}
 
 Buildroot, which builds a whole embedded Linux system out of a
