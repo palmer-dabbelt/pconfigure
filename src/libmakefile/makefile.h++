@@ -95,6 +95,12 @@ namespace makefile {
          * to build. */
         bool _write_reconfigure;
 
+        /* The files this Makefile was written out of, if it is meant
+         * to be rebuilt when they change.  Empty means nobody asked,
+         * which is what every Makefile did before there was a way to
+         * ask. */
+        std::vector<std::string> _configfiles;
+
     public:
         /* Creates a new "empty" Makefile -- note that this actually
          * contains some about of default targets and such that you
@@ -164,6 +170,12 @@ namespace makefile {
          * so this Makefile shouldn't: two recipes for the one name
          * would be make picking one of them quietly. */
         void skip_reconfigure(void);
+
+        /* Says that make should write this Makefile again when any of
+         * these change.  They are the names a run went looking for
+         * Configfile lines in, present or not: a file that shows up
+         * later is one of the ways the answer changes. */
+        void reconfigure_on(const std::vector<std::string>& configfiles);
 
         /* Writes this makefilie out to a text file. */
         void write_to_file(const std::string& filename);
