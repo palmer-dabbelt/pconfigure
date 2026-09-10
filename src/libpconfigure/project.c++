@@ -1184,6 +1184,30 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
     if (_processor->bootstrap().size() > 0)
         out->skip_reconfigure();
 
+    /* Under AUTORECONFIGURE the build is what keeps itself current,
+     * and a Configfile is the one input to it that nothing was
+     * watching.  Everywhere else the promise is deliberately the
+     * other way round: a Makefile says what the Configfiles said the
+     * last time somebody ran pconfigure, and running it again is
+     * something a person asks for.
+     *
+     * Only the project make was run in gets the rule, and it gets
+     * everybody's names -- the list is one list for the whole run.
+     * That is the right shape rather than a convenient one: a
+     * subproject cannot be configured from inside itself, so a
+     * subproject's Configfile changing has to re-run the pconfigure
+     * up here, and prerequisites written down there would be
+     * prerequisites of a file make has no rule for.
+     *
+     * What this does not promise: a Configfile that is a program is
+     * on its own for whatever it reads, a Configfile that is deleted
+     * is not noticed -- the $(wildcard) that keeps a missing one from
+     * stopping the build is the same thing that keeps its going away
+     * quiet -- and a target that stopped being asked for keeps
+     * whatever it last built. */
+    if (_base.size() == 0 && _processor->autoreconfigure() == true)
+        out->reconfigure_on(configfiles_read());
+
     out->add_standalone_target(cache_clean_target(aggregated));
     out->add_standalone_target(distclean_target(aggregated));
 
