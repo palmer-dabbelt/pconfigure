@@ -88,6 +88,11 @@ namespace {
         std::vector<std::string> links;
         std::vector<std::string> opts;
 
+        /* The sources whose fragments the Makefile already knows how
+         * to build, because a Configfile named them.  Writing a
+         * second rule for one of those is two recipes for one file. */
+        std::set<std::string> named;
+
         std::string base, variable;
         std::vector<std::pair<std::string, std::string>> peers;
 
@@ -148,6 +153,7 @@ namespace {
             else if (key == "variable")    out.variable = value;
             else if (key == "autodeps")    out.autodeps = value == "true";
             else if (key == "link")        out.links.push_back(value);
+            else if (key == "named")       out.named.insert(value);
             else if (key == "opt")         out.opts.push_back(value);
             else if (key == "peer") {
                 auto split = value.find(' ');
@@ -339,6 +345,7 @@ int main(int argc, const char **argv)
 
                 say("ifndef " + g);
                 say(g + " := 1");
+
                 /* "$(wildcard)" rather than the path, because the
                  * path may stop existing.  A source can be deleted
                  * without anything that reads it changing -- what
@@ -354,13 +361,17 @@ int main(int argc, const char **argv)
                  * over, decide again, and never stop.  Asking whether
                  * the file exists has neither problem, and when the
                  * file comes back it is a prerequisite again. */
-                say(sibling_deps + ": $(wildcard " + behind + ") "
-                    + ctx.path);
-                out += "\t" + ctx.at + "echo \"DEPS\t" + sibling + "\"\n";
-                out += "\t" + ctx.at + "mkdir -p $(dir $@)\n";
-                out += "\t" + ctx.at + prefix.rewrite(
-                           ctx.pdeps + " --context " + ctx.path
-                           + " --source " + sibling) + "\n";
+                if (ctx.named.count(sibling) == 0) {
+                    say(sibling_deps + ": $(wildcard " + behind + ") "
+                        + ctx.path);
+                    out += "\t" + ctx.at + "echo \"DEPS\t" + sibling
+                           + "\"\n";
+                    out += "\t" + ctx.at + "mkdir -p $(dir $@)\n";
+                    out += "\t" + ctx.at + prefix.rewrite(
+                               ctx.pdeps + " --context " + ctx.path
+                               + " --source " + sibling) + "\n";
+                }
+
                 say("include " + sibling_deps);
                 say("endif");
                 out += "\n";

@@ -238,6 +238,16 @@ public:
      * decide whether the directory is worth searching. */
     bool lib_dir_built;
 
+    /* TRUE when this project's dependencies are worked out by the
+     * build rather than by pconfigure, which an AUTORECONFIGURE asked
+     * for.
+     *
+     * It is a property of the whole project, so it is stamped onto
+     * every context after the Configfiles have been read rather than
+     * set by the line that asked: a line at the bottom of a file has
+     * to mean the same thing as the same line at the top. */
+    bool autoreconfigure;
+
 public:
     /* Creates a new context with everything filled in to the default
      * values.  Note that you probably don't want to use this unless
@@ -288,7 +298,8 @@ public:
             const std::string& phc,
             const std::string& entitlements,
             const std::vector<ptr>& children,
-            bool lib_dir_built);
+            bool lib_dir_built,
+            bool autoreconfigure);
 
     virtual ~context(void) {}
 
