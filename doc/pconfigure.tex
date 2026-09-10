@@ -66,6 +66,12 @@ troubleshooting.  Additionally, Section~\ref{cl} contains a list of
 command-line options that may be useful to you.  A full list of the
 generated \texttt{make} targets is shown in Section~\ref{make}.
 
+Some projects vendor \pconfigure\ and commit the \texttt{Makefile}
+that builds it, in which case there is nothing to run first: type
+\texttt{make} and the build gets itself a \pconfigure\ before it
+configures.  Section~\ref{cmd:bootstrap} says how a project asks for
+that.
+
 Note that for a properly written \pconfigure\ project it will not be
 necessary to run \texttt{make install} before running \texttt{make
   check}.  Some buggy projects will silently run old code in this
@@ -922,6 +928,86 @@ tree's output directory, so it has to say which tree.  It also can't
 be written under a \texttt{pconfigure} subproject, which has no one
 file that says it has been built --- a \texttt{pconfigure} subproject's
 outputs already have rules of their own, so name those instead.
+
+\subsection{\texttt{BOOTSTRAP = \$dirname} \label{cmd:bootstrap}}
+
+Names a vendored \pconfigure\ source tree that this project builds
+itself with, so that a fresh checkout can be built by typing
+\texttt{make} and nothing else.
+
+A project whose build system has to be built first hands whoever
+clones it a problem before it hands them a build.  They have to find
+out that \pconfigure\ exists at all, get one, and get one new enough
+for the \texttt{Configfile}s in front of them --- none of which the
+tree says out loud.  \texttt{BOOTSTRAP} moves all of that into the
+\texttt{Makefile}, where it becomes one more thing \texttt{make} knows
+how to build:
+
+\begin{verbatim}
+BOOTSTRAP  = src/pconfigure
+
+LANGUAGES += c
+BINARIES  += hello
+SOURCES   += hello.c
+\end{verbatim}
+
+\texttt{\$dirname} is relative to where \pconfigure\ was run and has
+to be inside the tree, usually as a git submodule.  It points at
+\pconfigure's source rather than at a \pconfigure\ binary because a
+binary is something somebody already built, which is exactly what a
+fresh checkout has not got.  The directory is checked for an
+executable \texttt{bootstrap.sh} while the \texttt{Configfile} is
+being read, since the usual way to get this wrong is a submodule
+nobody has checked out yet.
+
+With one of these, \pconfigure\ writes two files instead of one.
+Everything it generates goes into \texttt{Makefile.pconfigure}, and
+the \texttt{Makefile} in its place holds only what the
+\texttt{BOOTSTRAP} line said: where the vendored source is, how to
+build a \pconfigure\ out of it, how to run that \pconfigure, and an
+\texttt{include} of the other half.
+
+That second file is the one to commit.  \texttt{make} remakes what it
+includes before it reads it, so a checkout holding nothing but the
+sources and that \texttt{Makefile} bootstraps \pconfigure, configures
+itself and builds, in one \texttt{make}.  And because everything in it
+comes from the one \texttt{BOOTSTRAP} line, it says the same thing
+next year that it says today --- a generated file in revision control
+that changed whenever a \texttt{Configfile} did would be a merge
+conflict on every branch.  \pconfigure\ rewrites it only when it would
+say something new.
+
+The vendored tree is asked whether \pconfigure\ needs rebuilding on
+every \texttt{make} rather than only the first, since a vendored tree
+is one that moves and an edit to it that nothing noticed is a build
+configured by the wrong \pconfigure.  That costs a \texttt{make} that
+finds nothing to do; it does not cost a configure, because a build
+that changed nothing leaves the binary's timestamp alone.  It is asked
+quietly, so a build with nothing to do still prints nothing; to watch
+that build properly, run \texttt{make} in the vendored tree itself.
+
+Options for the generated configure go in \texttt{PCONFIGURE\_ARGS},
+which the \texttt{Makefile} leaves empty:
+
+\begin{verbatim}
+$ make PCONFIGURE_ARGS=--config debug
+\end{verbatim}
+
+\texttt{make distclean} takes back \texttt{Makefile.pconfigure} along
+with everything else \pconfigure\ wrote, and leaves the committed
+\texttt{Makefile} alone: a tree it had removed that from is a tree
+nobody could type \texttt{make} in any more.
+
+A \texttt{BOOTSTRAP} belongs in the \texttt{Configfile} of the project
+\texttt{make} is run at.  Written in a subproject it is a fatal error,
+since a subproject's \texttt{Makefile} is included by the one above it
+and a second copy of these rules down there would be a second recipe
+for the same file.  Naming a tree that a \texttt{SUBPROJECTS}
+(Section~\ref{cmd:subprojects}) also names is a fatal error for the
+same sort of reason: as a subproject the tree is configured from up
+here, into this build's directories, while bootstrapping it configures
+it for itself, and each of those writes the \texttt{Makefile} the
+other one reads.  A vendored \pconfigure\ is one or the other.
 
 \subsection{\texttt{DEPLIBS += \$libname} \label{cmd:deplibs}}
 
