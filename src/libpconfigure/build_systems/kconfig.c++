@@ -20,7 +20,9 @@
 
 #include "kconfig.h++"
 #include "../file_utils.h++"
+#include "../project.h++"
 #include "../string_utils.h++"
+#include <libmakefile/self_path.h++>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <cctype>
@@ -342,7 +344,8 @@ void build_system_kconfig::take_configureopt(const std::string& opt)
 
 std::vector<makefile::target::ptr>
 build_system_kconfig::vendored_targets(
-    const std::vector<build_system::ptr>& peers) const
+    const std::vector<build_system::ptr>& peers,
+    const std::string& project_base) const
 {
     auto srcdir = source_dir();
     auto output = kbuild_output();
@@ -522,6 +525,53 @@ build_system_kconfig::vendored_targets(
     /* A defconfig that changed nothing leaves the file exactly as it
      * was, mtime included, which would leave it older than whatever
      * asked for it and run this again on every make. */
+
+    /* Everything above is a guess about what configuring this tree
+     * reads.  The tree knows, and says so: it writes a list of the
+     * files that went into its configuration, because its own build
+     * needs one.  That file only exists once the tree has been
+     * configured, so what reads it is a program the build runs, and
+     * what it produces is a piece of Makefile this one includes.
+     *
+     * The context is written now because it is the fragment's only
+     * prerequisite, and that is what makes the whole thing terminate:
+     * it is a file nothing in this Makefile builds, so the fragment
+     * can go out of date at most once per configure.
+     *
+     * The same command runs again at the end of the two recipes that
+     * could have changed the answer.  That is what keeps a clean
+     * checkout to one pass instead of two -- by the time the first
+     * make has finished, the fragment says what the tree just said,
+     * rather than what it had said before it was built. */
+    auto deps_context = output_dir() + "/config-deps-context";
+    auto deps_fragment = output_dir() + "/config-deps.mk";
+
+    auto say = [](const std::string& key, const std::string& value)
+        { return key + " " + value + "\n"; };
+
+    auto context = std::string();
+    context += say("tree", srcdir);
+    context += say("output", output_dir());
+    context += say("target", config);
+    context += say("fragment", deps_fragment);
+    for (const auto& candidate: config_dep_files())
+        context += say("dep-file", candidate);
+    context += say("dep-root", base());
+
+    /* Only a project a parent can include has anything to say here:
+     * the fragment is written during the build, so it is the only
+     * thing in this Makefile that has to do its own rewriting. */
+    if (project_base.size() > 0) {
+        context += say("base", project_base);
+        context += say("variable", project::prefix_variable(project_base));
+    }
+
+    file_utils::mkdir_p(output_dir());
+    file_utils::write_if_changed(deps_context, context);
+
+    auto reread = makefile::tool_command("psubdeps")
+                + " --context " + deps_context;
+    config_commands.push_back(reread);
     config_commands.push_back("touch $@");
 
     auto config_target = std::make_shared<makefile::target>(
@@ -570,6 +620,7 @@ build_system_kconfig::vendored_targets(
     for (const auto& make_target: _make_targets)
         build_commands.push_back(submake + " " + make_target);
     build_commands.push_back("mkdir -p " + output_dir());
+    build_commands.push_back(reread);
     build_commands.push_back("date > $@");
 
     auto build_target = std::make_shared<makefile::target>(
@@ -587,5 +638,25 @@ build_system_kconfig::vendored_targets(
         }
     );
 
-    return std::vector<makefile::target::ptr>{config_target, build_target};
+    auto deps_target = std::make_shared<makefile::target>(
+        deps_fragment,
+        "DEPS\t" + srcdir,
+        std::vector<makefile::target::ptr>{
+            std::make_shared<makefile::target>(deps_context)
+        },
+        std::vector<makefile::global_targets>{
+            makefile::global_targets::CLEAN
+        },
+        std::vector<std::string>{
+            "mkdir -p $(dir $@)",
+            reread
+        },
+        std::vector<std::string>{
+            "What the vendored build system in " + srcdir + " said it"
+            " read while it was being configured"
+        }
+    )->as_included();
+
+    return std::vector<makefile::target::ptr>{
+        config_target, build_target, deps_target};
 }

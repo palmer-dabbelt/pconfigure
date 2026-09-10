@@ -216,7 +216,8 @@ void project::generate_targets(void)
      * already has a Makefile and it's the tree's own, so there's
      * nowhere else for them to go. */
     for (const auto& vendored: _processor->vendored())
-        for (const auto& target: vendored->targets(_processor->vendored()))
+        for (const auto& target: vendored->targets(_processor->vendored(),
+                                                   _base))
             _targets.push_back(target);
 
     /* What each target this project builds is going to be called,

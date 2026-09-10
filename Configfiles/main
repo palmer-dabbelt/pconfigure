@@ -206,6 +206,7 @@ TESTSRC     += phony.bash
 TESTSRC     += kconfig.bash
 TESTSRC     += buildroot.bash
 TESTSRC     += kconfig-opts.bash
+TESTSRC     += kconfig-deps.bash
 TESTSRC     += vendored-depend.bash
 TESTSRC     += cxx-extensions.bash
 TESTSRC     += cross-compile.bash

@@ -46,7 +46,8 @@ public:
 
 protected:
     std::vector<makefile::target::ptr>
-    vendored_targets(const std::vector<ptr>& peers) const;
+    vendored_targets(const std::vector<ptr>& peers,
+                     const std::string& project_base) const;
     void take_configureopt(const std::string& opt);
 
     /* Nothing here is run by make: a pconfigure subproject is read

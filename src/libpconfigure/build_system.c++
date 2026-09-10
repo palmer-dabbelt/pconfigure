@@ -153,9 +153,10 @@ std::string build_system::makeopt_flags(void) const
 }
 
 std::vector<makefile::target::ptr>
-build_system::targets(const std::vector<ptr>& peers) const
+build_system::targets(const std::vector<ptr>& peers,
+                      const std::string& project_base) const
 {
-    auto out = vendored_targets(peers);
+    auto out = vendored_targets(peers, project_base);
 
     /* Every named output hangs off the one stamp that says the tree
      * has been built, which is the only thing here that runs the

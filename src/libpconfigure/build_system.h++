@@ -209,7 +209,8 @@ public:
      * than by each build system, since they're the same rules
      * whatever built the tree and forgetting them would be silent. */
     std::vector<makefile::target::ptr>
-    targets(const std::vector<ptr>& peers) const;
+    targets(const std::vector<ptr>& peers,
+            const std::string& project_base) const;
 
     /* The file that says this build system has been run since
      * anything it reads changed, or "" for one that hasn't got a
@@ -222,7 +223,8 @@ protected:
      * half of targets() that knows how a tree gets built, and it's
      * the only half a build system has to write. */
     virtual std::vector<makefile::target::ptr>
-    vendored_targets(const std::vector<ptr>& peers) const = 0;
+    vendored_targets(const std::vector<ptr>& peers,
+                     const std::string& project_base) const = 0;
 
     /* Takes one CONFIGUREOPTS line.  This is the half of
      * add_configureopt() that knows what an option means, and it's

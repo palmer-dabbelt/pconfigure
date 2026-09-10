@@ -151,7 +151,8 @@ public:
 
 protected:
     std::vector<makefile::target::ptr>
-    vendored_targets(const std::vector<build_system::ptr>& peers) const;
+    vendored_targets(const std::vector<build_system::ptr>& peers,
+                     const std::string& project_base) const;
     void take_configureopt(const std::string& opt);
 
     /* Takes one CONFIGUREOPTS, and answers whether it was one of
@@ -253,6 +254,20 @@ public:
      * changed. */
     std::string config_file(void) const
         { return kbuild_output() + "/.config"; }
+
+    /* Where the tree writes down what it read while it was working
+     * out its configuration.  Both spellings, because which one a
+     * tree uses depends on its vintage rather than on which build
+     * system it is: kbuild puts it under the directory it keeps its
+     * generated headers in, and the older writer buildroot carries
+     * puts it beside the .config with a doubled prefix.  Whichever
+     * turns up first is the one that gets read, and none of them
+     * turning up is what a tree that has never been built looks
+     * like. */
+    std::vector<std::string> config_dep_files(void) const
+        { return std::vector<std::string>{
+              kbuild_output() + "/include/config/auto.conf.cmd",
+              kbuild_output() + "/..config.tmp"}; }
     std::string build_stamp(void) const
         { return output_dir() + "/build-stamp"; }
 
