@@ -381,6 +381,12 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
 std::vector<std::string>
 language_cxx::find_files_for_header(const std::string& full_header_path) const
 {
+    return cxx_sources_for_header(full_header_path);
+}
+
+std::vector<std::string>
+cxx_sources_for_header(const std::string& full_header_path)
+{
     std::vector<std::string> out;
 
     /* A header and the source that implements it are the same name

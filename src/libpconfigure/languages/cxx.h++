@@ -37,6 +37,17 @@
 const std::vector<std::string>& cxx_source_extensions(void);
 const std::vector<std::string>& cxx_header_extensions(void);
 
+/* The sources that implement a header, which is every file that
+ * exists whose name is that header's with a source ending on it.
+ *
+ * This is a free function rather than a method because the answer is
+ * a property of the names C and C++ go by rather than of a language
+ * object: whoever is deciding what to build against a header wants
+ * the same answer, and the one place it can be wrong is a place two
+ * copies of it would eventually disagree about. */
+std::vector<std::string>
+cxx_sources_for_header(const std::string& full_header_path);
+
 /* C++ is probably the best supported of the pconfigure language
  * implementations, as it's the one that pconfigure itself is written
  * in. */
