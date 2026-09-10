@@ -70,7 +70,8 @@ namespace makefile {
      * how to build the target that offered it -- which is what keeps
      * a reference to a system library from turning into a dependency
      * on a target that doesn't exist -- and if it isn't already
-     * written down, and if it wouldn't introduce a cycle. */
+     * written down, and if it wouldn't introduce a cycle, and if the
+     * target that wanted it is not a makefile make includes. */
     std::vector<implied_dep>
     implied_deps(const std::vector<target::ptr>& targets,
                  const std::vector<capability>& provided,
