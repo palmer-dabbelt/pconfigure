@@ -78,6 +78,13 @@ command::ptr parse_line(const configfile_line& line);
  * to build, which is what lets a project ask about a package one of
  * its subprojects provides before anything has been built.  Every
  * pkg-config a Configfile runs looks here first. */
+/* Every file this run looked for Configfile lines in, whether or not
+ * it found any, in the order it looked.  This is what a build has to
+ * watch if it wants to notice that the Configfiles have moved on: a
+ * name that was empty at configure time is a name that can stop being
+ * empty. */
+const std::vector<std::string>& configfiles_read(void);
+
 void add_pkgconfig_path(const std::string& dir);
 
 #endif
