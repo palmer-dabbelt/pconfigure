@@ -1370,8 +1370,20 @@ void project::write_bootstrap_makefile(void) const
            " because this is\n";
     out += "# about the file existing and not about it being newer"
            " than anything.\n";
+    out += "#\n";
+    out += "# The recipe checks for its own pconfigure because"
+           " \"make clean\" deletes it,\n";
+    out += "# and a rule that runs a binary the build has just"
+           " removed is a tree that\n";
+    out += "# cannot be built out of again.  The vendored source is"
+           " right there, so\n";
+    out += "# there is no reason for that to be anything worse than"
+           " a slow build.\n";
     out += "Makefile.pconfigure: | $(PCONFIGURE_SRCPATH)Makefile\n";
-    out += "\t$(PCONFIGURE) $(PCONFIGURE_ARGS)\n";
+    out += "\t+test -x $(PCONFIGURE) ||"
+           " (cd $(PCONFIGURE_SRCPATH) && ./bootstrap.sh)\n";
+    out += "\t@echo \"PCONFIGURE\"\n";
+    out += "\t@$(PCONFIGURE) $(PCONFIGURE_ARGS)\n";
     out += "\n";
     out += "# Asking for it again, which is the other half of that:"
            " the build doesn't\n";

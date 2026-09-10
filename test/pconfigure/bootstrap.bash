@@ -214,6 +214,27 @@ test "$(wc -l < bootstraps)" -eq 1
 test "$(wc -l < configures)" -eq 1
 
 ##############################################################################
+# A configure with no pconfigure to do it with                               #
+##############################################################################
+# "make clean" deletes the vendored pconfigure along with everything
+# else the build produced, since it is one of the things the build
+# produced.  What must not happen then is a rule that runs it anyway:
+# that is a tree which can no longer be built out of, and the way out
+# of it is not written down anywhere.
+make $MAKE_ARGS clean
+test ! -x vendor/pconfigure/bin/pconfigure
+rm -f Makefile.pconfigure
+
+make $MAKE_ARGS > cleaned.out 2>&1
+cat cleaned.out
+test -e Makefile.pconfigure
+test "$(./bin/hello)" = "hello"
+
+# It built one for itself rather than failing, which is the second
+# time this tree has had to.
+test "$(wc -l < bootstraps)" -eq 2
+
+##############################################################################
 # Asking for a reconfigure                                                   #
 ##############################################################################
 # The pconfigure that runs is the vendored one rather than whatever
@@ -222,8 +243,8 @@ test "$(wc -l < configures)" -eq 1
 make $MAKE_ARGS reconfigure > reconfigure.out 2>&1
 cat reconfigure.out
 grep -q "^PCONFIGURE$" reconfigure.out
-test "$(wc -l < configures)" -eq 2
-test "$(wc -l < bootstraps)" -eq 1
+test "$(wc -l < configures)" -eq 3
+test "$(wc -l < bootstraps)" -eq 2
 
 ##############################################################################
 # Undoing a configure                                                        #
