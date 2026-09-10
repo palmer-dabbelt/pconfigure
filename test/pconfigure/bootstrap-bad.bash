@@ -117,6 +117,58 @@ grep -q "has no executable bootstrap.sh" out
 grep -q "git submodule update --init vendor/pconfigure" out
 
 ##############################################################################
+# Naming a tree this build also builds                                       #
+##############################################################################
+# A vendored pconfigure is either something this build builds or
+# something that builds itself, and it can't be both: as a subproject
+# the tree is configured from up here into this build's directories,
+# and bootstrapping it configures it for itself.  Each of those writes
+# the Makefile the other one reads.
+setup
+vendor vendor/pconfigure
+mkdir -p case/vendor/pconfigure/src
+cat >case/vendor/pconfigure/Configfile <<EOF
+LANGUAGES += c
+
+BINARIES  += pconfigure
+SOURCES   += pconfigure.c
+EOF
+
+cat >case/vendor/pconfigure/src/pconfigure.c <<EOF
+int main(void) { return 0; }
+EOF
+
+cat >case/Configfile <<EOF
+SUBPROJECTS += vendor/pconfigure
+
+BOOTSTRAP    = vendor/pconfigure
+
+LANGUAGES   += c
+
+BINARIES    += main
+SOURCES     += main.c
+EOF
+
+refuses
+grep -q "is a subproject of this build as well as the pconfigure it" out
+
+# And the other way around, since which of the two lines came first
+# isn't what's wrong with them.
+cat >case/Configfile <<EOF
+BOOTSTRAP    = vendor/pconfigure
+
+SUBPROJECTS += vendor/pconfigure
+
+LANGUAGES   += c
+
+BINARIES    += main
+SOURCES     += main.c
+EOF
+
+refuses
+grep -q "is a subproject of this build as well as the pconfigure it" out
+
+##############################################################################
 # Written in a subproject                                                    #
 ##############################################################################
 # The rules a BOOTSTRAP writes go in the Makefile make is run at, and

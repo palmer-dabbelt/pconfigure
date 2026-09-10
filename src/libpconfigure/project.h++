@@ -139,6 +139,18 @@ public:
      * project this Makefile is responsible for put into it. */
     void check_default_test_suite(const std::vector<ptr>& aggregated) const;
 
+    /* Complains if a BOOTSTRAP names a tree this run also builds.
+     * "everyone" is every project in the run, and the two ways of
+     * having the vendored pconfigure are one too many: the tree would
+     * be configured as a subproject here and configured for itself by
+     * bootstrap.sh, each writing the other's Makefile, and the
+     * pconfigure binary would have two recipes and one name.
+     *
+     * Asked once the whole run has been read, because the two lines
+     * are allowed to be written in either order and which of them
+     * came first is not what's wrong. */
+    void check_bootstrap(const std::vector<ptr>& everyone) const;
+
     /* Complains if the Makefile this project is about to write over
      * is one that a project above it includes.  That means pconfigure
      * was run inside a subproject, and the Makefile it would leave
