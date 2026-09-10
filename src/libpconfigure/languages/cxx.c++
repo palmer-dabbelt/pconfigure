@@ -1048,10 +1048,28 @@ language_cxx::deps_source(const context::ptr& ctx,
                           const
 {
     auto hash = hash_compile_options(child);
-    auto deps_dir = link_dir(ctx) + "deps/";
+    auto link = link_dir(ctx);
+    auto obj_prefix =
+        child->obj_dir + "/" + child->unbased(child->src_dir) + "/";
+
+    /* A fragment sits beside the object it describes, because that is
+     * where somebody looking for it will look.  What it cannot share
+     * with the object is its name: an object belongs to whoever
+     * compiled it and is used by every link whose options matched,
+     * while a fragment names the links its object goes on -- so two
+     * targets that compile a source the same way share one object and
+     * need two fragments.
+     *
+     * The link directory is what tells them apart, hashed because it
+     * has directories in it and this is one path component.  It was
+     * doing that job before by being the directory the fragments sat
+     * under; the file has moved and the job hasn't gone away. */
+    auto deps_suffix =
+        "/" + hash + "-" + hash_options({link})
+        + (is_shared == shared_target::TRUE ? "-shared.d" : "-static.d");
 
     auto source_path = child->src_dir + "/" + child->cmd->data();
-    auto deps_path = deps_dir + child->cmd->data() + "/" + hash + ".d";
+    auto deps_path = obj_prefix + child->cmd->data() + deps_suffix;
 
     /* One of these per set of compile options rather than per source,
      * because that is the granularity everything else here has: the
@@ -1060,7 +1078,7 @@ language_cxx::deps_source(const context::ptr& ctx,
      * question pdeps asks.  A source found behind a header inherits
      * the options of whatever led to it, which is why the same file
      * serves the whole walk below it. */
-    auto context_path = deps_dir + "deps-context-" + hash;
+    auto context_path = link + "deps-context-" + hash;
 
     auto say = [](const std::string& key, const std::string& value)
         { return key + " " + value + "\n"; };
@@ -1072,14 +1090,13 @@ language_cxx::deps_source(const context::ptr& ctx,
      * middle of these is the same arithmetic compile_source() does,
      * and it is the only arithmetic pdeps is trusted with. */
     out += say("src-prefix", child->src_dir + "/");
-    out += say("obj-prefix",
-               child->obj_dir + "/" + child->unbased(child->src_dir) + "/");
+    out += say("obj-prefix", obj_prefix);
     out += say("obj-suffix",
                "/" + hash
                + (is_shared == shared_target::TRUE ? "-shared.o"
                                                    : "-static.o"));
-    out += say("dep-prefix", deps_dir);
-    out += say("dep-suffix", "/" + hash + ".d");
+    out += say("dep-prefix", obj_prefix);
+    out += say("dep-suffix", deps_suffix);
 
     out += say("compiler", this->compiler_command(child));
     out += say("pretty", this->compiler_pretty());
@@ -1106,8 +1123,8 @@ language_cxx::deps_source(const context::ptr& ctx,
      * "make install" that installs a program built out of whatever
      * was lying around. */
     if (ctx->install == true)
-        out += say("link", link_dir(ctx) + "install");
-    out += say("link", link_dir(ctx) + "local");
+        out += say("link", link + "install");
+    out += say("link", link + "local");
 
     /* The sources this target's Configfile named outright, which are
      * the ones whose fragments have a rule in the Makefile already.
@@ -1131,7 +1148,7 @@ language_cxx::deps_source(const context::ptr& ctx,
      * prerequisite of every fragment below it: a file rewritten by
      * each configure is every dependency in the project worked out
      * again, whether or not anything changed. */
-    file_utils::mkdir_p(deps_dir);
+    file_utils::mkdir_p(link);
     file_utils::write_if_changed(context_path, out);
 
     auto deps = std::vector<makefile::target::ptr>{
