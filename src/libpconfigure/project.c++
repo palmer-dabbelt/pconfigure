@@ -1324,6 +1324,33 @@ void project::write_bootstrap_makefile(void) const
            " pconfigure exists before\n";
     out += "# they can build this project.\n";
     out += "\n";
+
+    /* The same cancellations makefile::write_to_file() writes, said
+     * again here because of when they are needed.  make remakes what
+     * it includes before it has read it, so during the one phase that
+     * decides whether to run pconfigure at all, the file below has
+     * not been read yet and this is the only Makefile in play --
+     * which is exactly the phase where make would otherwise go
+     * looking for a built-in rule to build a Makefile with. */
+    out += "# make ships rules that build a file out of another file"
+           " sitting next to it,\n";
+    out += "# and they fire on anything that has no rule of its own."
+           "  A Makefile is a\n";
+    out += "# thing make tries to build before it reads it, so"
+           " cancelling them has to\n";
+    out += "# happen here rather than only in the file this one"
+           " includes.\n";
+    for (const auto& suffix: {"c", "C", "cc", "cpp", "f", "F", "m",
+                              "mod", "o", "p", "r", "s", "S", "sh"})
+        out += "%: %." + std::string(suffix) + "\n";
+    out += "%:: %,v\n";
+    out += "%:: RCS/%,v\n";
+    out += "%:: RCS/%\n";
+    out += "%:: s.%\n";
+    out += "%:: SCCS/s.%\n";
+    out += ".SUFFIXES:\n";
+    out += "\n";
+
     out += "PCONFIGURE_SRCPATH  = " + srcpath + "\n";
     out += "PCONFIGURE          = $(PCONFIGURE_SRCPATH)bin/pconfigure\n";
     out += "PCONFIGURE_ARGS    ?=\n";

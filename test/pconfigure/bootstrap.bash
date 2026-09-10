@@ -76,6 +76,15 @@ grep -q "^Makefile.pconfigure: | \$(PCONFIGURE_SRCPATH)Makefile$" Makefile
 grep -q "^\$(PCONFIGURE_SRCPATH)Makefile:$" Makefile
 grep -q "bootstrap.sh$" Makefile
 
+# And it cancels make's built-in rules, which the file it includes
+# also does.  Saying it twice is the point: make looks for a rule to
+# build a Makefile with before it has read the Makefile, so during the
+# one phase that decides whether to run pconfigure, this is the only
+# file that has been read.
+grep -q "^\\.SUFFIXES:$" Makefile
+grep -q "^%: %.sh$" Makefile
+grep -q "^%:: RCS/%$" Makefile
+
 # Nothing in it recurses into the vendored tree, because the vendored
 # tree is a subproject: its Makefile is included, and the pconfigure
 # in it is built out of the same graph as everything else.
@@ -112,6 +121,12 @@ test ! -e configures
 ##############################################################################
 # Which is the committed Makefile and the vendored source, and nothing
 # else.  This is the state a stranger to the project arrives in.
+# A file whose name make would otherwise take as a recipe for this
+# one.  Buildroot keeps an arch/Config.in.sh next to its
+# arch/Config.in, so this is not a hypothetical spelling; here it
+# stands in for one, beside the file a fresh checkout has nothing but.
+echo "the impostor" > Makefile.sh
+
 cp Makefile Makefile.committed
 rm -rf Makefile.pconfigure obj bin check
 rm -rf vendor/pconfigure/Makefile vendor/pconfigure/bin vendor/pconfigure/obj
@@ -126,6 +141,13 @@ test "$(./bin/hello)" = "hello"
 # And it left the committed file alone, which is the point of writing
 # it only when it would say something new.
 cmp Makefile Makefile.committed
+
+# Including its mode.  Without the cancellations make builds the
+# committed Makefile out of the file beside it -- "cat Makefile.sh >
+# Makefile; chmod a+x Makefile" -- and the configure that follows
+# writes the contents back but not the bit, so the bytes alone would
+# say nothing had happened.
+test ! -x Makefile
 
 # The Makefile bootstrap.sh left behind has been taken over by the
 # configure that followed it: what is there now is a subproject's
