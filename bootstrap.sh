@@ -92,6 +92,21 @@ SOURCE_PATH="$1"
 BOOTSTRAP_DIR=bootstrap_bin
 
 make distclean >& /dev/null || true
+
+# And the Makefile, which distclean deliberately leaves alone because
+# every other build wants it kept.  A bootstrap is the one that does
+# not: it exists to produce a pconfigure where there is none, and the
+# usual reason there is none is that a parent project has just been
+# asked to build one out of a tree it vendors.  That parent has
+# already configured this tree, so what is sitting here is a Makefile
+# written to be included from above -- and pconfigure refuses to write
+# over one of those from in here, rightly, because standing in a
+# subproject there is no way to know what the parent calls it.
+#
+# Nothing is lost by removing it.  This script writes one twice below,
+# and the parent writes its own again on its way past.
+rm -f Makefile
+
 mkdir -p $BOOTSTRAP_DIR
 
 if [[ "$CC" == "" ]]
