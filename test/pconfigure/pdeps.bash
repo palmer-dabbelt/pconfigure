@@ -66,12 +66,12 @@ SOURCE
 
 context() {
     mkdir -p obj/bin/app/L
-    cat >obj/bin/app/L/deps.opts <<EOF
+    cat >obj/bin/app/L/deps-context-OPTS <<EOF
 src-prefix src/
 obj-prefix obj/src/
 obj-suffix /OPTS-static.o
-dep-prefix obj/bin/app/L/deps/
-dep-suffix /OPTS.d
+dep-prefix obj/src/
+dep-suffix /OPTS-L-static.d
 compiler $(pwd)/stub/cc
 pretty C++
 pdeps $pdeps
@@ -86,9 +86,9 @@ EOF
 # What one source turns into                                                 #
 ##############################################################################
 context true
-$pdeps --context obj/bin/app/L/deps.opts --source app.c++
+$pdeps --context obj/bin/app/L/deps-context-OPTS --source app.c++
 
-d="obj/bin/app/L/deps/app.c++/OPTS.d"
+d="obj/src/app.c++/OPTS-L-static.d"
 cat $d
 
 # The object this source becomes, and the link it belongs to.
@@ -110,7 +110,7 @@ grep -q "^src/plain.h++:$" $d
 # The source behind the first header is pulled in by including the
 # same sort of file written about it; the second header has no source
 # behind it and gets nothing.
-grep -q "^include obj/bin/app/L/deps/helper.c++/OPTS.d$" $d
+grep -q "^include obj/src/helper.c++/OPTS-L-static.d$" $d
 if grep -q "plain.c++" $d
 then
     exit 1
@@ -133,9 +133,9 @@ all: obj/bin/app/L/local
 
 ifndef __pconfigure__deps-$d
 __pconfigure__deps-$d := 1
-$d: src/app.c++ obj/bin/app/L/deps.opts
+$d: src/app.c++ obj/bin/app/L/deps-context-OPTS
 	@mkdir -p \$(dir \$@)
-	@$pdeps --context obj/bin/app/L/deps.opts --source app.c++
+	@$pdeps --context obj/bin/app/L/deps-context-OPTS --source app.c++
 include $d
 endif
 
@@ -144,7 +144,7 @@ obj/bin/app/L/local:
 	@$(pwd)/stub/ld -o \$@ \$(filter %.o,\$^)
 EOF
 
-rm -rf obj/bin/app/L/deps obj/src
+rm -rf obj/src
 make $MAKE_ARGS
 
 # Both objects were built, and the one nobody named came first: that
@@ -197,7 +197,7 @@ cat >src/app.c++ <<'SOURCE'
 SOURCE
 
 make $MAKE_ARGS
-if grep -q "plain.h++" obj/bin/app/L/deps/app.c++/OPTS.d
+if grep -q "plain.h++" obj/src/app.c++/OPTS-L-static.d
 then
     exit 1
 fi
@@ -219,7 +219,7 @@ cat gone.out
 
 # What the stale fragment says now is nothing at all, rather than a
 # rule for an object built from a file that does not exist.
-if grep -q "^obj/src/helper.c++" obj/bin/app/L/deps/helper.c++/OPTS.d
+if grep -q "^obj/src/helper.c++" obj/src/helper.c++/OPTS-L-static.d
 then
     exit 1
 fi
@@ -272,7 +272,7 @@ int app(void);
 SOURCE
 
 sleep 1
-rm -rf obj/bin/app/L/deps obj/src
+rm -rf obj/src
 make $MAKE_ARGS
 grep -q "ring.c++" obj/bin/app/L/local
 grep -q "app.c++" obj/bin/app/L/local
@@ -285,8 +285,8 @@ grep -q "app.c++" obj/bin/app/L/local
 # target that doesn't want them linked still wants to be rebuilt when
 # one of them changes.
 context false
-rm -rf obj/bin/app/L/deps
-$pdeps --context obj/bin/app/L/deps.opts --source app.c++
+rm -rf obj/src
+$pdeps --context obj/bin/app/L/deps-context-OPTS --source app.c++
 cat $d
 
 grep -q "^obj/src/app.c++/OPTS-static.o: src/app.c++ src/ring.h++$" $d

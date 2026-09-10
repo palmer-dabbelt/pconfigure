@@ -130,7 +130,15 @@ fi
 
 # What it says instead is: here is the fragment for a source you named,
 # here is how to build it, and the link takes whatever turns up.
-grep -q "^include obj/bin/app/[0-9]*/deps/app.c++/[0-9]*\.d$" on/Makefile
+grep -q "^include obj/src/app.c++/[0-9]*-[0-9]*-static\.d$" on/Makefile
+
+# A fragment sits beside the object it describes rather than in a
+# directory of its own, which is where somebody looking for one would
+# look.  Checked by name and by there being no such directory, because
+# a layout is the sort of thing that comes back.
+test "$(find on/obj -type d -name deps | wc -l)" -eq 0
+test "$(find on/obj/src/app.c++ -name '*-static.d' | wc -l)" -eq 1
+test "$(find on/obj/src/app.c++ -name '*-static.o' | wc -l)" -eq 1
 grep -q "echo \"DEPS	app.c++\"" on/Makefile
 grep -q '\$(filter %.o,\$^)' on/Makefile
 
@@ -278,6 +286,67 @@ test "$(./bin/two)" = "20"
 # differ, which is what pconfigure does with it too.
 test "$(find obj -name '*.o' | wc -l)" -eq 4
 test "$(find obj -name 'deps-context-*' | wc -l)" -eq 2
+
+cd ..
+
+##############################################################################
+# A source two targets compile the same way                                  #
+##############################################################################
+# The other half of that, and the one where the fragments and the
+# objects stop agreeing about how many there are.  Compiled identically,
+# so both targets share one object -- but a fragment says which links
+# its object goes on, so there are two of those.  Nothing in the
+# object's name distinguishes them, which is the whole reason a
+# fragment's name carries the link as well.
+mkdir -p shared/src
+cd shared
+
+cat >Configfile <<'CONFIGFILE'
+AUTORECONFIGURE  = true
+
+LANGUAGES       += c++
+
+BINARIES        += first
+SOURCES         += main.c++
+
+BINARIES        += second
+SOURCES         += main.c++
+CONFIGFILE
+
+cat >src/main.c++ <<'SOURCE'
+  #include "common.h++"
+  #include <cstdio>
+int main(void) { printf("%d\n", common()); return 0; }
+SOURCE
+
+cat >src/common.h++ <<'SOURCE'
+int common(void);
+SOURCE
+
+cat >src/common.c++ <<'SOURCE'
+int common(void) { return 7; }
+SOURCE
+
+$PTEST_BINARY $PCONFIGURE_ARGS
+make $MAKE_ARGS > build.log 2>&1
+cat build.log
+
+test "$(./bin/first)" = "7"
+test "$(./bin/second)" = "7"
+
+# One object per source, shared by both links.
+test "$(find obj -name '*.o' | wc -l)" -eq 2
+
+# Two fragments per source, one per link, sitting beside that one
+# object.  Without the link in the name these would be one file with
+# two recipes, which pconfigure refuses outright rather than writing.
+test "$(find obj/src/main.c++ -name '*-static.d' | wc -l)" -eq 2
+test "$(find obj/src/common.c++ -name '*-static.d' | wc -l)" -eq 2
+
+if grep -q "overriding recipe" build.log
+then
+    exit 1
+fi
 
 cd ..
 
