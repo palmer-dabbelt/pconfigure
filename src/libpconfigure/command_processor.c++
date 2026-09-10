@@ -40,6 +40,8 @@ command_processor::command_processor(const std::string& base,
       _vendored(),
       _configure_target(NULL),
       _test_suites(),
+      _autoreconfigure(false),
+      _autoreconfigure_cmd(NULL),
       _default_test_suite(),
       _default_test_suite_cmd(NULL),
       _test_suite_target(NULL),
@@ -150,6 +152,7 @@ static bool names_a_path(const command_type& type)
         return true;
 
     case command_type::AUTODEPS:
+    case command_type::AUTORECONFIGURE:
     case command_type::BUILD_SYSTEMS:
     case command_type::COMPAT:
     case command_type::COMPILEOPTS:
@@ -190,6 +193,7 @@ static bool takes_a_qualifier(const command_type& type)
         return true;
 
     case command_type::AUTODEPS:
+    case command_type::AUTORECONFIGURE:
     case command_type::BINARIES:
     case command_type::BOOTSTRAP:
     case command_type::BUILD_SYSTEMS:
@@ -319,6 +323,43 @@ void command_processor::process_one(const command::ptr& cmd)
 
         std::cerr << cmd->data() << " is not boolean\n";
         abort();
+        return;
+    }
+
+    /* Whether the dependencies of this project's sources are worked
+     * out here, once, or by the build every time it runs.
+     *
+     * What pconfigure writes down is what it saw when it ran: which
+     * headers a source reads, and which sources sit behind those
+     * headers.  A source that starts including something new has
+     * changed the answer, and nothing in the build knows that -- so
+     * the Makefile goes on describing a tree that no longer exists
+     * until somebody remembers to configure again.  Turning this on
+     * moves that question into make, where the file that answers it
+     * is a file with a rule and a timestamp like any other. */
+    case command_type::AUTORECONFIGURE:
+    {
+        if (cmd->check_operation("=") == false)
+            goto bad_op_eq;
+
+        /* It says how this project is built rather than how one
+         * target is, so it belongs to the project the way a PREFIX
+         * does.  Landing on whatever happened to be open above it
+         * would make where the line sits change what it means. */
+        clear_until({context_type::DEFAULT}, cmd);
+
+        if (cmd->data() != "true" && cmd->data() != "false") {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: '" << cmd->data() << "' is not"
+                      << " 'true' or 'false'\n"
+                      << "  " << std::to_string(cmd->type())
+                      << " asks who works out this project's"
+                      << " dependencies, and there are two answers\n";
+            abort();
+        }
+
+        _autoreconfigure = cmd->data() == "true";
+        _autoreconfigure_cmd = cmd;
         return;
     }
 
