@@ -46,6 +46,7 @@
 #include <libpconfigure/languages/cxx.h++>
 #include <pinclude.h++>
 #include <fstream>
+#include <unistd.h>
 #include <iostream>
 #include <set>
 #include <string>
@@ -196,6 +197,24 @@ namespace {
         return out;
     }
 
+    /* The rule that runs this makes the directory too, since make
+     * wants it made whether this program is what fills it or not.
+     * Doing it here as well is what keeps a hand-run of this from
+     * failing with a sentence about a file when the trouble is a
+     * directory. */
+    void write(const std::string& path, const std::string& body)
+    {
+        auto slash = path.find_last_of('/');
+        if (slash != std::string::npos)
+            if (file_utils::mkdir_p(path.substr(0, slash)) == false)
+                die("unable to create '" + path.substr(0, slash) + "'");
+
+        auto file = std::ofstream(path);
+        if (file.good() == false)
+            die("unable to write '" + path + "'");
+        file << body;
+    }
+
     std::string join(const std::vector<std::string>& v)
     {
         auto out = std::string();
@@ -269,8 +288,6 @@ int main(int argc, const char **argv)
     auto object = ctx.object_of(name);
     auto deps = ctx.deps_of(name);
 
-    auto headers = headers_of(ctx, source);
-
     auto out = std::string();
     auto say = [&](const std::string& line)
         { out += prefix.rewrite(line) + "\n"; };
@@ -282,6 +299,23 @@ int main(int argc, const char **argv)
     out += "# is what the rule rebuilding this file is for.  Editing"
            " it achieves\n";
     out += "# nothing.\n\n";
+
+    /* A source that has been deleted since the last build still has a
+     * fragment sitting in the object directory, and make reads that
+     * before it reads the rewritten fragment of whatever used to pull
+     * it in.  So this has to be answerable rather than fatal: what a
+     * source that is not there contributes to the build is nothing,
+     * and the fragment that used to name it will have stopped naming
+     * it by the time make has finished starting over. */
+    if (access(source.c_str(), R_OK) != 0) {
+        out += "# There is no such file today, so it builds nothing"
+               " and nothing\n";
+        out += "# is linked against it.\n";
+        write(deps, out);
+        return 0;
+    }
+
+    auto headers = headers_of(ctx, source);
 
     /* The sources behind the headers, before this source's own
      * object, because that is the order pconfigure puts them in and
@@ -305,7 +339,23 @@ int main(int argc, const char **argv)
 
                 say("ifndef " + g);
                 say(g + " := 1");
-                say(sibling_deps + ": " + behind + " " + ctx.path);
+                /* "$(wildcard)" rather than the path, because the
+                 * path may stop existing.  A source can be deleted
+                 * without anything that reads it changing -- what
+                 * pulled it in was a header, and the header is still
+                 * there -- so this fragment goes on naming it after
+                 * it is gone, and make reads this fragment before it
+                 * reads whatever has since stopped naming it.
+                 *
+                 * Naming a file that is not there is a build that
+                 * stops on "No rule to make target".  Giving it a
+                 * rule with nothing in it is worse: make would decide
+                 * this fragment needs remaking, remake it, start
+                 * over, decide again, and never stop.  Asking whether
+                 * the file exists has neither problem, and when the
+                 * file comes back it is a prerequisite again. */
+                say(sibling_deps + ": $(wildcard " + behind + ") "
+                    + ctx.path);
                 out += "\t" + ctx.at + "echo \"DEPS\t" + sibling + "\"\n";
                 out += "\t" + ctx.at + "mkdir -p $(dir $@)\n";
                 out += "\t" + ctx.at + prefix.rewrite(
@@ -337,6 +387,14 @@ int main(int argc, const char **argv)
      * everything, so whatever read it is built again. */
     {
         auto said = std::set<std::string>();
+
+        /* The source gets one too, and for the same reason: a source
+         * that has gone away leaves this fragment behind, and make
+         * reads it before it reads the one that has stopped naming
+         * it. */
+        said.insert(source);
+        say(source + ":");
+
         for (const auto& header: headers)
             if (said.insert(header).second == true)
                 say(header + ":");
@@ -367,22 +425,6 @@ int main(int argc, const char **argv)
         say("endif");
     }
 
-    /* The rule that runs this makes the directory too, since make
-     * wants it made whether this program is what fills it or not.
-     * Doing it here as well is what keeps a hand-run of this from
-     * failing with a sentence about a file when the trouble is a
-     * directory. */
-    {
-        auto slash = deps.find_last_of('/');
-        if (slash != std::string::npos)
-            if (file_utils::mkdir_p(deps.substr(0, slash)) == false)
-                die("unable to create '" + deps.substr(0, slash) + "'");
-    }
-
-    auto file = std::ofstream(deps);
-    if (file.good() == false)
-        die("unable to write '" + deps + "'");
-    file << out;
-
+    write(deps, out);
     return 0;
 }

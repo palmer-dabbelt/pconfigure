@@ -203,6 +203,53 @@ then
 fi
 
 ##############################################################################
+# A source that went away                                                    #
+##############################################################################
+# Deleting a source leaves the fragment written about it sitting in the
+# object directory, and nothing that reads it has changed: what pulled
+# it in was a header, and the header is still there.  So make reads a
+# fragment naming a file that is not there, and the one thing it must
+# not do is stop -- or, worse, decide the fragment needs remaking,
+# remake it, start over, and never finish.
+sleep 1
+rm src/helper.c++
+
+timeout 60 make $MAKE_ARGS > gone.out 2>&1 || { cat gone.out; exit 1; }
+cat gone.out
+
+# What the stale fragment says now is nothing at all, rather than a
+# rule for an object built from a file that does not exist.
+if grep -q "^obj/src/helper.c++" obj/bin/app/L/deps/helper.c++/OPTS.d
+then
+    exit 1
+fi
+
+# The link is not redone on its own: make has no idea that a
+# prerequisite went away, only that the ones still named are older
+# than what was built from them.  That is true of a Makefile
+# pconfigure wrote the objects into as well, so it is the behaviour
+# being kept rather than one being introduced.  Anything that touches
+# the source settles it.
+sleep 1
+touch src/app.c++
+make $MAKE_ARGS
+if grep -q "helper.c++" obj/bin/app/L/local
+then
+    exit 1
+fi
+
+# And when the source comes back it is a prerequisite again, which is
+# the half a plain "does it exist" check would have got wrong.
+cat >src/helper.c++ <<'SOURCE'
+int helper(void) { return 0; }
+SOURCE
+
+sleep 1
+touch src/app.c++
+make $MAKE_ARGS
+grep -q "helper.c++" obj/bin/app/L/local
+
+##############################################################################
 # Two sources that include each other's headers                              #
 ##############################################################################
 # The walk goes round in a circle, and an "include" that went round it
