@@ -35,6 +35,29 @@ makefile::implied_deps(const std::vector<target::ptr>& targets,
         if (target->cmds().size() > 0)
             buildable.insert(target->name());
 
+    /* The targets make reads rather than builds, which is what makes
+     * them different from everything else here.  make brings an
+     * included makefile up to date before it has finished reading the
+     * build, using the rules it has in memory -- and those came out of
+     * a Makefile that may itself be the thing that is out of date.  A
+     * fragment that depends on something this build builds therefore
+     * has that thing built out of stale rules, before the reconfigure
+     * which would have corrected them is allowed to run.  It then
+     * fails at whatever the old rules were wrong about, which for a
+     * source file that has just been added is a link line that has
+     * never heard of it.
+     *
+     * So a fragment is left to be remade out of what is already on
+     * disk.  What that costs is that rebuilding the tool which writes
+     * the fragments does not on its own rewrite them; a reconfigure
+     * does, and one of those happens whenever the options a fragment
+     * was written under change.  A build that cannot be run at all is
+     * the worse of the two. */
+    auto included = std::set<std::string>();
+    for (const auto& target: targets)
+        if (target->included() == true)
+            included.insert(target->name());
+
     auto providers = std::map<std::string, std::vector<std::string>>();
     for (const auto& capability: provided)
         if (buildable.find(capability.target) != buildable.end())
@@ -71,6 +94,9 @@ makefile::implied_deps(const std::vector<target::ptr>& targets,
 
     auto out = std::vector<implied_dep>();
     for (const auto& want: needed) {
+        if (included.find(want.target) != included.end())
+            continue;
+
         auto found = providers.find(want.name);
         if (found == providers.end())
             continue;
@@ -90,3 +116,49 @@ makefile::implied_deps(const std::vector<target::ptr>& targets,
 
     return out;
 }
+
+#ifdef TEST_INCLUDED
+/* Builds a target with a recipe, which is what makes it something the
+ * build knows how to produce rather than a file that has to be there
+ * already. */
+static makefile::target::ptr built(const std::string& name,
+                                   const std::string& cmd)
+{
+    return std::make_shared<makefile::target>(
+        name,
+        "TEST",
+        std::vector<makefile::target::ptr>{},
+        std::vector<makefile::global_targets>{},
+        std::vector<std::string>{cmd},
+        std::vector<std::string>{});
+}
+
+/* A fragment make includes has to come out of this with no dependency
+ * on anything the build builds, because make brings it up to date out
+ * of rules that may already be wrong.  The ordinary target is here so
+ * that the check means something: without it this would pass just as
+ * well against a function that had stopped matching anything at all. */
+int main(void)
+{
+    auto tool = built("bin/tool", "cc -o bin/tool tool.c");
+    auto fragment = built("obj/thing.d", "bin/tool --deps")->as_included();
+    auto object = built("obj/thing.o", "bin/tool --compile");
+
+    auto out = makefile::implied_deps(
+        std::vector<makefile::target::ptr>{tool, fragment, object},
+        std::vector<makefile::capability>{
+            makefile::capability("file:bin/tool", "bin/tool")},
+        std::vector<makefile::capability>{
+            makefile::capability("file:bin/tool", "obj/thing.d"),
+            makefile::capability("file:bin/tool", "obj/thing.o")});
+
+    if (out.size() != 1)
+        return 2;
+    if (out[0].target != "obj/thing.o")
+        return 3;
+    if (out[0].dep != "bin/tool")
+        return 4;
+
+    return 0;
+}
+#endif

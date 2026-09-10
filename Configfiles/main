@@ -282,6 +282,12 @@ COMPILEOPTS += -DTEST_STRIP_CHAR
 SOURCES     += libpconfigure/string_utils.c++
 TESTSRC     += three_parts.bash
 
+TESTEXECS   += pconfigure/implied_deps-included
+COMPILEOPTS += -DTEST_INCLUDED
+DEPLIBS     += makefile
+SOURCES     += libmakefile/implied_deps.c++
+TESTSRC     += fragment.bash
+
 TESTEXECS   += pconfigure/vector_util-map
 COMPILEOPTS += -DTEST_MAP
 SOURCES     += libpconfigure/vector_util.c++
