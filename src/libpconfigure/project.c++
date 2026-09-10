@@ -646,6 +646,31 @@ void project::check_default_test_suite(const std::vector<ptr>& aggregated) const
     abort();
 }
 
+void project::check_bootstrap(const std::vector<ptr>& everyone) const
+{
+    const auto& srcpath = _processor->bootstrap();
+    if (srcpath.size() == 0)
+        return;
+
+    for (const auto& other: everyone) {
+        if (other->_base != srcpath)
+            continue;
+
+        std::cerr << std::to_string(_processor->bootstrap_cmd()->debug())
+                  << "\n"
+                  << "  error: '" << srcpath << "' is a subproject of this"
+                  << " build as well as the pconfigure it bootstraps\n"
+                  << "  as a subproject the tree gets configured from here,"
+                  << " into this build's directories; bootstrapping it"
+                  << " configures it for itself, and each of those writes"
+                  << " the Makefile the other reads\n"
+                  << "  a vendored pconfigure is one or the other: drop the"
+                  << " SUBPROJECTS line, or drop this one and let the"
+                  << " project be built the way any other is\n";
+        abort();
+    }
+}
+
 void project::check_makefile_shape(void) const
 {
     /* Only the project make would be run in has no directory of its
