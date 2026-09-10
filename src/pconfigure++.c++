@@ -165,6 +165,12 @@ int main(int argc, const char **argv)
     for (const auto& project: projects)
         project->check_makefile_shape();
 
+    /* Asked of the whole run rather than at the line, because the
+     * tree a BOOTSTRAP names is read by the line that names it and
+     * has no targets yet while that line is being processed. */
+    for (const auto& project: projects)
+        project->check_bootstrap(projects);
+
     /* Before a line of any Makefile is written, so that a build whose
      * "make check" would reach no test at all stops without leaving a
      * half-written set of them behind. */

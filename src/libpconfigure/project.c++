@@ -646,6 +646,38 @@ void project::check_default_test_suite(const std::vector<ptr>& aggregated) const
     abort();
 }
 
+void project::check_bootstrap(const std::vector<ptr>& everyone) const
+{
+    const auto& srcpath = _processor->bootstrap();
+    if (srcpath.size() == 0)
+        return;
+
+    /* Spelled the same way the Makefile spells it, because the
+     * question is whether the thing that Makefile runs is a thing
+     * this build knows how to produce. */
+    const auto wanted = srcpath + "bin/pconfigure";
+
+    for (const auto& other: everyone) {
+        if (other->_base != srcpath)
+            continue;
+
+        for (const auto& target: other->_targets)
+            if (target->name() == wanted)
+                return;
+    }
+
+    std::cerr << std::to_string(_processor->bootstrap_cmd()->debug()) << "\n"
+              << "  error: nothing in this build produces '" << wanted
+              << "'\n"
+              << "  that is the pconfigure the committed Makefile runs,"
+              << " so the tree named here has to be one whose own"
+              << " Configfiles build it\n"
+              << "  a vendored pconfigure is pconfigure's source tree"
+              << " checked out whole; a directory above or below it"
+              << " gets this\n";
+    abort();
+}
+
 void project::check_makefile_shape(void) const
 {
     /* Only the project make would be run in has no directory of its
