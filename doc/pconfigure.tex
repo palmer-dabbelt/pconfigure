@@ -1472,12 +1472,27 @@ BINARIES        += hello
 SOURCES         += hello.c++
 \end{verbatim}
 
-It belongs to the project rather than to a target, so it may be
-written anywhere in the \texttt{Configfile} and means the same thing
-wherever it is.  It is not inherited by a \texttt{SUBPROJECTS}
-(Section~\ref{cmd:subprojects}): a subproject is a tree with its own
-\texttt{Configfile}, and how it decides what to rebuild is its own
-business.
+It belongs to the project rather than to a target, so it means the
+same thing wherever in the \texttt{Configfile} it is written --- for
+what that project builds.
+
+A \texttt{SUBPROJECTS} (Section~\ref{cmd:subprojects}) inherits it,
+because who works out the dependencies is a property of the build
+rather than of one \texttt{Configfile}: a subproject's
+\texttt{Makefile} is included by the one \texttt{make} was run on, so
+both halves are read by the same \texttt{make}.  A subproject that
+writes its own \texttt{AUTORECONFIGURE} still wins, the way it does
+with a \texttt{PREFIX}.
+
+That inheritance is the one thing about this command that does depend
+on where the line sits, because a subproject is read at the point its
+line appears: a tree pulled in above the line was read while the
+answer was still the other one.  Rather than let that be a silent
+difference, \pconfigure\ refuses it and says which line to move.  The
+spelling that catches people is \texttt{BOOTSTRAP}
+(Section~\ref{cmd:bootstrap}), which reads the tree it names as a
+subproject --- so a \texttt{Configfile} that opens with one has
+already read a project by its second line.
 
 The program that writes the fragments is \texttt{pdeps}, which lives
 next to \pconfigure\ and is not something to run by hand.  The
@@ -1485,13 +1500,33 @@ fragments, and the context files \texttt{pdeps} reads to find out what
 is being built, go under \texttt{\$OBJDIR}, and \texttt{make
 distclean} takes them with everything else.
 
-\subsubsection{What it does not do}
+\subsubsection{A \texttt{Configfile} that changed}
 
-It does not reconfigure anything.  A \texttt{Configfile} that changed
-is still a \texttt{Configfile} nothing has read, and \texttt{make
-reconfigure} (Section~\ref{make:reconfigure}) is still how you say so.
-What this changes is only the part of the \texttt{Makefile} that was
-never written down in a \texttt{Configfile} to begin with.
+Under \texttt{AUTORECONFIGURE} the build runs \pconfigure\ again when
+one of the \texttt{Configfile}s it was written out of has changed.
+That is the other half of the same promise: a source growing an
+\texttt{\#include} was already noticed, and the line saying which
+sources there are is the input nothing was watching.  It covers every
+\texttt{Configfile} the run read, including those of every
+\texttt{SUBPROJECTS} --- a subproject cannot be configured from inside
+itself, so its \texttt{Configfile} changing re-runs the \pconfigure\
+at the top of the tree.
+
+Without \texttt{AUTORECONFIGURE} nothing of the sort happens, and that
+is deliberate rather than an omission: the header graph is frozen at
+configure time too, so a \texttt{Makefile} that rewrote itself would
+fix one half of the answer and leave the other half stale without
+saying so.
+
+A \texttt{Configfile} that never existed before is noticed the day it
+is written, since the names are looked up afresh on every run.  One
+that is deleted is not --- the same \texttt{\$(wildcard)} that lets an
+absent \texttt{Configfile.local} be named at all is what makes its
+removal invisible.  And a \texttt{Configfile} that is a program is on
+its own for whatever \emph{it} reads: \pconfigure\ never opened those
+files and cannot name them.
+
+\subsubsection{What it does not do}
 
 It covers C and C++.  Every other language still works its
 dependencies out when \pconfigure\ runs, so a \texttt{BASH} target
