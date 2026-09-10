@@ -239,6 +239,7 @@ TESTSRC     += reconfigure.bash
 TESTSRC     += bootstrap-bad.bash
 TESTSRC     += pdeps.bash
 TESTSRC     += psubdeps.bash
+TESTSRC     += psubdeps-build.bash
 TESTSRC     += autoreconfigure.bash
 TESTSRC     += autoreconfigure-bad.bash
 TESTSRC     += autoreconfigure-subproject.bash

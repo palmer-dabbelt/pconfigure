@@ -36,15 +36,27 @@
  * The format is rigid in a way a Kconfig is not: one assignment, one
  * path per line, a backslash on the end.  That is the whole reason
  * this is worth doing.  Parsing it is fifteen lines; everything below
- * is deciding which of the paths mean anything from here. */
+ * is deciding which of the paths mean anything from here.
+ *
+ * There are two of these answers, and a context file says which one
+ * is being asked for.  A tree writes down what its CONFIGURATION read
+ * in one file, beside the configuration.  What its BUILD read it
+ * writes down a piece at a time, in a file beside each object it
+ * compiled -- thousands of them, in the same format, which is why the
+ * two halves are one program and not two. */
 
 #include <libmakefile/path_prefix.h++>
 #include <libpconfigure/context_file.h++>
 #include <libpconfigure/file_utils.h++>
 #include <fstream>
 #include <unistd.h>
+#include <dirent.h>
+#include <sys/stat.h>
 #include <algorithm>
+#include <functional>
 #include <iostream>
+#include <set>
+#include <unordered_set>
 #include <string>
 #include <vector>
 
@@ -82,6 +94,19 @@ namespace {
         /* What the paths in it are relative to. */
         std::string dep_root;
 
+        /* Where the tree scatters what its build read, one file per
+         * object.  Set instead of the two above, and what having it
+         * set means is that this run is being asked the other
+         * question.  A tree that writes nothing of the kind -- which
+         * is every tree but a kbuild one -- simply never says it. */
+        std::string cmd_root;
+
+        /* Where make runs, spelled the way the vendored tree spells
+         * it.  kbuild writes absolute paths, and this is the only
+         * thing that can turn one back into a path this build can
+         * use, or recognise it as naming somewhere else entirely. */
+        std::string root;
+
         /* Only set for a project a parent can include. */
         std::string base;
         std::string variable;
@@ -101,6 +126,8 @@ namespace {
             else if (key == "fragment")   out.fragment = value;
             else if (key == "dep-file")   out.dep_files.push_back(value);
             else if (key == "dep-root")   out.dep_root = value;
+            else if (key == "cmd-root")   out.cmd_root = value;
+            else if (key == "root")       out.root = value;
             else if (key == "base")       out.base = value;
             else if (key == "variable")   out.variable = value;
             else if (key == "peer") {
@@ -126,6 +153,19 @@ namespace {
             die("'" + path + "' says no 'target'");
         if (out.fragment.size() == 0)
             die("'" + path + "' says no 'fragment'");
+
+        /* One question per context, because the two are answered out
+         * of different files and land on different rules.  A context
+         * that asks both, or neither, was written by something that
+         * had not decided which -- and picking one here would make
+         * half a Makefile out of it rather than saying so. */
+        if (out.cmd_root.size() > 0 && out.dep_files.size() > 0)
+            die("'" + path + "' asks for both a configuration and a"
+                " build answer");
+        if (out.cmd_root.size() == 0 && out.dep_files.size() == 0)
+            die("'" + path + "' says neither 'dep-file' nor 'cmd-root'");
+        if (out.cmd_root.size() > 0 && out.root.size() == 0)
+            die("'" + path + "' says 'cmd-root' but no 'root'");
 
         return out;
     }
@@ -187,6 +227,285 @@ namespace {
 
         return out;
     }
+
+    /* Every file under a directory whose name ends in ".cmd", which
+     * is where kbuild leaves what it learned while it was compiling.
+     * There is one beside every object, so this is thousands of files
+     * rather than one, and finding them is a walk rather than a name.
+     *
+     * A directory reached through a symlink is not followed.  A tree
+     * that builds into a symlinked output would otherwise be walked
+     * twice at best, and a link that points at one of its own parents
+     * would not end at all. */
+    void find_cmd_files(const std::string& dir, std::vector<std::string>& out)
+    {
+        auto handle = opendir(dir.c_str());
+        if (handle == NULL)
+            return;
+
+        while (true) {
+            auto entry = readdir(handle);
+            if (entry == NULL)
+                break;
+
+            auto name = std::string(entry->d_name);
+            if (name == "." || name == "..")
+                continue;
+
+            auto path = dir + "/" + name;
+
+            struct stat info;
+            if (lstat(path.c_str(), &info) != 0)
+                continue;
+
+            if (S_ISDIR(info.st_mode)) {
+                find_cmd_files(path, out);
+                continue;
+            }
+
+            if (name.size() > 4
+                && name.compare(name.size() - 4, 4, ".cmd") == 0)
+                out.push_back(path);
+        }
+
+        closedir(handle);
+    }
+
+    /* One of those files, whole.  These are read by the thousand and
+     * a line at a time through a stream costs more than the scanning
+     * below does, so the file arrives in one piece and gets walked
+     * with two indices. */
+    std::string read_file(const std::string& path)
+    {
+        auto file = std::ifstream(path, std::ios::binary);
+        if (file.good() == false)
+            return std::string();
+
+        file.seekg(0, std::ios::end);
+        auto size = file.tellg();
+        if (size < 0)
+            return std::string();
+        file.seekg(0, std::ios::beg);
+
+        auto out = std::string(static_cast<size_t>(size), '\0');
+        file.read(&out[0], size);
+        out.resize(static_cast<size_t>(file.gcount()));
+        return out;
+    }
+
+    /* What one ".cmd" file says its object was built out of.
+     *
+     * Two assignments matter.  "source_" names the file that was
+     * compiled, on one line.  "deps_" opens a list in exactly the
+     * shape the configuration's own file uses, and is read the same
+     * way.  Everything else in there is the command line that ran,
+     * which is long, and none of this program's business.
+     *
+     * "deps_config" is skipped on purpose.  kbuild writes the
+     * configuration's list in one of these files too, and it is the
+     * one list here whose paths are relative to the source tree
+     * rather than absolute -- so reading it here would be doing the
+     * wrong arithmetic to an answer that is already being given
+     * properly somewhere else. */
+    void deps_build_of(const std::string& body,
+                       const std::function<void(const std::string&)>& found)
+    {
+        auto at = std::string::size_type(0);
+        auto reading = false;
+
+        /* Walked by index rather than a line at a time, because a
+         * kernel leaves nine million of these lines behind and most
+         * of them are thrown away three characters in.  Cutting one
+         * string per line out of that is the difference between this
+         * being worth running after a build and not. */
+        while (at < body.size()) {
+            auto eol = body.find('\n', at);
+            if (eol == std::string::npos)
+                eol = body.size();
+
+            auto begin = at;
+            at = eol + 1;
+
+            if (reading == true
+                && (begin == eol
+                    || (body[begin] != ' ' && body[begin] != '\t')))
+                reading = false;
+
+            if (reading == true) {
+                auto more = false;
+                auto stop = eol;
+                if (body[stop - 1] == '\\') {
+                    more = true;
+                    stop--;
+                }
+
+                while (stop > begin && (body[stop - 1] == ' '
+                                     || body[stop - 1] == '\t'))
+                    stop--;
+
+                while (begin < stop && (body[begin] == ' '
+                                     || body[begin] == '\t'))
+                    begin++;
+
+                /* A config stamp the tree keeps for itself, written
+                 * as a $(wildcard) because the tree allows it not to
+                 * exist.  Recognised here, before it costs anything,
+                 * because it is most of what is in these files. */
+                if (stop > begin && body[begin] != '$')
+                    found(body.substr(begin, stop - begin));
+
+                if (more == false)
+                    reading = false;
+
+                continue;
+            }
+
+            auto length = eol - begin;
+
+            if (length > 4
+                && body.compare(begin, 5, "deps_") == 0
+                && body.compare(begin, 12, "deps_config ") != 0
+                && body.compare(eol - 4, 4, ":= \\") == 0) {
+                reading = true;
+                continue;
+            }
+
+            if (length > 7 && body.compare(begin, 7, "source_") == 0) {
+                auto split = body.find(" := ", begin);
+                if (split != std::string::npos && split + 4 < eol)
+                    found(body.substr(split + 4, eol - split - 4));
+            }
+        }
+    }
+
+    /* What the tree's build read, as prerequisites of the stamp that
+     * says the build has run.
+     *
+     * A tree that has never been built has scattered no such files,
+     * and that is the state every clean checkout starts in.  It is
+     * answered the same way the configuration's half answers it: with
+     * a fragment that says nothing.  What the build stamp waits on
+     * until then is the guess made while configuring, which is what
+     * gets the first build to happen at all -- and the first build is
+     * what replaces the guess with this. */
+    int build_answer(const subdeps_context& ctx, makefile::path_prefix& prefix)
+    {
+        auto out = std::string();
+        out += "# Written by psubdeps, from " + ctx.path + ".\n";
+        out += "#\n";
+        out += "# What the vendored tree in " + ctx.tree + " said it read"
+               " while it was\n";
+        out += "# building, the last time it was asked.  Editing this"
+               " achieves nothing.\n\n";
+
+        auto files = std::vector<std::string>();
+        find_cmd_files(ctx.cmd_root, files);
+        std::sort(files.begin(), files.end());
+
+        if (files.size() == 0) {
+            out += "# It has not been built yet, so it has not said"
+                   " anything.  Building it\n";
+            out += "# leaves one of these beside every object it"
+                   " compiles, under\n";
+            out += "#   " + ctx.cmd_root + "\n";
+            out += "# and this file gets written again once that has"
+                   " happened.\n";
+
+            auto error = std::string();
+            if (context_file::write(ctx.fragment, out, error) == false)
+                die(error);
+            return 0;
+        }
+
+        /* What an absolute path has to start with to be naming
+         * something in this build at all.  Written with exactly one
+         * slash on the end so that a root of "/a" cannot swallow a
+         * path in "/ab". */
+        auto root = ctx.root;
+        while (root.size() > 0 && root[root.size() - 1] == '/')
+            root.erase(root.size() - 1);
+        root += "/";
+
+        auto wanted = std::set<std::string>();
+        auto dropped = std::set<std::string>();
+
+        /* Every path here is named by nearly every object that was
+         * compiled, so the four million entries a kernel writes are
+         * some twelve thousand answers repeated.  Recognising a
+         * repeat costs a hash; working out where it points costs a
+         * path walked apart and put back together, and doing that
+         * four million times is most of the time this program used
+         * to take. */
+        auto seen = std::unordered_set<std::string>();
+
+        for (const auto& file: files) {
+            deps_build_of(read_file(file), [&](const std::string& raw) {
+                if (seen.insert(raw).second == false)
+                    return;
+
+                auto path = std::string();
+                if (raw[0] == '/') {
+                    /* Absolute and outside this build: a system
+                     * header, belonging to something nothing here
+                     * builds or installs. */
+                    if (raw.compare(0, root.size(), root) != 0) {
+                        dropped.insert(raw);
+                        return;
+                    }
+                    path = raw.substr(root.size());
+                } else {
+                    /* Relative, which in one of these files means
+                     * relative to where the tree builds -- so it is
+                     * something the tree generated for itself. */
+                    path = ctx.cmd_root + "/" + raw;
+                }
+
+                path = file_utils::normalize_path(path);
+
+                /* Which is dropped on the same argument the
+                 * configuration's half drops them on: a file this
+                 * build writes is not a reason to run this build. */
+                if (ctx.output.size() > 0
+                    && path.compare(0, ctx.output.size(), ctx.output) == 0) {
+                    dropped.insert(path);
+                    return;
+                }
+
+                if (path.compare(0, 3, "../") == 0) {
+                    dropped.insert(path);
+                    return;
+                }
+
+                wanted.insert(prefix.rewrite(path));
+            });
+        }
+
+        out += "# Read out of " + std::to_string(files.size())
+             + " file(s) under " + ctx.cmd_root + ".\n\n";
+
+        if (dropped.size() > 0)
+            out += "# " + std::to_string(dropped.size()) + " path(s) it"
+                   " named are not reachable from here, or are files it\n"
+                   "# writes itself, and have been left out.\n\n";
+
+        auto sorted = std::vector<std::string>(wanted.begin(), wanted.end());
+
+        out += prefix.rewrite(ctx.target) + ": " + context_file::join(sorted)
+             + "\n\n";
+
+        /* For the same reason the configuration's half writes them:
+         * a header that has gone away since the build read it is a
+         * reason to build the tree again, not a reason for make to
+         * refuse to build anything at all. */
+        for (const auto& path: sorted)
+            out += path + ":\n";
+
+        auto error = std::string();
+        if (context_file::write(ctx.fragment, out, error) == false)
+            die(error);
+
+        return 0;
+    }
 }
 
 int main(int argc, const char **argv)
@@ -212,6 +531,9 @@ int main(int argc, const char **argv)
     auto prefix = ctx.base.size() == 0
         ? makefile::path_prefix()
         : makefile::path_prefix(ctx.base, ctx.variable, ctx.peers);
+
+    if (ctx.cmd_root.size() > 0)
+        return build_answer(ctx, prefix);
 
     auto out = std::string();
     out += "# Written by psubdeps, from " + ctx.path + ".\n";
