@@ -92,6 +92,12 @@ private:
     bool _autoreconfigure;
     command::ptr _autoreconfigure_cmd;
 
+    /* TRUE once a subproject has been handed out to be read, which is
+     * what makes an AUTORECONFIGURE below that point too late to mean
+     * what it says.  It is not a count and not a list: the question
+     * is only whether anything was read under the old answer. */
+    bool _read_a_subproject;
+
     /* The vendored pconfigure source a BOOTSTRAP named, spelled the
      * way every other directory in a run is: ending with a '/', and
      * empty when nothing said.  The command is kept alongside it

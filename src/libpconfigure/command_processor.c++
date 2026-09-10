@@ -42,6 +42,7 @@ command_processor::command_processor(const std::string& base,
       _test_suites(),
       _autoreconfigure(false),
       _autoreconfigure_cmd(NULL),
+      _read_a_subproject(false),
       _default_test_suite(),
       _default_test_suite_cmd(NULL),
       _test_suite_target(NULL),
@@ -370,6 +371,29 @@ void command_processor::process_one(const command::ptr& cmd)
                       << "  " << std::to_string(cmd->type())
                       << " asks who works out this project's"
                       << " dependencies, and there are two answers\n";
+            abort();
+        }
+
+        /* A subproject is read at the point its line appears, so a
+         * tree that was already read was read under whatever the
+         * answer was then.  Changing it afterwards writes one
+         * project's Makefile one way and its subprojects' the other,
+         * and nothing says so: the tree just builds with half of it
+         * frozen at configure time.
+         *
+         * Only a line that would change the answer is a mistake.
+         * Saying again what a project was already going to do costs
+         * nothing and is how a Configfile that spells out its
+         * defaults reads. */
+        if (_read_a_subproject == true
+            && (cmd->data() == "true") != _root->autoreconfigure) {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: a subproject has already been read\n"
+                      << "  " << std::to_string(cmd->type())
+                      << " reaches the subprojects below it, and the"
+                      << " ones above it were read without it\n"
+                      << "  move it above the first SUBPROJECTS or"
+                      << " BOOTSTRAP line\n";
             abort();
         }
 
@@ -1579,6 +1603,11 @@ std::string command_processor::take_pending_subproject(void)
 
     auto out = _pending_subprojects.front();
     _pending_subprojects.erase(_pending_subprojects.begin());
+
+    /* Whatever this tree is going to be told, it is being told now.
+     * A line below this point that would have changed the answer is
+     * changing it too late. */
+    _read_a_subproject = true;
     return out;
 }
 
