@@ -38,6 +38,23 @@ std::string ppkg_config = "ppkg-config";
  * to be asking about them. */
 static std::vector<std::string> pkgconfig_path;
 
+/* Every file this run went looking for a Configfile line in, in the
+ * order it looked.  One list for the whole run rather than one per
+ * project, for the same reason as the one above: a project's
+ * Configfile is read by whoever is configuring the tree, and the
+ * question "what was this build written out of" has one answer.
+ *
+ * The names of files that were not there are on it too.  Which of
+ * them existed is a fact about the moment of configuring, and a build
+ * that wants to know when the answer changes has to be told about the
+ * ones that could appear as well as the ones that did. */
+static std::vector<std::string> configfiles;
+
+const std::vector<std::string>& configfiles_read(void)
+{
+    return configfiles;
+}
+
 void add_pkgconfig_path(const std::string& dir)
 {
     for (const auto& existing: pkgconfig_path)
@@ -189,6 +206,18 @@ std::vector<configfile_line> lines_from_file(const std::string& srcpath,
                                              const std::string& filename)
 {
     auto out = std::vector<configfile_line>();
+
+    /* Written down before anything is opened, so that a name nobody
+     * could read is still a name this run asked about. */
+    {
+        auto normalized = file_utils::normalize_path(filename);
+        auto seen = false;
+        for (const auto& already: configfiles)
+            if (already == normalized)
+                seen = true;
+        if (seen == false)
+            configfiles.push_back(normalized);
+    }
 
     /* An executable Configfile is a program that prints one, and it
      * gets run from the directory it lives in: a project's generator
