@@ -42,6 +42,7 @@
  * answer waiting to disagree with the first. */
 
 #include <libmakefile/path_prefix.h++>
+#include <libpconfigure/context_file.h++>
 #include <libpconfigure/file_utils.h++>
 #include <libpconfigure/languages/cxx.h++>
 #include <pinclude.h++>
@@ -121,24 +122,11 @@ namespace {
 
     deps_context read_context(const std::string& path)
     {
-        auto file = std::ifstream(path);
-        if (file.good() == false)
-            die("unable to read the context file '" + path + "'");
-
         auto out = deps_context();
         out.path = path;
 
-        auto line = std::string();
-        while (std::getline(file, line)) {
-            if (line.size() == 0)
-                continue;
-
-            auto space = line.find(' ');
-            auto key = line.substr(0, space);
-            auto value = space == std::string::npos
-                ? std::string()
-                : line.substr(space + 1);
-
+        auto ok = context_file::read(path,
+            [&](const std::string& key, const std::string& value) {
             if (key == "src-prefix")       out.src_prefix = value;
             else if (key == "obj-prefix")  out.obj_prefix = value;
             else if (key == "obj-suffix")  out.obj_suffix = value;
@@ -169,7 +157,10 @@ namespace {
              * a build ends up half configured. */
             else
                 die("'" + key + "' in '" + path + "' means nothing here");
-        }
+        });
+
+        if (ok == false)
+            die("unable to read the context file '" + path + "'");
 
         return out;
     }
@@ -210,26 +201,14 @@ namespace {
      * directory. */
     void write(const std::string& path, const std::string& body)
     {
-        auto slash = path.find_last_of('/');
-        if (slash != std::string::npos)
-            if (file_utils::mkdir_p(path.substr(0, slash)) == false)
-                die("unable to create '" + path.substr(0, slash) + "'");
-
-        auto file = std::ofstream(path);
-        if (file.good() == false)
-            die("unable to write '" + path + "'");
-        file << body;
+        auto error = std::string();
+        if (context_file::write(path, body, error) == false)
+            die(error);
     }
 
     std::string join(const std::vector<std::string>& v)
     {
-        auto out = std::string();
-        for (const auto& e: v) {
-            if (out.size() > 0)
-                out += " ";
-            out += e;
-        }
-        return out;
+        return context_file::join(v);
     }
 }
 
