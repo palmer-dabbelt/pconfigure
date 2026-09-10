@@ -25,6 +25,7 @@
 #include "../file_utils.h++"
 #include "../string_utils.h++"
 #include "../pick_language.h++"
+#include "../project.h++"
 #include <pinclude.h++>
 #include <unistd.h>
 #include <fcntl.h>
@@ -200,6 +201,11 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
             auto objects = std::vector<target::ptr>();
             auto already_processed = std::vector<std::string>();
             auto tests = std::vector<makefile::target::ptr>();
+
+            /* The pieces of Makefile that say what this target's
+             * sources depend on, which is what an AUTORECONFIGURE
+             * project gets instead of "objects" above. */
+            auto fragments = std::vector<makefile::target::ptr>();
             for (const auto& child: ctx->children) {
                 auto is_shared = (ctx->type == context_type::BINARY)
                         ? shared_target::FALSE
@@ -208,6 +214,18 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
                 switch (child->type) {
                 case context_type::SOURCE:
                 {
+                    /* A project that works its dependencies out during
+                     * the build has nothing to walk here: what this
+                     * source turns into is written down by make, into
+                     * a file that make includes.  The compile rule and
+                     * the objects behind the headers arrive from
+                     * there. */
+                    if (ctx->autoreconfigure == true) {
+                        fragments.push_back(
+                            deps_source(ctx, child, is_shared));
+                        break;
+                    }
+
                     auto all_objects = compile_source(ctx,
                                                       child,
                                                       already_processed,
@@ -273,6 +291,7 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
                                     {
                                         return t->generate_makefile_target();
                                     })
+                   + fragments
                    + tests;
         }
 
@@ -599,11 +618,22 @@ language_cxx::link_target::generate_makefile_target(void) const
         if (std::find(_opts.begin(), _opts.end(), rpath) == _opts.end())
             rpath_suffix += " " + rpath;
 
+    /* What gets linked.  A project that worked its dependencies out
+     * here knows the list; one that leaves it to the build does not,
+     * and asks make for whatever turned up as a prerequisite -- which
+     * is the same list, arrived at by reading the fragments in the
+     * order pconfigure would have walked them.  "$^" drops the
+     * repeats, which is the other half of what the walk did by
+     * hand. */
+    auto object_args = _ctx->autoreconfigure
+        ? std::string("$(filter %.o,$^)")
+        : vector_util::join(vector_util::map(_objects, target2name), " ");
+
     auto cmds = std::vector<std::string>{
         "mkdir -p $(dir $@)",
         _linker_command
           + " -o" + _target_path
-          + " " + vector_util::join(vector_util::map(_objects, target2name), " ")
+          + " " + object_args
           + " " + vector_util::join(_opts, " ")
           + " " + shared
           + rpath_suffix
@@ -1009,6 +1039,126 @@ language_cxx::compile_options(const context::ptr& ctx,
             "-D__PCONFIGURE__PREFIX=\\\"" + ctx->prefix + "\\\""
         };
 
+}
+
+makefile::target::ptr
+language_cxx::deps_source(const context::ptr& ctx,
+                          const context::ptr& child,
+                          const shared_target& is_shared)
+                          const
+{
+    auto hash = hash_compile_options(child);
+    auto deps_dir = link_dir(ctx) + "deps/";
+
+    auto source_path = child->src_dir + "/" + child->cmd->data();
+    auto deps_path = deps_dir + child->cmd->data() + "/" + hash + ".d";
+
+    /* One of these per set of compile options rather than per source,
+     * because that is the granularity everything else here has: the
+     * options are hashed into the object's name, so two sources
+     * compiled the same way are two sources with one answer to every
+     * question pdeps asks.  A source found behind a header inherits
+     * the options of whatever led to it, which is why the same file
+     * serves the whole walk below it. */
+    auto context_path = deps_dir + "deps-context-" + hash;
+
+    auto say = [](const std::string& key, const std::string& value)
+        { return key + " " + value + "\n"; };
+
+    auto out = std::string();
+
+    /* Halves rather than whole paths, because pdeps has to be able to
+     * name a source this never mentioned.  Sticking a name in the
+     * middle of these is the same arithmetic compile_source() does,
+     * and it is the only arithmetic pdeps is trusted with. */
+    out += say("src-prefix", child->src_dir + "/");
+    out += say("obj-prefix",
+               child->obj_dir + "/" + child->unbased(child->src_dir) + "/");
+    out += say("obj-suffix",
+               "/" + hash
+               + (is_shared == shared_target::TRUE ? "-shared.o"
+                                                   : "-static.o"));
+    out += say("dep-prefix", deps_dir);
+    out += say("dep-suffix", "/" + hash + ".d");
+
+    out += say("compiler", this->compiler_command(child));
+    out += say("pretty", this->compiler_pretty());
+    if (is_shared == shared_target::TRUE)
+        out += say("pic", "-fPIC");
+
+    out += say("pdeps", makefile::tool_command("pdeps"));
+    out += say("quiet", child->verbose ? "false" : "true");
+    out += say("autodeps", ctx->autodeps ? "true" : "false");
+
+    /* Only a project a parent can include has anything to say here.
+     * The peers are deliberately not passed along: a path into a
+     * sibling project is one that only means anything from the top of
+     * the tree, and leaving it alone is the only spelling that is
+     * right there. */
+    if (child->base.size() > 0) {
+        out += say("base", child->base);
+        out += say("variable", project::prefix_variable(child->base));
+    }
+
+    /* The link steps this source's object belongs to.  Which of them
+     * exist is link_objects()' answer, and this has to give the same
+     * one: an object that never reached the installed link is a
+     * "make install" that installs a program built out of whatever
+     * was lying around. */
+    if (ctx->install == true)
+        out += say("link", link_dir(ctx) + "install");
+    out += say("link", link_dir(ctx) + "local");
+
+    /* The sources this target's Configfile named outright, which are
+     * the ones whose fragments have a rule in the Makefile already.
+     * A named source can also turn up behind another source's header,
+     * and then both this and pdeps would write a rule for the same
+     * fragment -- which make resolves by picking one and saying so in
+     * a warning nobody reads.
+     *
+     * pdeps still has to be the one that pulls such a fragment in,
+     * even though it is not the one that builds it: where the include
+     * sits is what decides where the objects land on the link line,
+     * and that has to be where the walk reached them. */
+    for (const auto& sibling: ctx->children)
+        if (sibling->type == context_type::SOURCE)
+            out += say("named", sibling->cmd->data());
+
+    for (const auto& opt: compile_options(ctx, child))
+        out += say("opt", opt);
+
+    /* Written only when it would say something new, because it is a
+     * prerequisite of every fragment below it: a file rewritten by
+     * each configure is every dependency in the project worked out
+     * again, whether or not anything changed. */
+    file_utils::mkdir_p(deps_dir);
+    file_utils::write_if_changed(context_path, out);
+
+    auto deps = std::vector<makefile::target::ptr>{
+        std::make_shared<makefile::target>(source_path),
+        std::make_shared<makefile::target>(context_path)
+    };
+
+    auto commands = std::vector<std::string>{
+        "mkdir -p $(dir $@)",
+        makefile::tool_command("pdeps")
+            + " --context " + context_path
+            + " --source " + child->cmd->data()
+    };
+
+    return std::make_shared<makefile::target>(
+        deps_path,
+        "DEPS\t" + child->cmd->data(),
+        deps,
+        std::vector<makefile::global_targets>{
+            makefile::global_targets::CLEAN
+        },
+        commands,
+        std::vector<std::string>{
+            std::to_string(child->cmd->debug()),
+            "language_cxx::deps_source()"
+        }
+    )->as_included();
 }
 
 std::vector<language_cxx::target::ptr>

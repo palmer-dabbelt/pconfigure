@@ -237,6 +237,7 @@ TESTSRC     += bootstrap.bash
 TESTSRC     += reconfigure.bash
 TESTSRC     += bootstrap-bad.bash
 TESTSRC     += pdeps.bash
+TESTSRC     += autoreconfigure.bash
 TESTSRC     += autoreconfigure-bad.bash
 TESTSRC     += builtin-rules.bash
 

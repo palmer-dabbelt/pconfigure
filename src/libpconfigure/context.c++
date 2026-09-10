@@ -63,7 +63,8 @@ context::context(const std::string& base)
       phc(makefile::tool_command("phc")),
       entitlements(""),
       children(),
-      lib_dir_built(false)
+      lib_dir_built(false),
+      autoreconfigure(false)
 {
 }
 
@@ -102,7 +103,8 @@ context::context(const context_type& _type,
                  const std::string& _phc,
                  const std::string& _entitlements,
                  const std::vector<ptr>& _children,
-                 bool _lib_dir_built)
+                 bool _lib_dir_built,
+                 bool _autoreconfigure)
     : type(_type),
       prefix(_prefix),
       gen_dir(_gen_dir),
@@ -138,7 +140,8 @@ context::context(const context_type& _type,
       phc(_phc),
       entitlements(_entitlements),
       children(_children),
-      lib_dir_built(_lib_dir_built)
+      lib_dir_built(_lib_dir_built),
+      autoreconfigure(_autoreconfigure)
 {
 }
 
@@ -192,7 +195,8 @@ context::ptr context::dup(const context_type& type,
                                      this->phc,
                                      this->entitlements,
                                      children,
-                                     this->lib_dir_built);
+                                     this->lib_dir_built,
+                                     this->autoreconfigure);
 }
 
 std::vector<std::string> context::based_test_deps(void) const

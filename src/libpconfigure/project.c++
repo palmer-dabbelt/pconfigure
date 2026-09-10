@@ -196,6 +196,15 @@ void project::generate_targets(void)
         [&](const context::ptr& ctx)
         {
             ctx->lib_dir_built = lib_dirs.find(ctx->lib_dir) != lib_dirs.end();
+
+            /* Asked of the project rather than read off the line,
+             * because the answer belongs to the project: a Configfile
+             * that says it at the bottom has said the same thing as
+             * one that says it at the top, and the contexts above
+             * that line have already been built by the time it is
+             * read. */
+            ctx->autoreconfigure = _processor->autoreconfigure();
+
             for (const auto& child: ctx->children)
                 mark(child);
         };
@@ -975,16 +984,43 @@ makefile::target::ptr project::cache_clean_target(const std::vector<ptr>& projec
               + project->_processor->root_context()->obj_dir
               + "/check-stamp'";
 
+        /* And these, for the same reason: a project that works its
+         * dependencies out during the build keeps what pdeps needs to
+         * know in here, and the Makefile only ever names those as
+         * prerequisites.  Throwing one away leaves a build that stops
+         * on a missing file nothing knows how to make. */
+        if (project->_processor->autoreconfigure() == true)
+            prune += " -not -name 'deps-context-*'";
+
         for (const auto& pair: obj_dirs) {
             const auto& dir = pair.first;
 
             /* '|' rather than '/' as the delimiter, since a directory
              * that has one in it would otherwise end the command. */
+            /* What the build still knows how to make.  For a
+             * project that works its dependencies out during the
+             * build, most of that is not in the Makefile at all: the
+             * objects and the fragments below the ones pconfigure
+             * named are written down by pdeps, in the fragments
+             * themselves.  Reading only the Makefile would decide the
+             * whole object cache was stale and throw away a build
+             * that is perfectly good.
+             *
+             * The fragments are read with "-exec cat {} +" rather than
+             * handed over as arguments, since a large project has one
+             * per source and a command line has a limit. */
+            auto wanted =
+                "sed -n 's|\\(^" + dir + "/[^[:space:]:]*\\):.*|\\1|p' "
+                + project->makefile_path();
+            if (project->_processor->autoreconfigure() == true)
+                wanted += "; find " + dir + " -name '*.d' -exec cat {} + "
+                          "| sed -n 's|\\(^" + dir
+                          + "/[^[:space:]:]*\\):.*|\\1|p'";
+
             commands.push_back(
                 "comm -23 "
                 "<(find " + dir + " -type f" + prune + " | sort) "
-                "<(sed -n 's|\\(^" + dir + "/[^[:space:]:]*\\):.*|\\1|p' "
-                + project->makefile_path() + " | sort -u) "
+                "<({ " + wanted + "; } | sort -u) "
                 "| xargs -r rm -f"
             );
             commands.push_back(
