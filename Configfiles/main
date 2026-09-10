@@ -234,6 +234,7 @@ TESTSRC     += subproject-targets.bash
 TESTSRC     += subproject-objdir.bash
 TESTSRC     += configfile-backticks.bash
 TESTSRC     += bootstrap.bash
+TESTSRC     += reconfigure.bash
 TESTSRC     += bootstrap-bad.bash
 
 # These command-line tools are only ever run by the tests below, so
