@@ -342,6 +342,25 @@ void build_system_kconfig::take_configureopt(const std::string& opt)
     abort();
 }
 
+/* Where make will be running, spelled absolutely.  A kbuild tree
+ * writes the paths it read as absolute ones, and this is the only
+ * thing that can turn one of those back into a path this build can
+ * use -- or recognise it as naming a toolchain header somewhere else
+ * entirely. */
+static std::string here(void)
+{
+    auto buffer = std::vector<char>(4096);
+    while (getcwd(&buffer[0], buffer.size()) == NULL) {
+        if (errno != ERANGE) {
+            std::cerr << "kconfig: unable to find the current directory\n";
+            abort();
+        }
+        buffer.resize(buffer.size() * 2);
+    }
+
+    return std::string(&buffer[0]);
+}
+
 std::vector<makefile::target::ptr>
 build_system_kconfig::vendored_targets(
     const std::vector<build_system::ptr>& peers,
@@ -574,6 +593,42 @@ build_system_kconfig::vendored_targets(
     config_commands.push_back(reread);
     config_commands.push_back("touch $@");
 
+    /* And the same again for the other question, which is what the
+     * tree read while it was BUILDING rather than while it was being
+     * configured.  A separate context because it is a separate
+     * answer, landing on a separate rule: one file per question means
+     * the rule that wants the cheap answer does not pay for the
+     * expensive one, which for a kernel is a walk of ten thousand
+     * files.
+     *
+     * A tree that scatters nothing to read gets none of this and
+     * keeps the guess, which is the only thing there is for it. */
+    auto build_deps_root = build_dep_root();
+    auto build_context = output_dir() + "/build-deps-context";
+    auto build_fragment = output_dir() + "/build-deps.mk";
+    auto reread_build = std::string();
+
+    if (build_deps_root.size() > 0) {
+        auto build_ctx = std::string();
+        build_ctx += say("tree", srcdir);
+        build_ctx += say("output", output_dir());
+        build_ctx += say("target", stamp);
+        build_ctx += say("fragment", build_fragment);
+        build_ctx += say("cmd-root", build_deps_root);
+        build_ctx += say("root", here());
+
+        if (project_base.size() > 0) {
+            build_ctx += say("base", project_base);
+            build_ctx += say("variable",
+                             project::prefix_variable(project_base));
+        }
+
+        file_utils::write_if_changed(build_context, build_ctx);
+
+        reread_build = makefile::tool_command("psubdeps")
+                     + " --context " + build_context;
+    }
+
     auto config_target = std::make_shared<makefile::target>(
         config,
         label + "\t" + srcdir,
@@ -621,6 +676,8 @@ build_system_kconfig::vendored_targets(
         build_commands.push_back(submake + " " + make_target);
     build_commands.push_back("mkdir -p " + output_dir());
     build_commands.push_back(reread);
+    if (reread_build.size() > 0)
+        build_commands.push_back(reread_build);
     build_commands.push_back("date > $@");
 
     auto build_target = std::make_shared<makefile::target>(
@@ -657,6 +714,28 @@ build_system_kconfig::vendored_targets(
         }
     )->as_included();
 
-    return std::vector<makefile::target::ptr>{
+    auto out = std::vector<makefile::target::ptr>{
         config_target, build_target, deps_target};
+
+    if (reread_build.size() > 0)
+        out.push_back(std::make_shared<makefile::target>(
+            build_fragment,
+            "DEPS\t" + srcdir,
+            std::vector<makefile::target::ptr>{
+                std::make_shared<makefile::target>(build_context)
+            },
+            std::vector<makefile::global_targets>{
+                makefile::global_targets::CLEAN
+            },
+            std::vector<std::string>{
+                "mkdir -p $(dir $@)",
+                reread_build
+            },
+            std::vector<std::string>{
+                "What the vendored build system in " + srcdir + " said it"
+                " read while it was being built"
+            }
+        )->as_included());
+
+    return out;
 }

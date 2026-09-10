@@ -84,6 +84,15 @@ protected:
     kconfig_deps::roots dep_roots(void) const;
     std::string submake_flags(void) const;
 
+    /* Buildroot writes down what its configuration read, and nothing
+     * at all about what its build read -- so there is nothing here to
+     * go looking for.  Saying so is not just tidiness: its output
+     * directory holds whole source trees of its own, one of them a
+     * kernel, and walking that to collect an answer which would be
+     * discarded as belonging to the output anyway costs minutes. */
+    std::string build_dep_root(void) const
+        { return ""; }
+
     std::string config_tool(void) const
         { return base() + "utils/config"; }
 
