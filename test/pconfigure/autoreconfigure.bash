@@ -211,4 +211,21 @@ test "$(./on/bin/app)" = "15"
 cat cacheclean.out
 grep -q "Nothing to be done" cacheclean.out
 
+##############################################################################
+# Cleaning                                                                   #
+##############################################################################
+# "make clean" takes the fragments along with the objects -- all of
+# them, the ones pconfigure named and the ones pdeps found behind a
+# header, since an object directory holding half of one kind of file
+# is a thing nobody could explain.  What it leaves is what pconfigure
+# wrote, which is the context files, the same way it leaves the
+# Makefile.
+(cd on && make $MAKE_ARGS clean)
+test "$(find on/obj -name '*.d' | wc -l)" -eq 0
+test "$(find on/obj -name '*.o' | wc -l)" -eq 0
+test "$(find on/obj -name 'deps-context-*' | wc -l)" -ne 0
+
+(cd on && make $MAKE_ARGS)
+test "$(./on/bin/app)" = "15"
+
 exit 0
