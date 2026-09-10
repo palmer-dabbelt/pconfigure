@@ -376,9 +376,21 @@ build_system_kconfig::vendored_targets(
     /********************************************************************
      * The configuration                                                *
      ********************************************************************/
+    /* Through "$(wildcard)", as one prerequisite rather than
+     * hundreds, because these were worked out by looking at the tree
+     * and the tree moves.  kconfig_deps promises only the paths that
+     * existed at the moment of configuring, and every submodule bump
+     * deletes some -- after which make has a prerequisite nothing can
+     * build and refuses to build anything at all, not just this
+     * subproject.  The way out is "make reconfigure", whose name
+     * appears nowhere in the error it prints.
+     *
+     * $(wildcard) is re-expanded every run, so a file that has gone
+     * away stops being named and one that comes back starts again. */
     auto config_deps = std::vector<makefile::target::ptr>();
-    for (const auto& path: deps.config)
-        config_deps.push_back(std::make_shared<makefile::target>(path));
+    if (deps.config.size() > 0)
+        config_deps.push_back(std::make_shared<makefile::target>(
+            "$(wildcard " + string_utils::join(deps.config, " ") + ")"));
     for (const auto& path: kconfig_deps::defconfig_files(base(), _defconfig))
         config_deps.push_back(std::make_shared<makefile::target>(path));
     for (const auto& depend: _config_depends)
@@ -532,8 +544,9 @@ build_system_kconfig::vendored_targets(
      * made out here would be.  All these are for is giving make a
      * reason not to recurse at all. */
     auto build_deps = std::vector<makefile::target::ptr>{config_target};
-    for (const auto& path: deps.build)
-        build_deps.push_back(std::make_shared<makefile::target>(path));
+    if (deps.build.size() > 0)
+        build_deps.push_back(std::make_shared<makefile::target>(
+            "$(wildcard " + string_utils::join(deps.build, " ") + ")"));
     /* Said again here rather than left to the configuration this
      * build already waits for, so that the rule that names the thing
      * being built is the rule that says what it was built out of. */
