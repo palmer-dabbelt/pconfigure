@@ -75,6 +75,18 @@ private:
      * in, so it has to be stable. */
     std::vector<test_suite::ptr> _test_suites;
 
+    /* TRUE once an AUTORECONFIGURE asked for this project's
+     * dependencies to be worked out by the build rather than here.
+     * The command is kept alongside it because a complaint about what
+     * the mode can't do has to point at the line that asked for it.
+     *
+     * This is a property of one project rather than of a run: a
+     * subproject is a tree with its own Configfile and its own
+     * answer, and a parent that included it has no business changing
+     * how it decides what to rebuild. */
+    bool _autoreconfigure;
+    command::ptr _autoreconfigure_cmd;
+
     /* The vendored pconfigure source a BOOTSTRAP named, spelled the
      * way every other directory in a run is: ending with a '/', and
      * empty when nothing said.  The command is kept alongside it
@@ -179,6 +191,11 @@ public:
         { return _root; }
     const std::vector<test_suite::ptr>& test_suites(void) const
         { return _test_suites; }
+
+    const bool& autoreconfigure(void) const
+        { return _autoreconfigure; }
+    const command::ptr& autoreconfigure_cmd(void) const
+        { return _autoreconfigure_cmd; }
 
     const std::string& bootstrap(void) const
         { return _bootstrap; }

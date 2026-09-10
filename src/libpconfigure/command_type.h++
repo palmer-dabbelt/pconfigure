@@ -31,6 +31,7 @@
  * modify a whole lot of stuff below...*/
 enum class command_type {
     AUTODEPS,
+    AUTORECONFIGURE,
     BINARIES,
     BOOTSTRAP,
     BUILD_SYSTEMS,
@@ -82,6 +83,7 @@ enum class command_type {
 static const std::vector<command_type> all_command_types =
 {
     command_type::AUTODEPS,
+    command_type::AUTORECONFIGURE,
     command_type::BINARIES,
     command_type::BOOTSTRAP,
     command_type::BUILD_SYSTEMS,
@@ -135,6 +137,8 @@ namespace std {
         switch (cmd) {
         case command_type::AUTODEPS:
             return "AUTODEPS";
+        case command_type::AUTORECONFIGURE:
+            return "AUTORECONFIGURE";
         case command_type::BINARIES:
             return "BINARIES";
         case command_type::BOOTSTRAP:

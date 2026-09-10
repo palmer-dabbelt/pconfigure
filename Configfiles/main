@@ -236,6 +236,7 @@ TESTSRC     += configfile-backticks.bash
 TESTSRC     += bootstrap.bash
 TESTSRC     += reconfigure.bash
 TESTSRC     += bootstrap-bad.bash
+TESTSRC     += autoreconfigure-bad.bash
 TESTSRC     += builtin-rules.bash
 
 # These command-line tools are only ever run by the tests below, so
