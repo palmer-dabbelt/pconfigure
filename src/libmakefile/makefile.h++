@@ -88,6 +88,13 @@ namespace makefile {
          * "make check" that means every test in the build. */
         std::string _default_test_suite;
 
+        /* Whether this Makefile writes the rule that runs pconfigure
+         * again.  A project that keeps a Makefile of its own above
+         * this one has the rule up there instead, because the
+         * pconfigure it would run is the one that Makefile knows how
+         * to build. */
+        bool _write_reconfigure;
+
     public:
         /* Creates a new "empty" Makefile -- note that this actually
          * contains some about of default targets and such that you
@@ -152,6 +159,11 @@ namespace makefile {
         /* Points "make check" and "make report" at one of those
          * rather than at every test in the build. */
         void set_default_test_suite(const std::string& name);
+
+        /* Says that somebody else writes the "make reconfigure" rule,
+         * so this Makefile shouldn't: two recipes for the one name
+         * would be make picking one of them quietly. */
+        void skip_reconfigure(void);
 
         /* Writes this makefilie out to a text file. */
         void write_to_file(const std::string& filename);

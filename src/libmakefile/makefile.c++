@@ -27,7 +27,8 @@ makefile::makefile::makefile(bool verbose,
                              const path_prefix& prefix)
 : _verbose(verbose),
   _obj_dir(obj_dir),
-  _prefix(prefix)
+  _prefix(prefix),
+  _write_reconfigure(true)
 {
 }
 
@@ -87,6 +88,11 @@ void makefile::makefile::add_test_suite(const std::string& name,
 void makefile::makefile::set_default_test_suite(const std::string& name)
 {
     _default_test_suite = name;
+}
+
+void makefile::makefile::skip_reconfigure(void)
+{
+    _write_reconfigure = false;
 }
 
 void makefile::makefile::write_to_file(const std::string& filename)
@@ -195,6 +201,24 @@ void makefile::makefile::write_to_file(const std::string& filename)
                     + "-report-quiet";
         check_report = obj_dir + "/check-suite-" + _default_test_suite
                      + "-report";
+    }
+
+    /* Running pconfigure again, which is a thing to be asked for
+     * rather than a thing that happens: what a Makefile says is what
+     * the Configfiles said the last time somebody ran pconfigure, and
+     * nothing in a build changes that on its own.
+     *
+     * The one on the PATH, rather than the one that wrote this file.
+     * Reconfiguring is somebody deciding to reconfigure, and the
+     * pconfigure they mean is the one they have -- not whichever one
+     * happened to be installed when the tree was first set up, which
+     * may well not be there any more. */
+    if (_write_reconfigure == true) {
+        fprintf(file, "PCONFIGURE_ARGS ?=\n\n");
+        fprintf(file, ".PHONY: reconfigure\n");
+        fprintf(file, "reconfigure:\n");
+        fprintf(file, "\t%secho \"PCONFIGURE\"\n", q);
+        fprintf(file, "\t%spconfigure $(PCONFIGURE_ARGS)\n\n", q);
     }
 
     fprintf(file, "check: %s\n\n", check_quiet.c_str());
