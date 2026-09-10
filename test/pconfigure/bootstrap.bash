@@ -69,7 +69,7 @@ cat Makefile
 # that says how to get a pconfigure.
 grep -q "^include Makefile.pconfigure$" Makefile
 grep -q "^PCONFIGURE_SRCPATH  = vendor/pconfigure/$" Makefile
-grep -q "^Makefile.pconfigure: \$(PCONFIGURE)$" Makefile
+grep -q "^Makefile.pconfigure: | \$(PCONFIGURE)$" Makefile
 grep -q "^\$(PCONFIGURE_SRCPATH)Makefile:$" Makefile
 grep -q "bootstrap.sh$" Makefile
 
@@ -140,16 +140,25 @@ test "$(wc -l < configures)" -eq 1
 ##############################################################################
 # A new pconfigure                                                           #
 ##############################################################################
-# The tree that gets vendored is one that moves, and the Makefile it
-# writes is one this project's build depends on -- so a pconfigure
-# that changed is a reason to configure again, and not a reason to
-# bootstrap again.
+# Which is not a reason to configure again.  What a Makefile says is
+# what the Configfiles said the last time somebody ran pconfigure, and
+# a bootstrapping project is no different from any other one about
+# that -- the vendored pconfigure being part of the build is not the
+# build being allowed to decide when the build gets reconfigured.
 sleep 1
 touch vendor/pconfigure/pconfigure.in
 
 make $MAKE_ARGS
 test "$(wc -l < bootstraps)" -eq 1
+test "$(wc -l < configures)" -eq 1
+
+# Asking is what does it, and the pconfigure that runs is the vendored
+# one rather than whatever the PATH happens to hold.
+make $MAKE_ARGS reconfigure > reconfigure.out 2>&1
+cat reconfigure.out
+grep -q "^PCONFIGURE$" reconfigure.out
 test "$(wc -l < configures)" -eq 2
+test "$(wc -l < bootstraps)" -eq 1
 
 ##############################################################################
 # Undoing a configure                                                        #
