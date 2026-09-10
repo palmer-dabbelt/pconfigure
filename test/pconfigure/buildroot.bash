@@ -225,6 +225,23 @@ grep -q "^obj/sub/build-stamp:.* ext/external.desc" Makefile
 grep -q "^obj/sub/build-stamp:.* ext/external.mk" Makefile
 grep -q "^obj/sub/build-stamp:.* ext/package/mine/mine.mk" Makefile
 
+# And that list is all there is going to be.  A kbuild tree also
+# writes down what its BUILD read, a file at a time beside each
+# object, and gets a second fragment out of reading them; buildroot
+# writes nothing of the kind, so there is nothing to read and no
+# reason to go looking.  Not going looking is the point: a buildroot
+# output directory holds whole source trees of its own, one of them a
+# kernel, and walking it to collect an answer that would be thrown
+# away for belonging to the output costs minutes.
+if grep -q "build-deps" Makefile
+then
+    exit 1
+fi
+if test -e obj/sub/build-deps-context
+then
+    exit 1
+fi
+
 ##############################################################################
 # Building                                                                   #
 ##############################################################################

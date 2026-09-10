@@ -249,6 +249,14 @@ public:
      * the whole of what O= means. */
     std::string build_dir(void) const { return kbuild_output(); }
 
+    /* Where the tree leaves a note beside every object it compiles
+     * saying what went into it.  kbuild scatters them through its
+     * output directory; a tree that writes nothing of the kind says
+     * so by answering with nothing, and is then left with the guess
+     * made out here. */
+    virtual std::string build_dep_root(void) const
+        { return kbuild_output(); }
+
     /* The configuration this run asked for, and the stamp that says
      * the vendored build has been run since anything it reads
      * changed. */
