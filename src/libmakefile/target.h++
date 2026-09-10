@@ -49,6 +49,16 @@ namespace makefile {
          * anything changed or not. */
         bool _phony;
 
+        /* TRUE for a target whose output is itself a piece of
+         * Makefile, which whoever writes this one has to "include" as
+         * well as say how to build.
+         *
+         * make remakes what it includes before it reads it, which is
+         * the whole reason this exists: a file that says what a source
+         * depends on can be built by the same build that is about to
+         * need the answer. */
+        bool _included;
+
     public:
         /* Creates a new target fully-fledged target -- this is a
          * target that the Makefile actually knows how to generate. */
@@ -79,6 +89,12 @@ namespace makefile {
         /* Returns a copy of this target that make is told is a name
          * rather than a file. */
         ptr as_phony(void) const;
+
+        /* Returns a copy of this target that whoever writes it out
+         * also "include"s. */
+        ptr as_included(void) const;
+
+        bool included(void) const { return _included; }
 
         /* Returns TRUE if this target is a dependency of the given global
          * target. */

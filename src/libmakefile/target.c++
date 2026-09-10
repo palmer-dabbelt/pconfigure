@@ -32,7 +32,8 @@ makefile::target::target(const std::string& name,
       _global(global),
       _cmds(cmds),
       _comment(comment),
-      _phony(false)
+      _phony(false),
+      _included(false)
 {
 }
 
@@ -43,7 +44,8 @@ makefile::target::target(const std::string& name)
       _global(),
       _cmds(),
       _comment(),
-      _phony(false)
+      _phony(false),
+      _included(false)
 {
 }
 
@@ -54,12 +56,22 @@ makefile::target::ptr makefile::target::without(makefile::global_targets mask) c
         if (g != mask)
             global.push_back(g);
 
-    return std::make_shared<target>(_name,
-                                    _short_cmd,
-                                    _deps,
-                                    global,
-                                    _cmds,
-                                    _comment);
+    auto out = std::make_shared<target>(_name,
+                                        _short_cmd,
+                                        _deps,
+                                        global,
+                                        _cmds,
+                                        _comment);
+
+    /* Taking a target out of "all" says nothing about whether it is a
+     * name rather than a file, or whether it is a piece of Makefile
+     * somebody includes.  Dropping either of those here would be this
+     * function quietly changing something it was not asked about --
+     * and the way that shows up is a rule that stops firing, or a
+     * fragment that nothing reads. */
+    out->_phony = _phony;
+    out->_included = _included;
+    return out;
 }
 
 makefile::target::ptr makefile::target::as_phony(void) const
@@ -71,6 +83,20 @@ makefile::target::ptr makefile::target::as_phony(void) const
                                         _cmds,
                                         _comment);
     out->_phony = true;
+    out->_included = _included;
+    return out;
+}
+
+makefile::target::ptr makefile::target::as_included(void) const
+{
+    auto out = std::make_shared<target>(_name,
+                                        _short_cmd,
+                                        _deps,
+                                        _global,
+                                        _cmds,
+                                        _comment);
+    out->_phony = _phony;
+    out->_included = true;
     return out;
 }
 
