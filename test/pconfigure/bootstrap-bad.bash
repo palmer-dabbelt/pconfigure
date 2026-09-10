@@ -117,6 +117,56 @@ grep -q "has no executable bootstrap.sh" out
 grep -q "git submodule update --init vendor/pconfigure" out
 
 ##############################################################################
+# Naming a tree that doesn't build a pconfigure                              #
+##############################################################################
+# The committed Makefile runs a path and has nothing else to go on,
+# so a BOOTSTRAP pointed one directory too high or too low configures
+# and builds perfectly well and then fails much later with a shell
+# saying it can't find a program.
+setup
+vendor vendor/pconfigure
+mkdir -p case/vendor/pconfigure/src
+cat >case/vendor/pconfigure/Configfile <<EOF
+LANGUAGES += c
+
+BINARIES  += something-else
+SOURCES   += something-else.c
+EOF
+
+cat >case/vendor/pconfigure/src/something-else.c <<EOF
+int main(void) { return 0; }
+EOF
+
+cat >case/Configfile <<EOF
+BOOTSTRAP  = vendor/pconfigure
+
+LANGUAGES += c
+
+BINARIES  += main
+SOURCES   += main.c
+EOF
+
+refuses
+grep -q "nothing in this build produces 'vendor/pconfigure/bin/pconfigure'" out
+
+# A directory with nothing in it but the script gets the same answer,
+# which is the shape an unwritten submodule pointer arrives in once
+# somebody has put a bootstrap.sh beside it.
+setup
+vendor vendor/pconfigure
+cat >case/Configfile <<EOF
+BOOTSTRAP  = vendor/pconfigure
+
+LANGUAGES += c
+
+BINARIES  += main
+SOURCES   += main.c
+EOF
+
+refuses
+grep -q "nothing in this build produces 'vendor/pconfigure/bin/pconfigure'" out
+
+##############################################################################
 # Written in a subproject                                                    #
 ##############################################################################
 # The rules a BOOTSTRAP writes go in the Makefile make is run at, and

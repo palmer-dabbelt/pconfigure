@@ -139,6 +139,17 @@ public:
      * project this Makefile is responsible for put into it. */
     void check_default_test_suite(const std::vector<ptr>& aggregated) const;
 
+    /* Complains if a BOOTSTRAP names a tree that doesn't build the
+     * pconfigure it promised.  "everyone" is every project in the
+     * run, since the tree is one of them by the time this is asked.
+     *
+     * The committed Makefile runs a path, and a path is all it has:
+     * nothing about it says which tree was supposed to produce that
+     * file, so a BOOTSTRAP pointed one directory too high or too low
+     * configures and builds perfectly well and then fails, much
+     * later, with a shell saying it can't find a program. */
+    void check_bootstrap(const std::vector<ptr>& everyone) const;
+
     /* Complains if the Makefile this project is about to write over
      * is one that a project above it includes.  That means pconfigure
      * was run inside a subproject, and the Makefile it would leave
