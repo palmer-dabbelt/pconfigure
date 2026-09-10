@@ -74,7 +74,11 @@ namespace {
 
         std::string compiler, pretty, pic;
         std::string pdeps;
-        std::string at;
+
+        /* What every recipe written below gets in front of it, which
+         * is nothing at all for a build that was asked to say what it
+         * is doing. */
+        std::string at = "@";
 
         bool autodeps = true;
 
@@ -138,7 +142,7 @@ namespace {
             else if (key == "pretty")      out.pretty = value;
             else if (key == "pic")         out.pic = value;
             else if (key == "pdeps")       out.pdeps = value;
-            else if (key == "at")          out.at = value;
+            else if (key == "quiet")       out.at = value == "true" ? "@" : "";
             else if (key == "base")        out.base = value;
             else if (key == "variable")    out.variable = value;
             else if (key == "autodeps")    out.autodeps = value == "true";
@@ -358,7 +362,8 @@ int main(int argc, const char **argv)
         out += "\t" + ctx.at + "mkdir -p $(dir $@)\n";
         out += "\t" + ctx.at + prefix.rewrite(
                    ctx.compiler + " " + join(ctx.opts)
-                   + " -c " + source + " -o " + object + ctx.pic) + "\n";
+                   + " -c " + source + " -o " + object
+                   + (ctx.pic.size() > 0 ? " " + ctx.pic : "")) + "\n";
         say("endif");
     }
 

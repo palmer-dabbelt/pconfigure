@@ -1,4 +1,5 @@
 #include "harness_start.bash"
+#pconfigure TESTDEPS += bin/pdeps
 
 # pdeps on its own, with a context file written by hand rather than by
 # pconfigure.  What it produces is a piece of Makefile, so what is
@@ -74,7 +75,7 @@ dep-suffix /OPTS.d
 compiler $(pwd)/stub/cc
 pretty C++
 pdeps $pdeps
-at @
+quiet true
 autodeps $1
 link obj/bin/app/L/local
 opt -Isrc
