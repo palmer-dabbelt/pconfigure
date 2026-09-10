@@ -105,8 +105,11 @@ public:
     const std::vector<makefile::capability>& needed(void) const
         { return _needed; }
 
-    /* The Makefile this project gets written to. */
-    std::string makefile_path(void) const { return _base + "Makefile"; }
+    /* The Makefile this project gets written to.  A project that
+     * bootstraps its own pconfigure keeps the Makefile make is run at
+     * in revision control, so the one pconfigure writes goes beside
+     * it under another name and is included by it. */
+    std::string makefile_path(void) const;
 
 public:
     /* Turns this project's contexts into targets, asking each
@@ -213,6 +216,18 @@ private:
      * the file it has to ask make about is the one this project's
      * "make check" actually builds. */
     void write_check_stamp(void) const;
+
+    /* Writes the Makefile that a BOOTSTRAP project commits, which is
+     * the one make is actually run at.
+     *
+     * Everything in it comes from the BOOTSTRAP line, so it says the
+     * same thing today that it said when it was written down: how to
+     * get a pconfigure out of the vendored source, and where to find
+     * the Makefile that pconfigure writes.  That's what makes it
+     * worth keeping -- a file that changed every time the build did
+     * would be a generated file in revision control, which is a merge
+     * conflict waiting to happen. */
+    void write_bootstrap_makefile(void) const;
 
     /* Writes down what this run told each vendored tree, so that make
      * has something to compare against.  A vendored tree's rules are

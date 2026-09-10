@@ -656,7 +656,13 @@ void project::check_makefile_shape(void) const
     if (_base.size() > 0)
         return;
 
-    auto file = fopen(makefile_path().c_str(), "r");
+    /* Named outright rather than asked for, because the file this is
+     * about is the one a parent would have written -- and a parent
+     * writes a subproject's Makefile under the name every subproject
+     * uses, whatever this project would call its own. */
+    const auto path = _base + "Makefile";
+
+    auto file = fopen(path.c_str(), "r");
     if (file == NULL)
         return;
 
@@ -706,7 +712,7 @@ void project::check_makefile_shape(void) const
      * name in the file that's already here says what the parent calls
      * it, and the name is not something a directory can be recovered
      * from. */
-    std::cerr << "'" << makefile_path() << "' was written to be included by"
+    std::cerr << "'" << path << "' was written to be included by"
               << " the project above this one\n"
               << "  the '" << variable << " ?=' at the top of it is what a"
               << " parent sets to say where this project is, and every path"
@@ -1108,6 +1114,7 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
 
     out->write_to_file(makefile_path());
 
+    write_bootstrap_makefile();
     write_check_dirs(aggregated);
     write_check_stamp();
     write_configureopts();
@@ -1199,6 +1206,113 @@ void project::write_check_stamp(void) const
                 root->unbased(root->obj_dir + "/check-all-done").c_str());
 
     fclose(file);
+}
+
+std::string project::makefile_path(void) const
+{
+    /* A project that bootstraps its own pconfigure has a Makefile
+     * already, written once and committed, and make is run at that
+     * one.  What comes out of a configure goes beside it under a name
+     * that says who wrote it. */
+    if (_processor->bootstrap().size() > 0)
+        return _base + "Makefile.pconfigure";
+
+    return _base + "Makefile";
+}
+
+void project::write_bootstrap_makefile(void) const
+{
+    const auto& srcpath = _processor->bootstrap();
+    if (srcpath.size() == 0)
+        return;
+
+    /* Spelled ending in a '/', the way every directory in a run is,
+     * so that sticking a name on the end of the variable is all
+     * anybody has to do with it. */
+    auto out = std::string();
+    out += "# Written by pconfigure, and meant to be committed.\n";
+    out += "#\n";
+    out += "# Everything in here comes from the BOOTSTRAP line of a"
+           " Configfile, so it\n";
+    out += "# says the same thing today that it said when it was"
+           " written down.  The rest\n";
+    out += "# of the build -- the part that changes when a Configfile"
+           " does -- is in\n";
+    out += "# " + _base + "Makefile.pconfigure, which pconfigure writes"
+           " and this file includes.\n";
+    out += "#\n";
+    out += "# What it is for is the first \"make\" in a fresh checkout,"
+           " which has no\n";
+    out += "# pconfigure to write that file with.  The rules below"
+           " build one out of the\n";
+    out += "# vendored source, so nobody has to be told that"
+           " pconfigure exists before\n";
+    out += "# they can build this project.\n";
+    out += "\n";
+    out += "PCONFIGURE_SRCPATH  = " + srcpath + "\n";
+    out += "PCONFIGURE          = $(PCONFIGURE_SRCPATH)bin/pconfigure\n";
+    out += "PCONFIGURE_ARGS    ?=\n";
+    out += "\n";
+    out += "# make remakes what it includes before it reads it, so"
+           " this is where the\n";
+    out += "# whole build arrives -- and the first target in it,"
+           " \"all\", is what a\n";
+    out += "# \"make\" with nothing after it means.\n";
+    out += "include Makefile.pconfigure\n";
+    out += "\n";
+    out += "Makefile.pconfigure: $(PCONFIGURE)\n";
+    out += "\t$(PCONFIGURE) $(PCONFIGURE_ARGS)\n";
+    out += "\n";
+    out += "# The first run has no pconfigure to configure the"
+           " vendored tree with, so the\n";
+    out += "# tree builds one straight from its own source.  Its"
+           " Makefile is what says\n";
+    out += "# that has happened, because bootstrap.sh is what writes"
+           " it.\n";
+    out += "$(PCONFIGURE_SRCPATH)Makefile:\n";
+    out += "\t+cd $(PCONFIGURE_SRCPATH) && ./bootstrap.sh\n";
+    out += "\n";
+    out += "# After that pconfigure is built like anything else, which"
+           " is what picks up an\n";
+    out += "# edit to its own sources.  Asking every time costs a make"
+           " that finds nothing\n";
+    out += "# to do; it doesn't cost a configure, because a build that"
+           " changed nothing\n";
+    out += "# leaves the binary's timestamp alone and the rule above"
+           " is reading that\n";
+    out += "# timestamp.\n";
+    out += "#\n";
+    out += "# It is asked quietly because it is asked on every build"
+           " and almost always\n";
+    out += "# has nothing to say.  When it does have something to say"
+           " -- a compile, or a\n";
+    out += "# compile that failed -- that still comes out.  To watch"
+           " it properly, build\n";
+    out += "# the tree on its own: make -C " + srcpath + "\n";
+    out += "$(PCONFIGURE): $(PCONFIGURE_SRCPATH)Makefile"
+           " pconfigure-force\n";
+    out += "\t+@$(MAKE) -s --no-print-directory"
+           " -C $(PCONFIGURE_SRCPATH)\n";
+    out += "\n";
+    out += ".PHONY: pconfigure-force\n";
+    out += "pconfigure-force:\n";
+
+    /* Written only when it would say something new, because this is
+     * the file make was started on: rewriting it on every configure
+     * would hand make a Makefile newer than everything it just built,
+     * and would show up as a change in every commit that touched a
+     * Configfile. */
+    auto path = _base + "Makefile";
+    if (file_utils::write_if_changed(path, out))
+        return;
+
+    std::cerr << "can't write '" << path << "': "
+              << strerror(errno) << "\n"
+              << "  this is the Makefile the BOOTSTRAP on "
+              << std::to_string(_processor->bootstrap_cmd()->debug())
+              << " asked for,\n"
+              << "  and it's the one make gets run at\n";
+    abort();
 }
 
 void project::write_configureopts(void) const
