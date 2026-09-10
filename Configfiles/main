@@ -237,6 +237,7 @@ TESTSRC     += bootstrap.bash
 TESTSRC     += reconfigure.bash
 TESTSRC     += bootstrap-bad.bash
 TESTSRC     += pdeps.bash
+TESTSRC     += psubdeps.bash
 TESTSRC     += autoreconfigure.bash
 TESTSRC     += autoreconfigure-bad.bash
 TESTSRC     += autoreconfigure-subproject.bash
@@ -253,6 +254,15 @@ DEPLIBS     += pinclude++
 DEPLIBS     += pconfigure
 DEPLIBS     += makefile
 SOURCES     += pdeps.c++
+
+# And the same for a vendored tree, which answers the same question by
+# writing the answer down itself: this reads what the tree said rather
+# than working anything out.  A BINARY for the same reason as above.
+BINARIES    += psubdeps
+AUTODEPS     = false
+DEPLIBS     += pconfigure
+DEPLIBS     += makefile
+SOURCES     += psubdeps.c++
 
 # These command-line tools are only ever run by the tests below, so
 # they're built but never installed.
