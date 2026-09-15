@@ -97,6 +97,10 @@ namespace {
         std::string base, variable;
         std::vector<std::pair<std::string, std::string>> peers;
 
+        /* Where this file was when it was written, spelled the way
+         * every prefix above is spelled: from the top of the tree. */
+        std::string self;
+
     public:
         std::string source_of(const std::string& name) const
             { return src_prefix + name; }
@@ -104,6 +108,90 @@ namespace {
             { return obj_prefix + name + obj_suffix; }
         std::string deps_of(const std::string& name) const
             { return dep_prefix + name + dep_suffix; }
+
+        /* A subproject's Makefile is written to work both ways: a
+         * parent includes it, and it can also be built where it sits.
+         * The rules in it carry the directory as a variable that the
+         * parent sets and the file defaults to nothing, so the same
+         * rule names one path from the top of the tree and another
+         * from inside the project -- and both are right, because make
+         * is standing somewhere different in each case.
+         *
+         * Everything in this file is the first of those spellings,
+         * frozen when pconfigure ran.  Read from inside the project
+         * they have the project's own directory too many on the
+         * front, which is not an error anything notices: the source
+         * is looked for one directory too high and found missing, so
+         * the answer written is that the source has been deleted, and
+         * it is written into a directory named after the project
+         * inside the project where nothing will ever read it.
+         *
+         * Make has already said where it is standing, though, by
+         * spelling the --context through that same variable.  So the
+         * live path and the frozen one differ by exactly what needs
+         * to come off the front of everything else. */
+        void rebase(const std::string& live)
+        {
+            if (base.size() == 0 || self.size() == 0)
+                return;
+            if (self.compare(0, base.size(), base) != 0)
+                return;
+
+            auto tail = self.substr(base.size());
+            if (live.size() < tail.size())
+                return;
+            if (live.compare(live.size() - tail.size(),
+                             tail.size(), tail) != 0)
+                return;
+
+            auto live_base = live.substr(0, live.size() - tail.size());
+            if (live_base == base)
+                return;
+
+            /* Where a path starts in a string that also has compiler
+             * flags in it is makefile::path_prefix's question, and it
+             * is already answered there -- a second answer to it is
+             * one waiting to disagree with the first, which is the
+             * whole reason this file works out nothing for itself.
+             * So the directory goes to the variable through that, and
+             * the variable is an unmistakable thing to put the
+             * directory this build is actually standing in in place
+             * of. */
+            auto through = makefile::path_prefix(base, variable);
+            auto reference = through.reference();
+
+            auto onto = [&](std::string& path) {
+                path = through.rewrite(path);
+
+                auto at = path.find(reference);
+                while (at != std::string::npos) {
+                    path.replace(at, reference.size(), live_base);
+                    at = path.find(reference, at + live_base.size());
+                }
+            };
+
+            onto(src_prefix);
+            onto(obj_prefix);
+            onto(dep_prefix);
+            for (auto& link: links)
+                onto(link);
+
+            /* The include path, which is how the headers behind a
+             * source get found at all: left alone it names the
+             * directories through the parent, none of which are there
+             * from in here, and a source whose headers cannot be
+             * found is one that reads nothing. */
+            for (auto& opt: opts)
+                onto(opt);
+
+            /* Last, because everything above is spelled through it.
+             * Emptying it is what stops the rules written below from
+             * being rewritten back through the parent's variable: the
+             * paths in them no longer go through the parent, and a
+             * variable set to the parent's directory is not a thing
+             * the Makefile being built against has set. */
+            base = live_base;
+        }
     };
 
     void die(const std::string& message)
@@ -139,6 +227,7 @@ namespace {
             else if (key == "quiet")       out.at = value == "true" ? "@" : "";
             else if (key == "base")        out.base = value;
             else if (key == "variable")    out.variable = value;
+            else if (key == "self")        out.self = value;
             else if (key == "autodeps")    out.autodeps = value == "true";
             else if (key == "link")        out.links.push_back(value);
             else if (key == "named")       out.named.insert(value);
@@ -260,6 +349,12 @@ int main(int argc, const char **argv)
     }
 
     auto ctx = read_context(context_path);
+
+    /* What make just said about where it is standing, which is the
+     * only thing that can say so: every path in the context file is
+     * spelled from the top of the tree and this one is spelled from
+     * here. */
+    ctx.rebase(context_path);
 
     /* Every path written below is worked out from where pconfigure
      * ran and spelled through whichever project it belongs to, which

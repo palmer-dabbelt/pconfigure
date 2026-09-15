@@ -1115,6 +1115,21 @@ language_cxx::deps_source(const context::ptr& ctx,
     if (child->base.size() > 0) {
         out += say("base", child->base);
         out += say("variable", project::prefix_variable(child->base));
+
+        /* Where this file is, said from the same place every other
+         * path here is said from -- which is what lets pdeps work
+         * out where it is standing.  The prefixes above are spelled
+         * from the top of the tree because that is where pconfigure
+         * ran, and they are the only spelling that is right there;
+         * but make hands pdeps a --context through the variable, so
+         * a build run from inside the subproject spells the same
+         * file with nothing on the front.  Lining that up against
+         * this is the whole of the arithmetic.  Without it pdeps
+         * has no way to tell the two apart, and it guesses that it
+         * is at the top -- which puts its answer in a directory
+         * named after the project inside the project, and makes
+         * that answer say every source has been deleted. */
+        out += say("self", context_path);
     }
 
     /* The link steps this source's object belongs to.  Which of them
