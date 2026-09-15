@@ -11,7 +11,7 @@
 # any file pconfigure could chase, and the tree says it read it.  A
 # guess cannot find that; a build that is told can.
 
-mkdir -p src sub/configs sub/drivers sub/hidden
+mkdir -p src sub/configs sub/drivers sub/hidden sub/shared
 
 cat >Configfile <<EOF
 BUILD_SYSTEMS += kconfig
@@ -51,10 +51,25 @@ cat >sub/configs/tiny_defconfig <<'EOF'
 CONFIG_BASE=y
 EOF
 
+# Two sources reached the way kbuild reaches sources, which is by
+# naming an object and leaving the suffix to be guessed back.  What
+# makes them interesting is below: one of them gets named twice.
+cat >sub/shared/one.c <<'EOF'
+int one(void) { return 1; }
+EOF
+
+cat >sub/shared/two.c <<'EOF'
+int two(void) { return 2; }
+EOF
+
 # The vendored build system, which writes down what it read the way
 # kbuild does: an assignment, one path a line, a backslash on the end.
 cat >sub/Makefile <<'EOF'
 O ?= $(CURDIR)/build
+
+obj-y              += $(SHARED)/one.o
+obj-$(CONFIG_BASE) += $(SHARED)/one.o
+obj-m              += $(SHARED)/two.o
 
 all: $(O)/.config
 	@mkdir -p $(O)
@@ -67,6 +82,73 @@ tiny_defconfig:
 EOF
 
 $PTEST_BINARY $PCONFIGURE_ARGS
+
+##############################################################################
+# The same guess, asked for twice                                            #
+##############################################################################
+# The chase cannot evaluate a variable, so it replaces one with a "*"
+# and asks the filesystem instead.  That means two lines which differ
+# only in a variable ask the identical question -- and a kbuild tree
+# asks a handful of questions tens of thousands of times, which is why
+# the answers are remembered rather than walked for again.
+#
+# This is here to say that remembering them did not change any of them.
+# It is the shape a memo can get wrong: the second ask is the one served
+# out of the table rather than off the disk, and a table that handed
+# back the wrong list, or an empty one, would look like a tree that had
+# quietly stopped depending on half of itself.
+#
+# The fixture is two lines of sub/Makefile that both name one.o, and
+# both name it through the same $(SHARED).  What differs between them
+# is the left-hand side -- "obj-y" on one, "obj-$(CONFIG_BASE)" on the
+# other -- so the two lines are different lines asking the identical
+# question, and the second one is the ask that gets served out of the
+# table.  two.o is named once and is the control.
+#
+# So the whole prerequisite list is what gets compared, rather than a
+# count of the one or two names somebody was thinking about at the
+# time.  That is not fussiness: the version of this test that counted
+# one.c and two.c passed against a memo poisoned to return an empty
+# list on every hit, because the first, uncached ask had already
+# contributed both of them and what the poison actually dropped was
+# sub/Kconfig -- the root Kconfig the entire fixture hangs off, and a
+# name neither of those two counts ever looked at.  A memo that drops a
+# name, or invents one, fails this instead.
+#
+# A memo that handed the same list back twice does not, and saying so
+# is worth more than a claim that sounds stronger.  What collects these
+# answers keeps them in a set, so duplicates are gone before they reach
+# the Makefile and no assertion on the Makefile can see them.  The two
+# shapes this pins are a name that went missing and a name that was
+# never there, which are the two that change what gets built.
+#
+# The list is sorted before it is compared.  Ordering here comes out of
+# glob(3) and out of the order the lines were read, and pinning that
+# would be pinning the filesystem rather than the memo.  Sorted under
+# LC_ALL=C, because the default collation on this machine folds case
+# and puts "sub/Kconfig" after "sub/configs", which would make the
+# expected list below a statement about whoever's locale ran it.
+#
+# Not a count of globs and not a stopwatch.  What the memo bought is in
+# the commit that added it and belongs there; a test that asserted a
+# ratio would be a test that fails on a busy machine and teaches
+# whoever it wakes up nothing.  What is asserted is that the answer is
+# the same answer, which is the only thing an optimisation owes anyone
+# -- and it is asserted so that it still holds with the memo taken back
+# out again.
+#
+# The head of the rule is pinned separately from the guessed list
+# because they are two different claims: the configuration the vendored
+# build hangs off is named outright, and everything the chase guessed
+# at is named through a "$(wildcard ...)" -- a guess names files that
+# may since have gone away, so it asks whether they are there rather
+# than stopping the build on them.
+grep -q '^obj/sub/build-stamp: obj/sub/build/\.config \$(wildcard [^)]*)$' Makefile
+test "$(grep '^obj/sub/build-stamp:' Makefile \
+        | sed -n 's/.*\$(wildcard \([^)]*\)).*/\1/p' \
+        | tr ' ' '\n' | LC_ALL=C sort | xargs)" \
+     = "sub/Kconfig sub/Makefile sub/configs/tiny_defconfig \
+sub/drivers/Kconfig sub/hidden/Kconfig sub/shared/one.c sub/shared/two.c"
 
 ##############################################################################
 # What the Makefile says before anything has been built                      #
