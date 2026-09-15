@@ -724,25 +724,41 @@ build from the top has the whole thing in one dependency graph, so
 \texttt{make -j} can schedule across projects.  Subprojects nest,
 and a project that gets asked for twice is only read once.
 
-A subproject's \texttt{Makefile} is written so that it also works on
-its own, so you can \texttt{cd} into a submodule and run
-\texttt{make} there while you work on it.  Every path in it is
-written relative to a variable that the \texttt{Makefile} defaults to
-nothing and a parent sets before including.
+A subproject's \texttt{Makefile} goes into that subproject's object
+directory, under a name built out of where the subproject sits in the
+run that wrote it: a \texttt{SUBPROJECTS += src/pconfigure} produces
+\texttt{src/pconfigure/obj/Makefile.src.pconfigure}.  Every path in it
+is written relative to a variable that the file defaults to nothing
+and the parent sets before including, so it means the same thing
+whether \texttt{make} was run at the top or in the subproject.
 
-\texttt{make} there, and not \pconfigure.  Configuring from inside
-the subproject would write that \texttt{Makefile} again with no
-variable in it at all --- from down there the subproject is the top
-of the tree and has no directory to be found through --- while the
-parent goes on including the file, so every path in it starts meaning
-something in the parent's directory instead: the subproject's objects
-land in the parent's object directory, its rules collide with the
-parent's, and its sources get looked for one directory too high.  The
-subproject would configure and build perfectly well; it is the parent
-that breaks, the next time anybody builds it.  So \pconfigure\
-refuses, and says to run it at the top of the tree.  A tree that used
-to be a subproject and is not one any more gets past that by deleting
-the \texttt{Makefile} first.
+The \texttt{Makefile} at the top of the subproject is left alone,
+because that one belongs to a \pconfigure\ run standing in the
+subproject.  You can \texttt{cd} into a submodule, run \pconfigure\
+there while you work on it, and \texttt{make}: what you get is a build
+of that project and nothing else, with the same targets the build from
+the top has and the subset of the dependencies that live inside it.
+
+The two coexist.  They disagree about how to spell every path --- from
+the top the subproject is a directory that other things are built
+beside, and from inside it is the whole of the world --- and they
+agree about which files those paths name, so the objects, libraries
+and binaries they build are shared rather than duplicated.
+
+Everything else a configure writes for a build to read is named the
+same way and for the same reason: the fragments that say what a source
+includes, and the files that tell \texttt{pdeps} and
+\texttt{psubdeps} what to ask.  Two runs describing one tree from two
+distances are two answers, and a file they shared would hold whichever
+of them ran last --- which the other build would then read as a set of
+paths measured from somewhere it is not standing.
+
+A tree configured by an older \pconfigure\ has a \texttt{Makefile} at
+the top of each of its subprojects that the parent wrote, from back
+when the parent wrote that file.  Nothing includes those any more.
+\pconfigure\ says so rather than deleting them; delete them, or run
+\pconfigure\ in the subproject to replace one with a \texttt{Makefile}
+for building that project on its own.
 
 That goes for a path belonging to some \textit{other} project in the
 run too, not just for the project's own.  A header that one
