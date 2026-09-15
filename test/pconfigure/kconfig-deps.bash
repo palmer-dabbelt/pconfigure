@@ -75,15 +75,74 @@ $PTEST_BINARY $PCONFIGURE_ARGS
 # to build -- which is what lets make bring it into existence rather
 # than stopping on it.
 grep -q "^include obj/sub/config-deps.mk$" Makefile
-grep -q "^obj/sub/config-deps.mk: obj/sub/config-deps-context$" Makefile
+grep -q '^obj/sub/config-deps.mk: obj/sub/config-deps-context \$(wildcard /[^ )]*/psubdeps)$' Makefile
 
-# Its only prerequisite is a file pconfigure wrote and nothing in this
-# Makefile builds.  That is what makes the remaking terminate: it can
+# Two prerequisites, and neither of them is a file this Makefile
+# builds.  That is what makes the remaking terminate: the fragment can
 # go out of date at most once per configure.
+#
+# The first is a file pconfigure wrote.  The second is psubdeps
+# itself, which is there because the fragment is not the tree it
+# describes -- it is what one version of psubdeps made of what that
+# tree said it read, so a psubdeps that has learned to see something
+# new has to be able to say so.  It does not cost the argument above
+# anything: pconfigure names it by the absolute path it resolved the
+# tool to, make has no rule under that spelling even in a tree that
+# vendors and builds pconfigure, and a prerequisite with no rule is a
+# timestamp and cannot go out of date while a make is running.
+#
+# Keep the "$" on the end of that pattern.  It is the assertion: the
+# whole prerequisite list is what is being pinned, and a grep that
+# matched a prefix would go on passing while the list quietly grew a
+# file the build does produce -- which is the one thing that would
+# start the remaking over and not stop.  The spelling is being pinned
+# too, and pinned as an absolute path -- the leading "/" is there on
+# purpose -- for the reason written out over language_cxx::deps_source():
+# the relative in-tree spelling of the same binary is the one that
+# makes make link pconfigure before it has read the fragments saying
+# what to link it out of.  A pattern of ".*/psubdeps" would be happy
+# with "bin/psubdeps", which is exactly the spelling this exists to
+# rule out.
+#
+# And keep the pattern in single quotes.  It shipped once in double
+# quotes with the dollar written as "\\$", which bash reads as a
+# backslash followed by a command substitution: the shell ran a
+# command called "wildcard", printed "wildcard: command not found" on
+# every run, and handed grep a pattern that ended at "context $" --
+# no end anchor and no mention of psubdeps at all.  It passed against
+# the relative spelling and against a prerequisite that was simply
+# the wrong variable.  Single quotes are what bootstrap-quiet.bash
+# does, and why bootstrap-quiet.bash was right.
 test -e obj/sub/config-deps-context
 
 # And the guess has not got the hidden one, which is the point.
 if grep "^obj/sub/build/.config:" Makefile | grep -q "hidden"
+then
+    exit 1
+fi
+
+# The two rules that run the vendored build system do not name
+# psubdeps, and that is on purpose rather than an oversight nobody got
+# to.  Their recipes end by running it -- the answer arrives in the
+# same make that produced it, which is what the rewrite at the end of
+# the recipe is for -- but running a tool is not the same as being out
+# of date when it changes.  Making it a prerequisite here would mean
+# every edit to pconfigure reconfigures and rebuilds the whole
+# vendored tree, which for the trees this exists for is a kernel and a
+# buildroot and the better part of an afternoon.  Nothing is lost by
+# leaving it out: the fragments above name psubdeps, so they re-derive
+# on their own, and re-deriving them is the entire difference a new
+# psubdeps could make.
+#
+# Written down as a test because it is the kind of asymmetry that
+# looks like a bug to the next person who reads the two rules side by
+# side, and closing it "for consistency" costs hours per build and
+# shows up as nothing except a tree that got slow.
+if grep "^obj/sub/build/.config:" Makefile | grep -q "psubdeps"
+then
+    exit 1
+fi
+if grep "^obj/sub/build-stamp:" Makefile | grep -q "psubdeps"
 then
     exit 1
 fi
