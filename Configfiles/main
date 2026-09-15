@@ -243,6 +243,7 @@ TESTSRC     += bootstrap-quiet.bash
 TESTSRC     += reconfigure.bash
 TESTSRC     += bootstrap-bad.bash
 TESTSRC     += bootstrap-subproject.bash
+TESTSRC     += bootstrap-autoreconfigure.bash
 TESTSRC     += pdeps.bash
 TESTSRC     += psubdeps.bash
 TESTSRC     += psubdeps-build.bash
