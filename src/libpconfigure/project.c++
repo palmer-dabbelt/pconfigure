@@ -1405,8 +1405,36 @@ void project::write_bootstrap_makefile(void) const
     out += "# there is no reason for that to be anything worse than"
            " a slow build.\n";
     out += "Makefile.pconfigure: | $(PCONFIGURE_SRCPATH)Makefile\n";
-    out += "\t+test -x $(PCONFIGURE) ||"
-           " (cd $(PCONFIGURE_SRCPATH) && ./bootstrap.sh)\n";
+
+    /* "@+" is two prefixes and not a typo.  The "+" says the line is
+     * recursive, which is what hands bootstrap.sh's make the
+     * jobserver rather than leaving it to build a whole project at
+     * -j1, and it has to survive anybody tidying this up.  The "@"
+     * says make should not read the line out first, which every other
+     * recipe in every Makefile pconfigure writes already does: a
+     * build says "CC", "LD", "CP" and gets on with it.  Without the
+     * "@" the first thing anybody saw of a build was a line of shell
+     * about a file they had never heard of, on every single make,
+     * whether or not it went on to do anything.
+     *
+     * The announcement is inside the "||" rather than on a line of
+     * its own because this recipe runs on every build -- the file it
+     * writes is one make includes, so make remakes it before it can
+     * read it -- and the ordinary case, where a pconfigure is already
+     * there, has nothing to report.  It is worth reporting in the
+     * other case: a bootstrap is half a minute of somebody else's
+     * build arriving in the middle of this one, and a build that goes
+     * quiet for that long and then prints a wall of "CC" lines from a
+     * project nobody asked about is harder to read than one that says
+     * whose they are.
+     *
+     * ";" rather than "&&" after the echo, because the point of the
+     * line is to bootstrap: an echo that could not write is no reason
+     * to skip it, and this way the status make grades is the one
+     * bootstrap.sh exited with. */
+    out += "\t@+test -x $(PCONFIGURE) ||"
+           " (echo \"BOOTSTRAP\t$(PCONFIGURE_SRCPATH)\";"
+           " cd $(PCONFIGURE_SRCPATH) && ./bootstrap.sh)\n";
     out += "\t@echo \"PCONFIGURE\"\n";
     out += "\t@$(PCONFIGURE) $(PCONFIGURE_ARGS)\n";
     out += "\n";
@@ -1438,7 +1466,15 @@ void project::write_bootstrap_makefile(void) const
            " nothing here\n";
     out += "# recurses into it on every build.\n";
     out += "$(PCONFIGURE_SRCPATH)Makefile:\n";
-    out += "\t+cd $(PCONFIGURE_SRCPATH) && ./bootstrap.sh\n";
+
+    /* Announced the same way as the check above, and for the same
+     * reason -- but from a line of its own, since a rule that exists
+     * only to bootstrap has no ordinary case to stay quiet for.  Only
+     * one of the two ever says it on a given build: this one runs on
+     * a fresh checkout, and by the time the check above is reached
+     * there is a pconfigure for it to find. */
+    out += "\t@echo \"BOOTSTRAP\t$(PCONFIGURE_SRCPATH)\"\n";
+    out += "\t@+cd $(PCONFIGURE_SRCPATH) && ./bootstrap.sh\n";
 
     /* Written only when it would say something new, because this is
      * the file make was started on: rewriting it on every configure

@@ -239,6 +239,7 @@ TESTSRC     += subproject-targets.bash
 TESTSRC     += subproject-objdir.bash
 TESTSRC     += configfile-backticks.bash
 TESTSRC     += bootstrap.bash
+TESTSRC     += bootstrap-quiet.bash
 TESTSRC     += reconfigure.bash
 TESTSRC     += bootstrap-bad.bash
 TESTSRC     += bootstrap-subproject.bash
