@@ -202,6 +202,7 @@ TESTSRC     += subprojects-siblings.bash
 TESTSRC     += subprojects-sibling-headers.bash
 TESTSRC     += configure-in-subproject.bash
 TESTSRC     += subproject-deps-from-inside.bash
+TESTSRC     += subproject-deps-from-inside-nested.bash
 TESTSRC     += generate-subproject.bash
 TESTSRC     += phony.bash
 TESTSRC     += kconfig.bash

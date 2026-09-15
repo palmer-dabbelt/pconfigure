@@ -1,24 +1,23 @@
 #include "harness_start.bash"
 
-# A subproject's Makefile is written to work both ways, and so is the
-# build that comes out of it: the parent includes the file and every
-# path in it goes through a variable naming the subproject, while a
-# build run where the file sits leaves that variable empty and every
-# path means something in the subproject's own directory.
+# A subproject's Makefile is written to work both ways: the parent
+# includes the file and every path in it goes through a variable
+# naming the subproject, while a build run where the file sits leaves
+# that variable empty and every path means something in the
+# subproject's own directory.
 #
-# The rules get that right.  What did not was the context file pdeps
-# reads, which is written once, by a pconfigure standing at the top of
-# the tree, with the variable already expanded -- so the same file
-# told pdeps a different thing than the rule invoking it, and only
-# from inside the subproject, and only when a fragment actually needed
-# rebuilding.  make made the directory the rule named and pdeps wrote
-# into the one the context named, one project deeper.
+# The fragments pdeps writes are read by both of those builds, so they
+# have to be written the same way: paths through the variable, which
+# is the one spelling that means the right file from either place.
 #
-# Nothing said so.  The fragment landed in a directory nothing reads,
-# and what it said was that the source had been deleted -- because the
-# source had been looked for one directory too high.  Had it landed
-# where the rule wanted it, make would have been told this project has
-# no sources at all.
+# What did not get that right was the context file pdeps reads.  It is
+# written once, by a pconfigure standing at the top of the tree, with
+# the variable already expanded -- so it told pdeps a different thing
+# than the rule invoking it, and only from inside the subproject, and
+# only when a fragment actually needed rebuilding.  make made the
+# directory the rule named and pdeps wrote into the one the context
+# named, one project deeper, saying the source had been deleted
+# because it had looked for it one directory too high.
 mkdir -p src sub/src sub/include
 
 cat >Configfile <<EOF
@@ -48,12 +47,30 @@ SOURCES   += subbin.c
 EOF
 
 cat >sub/include/subbin.h <<'EOF'
-#define SUBBIN_RETURN 0
+#define SUBBIN_BASE 0
+EOF
+
+# A header with a source behind it, which no Configfile mentions: the
+# fragment is what says that source is part of the build at all.  This
+# is the piece that makes the test able to fail.  A subproject whose
+# sources are all named in a Configfile produces fragments full of
+# rules for targets the parent's build never asks for, and a path
+# spelled wrongly in one of those is a rule nothing reads -- whereas
+# what gets written for a source found this way is an "include" of its
+# fragment, which make has to resolve to a file that is there.  Get
+# that path wrong and the parent stops on "No rule to make target".
+cat >sub/src/helper.h <<'EOF'
+int helper(void);
+EOF
+
+cat >sub/src/helper.c <<'EOF'
+int helper(void) { return 0; }
 EOF
 
 cat >sub/src/subbin.c <<'EOF'
 #include <subbin.h>
-int main(void) { return SUBBIN_RETURN; }
+#include "helper.h"
+int main(void) { return helper() + SUBBIN_BASE; }
 EOF
 
 $PTEST_BINARY $PCONFIGURE_ARGS
@@ -62,9 +79,16 @@ make $MAKE_ARGS
 ./sub/bin/subbin
 
 # What the parent built, which is the spelling the context file was
-# frozen with.
+# frozen with.  The source nobody named is in the build, so the
+# fragment really does carry the "include" this is about.
 test -d sub/obj/src/subbin.c
 ls sub/obj/src/subbin.c/*.d
+grep -q 'include \$(pconfigure_subdir_sub)obj/src/helper.c/' sub/obj/src/subbin.c/*.d
+
+# Kept, because what the build from inside writes over it has to come
+# out the same.  A fragment has one spelling, not one per build that
+# happens to rewrite it.
+cp sub/obj/src/subbin.c/*.d from-the-top.d
 
 ##############################################################################
 # Building it from inside, with something that has to be rebuilt              #
@@ -99,12 +123,25 @@ then
 fi
 grep -q "subbin.h" sub/obj/src/subbin.c/*.d
 
+# And it is the same fragment, written the same way.  Which build ran
+# last is not something a file on disk should be able to say: this one
+# is read by the other build too, and the only spelling that works
+# from both places is the one with the variable on the front.
+if ! cmp from-the-top.d sub/obj/src/subbin.c/*.d
+then
+    diff -u from-the-top.d sub/obj/src/subbin.c/*.d || true
+    exit 1
+fi
+
 ##############################################################################
 # ... and the parent still builds                                            #
 ##############################################################################
-# The fragment is one file read by both builds, so a fragment rewritten
-# from inside has to be one the parent can read.  Rebuilt from up here
-# it has the variable back on the front of every path.
+# Which is the thing that goes wrong when it doesn't: the parent
+# includes the fragment the build from inside just rewrote, and a path
+# in it that means something only from down there is one make has no
+# rule for.  It stops before it builds anything, and it stops whether
+# or not there was any work to do, because this happens while it is
+# still reading Makefiles.
 make $MAKE_ARGS
 ./bin/top
 ./sub/bin/subbin

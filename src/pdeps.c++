@@ -55,6 +55,10 @@
 #include <vector>
 
 namespace {
+    /* Said here so the context below can use it, and defined once,
+     * down with the rest of the small things. */
+    void die(const std::string& message);
+
     /* Everything pconfigure knew about the target this source is
      * being compiled into, read back out of the file it left. */
     class deps_context {
@@ -122,15 +126,26 @@ namespace {
          * they have the project's own directory too many on the
          * front, which is not an error anything notices: the source
          * is looked for one directory too high and found missing, so
-         * the answer written is that the source has been deleted, and
-         * it is written into a directory named after the project
-         * inside the project where nothing will ever read it.
+         * the answer written is that the source has been deleted.
          *
-         * Make has already said where it is standing, though, by
-         * spelling the --context through that same variable.  So the
-         * live path and the frozen one differ by exactly what needs
-         * to come off the front of everything else. */
-        void rebase(const std::string& live)
+         * What must not be done about that is bring the paths down to
+         * where make is standing.  A fragment is one file with two
+         * readers -- the build from in here and the build from the
+         * top -- and a path spelled from inside the subproject means
+         * nothing to the second of them.  Rewriting the paths fixes
+         * the build that is running and breaks the other one, which
+         * is a worse bug than the one it fixes, because the fragment
+         * it leaves behind outlives the build that wrote it.
+         *
+         * So the process moves rather than the paths.  Make has said
+         * where it is standing by spelling the --context through that
+         * variable, and the difference between that and the frozen
+         * spelling is exactly the directories between here and the
+         * top: walk up them, and every path in this file means what
+         * it says again.  What gets written is then what a build from
+         * the top would have written, down to the byte -- which is
+         * the whole point, since that is who reads it next. */
+        void stand_at_top(const std::string& live)
         {
             if (base.size() == 0 || self.size() == 0)
                 return;
@@ -148,49 +163,37 @@ namespace {
             if (live_base == base)
                 return;
 
-            /* Where a path starts in a string that also has compiler
-             * flags in it is makefile::path_prefix's question, and it
-             * is already answered there -- a second answer to it is
-             * one waiting to disagree with the first, which is the
-             * whole reason this file works out nothing for itself.
-             * So the directory goes to the variable through that, and
-             * the variable is an unmistakable thing to put the
-             * directory this build is actually standing in in place
-             * of. */
-            auto through = makefile::path_prefix(base, variable);
-            auto reference = through.reference();
+            /* The two spellings have to describe one file seen from
+             * two places, which means what make said is what
+             * pconfigure said with some directories taken off the
+             * front.  Anything else is a context file that does not
+             * belong to this build, and walking up out of the tree
+             * on the strength of it would be worse than stopping. */
+            if (base.size() < live_base.size()
+                || base.compare(base.size() - live_base.size(),
+                                live_base.size(), live_base) != 0)
+                die("'" + live + "' and '" + self + "' do not name the"
+                    " same file from two places");
 
-            auto onto = [&](std::string& path) {
-                path = through.rewrite(path);
+            /* What is left in front is the walk. */
+            auto up = std::string();
+            for (auto i = size_t(0); i < base.size() - live_base.size(); ++i)
+                if (base[i] == '/')
+                    up += up.size() == 0 ? ".." : "/..";
 
-                auto at = path.find(reference);
-                while (at != std::string::npos) {
-                    path.replace(at, reference.size(), live_base);
-                    at = path.find(reference, at + live_base.size());
-                }
-            };
+            if (up.size() == 0)
+                return;
 
-            onto(src_prefix);
-            onto(obj_prefix);
-            onto(dep_prefix);
-            for (auto& link: links)
-                onto(link);
+            if (chdir(up.c_str()) != 0)
+                die("unable to reach the top of the tree, '" + up
+                    + "' from here");
 
-            /* The include path, which is how the headers behind a
-             * source get found at all: left alone it names the
-             * directories through the parent, none of which are there
-             * from in here, and a source whose headers cannot be
-             * found is one that reads nothing. */
-            for (auto& opt: opts)
-                onto(opt);
-
-            /* Last, because everything above is spelled through it.
-             * Emptying it is what stops the rules written below from
-             * being rewritten back through the parent's variable: the
-             * paths in them no longer go through the parent, and a
-             * variable set to the parent's directory is not a thing
-             * the Makefile being built against has set. */
-            base = live_base;
+            /* Said from up here now, like everything else in this
+             * file -- and unlike the argument, which is how make
+             * spelled it from down there.  It is written out as a
+             * prerequisite of every fragment below, so its spelling
+             * matters as much as any other path's. */
+            path = self;
         }
     };
 
@@ -353,8 +356,9 @@ int main(int argc, const char **argv)
     /* What make just said about where it is standing, which is the
      * only thing that can say so: every path in the context file is
      * spelled from the top of the tree and this one is spelled from
-     * here. */
-    ctx.rebase(context_path);
+     * here.  Everything below runs at the top, whichever of the two
+     * the build was started from. */
+    ctx.stand_at_top(context_path);
 
     /* Every path written below is worked out from where pconfigure
      * ran and spelled through whichever project it belongs to, which
@@ -372,7 +376,7 @@ int main(int argc, const char **argv)
     auto say = [&](const std::string& line)
         { out += prefix.rewrite(line) + "\n"; };
 
-    out += "# Written by pdeps, from " + context_path + "\n";
+    out += "# Written by pdeps, from " + ctx.path + "\n";
     out += "#\n";
     out += "# What it says was true of '" + source + "' when make last"
            " asked, which\n";
