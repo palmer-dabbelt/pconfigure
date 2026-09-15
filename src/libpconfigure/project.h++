@@ -178,6 +178,20 @@ public:
     void check_bootstrap(const std::vector<ptr>& everyone) const;
 
 public:
+    /* Says so when the Makefile at the top of this subproject is one
+     * an older pconfigure wrote.  A parent used to write that file;
+     * it writes into the object directory now, so what is left up
+     * there is a description of this project from a run that has
+     * been superseded -- and nothing includes it any more.
+     *
+     * Harmless where it sits and not harmless when somebody uses it:
+     * "make" in a subproject finds it, and builds out of whatever the
+     * tree looked like the last time a pconfigure that old ran.  It
+     * is asked of a run from the top, because that is the run that
+     * has just stopped writing the file. */
+    void check_stale_makefile(void) const;
+
+public:
     /* A project and everything below it, parents before children. */
     static std::vector<ptr> flatten(const ptr& root);
 

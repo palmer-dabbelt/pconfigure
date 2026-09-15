@@ -158,6 +158,9 @@ int main(int argc, const char **argv)
             edges[host].push_back(dep);
     }
 
+    for (const auto& project: projects)
+        project->check_stale_makefile();
+
     /* Asked of the whole run rather than at the line, because the
      * tree a BOOTSTRAP names is read by the line that names it and
      * has no targets yet while that line is being processed. */
