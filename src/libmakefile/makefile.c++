@@ -103,6 +103,35 @@ void makefile::makefile::reconfigure_on(
 
 void makefile::makefile::write_to_file(const std::string& filename)
 {
+    /* Rewritten every time, unconditionally, and that is not an
+     * oversight left over from before file_utils::write_if_changed()
+     * existed.  It is what stops the reconfigure loop.
+     *
+     * This file is a makefile make included, and down at the bottom it
+     * is given a rule naming the Configfiles it was written out of,
+     * whose recipe runs pconfigure.  make remakes the makefiles it read
+     * before it uses them, so a Configfile somebody edited is a
+     * Configfile that gets a pconfigure run out of it -- and the only
+     * thing that then says the edit has been dealt with is this file
+     * coming back newer than the Configfile.  Write it only when its
+     * contents changed and an edit that does not change the generated
+     * Makefile -- a comment, a reordering, a setting that resolves to
+     * what it already was -- leaves a Configfile permanently newer than
+     * its target.  Every make from then on reconfigures, finds nothing
+     * to write, and hands back a target still older than its
+     * prerequisite.  Not a loop within one make, which remakes a given
+     * makefile once and gives up: a full reconfigure on every single
+     * build, forever, and the tree never settles again.
+     *
+     * The file_utils::write_if_changed() one function away in
+     * project::write_bootstrap_makefile() is the opposite case, and it
+     * is right there for the opposite reason: nothing gives that file
+     * prerequisites, so no timestamp is waiting on it, and it is the
+     * file make was started on -- rewriting it on every configure would
+     * hand make a Makefile newer than everything it had just built, and
+     * would turn up as a diff in every commit that touched a
+     * Configfile.  The two sit close enough together to read as an
+     * inconsistency.  They are not one. */
     auto file = fopen(filename.c_str(), "w");
     if (file == NULL) {
         std::cerr << "Unable to open " << filename << "\n";
