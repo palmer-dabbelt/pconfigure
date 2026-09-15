@@ -1172,9 +1172,58 @@ language_cxx::deps_source(const context::ptr& ctx,
      * and naming it outright stops the build rather than asking the
      * question again.  A Configfile naming a source is no guarantee
      * the source is still there. */
+
+    /* And pdeps itself, because a fragment is not the source it
+     * describes: it is what one version of pdeps made of that source,
+     * and a pdeps that has learned to see something new has to be
+     * allowed to say so.  Nothing noticed before.  The path pdeps was
+     * found at goes into the context file above, which is a
+     * prerequisite -- so a pconfigure that moved, or was reinstalled
+     * somewhere else, already invalidated every fragment in the tree.
+     * A pconfigure rebuilt where it stood did not, and a vendored
+     * pconfigure is rebuilt where it stood every time somebody edits
+     * it, which is the one case this project is.
+     *
+     * Named the way tool_command() says it, which is an absolute path
+     * -- deliberately, and not to be helpfully shortened later.  A
+     * tree that vendors pconfigure has a rule for that binary under
+     * the relative spelling, and make does not treat the two
+     * spellings as the same file: as an absolute path this is a
+     * prerequisite with no rule, which is to say a timestamp and
+     * nothing more, and that is the whole of what is wanted here.
+     * Spell it relatively instead and make finds the rule -- during
+     * the phase where it is remaking the included fragments, which is
+     * before it has read the fragments that say which objects the
+     * binary is built out of, so it links it out of none of them.
+     *
+     * Through "$(wildcard)" for the same reason as the source above,
+     * and one more: "make clean" deletes the vendored pconfigure
+     * along with everything else the build produced.  A bare path
+     * would turn every build after a clean into "No rule to make
+     * target", with every fragment in the tree perfectly current.
+     * Asking whether the file is there gets today's behaviour back
+     * when it is not, and it covers the case where the tool is a bare
+     * command name off the PATH rather than a path at all.
+     *
+     * pdeps gets this, and psubdeps gets the same treatment over in
+     * the kconfig build system.  pbashc, ptest, phc, pperlc and
+     * pswigcc do not, and that is a decision rather than a list
+     * somebody stopped writing halfway down.  Those tools produce
+     * build outputs, where a stale answer is one file that is out of
+     * date and a rebuild of it puts things right.  These two produce
+     * the dependency graph itself, where a stale answer is a whole
+     * tree quietly believing the wrong thing about what it depends on
+     * -- which is not something a later build notices, because
+     * noticing is exactly what it has lost.  Closing the hole for the
+     * rest would rebuild everything every time any of them is
+     * touched, and in a tree that vendors pconfigure that is every
+     * time pconfigure is touched.  Worth revisiting one day; not
+     * worth doing by accident, in either direction. */
     auto deps = std::vector<makefile::target::ptr>{
         std::make_shared<makefile::target>("$(wildcard " + source_path + ")"),
-        std::make_shared<makefile::target>(context_path)
+        std::make_shared<makefile::target>(context_path),
+        std::make_shared<makefile::target>(
+            "$(wildcard " + makefile::tool_command("pdeps") + ")")
     };
 
     auto commands = std::vector<std::string>{
