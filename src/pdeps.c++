@@ -442,8 +442,45 @@ int main(int argc, const char **argv)
                      * and never stop.  Asking whether the file
                      * exists has neither problem, and when the file
                      * comes back it is a prerequisite again. */
+
+                    /* And pdeps, for the reason the rules pconfigure
+                     * writes name it too: a fragment is what one
+                     * version of pdeps made of a source, so a pdeps
+                     * that has learned to see something new has to be
+                     * able to say so.  This half is not the same half
+                     * -- pconfigure never writes a rule for a source
+                     * it was never told about, so without this line
+                     * every fragment reached through a header would
+                     * go on saying whatever the old pdeps thought,
+                     * for as long as the header and the source both
+                     * sat still.
+                     *
+                     * The path is the one out of the context file,
+                     * which is the absolute path pconfigure resolved
+                     * pdeps to.  That matters: a tree that vendors
+                     * pconfigure has a rule for that binary under a
+                     * relative spelling, make does not treat the two
+                     * spellings as one file, and an absolute path
+                     * with no rule behind it is a timestamp and
+                     * nothing else -- which is all that is wanted,
+                     * and the only spelling that does not drag a link
+                     * of pconfigure into the phase where make is
+                     * still working out what to include.  "$(wildcard)"
+                     * around it because "make clean" takes that
+                     * binary away, and a build after a clean must go
+                     * back to having no opinion rather than stopping.
+                     *
+                     * Only when there is one to name.  pdeps can be
+                     * run with a context written by a pconfigure that
+                     * could not work out where it was standing, and
+                     * "$(wildcard )" with nothing in it is a wart in
+                     * every fragment in the tree for no gain. */
+                    auto by = ctx.pdeps.size() == 0
+                        ? std::string()
+                        : " $(wildcard " + ctx.pdeps + ")";
+
                     say(sibling_deps + ": $(wildcard " + behind + ") "
-                        + ctx.path);
+                        + ctx.path + by);
                     out += "\t" + ctx.at + "echo \"DEPS\t" + sibling
                            + "\"\n";
                     out += "\t" + ctx.at + "mkdir -p $(dir $@)\n";
