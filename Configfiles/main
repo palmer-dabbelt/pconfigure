@@ -239,6 +239,7 @@ TESTSRC     += subproject-targets.bash
 TESTSRC     += subproject-objdir.bash
 TESTSRC     += stale-subproject-makefile.bash
 TESTSRC     += kconfig-subproject.bash
+TESTSRC     += subproject-sibling-header-from-inside.bash
 TESTSRC     += configfile-backticks.bash
 TESTSRC     += bootstrap.bash
 TESTSRC     += bootstrap-quiet.bash
