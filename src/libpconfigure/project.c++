@@ -1140,7 +1140,8 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
                       file_utils::relative_directory(_base, peer.first));
 
     for (const auto& child: _children)
-        out->add_subproject(prefix_variable(child->base()), child->base());
+        out->add_subproject(prefix_variable(child->base()), child->base(),
+                            child->makefile_include());
 
     for (const auto& target: _targets)
         out->add_target(target);
@@ -1318,6 +1319,22 @@ std::string project::makefile_path(void) const
         return _base + "Makefile.pconfigure";
 
     return _base + "Makefile";
+}
+
+std::string project::makefile_include(void) const
+{
+    /* Through this project's own variable, the way a parent names
+     * anything else of a subproject's.  The include has to resolve
+     * from wherever make was started, and by then the only thing that
+     * knows where this project is sitting is the variable the parent
+     * set.
+     *
+     * Named outright rather than asked of makefile_path(), which is
+     * what a parent has always done: the file a parent includes is
+     * the one every subproject writes under the one name, whatever
+     * this project would call its own. */
+    return makefile::path_prefix(_base, prefix_variable(_base))
+        .rewrite(_base + "Makefile");
 }
 
 void project::write_bootstrap_makefile(void) const

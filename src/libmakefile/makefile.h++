@@ -57,9 +57,15 @@ namespace makefile {
          * a parent has its own. */
         std::vector<target::ptr> _standalone_targets;
 
-        /* The Makefiles of the projects this one pulls in, along with
-         * the variables that say where they are. */
-        std::vector<std::pair<std::string, std::string>> _subprojects;
+        /* The projects this one pulls in: the variable that says
+         * where each of them is, what this Makefile thinks that
+         * answer is, and the file to include. */
+        struct subproject {
+            std::string variable;
+            std::string base;
+            std::string path;
+        };
+        std::vector<subproject> _subprojects;
 
         /* The variables that say where the rest of the projects in
          * the run are, and what this Makefile thinks the answer is.
@@ -133,10 +139,14 @@ namespace makefile {
         void add_standalone_target(const target::ptr& target);
 
         /* Pulls in another project's Makefile.  "base" is where that
-         * project is relative to where pconfigure ran, and "variable"
-         * is the make variable it uses to find itself. */
+         * project is relative to where pconfigure ran, "variable" is
+         * the make variable it uses to find itself, and "path" is the
+         * file to include -- already written through that variable,
+         * because it has to name the same file from wherever make was
+         * started. */
         void add_subproject(const std::string& variable,
-                            const std::string& base);
+                            const std::string& base,
+                            const std::string& path);
 
         /* Says where another project in the run is, without pulling
          * its Makefile in.  This is how a project that names a path
