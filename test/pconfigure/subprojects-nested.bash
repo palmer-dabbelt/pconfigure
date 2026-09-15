@@ -68,15 +68,15 @@ EOF
 
 $PTEST_BINARY $PCONFIGURE_ARGS
 cat Makefile
-cat a/Makefile
-cat a/b/Makefile
+cat a/obj/Makefile.a
+cat a/b/obj/Makefile.a.b
 
 # Every project gets a Makefile, and each one includes its own
 # children rather than the top including all of them.
-test -f a/Makefile
-test -f a/b/Makefile
+test -f a/obj/Makefile.a
+test -f a/b/obj/Makefile.a.b
 grep -q "^pconfigure_subdir_a ?= a/$" Makefile
-grep -q "^pconfigure_subdir_a_b ?= \$(pconfigure_subdir_a)b/$" a/Makefile
+grep -q "^pconfigure_subdir_a_b ?= \$(pconfigure_subdir_a)b/$" a/obj/Makefile.a
 if grep -q "^include.*pconfigure_subdir_a_b" Makefile
 then
     exit 1
@@ -101,13 +101,14 @@ grep -q "^obj/bin/test/.*/local: a/lib/liba.so$" Makefile
 # nearest project that includes them both, spelled so that it means
 # the same thing whether make was run there or above it.  That's what
 # keeps "a" correct when it's built on its own.
-grep -q "^\$(pconfigure_subdir_a)obj/lib/liba.so/.*/local: \$(pconfigure_subdir_a)b/lib/libb.so$" a/Makefile
-grep -q "^\$(pconfigure_subdir_a)obj/check-all-done: \$(pconfigure_subdir_a)b/obj/check-all-done$" a/Makefile
+grep -q "^\$(pconfigure_subdir_a)obj/lib/liba.so/.*/local: \$(pconfigure_subdir_a)b/lib/libb.so$" a/obj/Makefile.a
+grep -q "^\$(pconfigure_subdir_a)obj/check-all-done: \$(pconfigure_subdir_a)b/obj/check-all-done$" a/obj/Makefile.a
 
 # The middle project builds on its own, and pulls in its own
 # subproject when it does.
 cd a
 rm -rf lib include obj b/lib b/include b/obj
+$PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 test -f lib/liba.so
 test -f b/lib/libb.so
@@ -117,11 +118,15 @@ cd ..
 # The deepest project builds on its own too.
 cd a/b
 rm -rf lib include obj
+$PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 test -f lib/libb.so
 cd ../..
 
-# ... and the top level still works afterwards.
+# ... and the top level still works afterwards.  Each of those
+# "rm -rf obj" took with it the copy of that project's Makefile that
+# the run above it had written, so the top is configured again first.
+$PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 test "$(./bin/test)" = "42"
 

@@ -55,16 +55,16 @@ EOF
 
 $PTEST_BINARY $PCONFIGURE_ARGS
 cat Makefile
-cat a/Makefile
+cat a/obj/Makefile.a
 
 # The header is a prerequisite of the object, and it belongs to "b" --
 # so it gets named through "b"'s variable rather than written down the
 # way it looks from the top.  A bare "b/src/b.h" in here is a path
 # that only means anything when make was run above this project.
-grep -q "^\$(pconfigure_subdir_a)obj/src/test.c/.*\.o: .*\$(pconfigure_subdir_b)src/b.h\$" a/Makefile
+grep -q "^\$(pconfigure_subdir_a)obj/src/test.c/.*\.o: .*\$(pconfigure_subdir_b)src/b.h\$" a/obj/Makefile.a
 
 # ... and "a" says where "b" is when make was run in "a".
-grep -q "^pconfigure_subdir_b ?= ../b/$" a/Makefile
+grep -q "^pconfigure_subdir_b ?= ../b/$" a/obj/Makefile.a
 
 # The top says it too, and says it first, so the answer everybody uses
 # is the one belonging to wherever make was actually started.
@@ -72,7 +72,7 @@ grep -q "^pconfigure_subdir_b ?= b/$" Makefile
 
 # Nothing pulls in a sibling's rules: "a" still has no idea how to
 # build anything of "b"'s.
-if grep -q "^include.*pconfigure_subdir_b" a/Makefile
+if grep -q "^include.*pconfigure_subdir_b" a/obj/Makefile.a
 then
     exit 1
 fi
@@ -92,9 +92,14 @@ test "$(./a/bin/test)" = "42"
 # directory up and back down rather than next to the top.
 cd a
 rm -rf obj bin
+$PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 test "$(./bin/test)" = "42"
 cd ..
+
+# Configured again from the top, because the "rm -rf obj" above took
+# the top's copy of "a"'s Makefile with it.
+$PTEST_BINARY $PCONFIGURE_ARGS
 
 # The dependency is a real one, rather than a path that happens to
 # exist: changing the header rebuilds, from either place.

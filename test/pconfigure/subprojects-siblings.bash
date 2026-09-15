@@ -49,7 +49,7 @@ EOF
 
 $PTEST_BINARY $PCONFIGURE_ARGS
 cat Makefile
-cat a/Makefile
+cat a/obj/Makefile.a
 
 # "-L../b/lib" and "-Lb/lib" name the same directory, so the
 # dependency gets found even though the two projects spell it
@@ -58,9 +58,9 @@ grep -q "^a/obj/lib/liba.so/.*/local: b/lib/libb.so$" Makefile
 
 # It's written in the top level, which is the nearest project that
 # includes them both -- "a" has no idea how to build anything of
-# "b"'s, so a dependency on one in a/Makefile would leave "a"
+# "b"'s, so a dependency on one in a/obj/Makefile.a would leave "a"
 # unbuildable on its own.
-if grep -q "libb.so" a/Makefile
+if grep -q "libb.so" a/obj/Makefile.a
 then
     exit 1
 fi
@@ -72,6 +72,7 @@ test "$(./bin/test)" = "42"
 # "b" is already there, and it doesn't try to rebuild it.
 cd a
 rm -rf lib obj
+$PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 test -f lib/liba.so
 cd ..

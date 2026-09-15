@@ -128,7 +128,7 @@ grep -q "whoever has both of them" escape.out
 # It stopped before writing anything, rather than leaving a
 # half-configured tree behind for the next command to trip over.
 test ! -e escape/Makefile
-test ! -e escape/sub/Makefile
+test ! -e escape/sub/obj/Makefile.sub
 
 # The same answer standing inside the subproject.  This is the half
 # that a check written against the project's own directory would get

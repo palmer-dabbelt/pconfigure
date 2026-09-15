@@ -562,8 +562,17 @@ build_system_kconfig::vendored_targets(
      * checkout to one pass instead of two -- by the time the first
      * make has finished, the fragment says what the tree just said,
      * rather than what it had said before it was built. */
-    auto deps_context = output_dir() + "/config-deps-context";
-    auto deps_fragment = output_dir() + "/config-deps.mk";
+    /* Named for the project that wrote them, the way everything a
+     * configure leaves for a build is.  A vendored tree inside a
+     * subproject is described twice -- once by a run at the top of
+     * the tree and once by a run inside the subproject -- and the two
+     * descriptions are of the same tree from different places.  One
+     * name for both would mean the fragment a build includes was
+     * whatever the other configure had last put there, which is a set
+     * of paths pointing one directory away from anything real. */
+    auto suffix = project::base_suffix(project_base);
+    auto deps_context = output_dir() + "/config-deps-context" + suffix;
+    auto deps_fragment = output_dir() + "/config-deps" + suffix + ".mk";
 
     auto say = [](const std::string& key, const std::string& value)
         { return key + " " + value + "\n"; };
@@ -604,8 +613,8 @@ build_system_kconfig::vendored_targets(
      * A tree that scatters nothing to read gets none of this and
      * keeps the guess, which is the only thing there is for it. */
     auto build_deps_root = build_dep_root();
-    auto build_context = output_dir() + "/build-deps-context";
-    auto build_fragment = output_dir() + "/build-deps.mk";
+    auto build_context = output_dir() + "/build-deps-context" + suffix;
+    auto build_fragment = output_dir() + "/build-deps" + suffix + ".mk";
     auto reread_build = std::string();
 
     if (build_deps_root.size() > 0) {

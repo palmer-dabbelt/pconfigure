@@ -99,7 +99,7 @@ grep -q "^obj/check-suite-overnight-done: check/top/top-smoke.bash sub/check/inn
 # top has no test of its own in anything, and the suite its "make
 # check" means is full anyway, a directory down and through an
 # inclusion.
-rm -rf check obj sub/check sub/obj Makefile sub/Makefile
+rm -rf check obj sub/check sub/obj Makefile
 
 cat >Configfile <<EOF
 LANGUAGES           += c

@@ -83,17 +83,17 @@ test "$(./on/bin/top)" = "4"
 
 # The subproject's own Makefile is the one that has to have changed:
 # it is where its sources live, and it is written by the same run.
-grep -q "^include .*\.d$" on/sub/Makefile
+grep -q "^include .*\.d$" on/sub/obj/Makefile.sub
 
 # And what it no longer says is the point.  A compile rule in the
 # Makefile is a dependency worked out at configure time; there should
 # not be one, for the source the Configfile named or for the one it
 # didn't.
-if grep -q "obj/src/sub.c++.*\.o:" on/sub/Makefile
+if grep -q "obj/src/sub.c++.*\.o:" on/sub/obj/Makefile.sub
 then
     exit 1
 fi
-if grep -q "obj/src/buried.c++" on/sub/Makefile
+if grep -q "obj/src/buried.c++" on/sub/obj/Makefile.sub
 then
     exit 1
 fi
@@ -144,9 +144,9 @@ cat split/build.log
 
 test "$(./split/bin/top)" = "4"
 
-grep -q "obj/src/sub.c++.*\.o:" split/sub/Makefile
-grep -q "obj/src/buried.c++" split/sub/Makefile
-if grep -q "^include .*\.d$" split/sub/Makefile
+grep -q "obj/src/sub.c++.*\.o:" split/sub/obj/Makefile.sub
+grep -q "obj/src/buried.c++" split/sub/obj/Makefile.sub
+if grep -q "^include .*\.d$" split/sub/obj/Makefile.sub
 then
     exit 1
 fi

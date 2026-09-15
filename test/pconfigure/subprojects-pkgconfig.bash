@@ -58,7 +58,7 @@ EOF
 
 $PTEST_BINARY $PCONFIGURE_ARGS
 cat Makefile
-cat sub/Makefile
+cat sub/obj/Makefile.sub
 
 # pkg-config was answered out of the build tree rather than out of
 # whatever happens to be installed on this machine, so the flags point
