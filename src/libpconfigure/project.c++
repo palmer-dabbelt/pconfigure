@@ -865,6 +865,77 @@ void project::check_test_order(void) const
             walk(pair.first);
 }
 
+void project::check_stale_makefile(void) const
+{
+    /* Only a project a parent pulled in, since the file this is about
+     * is one a parent wrote.  The project make gets run in owns the
+     * Makefile at the top of it and always has. */
+    if (_base.size() == 0)
+        return;
+
+    const auto path = _base + "Makefile";
+
+    auto file = fopen(path.c_str(), "r");
+    if (file == NULL)
+        return;
+
+    auto lines = file_utils::readlines(file);
+    fclose(file);
+
+    /* Spelled through the same function that builds the name, so the
+     * two can't drift apart: a project with no directory has nothing
+     * to put on the end, which leaves the part every one of them
+     * starts with. */
+    const auto marker = prefix_variable("");
+    const auto assign = std::string(" ?=");
+
+    auto variable = std::string();
+    for (const auto& read: lines) {
+        auto line = read;
+        while (line.size() > 0
+               && isspace((unsigned char)line[line.size() - 1]) != 0)
+            line.pop_back();
+
+        if (line.compare(0, marker.size(), marker) != 0)
+            continue;
+
+        /* The one declared with nothing after it is the project's own,
+         * and only a parent ever declares that: a Makefile written
+         * from inside a project has no directory to be found through,
+         * so it has no such line.  The lines that say where some
+         * other project is have that project's directory on the end,
+         * and those turn up in every Makefile pconfigure writes --
+         * including the ones there is nothing wrong with. */
+        if (line.size() <= marker.size() + assign.size())
+            continue;
+        if (line.compare(line.size() - assign.size(),
+                         assign.size(), assign) != 0)
+            continue;
+
+        variable = line.substr(0, line.size() - assign.size());
+        break;
+    }
+
+    if (variable.size() == 0)
+        return;
+
+    /* Said rather than acted on.  It is a generated file and this run
+     * could perfectly well delete it, but a build system that quietly
+     * removes a Makefile is a worse thing to be wrong about than a
+     * stale file is, and there is no way from here to be sure nothing
+     * outside this run was pointed at it. */
+    std::cerr << "'" << path << "' was written by an older pconfigure,"
+              << " and nothing includes it now\n"
+              << "  the '" << variable << " ?=' at the top of it is what a"
+              << " parent used to set to say where this project is; this run"
+              << " wrote '" << makefile_path() << "' instead\n"
+              << "  a \"make\" in '" << _base << "' would still find it and"
+              << " build out of whatever the tree looked like back then\n"
+              << "  delete it, or run pconfigure in '" << _base << "' to"
+              << " replace it with one for building this project on its"
+              << " own\n";
+}
+
 makefile::target::ptr project::cache_clean_target(const std::vector<ptr>& projects) const
 {
     auto commands = std::vector<std::string>();
