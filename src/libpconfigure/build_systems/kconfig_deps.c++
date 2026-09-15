@@ -282,13 +282,42 @@ namespace {
     }
 
     /* Every existing file a pattern names.  A pattern with no
-     * wildcards in it is just a path, which saves the glob. */
+     * wildcards in it is just a path, which saves the glob.
+     *
+     * And a glob that has already been run is the cheapest kind, the
+     * same way an already-answered stat is up in is_file().  A kbuild
+     * tree names the same directory from thousands of lines, and what
+     * arrives here is worse than that suggests: record() is called
+     * once per root for every word of every line, which for a word
+     * ending in ".o" is twenty-four times -- two roots by twelve
+     * source suffixes -- and wildify() has by then turned every
+     * "$(...)" it could not work out into a "*", so most of those are
+     * real walks of a real directory.  On this project's own trees it
+     * was 87,414 globs where 38,818 distinct patterns would do.
+     *
+     * Remembering the answer cannot introduce a class of error that
+     * was not already here: the expensive half of this function is
+     * the glob, the cheap half is the is_file() beside it, and the
+     * cheap half has been cached since it was written.  The memo
+     * lasts as long as the process, which is a configure -- seconds
+     * long, and then it exits.  A tree that changes underneath a
+     * running configure is already a configure whose answer is a
+     * guess about a tree that no longer exists. */
     std::vector<std::string> expand(const std::string& pattern)
     {
+        static auto cache = std::map<std::string, std::vector<std::string>>();
+
+        auto memo = cache.find(pattern);
+        if (memo != cache.end())
+            return memo->second;
+
         if (pattern.find('*') == std::string::npos) {
-            if (is_file(pattern) == false)
-                return {};
-            return {file_utils::normalize_path(pattern)};
+            auto one = is_file(pattern) == false
+                ? std::vector<std::string>()
+                : std::vector<std::string>{
+                      file_utils::normalize_path(pattern)};
+            cache[pattern] = one;
+            return one;
         }
 
         auto out = std::vector<std::string>();
@@ -299,6 +328,7 @@ namespace {
                     out.push_back(file_utils::normalize_path(found.gl_pathv[i]));
         globfree(&found);
 
+        cache[pattern] = out;
         return out;
     }
 
