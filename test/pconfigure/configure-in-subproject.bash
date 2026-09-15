@@ -1,22 +1,24 @@
 #include "harness_start.bash"
 
-# A subproject's Makefile is written to work both ways: a parent
-# includes it, and it can also be built where it sits.  What makes
-# that possible is the variable at the top of it, which the parent
-# sets to the subproject's directory and the file defaults to nothing.
+# Configuring a subproject where it sits, which is the thing a build
+# that kept one Makefile per directory could not do.
 #
-# Running pconfigure inside the subproject writes a Makefile with no
-# variable in it at all, because from down there the project is the
-# top of the tree and has no directory to be found through.  The file
-# still gets included by the parent, and every path in it then means
-# something in the parent's directory instead: the subproject's
-# objects go into the parent's obj, its rules collide with the
-# parent's rules, and the sources it names are looked for one
-# directory too high.
+# A parent describing a subproject and the subproject describing
+# itself are two descriptions of one tree, and they disagree about
+# every path in it: from up here the subproject is a directory that
+# other things are built beside, and from down there it is the whole
+# of the world.  Both are right.  pconfigure writes both, and what
+# keeps them apart is the name -- a parent writes into the
+# subproject's object directory under a name built out of where the
+# subproject sits in the run that wrote it, and leaves the Makefile at
+# the top of the subproject to whoever is standing there.
 #
-# Nothing about doing it says so.  The subproject configures happily
-# and builds happily; it is the parent that stops working, and it
-# stops working the next time somebody builds it.
+# It used to refuse the second of those instead, and the refusal was
+# not wrong for what it was protecting: with one name for both files,
+# a configure from down here wrote the parent's file with every path
+# spelled bare, and the parent then built the subproject into its own
+# directories the next time anybody ran make.  Quietly, and as a
+# success.
 mkdir -p src sub/src
 
 cat >Configfile <<EOF
@@ -42,66 +44,101 @@ cat >sub/src/subbin.c <<'EOF'
 int main(void) { return 0; }
 EOF
 
+##############################################################################
+# What a configure at the top writes                                         #
+##############################################################################
 $PTEST_BINARY $PCONFIGURE_ARGS
+
+# Into the object directory, under the subproject's path with the
+# separators turned into dots -- and not to the Makefile at the top of
+# the subproject, which is the file this whole test is about not
+# touching.
+test -f sub/obj/Makefile.sub
+test ! -e sub/Makefile
+
+# With the variable at the top of it that the parent sets to say where
+# this project is, and an include naming it through that same
+# variable.
+grep -q "^pconfigure_subdir_sub ?=\$" sub/obj/Makefile.sub
+grep -q "^include \$(pconfigure_subdir_sub)obj/Makefile.sub\$" Makefile
+
+cp sub/obj/Makefile.sub from-the-top.mk
+
 make $MAKE_ARGS
 ./bin/top
 ./sub/bin/subbin
 
 ##############################################################################
-# Configuring from inside it                                                 #
+# ... and what a configure inside it writes                                  #
 ##############################################################################
-if (cd sub && $PTEST_BINARY $PCONFIGURE_ARGS) > inside.out 2>&1
-then
-    exit 1
-fi
-cat inside.out
-
-# The variable is named, because it is the evidence: it is the one
-# thing in the file that says a parent is setting it, and somebody who
-# has never seen it before can go and look.
-grep -q "'pconfigure_subdir_sub ?='" inside.out
-
-# What would go wrong, since "no" on its own leaves whoever typed it
-# with no idea whether this is a rule or a real problem.
-grep -q "build this project into its own directories" inside.out
-
-# Both ways out.  Running it from the top is the answer nearly every
-# time, and deleting the Makefile is the answer for a tree that used
-# to be a subproject and isn't one now -- which is a case that would
-# otherwise be stuck here forever.
-grep -q "run pconfigure at the top of the tree instead" inside.out
-grep -q "delete this Makefile" inside.out
-
-# It stopped before writing anything.  A Makefile half replaced is
-# worse than the one that was there, and the one that was there is
-# still exactly right.
-grep -q "^pconfigure_subdir_sub ?=\$" sub/Makefile
-
-##############################################################################
-# ... and the build it was going to break                                    #
-##############################################################################
-# The whole point of refusing is here: the tree is still the tree it
-# was, from the top and from inside the subproject both.
-make $MAKE_ARGS
-./bin/top
-./sub/bin/subbin
-
-(cd sub && make $MAKE_ARGS && ./bin/subbin)
-
-##############################################################################
-# A project that isn't a subproject any more                                 #
-##############################################################################
-# Deleting the Makefile is what the message says to do, so it has to
-# be what actually works.  Done last, because it leaves behind exactly
-# the Makefile the rest of this test is about not having.
-rm -f sub/Makefile
 (cd sub && $PTEST_BINARY $PCONFIGURE_ARGS)
 
-if grep -q "^pconfigure_subdir_sub ?=\$" sub/Makefile
+# The Makefile at the top of the subproject, which is the one make
+# gets run at from down there.  Nothing in it goes through a variable,
+# because from down there there is nobody above to be found through
+# one.
+test -f sub/Makefile
+if grep -q "pconfigure_subdir" sub/Makefile
 then
+    cat sub/Makefile
     exit 1
 fi
+grep -q "^obj/src/subbin.c/.*\.o:" sub/Makefile
 
+# And it left the parent's copy exactly as it was, which is the whole
+# of what moving the file bought.
+cmp from-the-top.mk sub/obj/Makefile.sub
+
+cp sub/Makefile from-inside.mk
+
+##############################################################################
+# Both of them build, and build the same things                              #
+##############################################################################
+rm -f sub/bin/subbin
 (cd sub && make $MAKE_ARGS && ./bin/subbin)
+
+# At the path the subproject says its binary is at, rather than at one
+# named after the subproject underneath itself -- which is the shape
+# the old failure had.
+test -x sub/bin/subbin
+test ! -e sub/sub
+test ! -e sub/obj/sub
+
+rm -f sub/bin/subbin
+make $MAKE_ARGS
+./bin/top
+./sub/bin/subbin
+
+# The same target, put there by the other build.  The two runs
+# disagree about how to spell the path and agree about which file it
+# is, which is what makes them two descriptions rather than two
+# builds.
+test -x sub/bin/subbin
+
+##############################################################################
+# ... and neither configure takes the other's file                           #
+##############################################################################
+$PTEST_BINARY $PCONFIGURE_ARGS
+cmp from-inside.mk sub/Makefile
+
+(cd sub && $PTEST_BINARY $PCONFIGURE_ARGS)
+cmp from-the-top.mk sub/obj/Makefile.sub
+
+##############################################################################
+# ... and a cache-clean from inside does not eat it                          #
+##############################################################################
+# "make cache-clean" works by reading the Makefile back and keeping
+# what it still knows how to build.  Run down here that is the
+# subproject's own Makefile, which has never heard of the parent's
+# copy sitting in the object directory beside everything else it is
+# about to sweep.  Throwing it away would break a build somewhere
+# else entirely, which is the kind of damage nobody thinks to go
+# looking for.
+(cd sub && make $MAKE_ARGS cache-clean)
+cmp from-the-top.mk sub/obj/Makefile.sub
+
+make $MAKE_ARGS
+./bin/top
+./sub/bin/subbin
 
 exit 0

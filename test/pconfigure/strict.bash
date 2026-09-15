@@ -385,7 +385,7 @@ grep -q "^  error: COMPAT is read and then thrown away" inherit.out
 # Makefile that recurses into a directory with no Makefile in it is
 # worse than no Makefile at all.
 test ! -e inherit/Makefile
-test ! -e inherit/sub/Makefile
+test ! -e inherit/sub/obj/Makefile.sub
 
 ##############################################################################
 # Relaxing                                                                   #
@@ -427,7 +427,7 @@ cat relax.out
 grep -q "^sub/Configfile:5 'COMPAT = 2.0'\$" relax.out
 grep -q "^  warning: COMPAT is read and then thrown away" relax.out
 test -e relax/Makefile
-test -e relax/sub/Makefile
+test -e relax/sub/obj/Makefile.sub
 
 ##############################################################################
 # ... and the project that pulled it in is still strict                      #
@@ -438,7 +438,7 @@ test -e relax/sub/Makefile
 # has to be in the top-level Configfile, so it goes in a second run
 # over the same tree -- the first run had to reach the subproject to
 # say anything at all, and this one has to stop before it gets there.
-rm -f relax/Makefile relax/sub/Makefile
+rm -f relax/Makefile relax/sub/obj/Makefile.sub
 
 cat >relax/Configfile <<EOF
 STRICT      = v0.13

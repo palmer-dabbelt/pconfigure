@@ -95,16 +95,19 @@ make distclean >& /dev/null || true
 
 # And the Makefile, which distclean deliberately leaves alone because
 # every other build wants it kept.  A bootstrap is the one that does
-# not: it exists to produce a pconfigure where there is none, and the
-# usual reason there is none is that a parent project has just been
-# asked to build one out of a tree it vendors.  That parent has
-# already configured this tree, so what is sitting here is a Makefile
-# written to be included from above -- and pconfigure refuses to write
-# over one of those from in here, rightly, because standing in a
-# subproject there is no way to know what the parent calls it.
+# not: it exists to produce a pconfigure where there is none, so
+# whatever is sitting here was written by some pconfigure other than
+# the one this is about to build, and starting from nothing is the
+# only state this script can describe.
 #
-# Nothing is lost by removing it.  This script writes one twice below,
-# and the parent writes its own again on its way past.
+# An old enough tree has something worse than a stale file here: a
+# Makefile a parent project wrote, back when a parent wrote the one at
+# the top of a subproject rather than one in its object directory.
+# That file is written to be included from above and means the wrong
+# thing from in here.
+#
+# Nothing is lost by removing either.  This script writes one twice
+# below.
 rm -f Makefile
 
 mkdir -p $BOOTSTRAP_DIR

@@ -237,6 +237,7 @@ TESTSRC     += strict-lint.bash
 TESTSRC     += vendored-configureopts.bash
 TESTSRC     += subproject-targets.bash
 TESTSRC     += subproject-objdir.bash
+TESTSRC     += kconfig-subproject.bash
 TESTSRC     += configfile-backticks.bash
 TESTSRC     += bootstrap.bash
 TESTSRC     += bootstrap-quiet.bash

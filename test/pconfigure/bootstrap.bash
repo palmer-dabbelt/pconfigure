@@ -93,7 +93,7 @@ then
     exit 1
 fi
 grep -q "^pconfigure_subdir_vendor_pconfigure ?= vendor/pconfigure/$" Makefile.pconfigure
-grep -q "^include \$(pconfigure_subdir_vendor_pconfigure)Makefile$" Makefile.pconfigure
+grep -q "^include \$(pconfigure_subdir_vendor_pconfigure)obj/Makefile.vendor.pconfigure$" Makefile.pconfigure
 
 # The generated half is an ordinary pconfigure Makefile, and it is the
 # only one of the two that knows anything about this project.
@@ -149,14 +149,19 @@ cmp Makefile Makefile.committed
 # say nothing had happened.
 test ! -x Makefile
 
-# The Makefile bootstrap.sh left behind has been taken over by the
-# configure that followed it: what is there now is a subproject's
-# Makefile, written to be included from up here.
-if grep -q "^# bootstrapped$" vendor/pconfigure/Makefile
-then
-    exit 1
-fi
-grep -q "^pconfigure_subdir_vendor_pconfigure ?=$" vendor/pconfigure/Makefile
+# The Makefile bootstrap.sh left behind is still the one that is
+# there.  The configure that followed it had its own name to write
+# under, inside the vendored tree's object directory, which is what
+# keeps the two of them out of each other's way: the Makefile at the
+# top of a tree belongs to whoever is standing in that tree, and a
+# parent is not standing in it.
+grep -q "^# bootstrapped$" vendor/pconfigure/Makefile
+
+# And the parent's copy is where the include above said it would be,
+# with the variable at the top of it that the parent sets to say where
+# this project is.
+grep -q "^pconfigure_subdir_vendor_pconfigure ?=$" \
+    vendor/pconfigure/obj/Makefile.vendor.pconfigure
 
 ##############################################################################
 # The second make                                                            #

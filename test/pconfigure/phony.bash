@@ -86,7 +86,7 @@ EOF
 
 $PTEST_BINARY $PCONFIGURE_ARGS
 cat Makefile
-cat sub/Makefile
+cat sub/obj/Makefile.sub
 
 # The target is a name, and make is told so.  Without that, a file
 # called "integration" turning up in the tree would stop it working.
@@ -111,8 +111,8 @@ grep -q "ptest --test obj/check/integration/boots.bash --out check/integration/b
 # other target does -- so two projects can both want one called the
 # same thing, and asking for it from the top or from inside the
 # project reaches the same one.
-grep -q "^\.PHONY: \$(pconfigure_subdir_sub)thing$" sub/Makefile
-grep -q -- "--srcdir \\\$(abspath \\\$(pconfigure_subdir_sub)\\.) --checkdir \\\$(pconfigure_subdir_sub)check/thing$" sub/Makefile
+grep -q "^\.PHONY: \$(pconfigure_subdir_sub)thing$" sub/obj/Makefile.sub
+grep -q -- "--srcdir \\\$(abspath \\\$(pconfigure_subdir_sub)\\.) --checkdir \\\$(pconfigure_subdir_sub)check/thing$" sub/obj/Makefile.sub
 if grep -q "^\.PHONY: thing$" Makefile
 then
     exit 1

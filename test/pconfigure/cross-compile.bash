@@ -127,7 +127,7 @@ EOF
 
 $PTEST_BINARY $PCONFIGURE_ARGS
 cat Makefile
-cat sub/Makefile
+cat sub/obj/Makefile.sub
 
 ##############################################################################
 # What a prefix means to a language                                          #
@@ -236,9 +236,9 @@ grep -q 'faketc-gcc .*-oobj/bin/hello/[0-9]*/local.*rpath,\\[$][$]ORIGIN/' Makef
 # -- the same way it's installed to the same PREFIX.  A subproject
 # that quietly built native objects would get as far as the link
 # before anybody found out.
-grep -q 'faketc-gcc -x c .* -c $(pconfigure_subdir_sub)src/sub\.c -o ' sub/Makefile
-grep -q 'faketc-gcc ${LDFLAGS} ${CFLAGS} -o$(pconfigure_subdir_sub)obj/lib/libsub.so/' sub/Makefile
-if grep -q '${CC} ' sub/Makefile
+grep -q 'faketc-gcc -x c .* -c $(pconfigure_subdir_sub)src/sub\.c -o ' sub/obj/Makefile.sub
+grep -q 'faketc-gcc ${LDFLAGS} ${CFLAGS} -o$(pconfigure_subdir_sub)obj/lib/libsub.so/' sub/obj/Makefile.sub
+if grep -q '${CC} ' sub/obj/Makefile.sub
 then
     exit 1
 fi

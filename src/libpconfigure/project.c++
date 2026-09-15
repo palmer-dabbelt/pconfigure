@@ -688,85 +688,6 @@ void project::check_bootstrap(const std::vector<ptr>& everyone) const
     abort();
 }
 
-void project::check_makefile_shape(void) const
-{
-    /* Only the project make would be run in has no directory of its
-     * own, and so only that one writes a Makefile whose paths are
-     * spelled bare.  Every other project in a run is a subproject and
-     * is busy writing exactly the file this complains about finding,
-     * which is the right thing for it to be doing. */
-    if (_base.size() > 0)
-        return;
-
-    /* Named outright rather than asked for, because the file this is
-     * about is the one a parent would have written -- and a parent
-     * writes a subproject's Makefile under the name every subproject
-     * uses, whatever this project would call its own. */
-    const auto path = _base + "Makefile";
-
-    auto file = fopen(path.c_str(), "r");
-    if (file == NULL)
-        return;
-
-    auto lines = file_utils::readlines(file);
-    fclose(file);
-
-    /* Spelled through the same function that builds the name, so the
-     * two can't drift apart: a project with no directory has nothing
-     * to put on the end, which leaves the part every one of them
-     * starts with. */
-    const auto marker = prefix_variable("");
-    const auto assign = std::string(" ?=");
-
-    auto variable = std::string();
-    for (const auto& read: lines) {
-        auto line = read;
-        while (line.size() > 0
-               && isspace((unsigned char)line[line.size() - 1]) != 0)
-            line.pop_back();
-
-        if (line.compare(0, marker.size(), marker) != 0)
-            continue;
-
-        /* The one declared with nothing after it is the project's own,
-         * which is what makes building it where it sits the default.
-         * The lines that say where some other project is have that
-         * project's directory on the end, and those turn up in every
-         * Makefile pconfigure writes -- including the ones there is
-         * nothing wrong with. */
-        if (line.size() <= marker.size() + assign.size())
-            continue;
-        if (line.compare(line.size() - assign.size(),
-                         assign.size(), assign) != 0)
-            continue;
-
-        variable = line.substr(0, line.size() - assign.size());
-        break;
-    }
-
-    if (variable.size() == 0)
-        return;
-
-    /* There is no writing the right file from here.  What the paths
-     * in a subproject's Makefile have to be prefixed with is the
-     * directory it sits in as the parent sees it, and standing in the
-     * subproject that directory is not a thing anything knows -- the
-     * name in the file that's already here says what the parent calls
-     * it, and the name is not something a directory can be recovered
-     * from. */
-    std::cerr << "'" << path << "' was written to be included by"
-              << " the project above this one\n"
-              << "  the '" << variable << " ?=' at the top of it is what a"
-              << " parent sets to say where this project is, and every path"
-              << " in the file is written through it\n"
-              << "  configuring from in here would write those paths bare,"
-              << " and the parent that includes the file would build this"
-              << " project into its own directories\n"
-              << "  run pconfigure at the top of the tree instead, or delete"
-              << " this Makefile first if nothing includes it any more\n";
-    abort();
-}
-
 void project::check_autodeps(void) const
 {
     /* Everything one AUTODEPS reached, gathered under the line that
@@ -984,6 +905,18 @@ makefile::target::ptr project::cache_clean_target(const std::vector<ptr>& projec
         prune += " -not -path '"
               + project->_processor->root_context()->obj_dir
               + "/check-stamp'";
+
+        /* And the Makefiles a configure from above left in here, for
+         * the same reason and with more at stake.  Only a build run
+         * inside a subproject ever reaches one of these, and the
+         * Makefile being read back is that build's own -- which has
+         * never heard of the parent and would call the parent's copy
+         * stale.  Deleting it breaks a build somewhere else entirely,
+         * which is the kind of damage nobody thinks to go looking
+         * for. */
+        prune += " -not -path '"
+              + project->_processor->root_context()->obj_dir
+              + "/Makefile.*'";
 
         /* And these, for the same reason: a project that works its
          * dependencies out during the build keeps what pdeps needs to
@@ -1213,7 +1146,18 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
     out->add_standalone_target(cache_clean_target(aggregated));
     out->add_standalone_target(distclean_target(aggregated));
 
-    out->write_to_file(makefile_path());
+    /* A subproject's Makefile goes into its object directory, and a
+     * configure is the first thing in a fresh checkout to want that
+     * directory: nothing has been built yet, so nothing has made it.
+     * Asked of the path that is about to be written rather than of
+     * the object directory itself, so that whatever OBJDIR says is
+     * what gets created. */
+    const auto path = makefile_path();
+    const auto slash = path.rfind('/');
+    if (slash != std::string::npos)
+        file_utils::mkdir_p(path.substr(0, slash));
+
+    out->write_to_file(path);
 
     write_bootstrap_makefile();
     write_check_dirs(aggregated);
@@ -1309,8 +1253,61 @@ void project::write_check_stamp(void) const
     fclose(file);
 }
 
+std::string project::base_suffix(const std::string& base)
+{
+    auto out = std::string();
+
+    /* The '.' goes in when the next name arrives rather than when the
+     * separator does, so that the '/' every base is spelled with on
+     * the end doesn't leave one dangling -- and so that the leading
+     * one is there for free.  Every caller is sticking this on the
+     * end of a name it already has, and the project at the top of the
+     * run sticks nothing on at all. */
+    auto pending = base.size() > 0;
+    for (const auto& c: base) {
+        if (c == '/') {
+            pending = out.size() > 0;
+            continue;
+        }
+
+        if (pending == true) {
+            out += '.';
+            pending = false;
+        }
+
+        out += c;
+    }
+
+    return out;
+}
+
 std::string project::makefile_path(void) const
 {
+    /* A project a parent pulled in writes into its own object
+     * directory rather than to the Makefile at the top of it, because
+     * that Makefile belongs to a pconfigure run standing down there.
+     *
+     * Both files are right, and they say different things.  From up
+     * here the subproject is one piece of a bigger build: every path
+     * in it goes through a variable so the parent can put a directory
+     * on the front, and the things it depends on that live outside it
+     * are in there too.  From down there it is the whole build, its
+     * paths mean what they say, and it has never heard of anything
+     * above it.  One name for both meant whichever configure ran last
+     * won, and the build that lost broke the next time somebody ran
+     * make -- for the parent by quietly building the subproject into
+     * the parent's own directories, which is a wrong answer that
+     * looks like a build.
+     *
+     * So the parent's copy goes somewhere a build from inside has no
+     * opinion about.  The object directory is already where a
+     * configure leaves files for a build to read, already ignored by
+     * revision control, and already what "make distclean" takes
+     * away. */
+    if (_base.size() > 0)
+        return _processor->root_context()->obj_dir
+             + "/Makefile" + base_suffix(_base);
+
     /* A project that bootstraps its own pconfigure has a Makefile
      * already, written once and committed, and make is run at that
      * one.  What comes out of a configure goes beside it under a name
@@ -1329,12 +1326,13 @@ std::string project::makefile_include(void) const
      * knows where this project is sitting is the variable the parent
      * set.
      *
-     * Named outright rather than asked of makefile_path(), which is
-     * what a parent has always done: the file a parent includes is
-     * the one every subproject writes under the one name, whatever
-     * this project would call its own. */
+     * Asked of the finished path rather than built back up out of the
+     * pieces, so that an OBJDIR pointing somewhere outside the
+     * project still comes out right: a path that isn't in here is one
+     * the rewrite leaves alone, which is exactly what should happen
+     * to it. */
     return makefile::path_prefix(_base, prefix_variable(_base))
-        .rewrite(_base + "Makefile");
+        .rewrite(makefile_path());
 }
 
 void project::write_bootstrap_makefile(void) const

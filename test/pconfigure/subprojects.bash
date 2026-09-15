@@ -61,13 +61,13 @@ EOF
 
 $PTEST_BINARY $PCONFIGURE_ARGS
 cat Makefile
-cat sub/Makefile
+cat sub/obj/Makefile.sub
 
 # The subproject gets a Makefile of its own, which the top-level one
 # includes rather than recursing into.
-test -f sub/Makefile
+test -f sub/obj/Makefile.sub
 grep -q "^pconfigure_subdir_sub ?= sub/$" Makefile
-grep -q "^include \$(pconfigure_subdir_sub)Makefile$" Makefile
+grep -q "^include \$(pconfigure_subdir_sub)obj/Makefile.sub$" Makefile
 if grep -q "make -C" Makefile
 then
     exit 1
@@ -75,8 +75,8 @@ fi
 
 # The subproject's own Makefile defaults its prefix to nothing, which
 # is what makes it work when make is run in the subproject instead.
-grep -q "^pconfigure_subdir_sub ?=$" sub/Makefile
-grep -q "^\$(pconfigure_subdir_sub)lib/libsub.so:" sub/Makefile
+grep -q "^pconfigure_subdir_sub ?=$" sub/obj/Makefile.sub
+grep -q "^\$(pconfigure_subdir_sub)lib/libsub.so:" sub/obj/Makefile.sub
 
 make $MAKE_ARGS
 test "$(./bin/test)" = "7"
@@ -104,9 +104,14 @@ test -f install/usr/local/lib/libsub.so
 test -f install/usr/local/include/sub.h
 test ! -e install/usr/local/sub
 
-# The subproject still builds standalone, using the same Makefile.
+# The subproject still builds standalone, configured where it sits.
+# That configure is where a Makefile for building it from down here
+# comes from: the one written by the run at the top is written to be
+# included from up there, and lives in the object directory under a
+# name saying so.
 cd sub
 rm -rf lib include obj check
+$PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 test -f lib/libsub.so
 test -f include/sub.h
@@ -116,7 +121,10 @@ test -f check/helper/works.bash
 cd ..
 
 # ... and having built it that way doesn't stop the top level from
-# building.
+# building.  The "rm -rf obj" above took the top's copy of the
+# subproject's Makefile with it, which is what emptying an object
+# directory means, so the top is configured again first.
+$PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 test "$(./bin/test)" = "7"
 

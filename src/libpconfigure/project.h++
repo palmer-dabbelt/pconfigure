@@ -93,6 +93,28 @@ public:
      * which has to be unique across the whole run. */
     static std::string prefix_variable(const std::string& base);
 
+    /* The part of a generated file's name that says which project in
+     * the run wrote it: the directory it sits in, with the separators
+     * turned into dots, so "src/pconfigure/" is "src.pconfigure".
+     * Empty for the project make gets run in, which has no directory
+     * and needs no telling apart.
+     *
+     * This is on the name of every file a configure writes for a
+     * build to read, and that is what lets a tree be configured both
+     * from above and from inside it.  The two runs write into the one
+     * object directory and describe the same sources, but they
+     * describe them from different places -- a path that starts at
+     * the top of the tree against one that starts here -- so a file
+     * they shared would be a file whichever of them ran last had
+     * quietly rewritten for the other.  Spelling the writer into the
+     * name is what makes them two files instead of one.
+     *
+     * What they do share is everything a build produces: the objects,
+     * the libraries, the binaries.  Those are the same answer worked
+     * out from two vantage points, so sharing them is the point
+     * rather than a hazard. */
+    static std::string base_suffix(const std::string& base);
+
 public:
     /* Accessor methods. */
     const std::string& base(void) const { return _base; }
@@ -154,14 +176,6 @@ public:
      * configures and builds perfectly well and then fails, much
      * later, with a shell saying it can't find a program. */
     void check_bootstrap(const std::vector<ptr>& everyone) const;
-
-    /* Complains if the Makefile this project is about to write over
-     * is one that a project above it includes.  That means pconfigure
-     * was run inside a subproject, and the Makefile it would leave
-     * there is one that only works from there -- which is a thing
-     * nothing else would notice until the parent's build started
-     * going into the wrong directories. */
-    void check_makefile_shape(void) const;
 
 public:
     /* A project and everything below it, parents before children. */

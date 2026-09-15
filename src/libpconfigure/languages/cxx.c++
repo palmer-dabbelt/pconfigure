@@ -1078,7 +1078,8 @@ language_cxx::deps_source(const context::ptr& ctx,
      * question pdeps asks.  A source found behind a header inherits
      * the options of whatever led to it, which is why the same file
      * serves the whole walk below it. */
-    auto context_path = link + "deps-context-" + hash;
+    auto context_path = link + "deps-context-" + hash
+                      + project::base_suffix(child->base);
 
     auto say = [](const std::string& key, const std::string& value)
         { return key + " " + value + "\n"; };

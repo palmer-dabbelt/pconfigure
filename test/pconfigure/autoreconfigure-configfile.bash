@@ -95,7 +95,7 @@ grep -q '\$(wildcard sub/Configfile)' on/Makefile
 # included by this one, and make ignores an out-of-date included
 # makefile that has prerequisites and no recipe -- so a copy down
 # there would say nothing and hide that it said nothing.
-if grep -q "^Makefile:" on/sub/Makefile
+if grep -q "^Makefile:" on/sub/obj/Makefile.sub
 then
     exit 1
 fi

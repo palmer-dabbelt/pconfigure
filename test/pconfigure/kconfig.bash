@@ -157,8 +157,8 @@ fi
 # The subproject that does have a Configfile is still read as a
 # pconfigure project and still gets a Makefile of its own, which is
 # the implicit "BUILD_SYSTEMS += pconfigure" doing its job.
-test -f psub/Makefile
-grep -q "^include \$(pconfigure_subdir_psub)Makefile$" Makefile
+test -f psub/obj/Makefile.psub
+grep -q "^include \$(pconfigure_subdir_psub)obj/Makefile.psub$" Makefile
 if grep -q "obj/psub" Makefile
 then
     exit 1

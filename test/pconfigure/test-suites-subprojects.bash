@@ -68,6 +68,12 @@ grep -q "PASS	sub/inner/inner-net.bash" top.out
 ##############################################################################
 # The subproject's own copy of the rule, which only exists when make
 # was run there -- the same way its "make check" only exists there.
+#
+# Configured from down here as well, because that is where a Makefile
+# to be run from down here comes from.  The one a configure at the top
+# writes is written to be included from up there, and it lives in the
+# object directory under a name that says which run wrote it.
+(cd sub && $PTEST_BINARY $PCONFIGURE_ARGS)
 (cd sub && make $MAKE_ARGS check-network)
 (cd sub && make $MAKE_ARGS report-network > inner.out)
 cat sub/inner.out

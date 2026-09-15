@@ -40,17 +40,17 @@ EOF
 
 $PTEST_BINARY $PCONFIGURE_ARGS
 cat Makefile
-cat sub/Makefile
+cat sub/obj/Makefile.sub
 
 # The script is one program with a path, and the "cd" in front of it
 # is not part of that path: quoting the whole compound sends the shell
 # looking for a program named "cd sub/. && src/gen.h.proc", which it
 # does not find and never will.
-grep -q "cd .*sub.* && src/gen.h.proc --generate" sub/Makefile
+grep -q "cd .*sub.* && src/gen.h.proc --generate" sub/obj/Makefile.sub
 
 # What "--deps" printed is relative to the project that owns the
 # script, so it lands in the Makefile with that project on the front.
-grep -q "obj/proc/gen.h: .*src/gen.h.proc .*src/answer.txt" sub/Makefile
+grep -q "obj/proc/gen.h: .*src/gen.h.proc .*src/answer.txt" sub/obj/Makefile.sub
 
 make $MAKE_ARGS
 test "$(./sub/bin/test)" = "42"
@@ -72,6 +72,7 @@ test "$(./sub/bin/test)" = "7"
 # that only exists when make was run in the parent.
 cd sub
 rm -rf obj bin
+$PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 test "$(./bin/test)" = "7"
 cd ..
