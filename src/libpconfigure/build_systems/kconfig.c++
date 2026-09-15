@@ -695,11 +695,34 @@ build_system_kconfig::vendored_targets(
         }
     );
 
+    /* The same hole the C++ fragments had, in the same shape: this
+     * fragment is what one version of psubdeps made of what the
+     * vendored tree said it read, and rebuilding psubdeps did not
+     * invalidate it.  The context beside it is a prerequisite already,
+     * so a psubdeps that moved was noticed; a psubdeps rebuilt where
+     * it stood was not, which is every build of a tree that vendors
+     * pconfigure.
+     *
+     * Absolute, out of tool_command(), and wrapped in "$(wildcard)",
+     * for the reasons written out at length over language_cxx::
+     * deps_source(): absolute so make cannot mistake it for the
+     * in-tree target it does have a rule for and try to link it
+     * while it is still working out what to include, wrapped so that
+     * "make clean" having taken it away is a build with no opinion
+     * rather than a build that stops.  It does not disturb what the
+     * rule above it is for: an absolute path with no rule is a
+     * timestamp, it cannot go out of date during a make, so this
+     * fragment can still be remade at most once and the remaking
+     * still terminates. */
+    auto psubdeps = std::make_shared<makefile::target>(
+        "$(wildcard " + makefile::tool_command("psubdeps") + ")");
+
     auto deps_target = std::make_shared<makefile::target>(
         deps_fragment,
         "DEPS\t" + srcdir,
         std::vector<makefile::target::ptr>{
-            std::make_shared<makefile::target>(deps_context)
+            std::make_shared<makefile::target>(deps_context),
+            psubdeps
         },
         std::vector<makefile::global_targets>{
             makefile::global_targets::CLEAN
@@ -722,7 +745,8 @@ build_system_kconfig::vendored_targets(
             build_fragment,
             "DEPS\t" + srcdir,
             std::vector<makefile::target::ptr>{
-                std::make_shared<makefile::target>(build_context)
+                std::make_shared<makefile::target>(build_context),
+                psubdeps
             },
             std::vector<makefile::global_targets>{
                 makefile::global_targets::CLEAN

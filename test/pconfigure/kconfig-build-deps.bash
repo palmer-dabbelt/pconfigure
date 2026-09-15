@@ -89,7 +89,17 @@ $PTEST_BINARY $PCONFIGURE_ARGS
 # files: the cheap answer's rule does not pay for the expensive one,
 # which for a real kernel is a walk of ten thousand files.
 grep -q "^include obj/sub/build-deps.mk$" Makefile
-grep -q "^obj/sub/build-deps.mk: obj/sub/build-deps-context$" Makefile
+
+# It names psubdeps for the same reason its cheaper sibling does, and
+# that is asserted here as well rather than left to kconfig-deps.bash,
+# because these are two rules written from two places and closing the
+# hole in one of them is how it comes back.  See kconfig-deps.bash for
+# why the "$" on the end of this pattern is the assertion, why the
+# leading "/" in front of the tool is what makes the absolute spelling
+# the thing being pinned, and why the pattern is in single quotes
+# rather than double ones -- the double-quoted spelling was wrong in
+# both of these to begin with, and it was wrong silently.
+grep -q '^obj/sub/build-deps.mk: obj/sub/build-deps-context \$(wildcard /[^ )]*/psubdeps)$' Makefile
 test -e obj/sub/build-deps-context
 
 # And the guess has not got the hidden header, which is the point.
