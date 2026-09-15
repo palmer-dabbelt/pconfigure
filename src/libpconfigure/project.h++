@@ -111,6 +111,11 @@ public:
      * it under another name and is included by it. */
     std::string makefile_path(void) const;
 
+    /* The same file, spelled the way a parent has to name it in an
+     * "include": through the variable that says where this project
+     * sits, since a parent's make is started somewhere else. */
+    std::string makefile_include(void) const;
+
 public:
     /* Turns this project's contexts into targets, asking each
      * context's language what its targets offer and want along the

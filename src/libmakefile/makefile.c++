@@ -49,9 +49,10 @@ void makefile::makefile::add_standalone_target(const target::ptr& target)
 }
 
 void makefile::makefile::add_subproject(const std::string& variable,
-                                        const std::string& base)
+                                        const std::string& base,
+                                        const std::string& path)
 {
-    _subprojects.push_back(std::make_pair(variable, base));
+    _subprojects.push_back(subproject{variable, base, path});
 }
 
 void makefile::makefile::add_peer(const std::string& variable,
@@ -205,8 +206,8 @@ void makefile::makefile::write_to_file(const std::string& filename)
         fprintf(file, "%s ?= %s\n", peer.first.c_str(), peer.second.c_str());
     for (const auto& subproject: _subprojects)
         fprintf(file, "%s ?= %s\n",
-                subproject.first.c_str(),
-                _prefix.rewrite(subproject.second).c_str());
+                subproject.variable.c_str(),
+                _prefix.rewrite(subproject.base).c_str());
     if (_peers.size() > 0 || _subprojects.size() > 0)
         fprintf(file, "\n");
 
@@ -215,7 +216,7 @@ void makefile::makefile::write_to_file(const std::string& filename)
      * else so that a subproject's rules are in hand by the time
      * anything here refers to them. */
     for (const auto& subproject: _subprojects)
-        fprintf(file, "include $(%s)Makefile\n\n", subproject.first.c_str());
+        fprintf(file, "include %s\n\n", subproject.path.c_str());
 
     /* The targets that are themselves pieces of Makefile, which have
      * to be included as well as built.  make remakes what it includes
