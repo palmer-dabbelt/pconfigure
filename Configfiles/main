@@ -222,6 +222,7 @@ TESTSRC     += testdeps-directive.bash
 TESTSRC     += testdeps-directive-bad.bash
 TESTSRC     += deptests.bash
 TESTSRC     += deptests-bad.bash
+TESTSRC     += scratchdir.bash
 TESTSRC     += test-suites.bash
 TESTSRC     += test-suites-unnamed.bash
 TESTSRC     += default-test-suite.bash

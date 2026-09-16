@@ -59,6 +59,17 @@ namespace makefile {
          * need the answer. */
         bool _included;
 
+        /* Paths this target owns but does not build, which "make
+         * clean" removes along with the target itself.
+         *
+         * A rule that leaves something behind under a name it was
+         * never asked to produce -- scratch a test is given, say --
+         * has nowhere else to say so: the clean helper is generated
+         * from the target's own name, so anything not named there
+         * survives a clean and accumulates until somebody goes
+         * looking for what filled the disk. */
+        std::vector<std::string> _clean_extra;
+
     public:
         /* Creates a new target fully-fledged target -- this is a
          * target that the Makefile actually knows how to generate. */
@@ -93,6 +104,10 @@ namespace makefile {
         /* Returns a copy of this target that whoever writes it out
          * also "include"s. */
         ptr as_included(void) const;
+
+        /* Returns a copy of this target that "make clean" also
+         * removes the given path for. */
+        ptr with_clean_extra(const std::string& path) const;
 
         bool included(void) const { return _included; }
 

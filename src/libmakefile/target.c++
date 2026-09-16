@@ -33,7 +33,8 @@ makefile::target::target(const std::string& name,
       _cmds(cmds),
       _comment(comment),
       _phony(false),
-      _included(false)
+      _included(false),
+      _clean_extra()
 {
 }
 
@@ -45,7 +46,8 @@ makefile::target::target(const std::string& name)
       _cmds(),
       _comment(),
       _phony(false),
-      _included(false)
+      _included(false),
+      _clean_extra()
 {
 }
 
@@ -71,6 +73,7 @@ makefile::target::ptr makefile::target::without(makefile::global_targets mask) c
      * fragment that nothing reads. */
     out->_phony = _phony;
     out->_included = _included;
+    out->_clean_extra = _clean_extra;
     return out;
 }
 
@@ -84,6 +87,7 @@ makefile::target::ptr makefile::target::as_phony(void) const
                                         _comment);
     out->_phony = true;
     out->_included = _included;
+    out->_clean_extra = _clean_extra;
     return out;
 }
 
@@ -97,6 +101,22 @@ makefile::target::ptr makefile::target::as_included(void) const
                                         _comment);
     out->_phony = _phony;
     out->_included = true;
+    out->_clean_extra = _clean_extra;
+    return out;
+}
+
+makefile::target::ptr makefile::target::with_clean_extra(const std::string& path) const
+{
+    auto out = std::make_shared<target>(_name,
+                                        _short_cmd,
+                                        _deps,
+                                        _global,
+                                        _cmds,
+                                        _comment);
+    out->_phony = _phony;
+    out->_included = _included;
+    out->_clean_extra = _clean_extra;
+    out->_clean_extra.push_back(path);
     return out;
 }
 
@@ -133,8 +153,15 @@ void makefile::target::write_to_file(FILE *file,
             break;
         case global_targets::CLEAN:
             fprintf(file, ".PHONY: __pconfigure__clean-%s\n", name.c_str());
-            fprintf(file, "__pconfigure__clean-%s:; @rm -fr %s\n",
+            fprintf(file, "__pconfigure__clean-%s:; @rm -fr %s",
                     name.c_str(), name.c_str());
+            /* Whatever else this target owns goes on the same rm, so
+             * that a clean of it is one command that either happened
+             * or didn't -- rather than a second rule that can be
+             * dropped, reordered, or made to fail on its own. */
+            for (const auto& extra: _clean_extra)
+                fprintf(file, " %s", prefix.rewrite(extra).c_str());
+            fprintf(file, "\n");
             fprintf(file, "clean: __pconfigure__clean-%s\n", name.c_str());
             break;
         case global_targets::INSTALL:

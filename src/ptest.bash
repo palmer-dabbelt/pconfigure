@@ -282,6 +282,7 @@ out=""
 bin=""
 srcdir=""
 checkdir=""
+scratchdir=""
 command=""
 while [[ "$1" != "" ]]
 do
@@ -308,6 +309,11 @@ do
     elif [[ "$1" == "--checkdir" ]]
     then
         checkdir="$2"
+        shift
+        shift
+    elif [[ "$1" == "--scratchdir" ]]
+    then
+        scratchdir="$2"
         shift
         shift
     elif [[ "$1" == "--args" ]]
@@ -358,6 +364,33 @@ then
     checkdir="$(abs_path "$checkdir")"
 fi
 
+# Where a test puts what it does NOT want collected.  $PTEST_TMPDIR is
+# the system temp, it is emptied for every run, and every byte left in
+# it is tarred into the result -- which is the right answer for logs and
+# the wrong one for a multi-gigabyte disk image.  Three separate ways:
+# the tar costs as much as the test, the result is a copy of something
+# that already exists, and the system temp is usually a different volume
+# from the tree, so the copy-on-write clone that made building the image
+# cheap does not survive being handed through it.
+#
+# So this one is inside the project, next to the test's own compiled
+# self, and none of those three things happen to it.  What it costs
+# instead is that it is NOT emptied between runs and NOT removed when
+# the test finishes: a fixture too expensive to tar is usually too
+# expensive to rebuild, and reuse across runs is the whole point.  A
+# test that wants it clean is the one that knows that, and clears it
+# itself.
+#
+# Same guard as the two above, and the same reason: a ptest run by hand
+# was told nothing, and a test asking for scratch it was never given
+# should see nothing rather than write into whatever directory the run
+# started in.
+if [[ "$scratchdir" != "" ]]
+then
+    scratchdir="$(abs_path "$scratchdir")"
+    mkdir -p "$scratchdir"
+fi
+
 # This is the regular path where we actually run a test case
 tmpdir=`mktemp -d -t ptest-wrapper.XXXXXXXXXX`
 trap "rm -rf $tmpdir" EXIT
@@ -377,6 +410,7 @@ export PTEST_BINARY="$bin"
 export PTEST_SRCDIR="$srcdir"
 export PTEST_CHECKDIR="$checkdir"
 export PTEST_TMPDIR="$tmpdir"
+export PTEST_SCRATCH_DIR="$scratchdir"
 
 "$test" "$@" >&"$tmpdir"/ptest__output
 echo "$?" >"$tmpdir"/ptest__return
