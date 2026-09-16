@@ -293,9 +293,41 @@ void makefile::makefile::write_to_file(const std::string& filename)
     for (const auto& dir: _check_dirs)
         check_dirs += " --check-dir " + _prefix.rewrite(dir);
 
-    fprintf(file, "%s: %s\n\t%s%s --quiet --no-check-make-check%s > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp; exit 1)\n\n",
+    /* A report is read off the disk at least as often as it is read
+     * out of "make report" -- by a person looking at what last night
+     * did, by a script, by anything that writes a run up afterwards.
+     * So a scoring that fails takes the report with it rather than
+     * leaving the one the last passing run wrote: a file that says
+     * NFAIL 0 about a run that failed gets believed, and it is
+     * believed precisely when somebody has stopped watching make's
+     * output, which is the moment the file is all there is.  The
+     * quiet report is the worse half of this, not the lesser one --
+     * a passing quiet run prints nothing, so its report is an empty
+     * file, and a stale one is byte for byte what a fresh one would
+     * have been.  The rule these four recipes keep is that a report
+     * exists if and only if the last scoring of it passed, which
+     * leaves absence as the one state a reader cannot misread.
+     *
+     * The detail still comes out, on stdout, through "cat $@.tmp":
+     * what ran is in the result tarballs under the check directories
+     * either way, so asking again re-scores them in seconds without
+     * re-running a single test.  A file kept beside the report would
+     * only be a second thing to go stale, and one asserting a
+     * failure at that.
+     *
+     * Writing the report out anyway and then exiting 1 is the shape
+     * to avoid, however much more honest the file looks: it leaves
+     * the report newer than the stamp it was made from, so the next
+     * "make report" has nothing to do and exits 0 with the tests
+     * still red.  Nothing here may leave a report newer than its
+     * stamp.  ".DELETE_ON_ERROR:" is not this either -- make deletes
+     * a failed recipe's target only when the recipe changed it, and
+     * "&&" means this one never got as far as the mv -- and it is
+     * file-global, so it would start removing half-written targets
+     * for every other rule in the Makefile besides. */
+    fprintf(file, "%s: %s\n\t%s%s --quiet --no-check-make-check%s > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp $@; exit 1)\n\n",
             quiet_report.c_str(), stamp.c_str(), q, ptest.c_str(), check_dirs.c_str());
-    fprintf(file, "%s: %s\n\t%s%s --no-check-make-check%s > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp; exit 1)\n\n",
+    fprintf(file, "%s: %s\n\t%s%s --no-check-make-check%s > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp $@; exit 1)\n\n",
             report.c_str(), stamp.c_str(), q, ptest.c_str(), check_dirs.c_str());
     /* "make check" runs one named set of tests when the project said
      * which, and every test it has when it didn't.  "make report"
@@ -391,10 +423,14 @@ void makefile::makefile::write_to_file(const std::string& filename)
         fprintf(file, "\n\t%smkdir -p %s\n\t%sdate > $@\n\n",
                 q, obj_dir.c_str(), q);
 
-        fprintf(file, "%s: %s\n\t%s%s --quiet --no-check-make-check%s%s > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp; exit 1)\n\n",
+        /* The same pair of rules a suite at a time, so the same
+         * deletion when the scoring fails: see the project-wide
+         * reports above for why a failed run leaves no report
+         * behind. */
+        fprintf(file, "%s: %s\n\t%s%s --quiet --no-check-make-check%s%s > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp $@; exit 1)\n\n",
                 suite_quiet.c_str(), suite_stamp.c_str(), q, ptest.c_str(),
                 check_dirs.c_str(), results.c_str());
-        fprintf(file, "%s: %s\n\t%s%s --no-check-make-check%s%s > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp; exit 1)\n\n",
+        fprintf(file, "%s: %s\n\t%s%s --no-check-make-check%s%s > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp $@; exit 1)\n\n",
                 suite_report.c_str(), suite_stamp.c_str(), q, ptest.c_str(),
                 check_dirs.c_str(), results.c_str());
 

@@ -229,6 +229,7 @@ TESTSRC     += default-test-suite.bash
 TESTSRC     += test-suites-subprojects.bash
 TESTSRC     += test-suites-subproject-includes.bash
 TESTSRC     += test-suites-bad.bash
+TESTSRC     += stale-report.bash
 TESTSRC     += ptest-check-dirs.bash
 TESTSRC     += makeflags.bash
 TESTSRC     += cmdline-args.bash
