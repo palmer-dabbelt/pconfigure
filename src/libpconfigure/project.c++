@@ -997,6 +997,17 @@ makefile::target::ptr project::cache_clean_target(const std::vector<ptr>& projec
         if (project->_processor->autoreconfigure() == true)
             prune += " -not -name 'deps-context-*'";
 
+        /* And the scratch a test was given, which the Makefile names
+         * as an argument to ptest rather than as something it knows
+         * how to build -- so reading it back decides every byte in
+         * there is stale.  What is in there is exactly what somebody
+         * did not want copied around: a fixture too big to collect
+         * into a result, and usually too expensive to make twice.
+         * Throwing it away here would be a cache-clean that costs
+         * more than the cache it reclaimed.  "make clean" is what
+         * removes these, along with the test they belong to. */
+        prune += " -not -path '*.scratch/*'";
+
         for (const auto& pair: obj_dirs) {
             const auto& dir = pair.first;
 

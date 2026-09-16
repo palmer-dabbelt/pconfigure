@@ -243,12 +243,27 @@ language_bash::targets(const context::ptr& ctx) const
          * relative path with two answers. */
         auto srcdir = "$(abspath " + ctx->src_path + ".)";
 
+        /* Scratch that does not get collected, named after the test and
+         * sitting beside the test's own compiled self under $OBJDIR.
+         *
+         * Beside the test rather than in the check directory, which is
+         * the obvious place and is wrong: "make report" walks a check
+         * directory with find and reads every file it lands on as a
+         * result tarball, so a disk image left in there is handed to tar
+         * as though it were one test's verdict.  $OBJDIR is the other
+         * directory a test already has to itself, it is on the same
+         * volume as the tree -- which is what keeps a copy-on-write
+         * clone of a fixture cheap -- and "make clean" already removes
+         * it. */
+        auto scratch_dir = test_name + ".scratch";
+
         auto commands = std::vector<std::string>{
             "mkdir -p " + ctx->check_dir,
             "+" + makefile::tool_command("ptest") + " --test " + test_name + " --out " + target_name
                 + (bin_name.size() > 0 ? " --bin " + bin_name : "")
                 + " --srcdir " + srcdir
                 + " --checkdir " + ctx->check_dir
+                + " --scratchdir " + scratch_dir
         };
         auto comment = std::vector<std::string>{
             "language_bash::targets() CHECK"
@@ -258,7 +273,8 @@ language_bash::targets(const context::ptr& ctx) const
                                                                deps,
                                                                global_targets,
                                                                commands,
-                                                               comment);
+                                                               comment)
+            ->with_clean_extra(scratch_dir);
 
         return bin_targets + std::vector<makefile::target::ptr>{check_target};
     }
