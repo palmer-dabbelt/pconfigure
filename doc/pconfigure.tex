@@ -575,6 +575,36 @@ reads what that one left behind.  Nothing is there yet for a test with
 no \texttt{DEPTESTS}: what makes a predecessor's result exist by the
 time a test runs is having waited for it.
 
+A test is also given \texttt{\$PTEST\_SCRATCH\_DIR}, a directory of
+its own that is \textit{not} collected.  It is the place for what a
+test makes that is too big to copy around --- a disk image, a
+populated tree, a rootfs --- and it is the exact opposite of
+\texttt{\$PTEST\_TMPDIR} in all three of the ways that matter.  It is
+not emptied before a run, it is not removed after one, and nothing in
+it is tarred into the result.
+
+Each of those is there for a reason worth saying outright.  Collecting
+a multi-gigabyte fixture costs as much as the test that made it did,
+and what it buys is a second copy of something already sitting on
+disk.  The system temp is usually a different volume from the tree as
+well, so a fixture that was cheap to make with a copy-on-write clone
+stops being cheap the moment it is handed through there --- which is
+why this directory is inside the project, under \texttt{\$OBJDIR},
+beside the test's own compiled self.  It is not in the check directory
+because \texttt{make report} walks that one with \texttt{find} and
+reads every file it lands on as a result tarball (see
+Section~\ref{prog:ptest}), so an image left in there would be handed
+to \texttt{tar} as though it were somebody's verdict.
+
+What that costs is that a test does not start with an empty one.  A
+fixture too expensive to collect is usually too expensive to build
+twice, so surviving into the next run is the point rather than an
+oversight --- and a test that wants it clean is the test that knows
+that, and clears it itself.  \texttt{make clean} removes it along with
+the test it belongs to; \texttt{make cache-clean} deliberately leaves
+it alone, since reclaiming a stale object cache should not throw away
+the one thing in the tree that was expensive to make.
+
 \subsection{\texttt{HEADERS += \$name}}
 
 The \texttt{HEADERS} command creates a target that's meant for
@@ -1254,6 +1284,25 @@ is where the second one finds it:
 \begin{verbatim}
 tar -xf "$PTEST_CHECKDIR/builds-an-image.bash" -C "$PTEST_TMPDIR"
 \end{verbatim}
+
+That route copies the state twice --- once into the predecessor's
+result and once back out again --- which is fine for a file and is the
+wrong shape entirely for the case a \texttt{DEPTESTS} usually exists
+for, where the state is expensive precisely because it is large.  For
+that, the predecessor writes into its
+\texttt{\$PTEST\_SCRATCH\_DIR} (see Section~\ref{cmd:tests}) and the
+successor reads it where it lies.  A test's scratch is named after the
+test and they are all siblings, the same way every test of a target
+leaves its result in one check directory:
+
+\begin{verbatim}
+image="$(dirname "$PTEST_SCRATCH_DIR")/builds-an-image.bash.scratch/disk.img"
+\end{verbatim}
+
+Nothing is copied, so what it costs does not grow with how big the
+state is.  What it gives up is the collection: that directory is not
+in the predecessor's result, so a run that is read back later says
+what the test decided and not what it was looking at.
 
 \subsubsection{Orders that can't happen}
 
