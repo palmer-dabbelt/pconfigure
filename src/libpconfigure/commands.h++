@@ -85,6 +85,22 @@ command::ptr parse_line(const configfile_line& line);
  * empty. */
 const std::vector<std::string>& configfiles_read(void);
 
+/* Adds a name to that list without reading it, which is what a
+ * CONFIG_DEPS line does.  The list is what the build watches to know
+ * the Configfiles have moved on, and a Configfile that ENUMERATES
+ * something -- an executable one that globs a directory of tests --
+ * has an input the list cannot see: the directory itself.  Nothing in
+ * it is a Configfile, so nothing reads it, so adding a test to it
+ * changed no watched file and the build went on using a makefile
+ * written before the test existed.
+ *
+ * A directory is the right thing to name for that, because a
+ * directory's mtime moves when an entry is added or removed, which is
+ * exactly the event the enumeration cares about and the only one it
+ * cares about.
+ */
+void add_configfile_dep(const std::string& path);
+
 void add_pkgconfig_path(const std::string& dir);
 
 #endif

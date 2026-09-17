@@ -145,6 +145,7 @@ static bool names_a_path(const command_type& type)
     switch (type) {
     case command_type::BINARIES:
     case command_type::BOOTSTRAP:
+    case command_type::CONFIG_DEPS:
     case command_type::DEPTESTS:
     case command_type::ENTITLEMENTS:
     case command_type::GENERATE:
@@ -217,6 +218,7 @@ static bool takes_a_qualifier(const command_type& type)
     case command_type::COMPILEOPTS:
     case command_type::COMPILER:
     case command_type::CONFIG:
+    case command_type::CONFIG_DEPS:
     case command_type::CONFIGUREOPTS:
     case command_type::CROSS_COMPILE:
     case command_type::DEBUG:
@@ -624,6 +626,37 @@ void command_processor::process_one(const command::ptr& cmd)
          * lines inside it get run at the point they're processed
          * rather than all at once up front. */
         _pending_configs.push_back(cmd->data());
+
+        return;
+    }
+
+    /* A path the enumeration behind a CONFIG depends on, which is
+     * not something the CONFIG itself can say.  An executable
+     * Configfile that globs a directory of tests reads that directory
+     * and prints what it found; the directory is an input to the
+     * configuration exactly as the Configfile is, and until this
+     * existed nothing watched it -- so adding a test changed no
+     * watched file, the makefile was not rewritten, and the test was
+     * on disk without being in the build.
+     *
+     * Deliberately NOT read.  Everything else that lands in this list
+     * got there by being opened for lines, and a directory has none;
+     * what it contributes is its mtime, which moves when an entry is
+     * added or removed.  That is why a directory is the useful thing
+     * to name here even though a file works too: a file already says
+     * "I changed", while nothing else can say "something appeared
+     * next to me".
+     *
+     * It is queued rather than registered, for take_pending_config's
+     * reason: the path is relative to the project that wrote the
+     * line, and project::process_line is what knows which project
+     * that was. */
+    case command_type::CONFIG_DEPS:
+    {
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        _pending_config_deps.push_back(cmd->data());
 
         return;
     }
@@ -1618,6 +1651,16 @@ std::string command_processor::take_pending_config(void)
 
     auto out = _pending_configs.front();
     _pending_configs.erase(_pending_configs.begin());
+    return out;
+}
+
+std::string command_processor::take_pending_config_dep(void)
+{
+    if (_pending_config_deps.size() == 0)
+        return "";
+
+    auto out = _pending_config_deps.front();
+    _pending_config_deps.erase(_pending_config_deps.begin());
     return out;
 }
 

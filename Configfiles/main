@@ -257,6 +257,7 @@ TESTSRC     += autoreconfigure-bad.bash
 TESTSRC     += autoreconfigure-subproject.bash
 TESTSRC     += autoreconfigure-configfile.bash
 TESTSRC     += autoreconfigure-pdeps-rebuilt.bash
+TESTSRC     += config-deps.bash
 TESTSRC     += builtin-rules.bash
 
 # The half of pconfigure that a build can run on its own, one source
