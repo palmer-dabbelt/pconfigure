@@ -174,6 +174,13 @@ private:
     /* The Configfiles a CONFIG command asked for, which are handed
      * back the same way and for the same reason. */
     std::vector<std::string> _pending_configs;
+    /* CONFIG_DEPS names a path rather than a Configfile, so there is
+     * nothing to read -- but it is resolved against the source path of
+     * the project whose line it was, exactly as a CONFIG is, and that
+     * is knowledge project::process_line has and this does not.  So it
+     * queues here and is registered there, which is also what makes
+     * the two commands agree about what a relative path means. */
+    std::vector<std::string> _pending_config_deps;
 
 public:
     /* Creates a new, mostly empty command processor (there is a
@@ -230,6 +237,7 @@ public:
     /* Hands back the suffix of a Configfile that a CONFIG command
      * asked for, or an empty string once there aren't any left. */
     std::string take_pending_config(void);
+    std::string take_pending_config_dep(void);
 
 public:
     /* Processes a single command, performing the action that should

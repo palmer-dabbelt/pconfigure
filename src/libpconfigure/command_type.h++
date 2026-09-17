@@ -39,6 +39,7 @@ enum class command_type {
     COMPILEOPTS,
     COMPILER,
     CONFIG,
+    CONFIG_DEPS,
     CONFIGUREOPTS,
     CROSS_COMPILE,
     DEFAULT_TEST_SUITE,
@@ -91,6 +92,7 @@ static const std::vector<command_type> all_command_types =
     command_type::COMPILEOPTS,
     command_type::COMPILER,
     command_type::CONFIG,
+    command_type::CONFIG_DEPS,
     command_type::CONFIGUREOPTS,
     command_type::CROSS_COMPILE,
     command_type::DEFAULT_TEST_SUITE,
@@ -153,6 +155,8 @@ namespace std {
             return "COMPILER";
         case command_type::CONFIG:
             return "CONFIG";
+        case command_type::CONFIG_DEPS:
+            return "CONFIG_DEPS";
         case command_type::CONFIGUREOPTS:
             return "CONFIGUREOPTS";
         case command_type::CROSS_COMPILE:

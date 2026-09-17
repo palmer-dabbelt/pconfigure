@@ -87,6 +87,22 @@ void project::process_line(const ptr& self,
             process_line(self, included, seen);
     }
 
+    /* A CONFIG_DEPS is registered the same way and in the same place,
+     * so that "test/glade-vm" means the same directory whichever of
+     * the two commands wrote it: relative to the project whose
+     * Configfile the line was in, not to wherever pconfigure was
+     * started.  Drained after the CONFIGs above so that a family's own
+     * executable Configfile can print its CONFIG_DEPS line itself --
+     * which is the form that keeps the dependency next to the glob it
+     * describes, rather than in the file that merely asked for it. */
+    while (true) {
+        auto dep = processor->take_pending_config_dep();
+        if (dep.size() == 0)
+            break;
+
+        add_configfile_dep(processor->srcpath() + "/" + dep);
+    }
+
     /* A subproject is read before the next line, so that the rest of
      * this Configfile can ask about what it builds. */
     while (true) {
@@ -125,6 +141,22 @@ project::ptr project::read(const command_processor::ptr& processor,
                                             "Configfile",
                                             suffix))
             process_line(out, line, seen);
+    }
+
+    /* A CONFIG_DEPS is registered the same way and in the same place,
+     * so that "test/glade-vm" means the same directory whichever of
+     * the two commands wrote it: relative to the project whose
+     * Configfile the line was in, not to wherever pconfigure was
+     * started.  Drained after the CONFIGs above so that a family's own
+     * executable Configfile can print its CONFIG_DEPS line itself --
+     * which is the form that keeps the dependency next to the glob it
+     * describes, rather than in the file that merely asked for it. */
+    while (true) {
+        auto dep = processor->take_pending_config_dep();
+        if (dep.size() == 0)
+            break;
+
+        add_configfile_dep(processor->srcpath() + "/" + dep);
     }
 
     for (const auto& filename: std::vector<std::string>{

@@ -55,6 +55,18 @@ const std::vector<std::string>& configfiles_read(void)
     return configfiles;
 }
 
+void add_configfile_dep(const std::string& path)
+{
+    /* The same de-duplication lines_from_file does, and for the same
+     * reason: two families of tests in one directory would otherwise
+     * name it twice, and a prerequisite list is a set. */
+    auto normalized = file_utils::normalize_path(path);
+    for (const auto& already: configfiles)
+        if (already == normalized)
+            return;
+    configfiles.push_back(normalized);
+}
+
 void add_pkgconfig_path(const std::string& dir)
 {
     for (const auto& existing: pkgconfig_path)
