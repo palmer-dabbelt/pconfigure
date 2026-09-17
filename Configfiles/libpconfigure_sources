@@ -1,6 +1,23 @@
 #!/bin/bash
 
 cd src
+
+# Every directory the find below walks.  This script is written out of
+# those directories as much as out of any file: it prints a line per
+# source it finds there, so a source that APPEARS is a configuration
+# that has changed, and nothing in a directory is a Configfile for the
+# reconfigure rule to have noticed on its own.  Without these the
+# build went on using a Makefile written before the new file existed,
+# silently, until somebody ran pconfigure for an unrelated reason.
+#
+# One per directory because the find is recursive: a directory's mtime
+# moves when an entry is added or removed directly inside it, and says
+# nothing about its children.
+find libpconfigure -type d | while read d
+do
+    echo "CONFIG_DEPS += src/$d"
+done
+
 find libpconfigure -iname "*.c++" | while read f
 do
     echo "SOURCES += $f"
