@@ -1249,11 +1249,12 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
      * prerequisites of a file make has no rule for.
      *
      * What this does not promise: a Configfile that is a program is
-     * on its own for whatever it reads, a Configfile that is deleted
-     * is not noticed -- the $(wildcard) that keeps a missing one from
-     * stopping the build is the same thing that keeps its going away
-     * quiet -- and a target that stopped being asked for keeps
-     * whatever it last built. */
+     * on its own for whatever it reads unless it says otherwise with
+     * a CONFIG_DEPS, a Configfile that is deleted is not noticed --
+     * the $(wildcard) that keeps a missing one from stopping the
+     * build is the same thing that keeps its going away quiet -- and
+     * a target that stopped being asked for keeps whatever it last
+     * built. */
     if (_base.size() == 0 && _processor->autoreconfigure() == true)
         out->reconfigure_on(configfiles_read());
 
