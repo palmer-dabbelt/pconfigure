@@ -1589,6 +1589,13 @@ sources there are is the input nothing was watching.  It covers every
 itself, so its \texttt{Configfile} changing re-runs the \pconfigure\
 at the top of the tree.
 
+What it does not cover is an input that is not a \texttt{Configfile}.
+An executable \texttt{CONFIG} that enumerates a directory is written
+out of that directory as much as out of any file, and a file appearing
+in it changes nothing this rule is watching.  \texttt{CONFIG\_DEPS}
+(Section~\ref{cmd:config_deps}) is how such a \texttt{Configfile} says
+so.
+
 Without \texttt{AUTORECONFIGURE} nothing of the sort happens, and that
 is deliberate rather than an omission: the header graph is frozen at
 configure time too, so a \texttt{Makefile} that rewrote itself would
@@ -1904,6 +1911,55 @@ parsing the current file at the next line.  This is effectively C's
 \texttt{\#include} but for \pconfigure.
 
 When \texttt{Configfiles/\$file} does not exist, a fatal error occurs.
+
+\subsection{\texttt{CONFIG\_DEPS += \$path} \label{cmd:config_deps}}
+
+Names something the configuration reads that is not itself a
+\texttt{Configfile}, so that changing it re-runs \pconfigure\ under
+\texttt{AUTORECONFIGURE} (Section~\ref{cmd:autoreconfigure}).
+
+The case it exists for is an executable \texttt{CONFIG}
+(Section~\ref{cmd:config}) that enumerates a directory --- one that
+globs a directory of tests and prints a \texttt{TESTSRC} line for each
+file it finds.  \pconfigure\ watches every \texttt{Configfile} a run
+looked for lines in, and the directory is not one of them: nothing in
+it is a \texttt{Configfile}, so nothing opens it, so it never reaches
+that list.  Adding a file to it therefore changes nothing the build is
+watching, and the build goes on using a \texttt{Makefile} written
+before the file existed.
+
+A directory is the useful thing to name, because a directory's
+modification time moves when an entry is added or removed and for
+nothing else, which is exactly the event an enumeration cares about.  A
+file may be named too, though it is less interesting: a file can
+already say that it changed, while nothing but a directory can say
+that something appeared next to it.
+
+The path is relative to the project whose \texttt{Configfile} the line
+was in, the same as a \texttt{CONFIG}, and it goes through the same
+\texttt{\$(wildcard)} as every other name in that rule --- so naming
+something that does not exist yet is allowed rather than fatal, and it
+is noticed the day it appears.  It is not read: everything else in that
+list got there by being opened for lines, and a directory has none.
+
+Both of these mean the same thing, and are the same line by the time
+\pconfigure\ parses them:
+\begin{verbatim}
+CONFIG      += tests
+CONFIG_DEPS += test/suite
+\end{verbatim}
+and, inside the executable \texttt{Configfiles/tests} itself,
+\begin{verbatim}
+echo "CONFIG_DEPS += test/suite"
+\end{verbatim}
+The second is worth preferring: it keeps the dependency next to the
+glob it describes, where whoever changes one is already looking at the
+other.
+
+Without \texttt{AUTORECONFIGURE} the line still adds the prerequisite,
+and a project that keeps its own committed \texttt{Makefile} beside the
+generated one supplies the recipe there
+(Section~\ref{cmd:autoreconfigure}).
 
 \subsection{\texttt{TESTSRC += \$name} \label{cmd:testsrc}}
 
