@@ -156,6 +156,7 @@ TESTSRC     += bash-binary-test.bash
 TESTSRC     += c-cxx.bash
 TESTSRC     += c-ifndef.bash
 TESTSRC     += syshdr.bash
+TESTSRC     += has-attribute.bash
 TESTSRC     += autodeps.bash
 TESTSRC     += autodeps-headers.bash
 TESTSRC     += autodeps-bash.bash
