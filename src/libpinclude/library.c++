@@ -19,6 +19,7 @@
  */
 
 #include <pinclude.h++>
+#include <cctype>
 #include <fstream>
 #include <stack>
 #include <iostream>
@@ -815,6 +816,39 @@ static bool resolve_pp_function(
     {
         if (begin[0] == "(" && end[-1] == ")")
             return resolve_pp_function(begin + 1, end - 1, defines);
+    }
+
+    /* Something of the shape "NAME ( ... )" that nothing above knew what to
+     * do with: a function-like macro, or one of the compiler's feature-test
+     * builtins -- __has_attribute, __has_builtin and the rest of that family.
+     *
+     * Neither can be answered from here.  A builtin asks what the compiler
+     * about to build this source can do, and the thing reading the file is not
+     * that compiler.  A macro could in principle be expanded, but what is
+     * tracked here is which names are defined rather than what they are
+     * defined as, so there is nothing to expand it with.
+     *
+     * So they get the answer __GNUC_PREREQ and __GLIBC_USE above already get,
+     * for the same reason and at about the same cost: a branch guessed the
+     * wrong way, which almost always holds a macro definition rather than an
+     * #include and so holds nothing this is looking for.  __has_include is the
+     * one that can really cost something, since that one does guard an
+     * #include -- a conditional include of a header that is really there goes
+     * unrecorded, and the dependency on it is missed.
+     *
+     * What this replaces is worse than any of that.  Falling off the end here
+     * aborts, so a source reaching libc++ or LLVM's headers -- both of which
+     * are full of these -- was a source pconfigure could not read at all, and
+     * said so in four lines that named neither the file nor anything to do
+     * about it. */
+    if ((end - begin) >= 3 && begin[1] == "(" && end[-1] == ")") {
+        const auto& name = *begin;
+        auto identifier =
+            !name.empty()
+            && (isalpha((unsigned char)name[0]) || name[0] == '_');
+
+        if (identifier)
+            return false;
     }
 
     std::cerr << "Unable to parse function:\n";
