@@ -31,11 +31,60 @@ language_h* language_h::clone(void) const
                              this->list_link_opts());
 }
 
+/* TRUE when a path's last component has no extension on it at all. */
+static bool extensionless(const std::string& path)
+{
+    auto slash = path.find_last_of('/');
+    auto base = (slash == std::string::npos) ? path : path.substr(slash + 1);
+
+    return base.empty() == false && base.find('.') == std::string::npos;
+}
+
 bool language_h::can_process(const context::ptr& ctx) const
 {
     /* The headers phc knows what to do with are C and C++ headers, so
      * which names those go by is the C++ language's to say. */
-    return language::all_sources_match(ctx, cxx_header_extensions());
+    if (language::all_sources_match(ctx, cxx_header_extensions()))
+        return true;
+
+    /* Except for the ones with no extension at all, which is how the C++
+     * standard library spells every header it has: <queue>, <vector>,
+     * <cstdint>.  A project shipping a header of its own that stands in for
+     * one of those has to install it under exactly the name the #include
+     * uses, so there is nowhere for an extension to go -- and without this
+     * the only spelling left is a HEADERS with no SOURCES under it, which is
+     * a different thing that reads the file out of the include directory and
+     * cleans it up again afterwards.
+     *
+     * Only under a HEADERS, and only for a target that says what it is built
+     * out of.  A name with no extension is not otherwise evidence of
+     * anything, and a language that claimed one on that basis would be
+     * claiming every file nobody else wanted. */
+    if (ctx->type != context_type::HEADER)
+        return false;
+
+    if (ctx->children.size() == 0)
+        return false;
+
+    for (const auto& child: ctx->children) {
+        switch (child->type) {
+        case context_type::DEFAULT:
+        case context_type::GENERATE:
+        case context_type::LIBRARY:
+        case context_type::BINARY:
+        case context_type::TEST:
+        case context_type::PHONY:
+            break;
+
+        case context_type::HEADER:
+        case context_type::SOURCE:
+            if (extensionless(child->cmd->data()) == false)
+                return false;
+            break;
+        }
+    }
+
+    return true;
 }
 
 std::vector<makefile::target::ptr>
