@@ -45,7 +45,41 @@ namespace makefile {
      * Makefile that says that is a Makefile that only works from the
      * top: from inside "a" there is no "b" to find.  So every project
      * gets a variable of its own, and each of them is named through
-     * whichever one it belongs to. */
+     * whichever one it belongs to.
+     *
+     * This is also the reason a project whose directory has an
+     * apostrophe in its name does not build, which has been reported
+     * enough times to be worth settling here rather than rediscovering
+     * again.  The symptom is that pconfigure runs without a word and
+     * then the first recipe naming that directory dies with "unexpected
+     * EOF while looking for matching `''" -- because the path reaches
+     * the shell as a bare word, and an apostrophe is not a character
+     * the shell lets a word have.  A "SOURCES += it's.c++" with no
+     * subproject involved fails the same way, so it is the character
+     * rather than any one command.
+     *
+     * Quoting the recipes is not the fix, and the obstacle is not this
+     * rewrite: separates_words() reads a quote as the end of a word, so
+     * a path inside single quotes is still found and still rewritten --
+     * which is exactly what buildroot's quoted "BR2_EXTERNAL=$(abspath
+     * $(pconfigure_subdir_sub)ext/)" depends on.  The obstacle is one
+     * step later.  A subproject's paths reach a recipe as an expansion
+     * of the variable above, so quoting the reference quotes nothing
+     * that is inside it: '$(pconfigure_subdir_it_s)src/x.c++' expands
+     * to 'it's/src/x.c++', the same unbalanced quote arriving later.
+     * Nor can the variable hold a shell-escaped path, because the same
+     * variable names make prerequisites, and a prerequisite is a word
+     * of make rather than a word of shell.
+     *
+     * The fix is therefore two spellings of every project's directory,
+     * one for make and one for the shell, carried through every recipe
+     * every language and every build system writes and through
+     * rewrite() below, which would have to know which of the two it was
+     * substituting into.  That is deliberately not done: it is a great
+     * deal of change for a character nobody needs, and half of it buys
+     * nothing, since one unquoted recipe fails the build just as
+     * completely as all of them.  It is written up for whoever hits it
+     * in doc/pconfigure.tex, under "Odd Behavior". */
     class path_prefix {
     private:
         /* The directory, ending in a '/', or empty for a project

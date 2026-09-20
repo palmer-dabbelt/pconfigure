@@ -137,3 +137,32 @@ std::string string_utils::hash(const std::vector<std::string>& in)
 
     return std::to_string(hash);
 }
+
+std::string string_utils::quoted(const std::string& in)
+{
+    auto out = std::string("'");
+    for (const auto& c: in) {
+        if (c == '\'')
+            out += "'\\''";
+        else
+            out += c;
+    }
+    return out + "'";
+}
+
+std::string string_utils::unexpanded(const std::string& in)
+{
+    auto out = std::string();
+    for (const auto& c: in) {
+        if (c == '$')
+            out += "$$";
+        else
+            out += c;
+    }
+    return out;
+}
+
+std::string string_utils::echoed(const std::string& in)
+{
+    return quoted(unexpanded(in));
+}

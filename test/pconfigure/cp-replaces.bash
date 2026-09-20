@@ -59,11 +59,23 @@ cat Makefile
 # emitters are separate copies of the same handful of lines, and a fix
 # in one of them looks entirely correct until somebody builds
 # something the other one handles.
-if grep -E "^	@?cp " Makefile | grep -qv '\$@\.tmp$'
-then
-    grep -E "^	@?cp " Makefile
-    exit 1
-fi
+#
+# Said by taking the good lines out and looking at what is left over,
+# rather than by asking a grep for the lines that are not good: "grep
+# -q -v" does not mean the same thing to every grep that turns up as
+# /usr/bin/grep, and one of the ones it does not mean is "there was a
+# line that did not match".  Where it doesn't, the "if" below can
+# never be taken and the assertion agrees with itself no matter what
+# is in the Makefile -- which is worse than having written no
+# assertion at all, because a missing one gets noticed.  The
+# left-over lines are also what anybody would want to read when this
+# does fail.
+grep -E "^	@?cp " Makefile > copies
+cat copies
+test -s copies
+sed '/\$@\.tmp$/d' copies > copies.not-atomic
+cat copies.not-atomic
+test ! -s copies.not-atomic
 grep -q "^	@mv -f \$@.tmp \$@$" Makefile
 
 ##############################################################################

@@ -110,13 +110,19 @@ test "$(grep -c -- '$(MAKE) --no-print-directory -C sub ' Makefile)" = "2"
 
 # What an output's rule does is check that the tree really produced it
 # and settle its timestamp against the stamp.  Nothing else.
+#
+# The path is quoted where the recipe runs it, which is why the touch
+# is asserted with the quotes on: the recipe is a line of shell, and
+# the one thing a SUBPROJECT_TARGETS is guaranteed to be is text
+# somebody wrote.  What that buys is further down, where a path with a
+# quote in it is named on purpose.
 grep -A3 "^obj/sub/build/rootfs.cpio.gz: " Makefile > rule.out
 cat rule.out
 if grep -q "MAKE" rule.out
 then
     exit 1
 fi
-grep -q "touch obj/sub/build/rootfs.cpio.gz" rule.out
+grep -q "touch 'obj/sub/build/rootfs.cpio.gz'" rule.out
 
 # The options this run gave are written down for make to compare
 # against, and a MAKEOPS is part of that: changing one changes how the
@@ -196,6 +202,96 @@ fi
 cat wrong.out
 grep -q "'never-built' is not in 'obj/sub/build'" wrong.out
 grep -q "SUBPROJECT_TARGETS names a file the tree builds" wrong.out
+
+cd $top
+
+##############################################################################
+# And a name with a quote in it, which is the same complaint said about a
+# harder file.  A SUBPROJECT_TARGETS is text somebody wrote, and the
+# recipe that checks for the file is a line of shell: an apostrophe in
+# a name -- which is a thing filenames have -- opens a quoted string in
+# the "test" that decides whether to complain at all, and a double
+# quote closes the one the complaint used to be written with.  Either
+# way what a build printed was the shell giving up on a line whose
+# entire job was to say which file the tree didn't build.
+#
+# Both characters are here because they break different halves.  The
+# apostrophe is the one the old spelling survived in the message and
+# died on in the "test"; the double quote is the one it survived in
+# the "test" and died on in the message.  A fix to one of the two
+# halves passes a test that names only the other.
+mkdir -p $top/quoted/sub/configs
+cd $top/quoted
+
+cat >Configfile <<EOF
+BUILD_SYSTEMS      += kconfig
+
+SUBPROJECTS        += sub
+CONFIGUREOPTS      += --defconfig tiny_defconfig
+SUBPROJECT_TARGETS += it's.txt
+SUBPROJECT_TARGETS += say"what
+EOF
+
+cat >sub/Kconfig <<EOF
+config BASE
+	bool "base"
+	default y
+EOF
+
+cat >sub/configs/tiny_defconfig <<EOF
+CONFIG_BASE=y
+EOF
+
+# The tree builds one of the two, so that both arms are taken: the
+# file that is there has to survive the recipe that checks for it, and
+# the file that isn't has to be complained about by name.
+cat >sub/Makefile <<'EOF'
+O ?= $(CURDIR)/build
+
+all: $(O)/.config
+	@mkdir -p $(O)
+	@echo built > "$(O)/it's.txt"
+
+tiny_defconfig:
+	@mkdir -p $(O)
+	@cp $(CURDIR)/configs/tiny_defconfig $(O)/.config
+EOF
+
+$PTEST_BINARY $PCONFIGURE_ARGS
+cat Makefile
+
+if make $MAKE_ARGS > quoted.out 2>&1
+then
+    exit 1
+fi
+cat quoted.out
+
+# The complaint is the complaint, naming the file the tree didn't
+# build, rather than the shell reporting that it could not read the
+# line the complaint was on.
+grep -q "'say\"what' is not in 'obj/sub/build'" quoted.out
+grep -q "SUBPROJECT_TARGETS names a file the tree builds" quoted.out
+
+# Said here as well as above because the two are what tell a fix from
+# a coincidence: a recipe the shell gave up on stops the build too, so
+# "make failed" on its own says nothing at all.
+if grep -qi "unexpected EOF" quoted.out
+then
+    exit 1
+fi
+if grep -qi "syntax error" quoted.out
+then
+    exit 1
+fi
+
+# And the file that was built came through its own rule intact, which
+# is the other arm: an apostrophe in the name breaks the "test" that
+# looks for it before it ever reaches a message.
+if grep -q "it's.txt' is not in" quoted.out
+then
+    exit 1
+fi
+test -f "obj/sub/build/it's.txt"
 
 cd $top
 
@@ -337,5 +433,92 @@ rm -f Configfile.bak
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 test "$(cat obj/sub/build/arch/made-up/boot/Image)" = "another image"
+
+cd $top
+
+##############################################################################
+# A tree vendored by a subproject, built from both ends                      #
+##############################################################################
+# A subproject's Makefile is written to be included by its parent's and
+# to work on its own, so every path in it is spelled through a variable
+# that is the subproject's directory from above and nothing from
+# inside.  The rule an output gets is a line of shell with the path in
+# it three times over -- the test that looks for the file, the message
+# that names it, and the touch that settles its timestamp -- and all
+# three of them are quoted, which is the shape that could have stopped
+# the rewriting from finding them.  It doesn't: a quote is one of the
+# characters a path is allowed to start after.
+#
+# Nothing else here says that.  Every other project in this file is one
+# project deep, where the variable is empty and a rule that leaned on
+# it and a rule that ignored it are the same rule.
+mkdir -p $top/nested/child/vend/configs
+cd $top/nested
+
+cat >Configfile <<EOF
+SUBPROJECTS += child
+EOF
+
+cat >child/Configfile <<EOF
+BUILD_SYSTEMS      += kconfig
+
+SUBPROJECTS        += vend
+CONFIGUREOPTS      += --defconfig tiny_defconfig
+SUBPROJECT_TARGETS += made
+EOF
+
+cat >child/vend/Kconfig <<EOF
+config BASE
+	bool "base"
+	default y
+EOF
+
+cat >child/vend/configs/tiny_defconfig <<EOF
+CONFIG_BASE=y
+EOF
+
+cat >child/vend/Makefile <<'EOF'
+O ?= $(CURDIR)/build
+
+all: $(O)/.config
+	@mkdir -p $(O)
+	@echo made > $(O)/made
+
+tiny_defconfig:
+	@mkdir -p $(O)
+	@cp $(CURDIR)/configs/tiny_defconfig $(O)/.config
+EOF
+
+$PTEST_BINARY $PCONFIGURE_ARGS
+cat Makefile child/obj/Makefile.child
+
+# The subproject really is included rather than recursed into, which is
+# what puts the variable in front of every path in the rule below --
+# without it there would be nothing here to get wrong.
+grep -q "^include \$(pconfigure_subdir_child)obj/Makefile.child\$" Makefile
+
+# And it is in front of the paths in the recipe, quotes and all.
+grep -A3 "obj/vend/build/made: " child/obj/Makefile.child > nested-rule.out
+cat nested-rule.out
+grep -q "test -e '\$(pconfigure_subdir_child)obj/vend/build/made'" nested-rule.out
+grep -q "touch '\$(pconfigure_subdir_child)obj/vend/build/made'" nested-rule.out
+
+# Built from the top, which is the spelling the parent's Makefile is
+# for.
+make $MAKE_ARGS > nested.out
+cat nested.out
+test "$(cat child/obj/vend/build/made)" = "made"
+
+# And from inside the subproject, which is the other half of what that
+# Makefile promises: the variable defaults to nothing down here, so a
+# recipe that leaned on it says something else.  The file is taken away
+# first, because a rule that named the wrong path would otherwise be
+# satisfied by the build above having already made the right one.
+rm -rf child/obj/vend/build
+(cd child && make $MAKE_ARGS -f obj/Makefile.child) > nested-inside.out 2>&1
+cat nested-inside.out
+test "$(cat child/obj/vend/build/made)" = "made"
+
+cd $top
 
 exit 0

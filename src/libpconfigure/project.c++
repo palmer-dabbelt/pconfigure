@@ -22,6 +22,7 @@
 #include "commands.h++"
 #include "file_utils.h++"
 #include "pick_language.h++"
+#include "string_utils.h++"
 #include <sys/stat.h>
 #include <cctype>
 #include <cerrno>
@@ -993,10 +994,68 @@ makefile::target::ptr project::cache_clean_target(const std::vector<ptr>& projec
          * its output directory is between it and its own build
          * system: the Makefile says nothing about any of it, so
          * reading the Makefile back would decide the whole thing was
-         * stale and throw away a build that's perfectly good. */
+         * stale and throw away a build that's perfectly good.
+         *
+         * And what such a tree installs, which is the same problem
+         * one directory away: an install prefix holds a bin, a lib
+         * and an include tree that no rule in the Makefile names --
+         * only the files a SUBPROJECT_TARGETS named outright get
+         * rules -- so reading the Makefile back would delete all of
+         * it and leave the build stamp saying the tree is installed.
+         * Nothing later puts any of it back, and the first thing to
+         * fail is a compile against a header that was there
+         * yesterday.  See build_system::install_dir(), which is also
+         * where the reason distclean has nothing to say about a
+         * prefix is written down.
+         *
+         * The trees asked are this project's own, and that is enough
+         * because a prefix is a directory inside the object directory
+         * of the project that vendored the tree: a tree some other
+         * project vendored installs into that project's object
+         * directory, which is not one of the directories being walked
+         * here. */
+        auto spared = std::vector<std::string>();
         auto prune = std::string();
-        for (const auto& vendored: project->_processor->vendored())
-            prune += " -not -path '" + vendored->output_dir() + "/*'";
+        auto spare = [&](const std::string& dir) {
+            if (dir.size() == 0)
+                return;
+
+            /* Once each, and not at all for a directory already
+             * inside one that is being spared.  Both of those come up
+             * in the ordinary case rather than in a corner: a default
+             * prefix sits inside its own tree's output directory, and
+             * several trees sharing one --prefix name one directory
+             * between them.  Saying either again would only make a
+             * command that is already long enough to be unreadable
+             * longer. */
+            for (const auto& already: spared)
+                if (file_utils::inside(dir, already) == true)
+                    return;
+
+            spared.push_back(dir);
+
+            /* Quoted rather than wrapped in a pair of apostrophes
+             * written out here, because this is the one path in this
+             * command a Configfile author writes by hand: everything
+             * else pruned below is a name pconfigure made up.  An
+             * install prefix with an apostrophe in it ends the
+             * quoting a hand-written pair would have opened and hands
+             * the rest of the line to the shell, so "make
+             * cache-clean" stops with "unexpected EOF while looking
+             * for matching" from a command whose entire job was to
+             * leave that directory alone.
+             *
+             * The '*' goes inside the quotes with the directory, the
+             * way it already did: it is find's glob rather than the
+             * shell's, and a shell that expanded it would hand find
+             * whatever happened to be in there today. */
+            prune += " -not -path " + string_utils::quoted(dir + "/*");
+        };
+
+        for (const auto& vendored: project->_processor->vendored()) {
+            spare(vendored->output_dir());
+            spare(vendored->install_dir());
+        }
 
         /* pconfigure wrote this one, and the Makefile says nothing
          * about it: reading the Makefile back would decide it was
@@ -1101,7 +1160,16 @@ makefile::target::ptr project::distclean_target(const std::vector<ptr>& projects
         /* A vendored tree builds into this project's object
          * directory, so it's already covered by whatever covers that
          * -- but a project that vendors something and builds nothing
-         * of its own has no contexts to find it through. */
+         * of its own has no contexts to find it through.
+         *
+         * What it installed is covered too, and deliberately without
+         * being named: an install prefix is a directory inside the
+         * object directory of the project that vendored the tree, so
+         * removing the object directory removes it.  Naming it here
+         * instead would mean writing a path out of a Configfile into
+         * an "rm -rf", which is a thing to be very sure about and
+         * something this does not have to be sure about at all.  See
+         * build_system::install_dir(). */
         for (const auto& vendored: project->_processor->vendored())
             dirs[vendored->ctx()->obj_dir] = true;
 
@@ -1114,11 +1182,31 @@ makefile::target::ptr project::distclean_target(const std::vector<ptr>& projects
         makefiles.push_back(project->makefile_path());
     }
 
+    /* Every one of these is quoted, and none of them is a path a
+     * Configfile author wrote by hand in the sense an install prefix
+     * is: they are output directories, which is to say a name
+     * pconfigure made up or a name a LIBDIR or a SUBPROJECTS handed
+     * it -- the only two commands in this pconfigure that move one.
+     * That second half is the half that wants this.  A "LIBDIR = my
+     * dir" reaches here as an "rm -rf my dir", which is two
+     * directories rather than one and neither of them the one that
+     * was meant; a SUBPROJECTS whose directory has an apostrophe in
+     * it reaches here as a line the shell gives up on before running
+     * any of it, so "make distclean" stops partway through with a
+     * syntax error.
+     *
+     * Quoting is the whole of what this does about them.  Whether
+     * either one may name the directory it names at all is settled
+     * where the line was read, in command_processor::process_one():
+     * a LIBDIR and a SUBPROJECTS that leave the project are refused
+     * there, so by the time a path arrives at this "rm -rf" the only
+     * thing left to get wrong about it is how many words of shell it
+     * is. */
     auto commands = std::vector<std::string>();
     for (const auto& pair: dirs)
-        commands.push_back("rm -rf " + pair.first);
+        commands.push_back("rm -rf " + string_utils::quoted(pair.first));
     for (const auto& path: makefiles)
-        commands.push_back("rm -rf " + path);
+        commands.push_back("rm -rf " + string_utils::quoted(path));
 
     return std::make_shared<makefile::target>(
         "distclean",

@@ -53,6 +53,12 @@ bool language_bash::can_process(const context::ptr& ctx) const
     abort();
 }
 
+/* The paths in the recipes below are bare words, for the reason
+ * written out over language_cxx::compile_source(): a name holding a
+ * quote, a space or a shell metacharacter does not build anywhere in
+ * pconfigure, quoting these recipes would not change that, and the
+ * whole of it is on makefile::path_prefix and under "Odd Behavior" in
+ * doc/pconfigure.tex. */
 std::vector<makefile::target::ptr>
 language_bash::targets(const context::ptr& ctx) const
 {
