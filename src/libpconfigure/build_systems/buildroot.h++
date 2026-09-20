@@ -77,12 +77,32 @@ public:
     build_system* clone(void) const;
     bool can_build(const std::string& base) const;
 
+private:
+    /* The BR2_EXTERNAL trees, spelled relative to where pconfigure
+     * ran and checked the way every other path a Configfile writes is
+     * checked.  They're written relative to the project that pulled
+     * the vendored tree in, the same way a SUBPROJECTS is, since
+     * that's the project they belong to.
+     *
+     * Each one ends with a '/', which is what the two callers want:
+     * one sticks filenames on the end and the other hands the
+     * directory to buildroot. */
+    std::vector<std::string> based(void) const;
+
 protected:
     /* Virtual methods from build_system_kconfig. */
     bool handle_configureopt(const std::string& opt);
     std::string configureopt_help(void) const;
     kconfig_deps::roots dep_roots(void) const;
     std::string submake_flags(void) const;
+
+    /* kbuild's answers plus buildroot's own.  It took the shape of
+     * the command line from Linux and then gave every directory on it
+     * a name of its own, so this is the parent's list with those
+     * added rather than a list of its own -- which is what keeps a
+     * "DESTDIR=" refused by one of these from being waved through by
+     * the other. */
+    answers already_answered(void) const;
 
     /* Buildroot writes down what its configuration read, and nothing
      * at all about what its build read -- so there is nothing here to

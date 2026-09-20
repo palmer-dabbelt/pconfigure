@@ -17,6 +17,7 @@ CONFIGUREOPTS += --defconfig tiny_defconfig
 CONFIGUREOPTS += --configure BR2_PACKAGE_DROPBEAR=y
 CONFIGUREOPTS += --configure BR2_TARGET_GENERIC_HOSTNAME="my router"
 CONFIGUREOPTS += --external ext
+CONFIGUREOPTS += --env MY_FLAGS=-O2 -g
 
 LANGUAGES   += c
 BINARIES    += test
@@ -194,6 +195,19 @@ then
 fi
 grep -q "BUILDROOT" Makefile
 
+# And what it inherits, it really does inherit.  buildroot writes no
+# --env handling of its own -- it is a kconfig tree with different
+# files in it -- so the quoting that keeps the second word of a value
+# from being run as a command of its own is something it gets for
+# free.  "For free" is worth an assertion: the day somebody gives this
+# build system an environment of its own is the day the quoting stops
+# being inherited, and nothing else here would notice.
+grep -q "MY_FLAGS='-O2 -g'" Makefile
+if grep -q "MY_FLAGS=-O2 -g" Makefile
+then
+    exit 1
+fi
+
 # The whole configuration was chased, out of Config.in rather than out
 # of a Kconfig.
 grep -q "^obj/sub/build/.config:.* sub/Config.in" Makefile
@@ -323,5 +337,306 @@ test -f sub/Config.in
 test -f sub/package/dropbear/dropbear.mk
 test -f ext/package/mine/mine.mk
 grep -q "^O ?= " sub/Makefile
+
+##############################################################################
+# An --external names a directory inside the project that wrote it           #
+##############################################################################
+# A BR2_EXTERNAL tree is the vendoring project's own code, so it is
+# written relative to that project the same way a SUBPROJECTS is --
+# and it reaches the Makefile through that project's own prefix
+# variable, which is what makes one line name one directory whether
+# make runs at the top or inside the subproject.
+#
+# This asked nothing at all: it resolved the path against the project
+# and checked only that something was there.  So a subproject's
+# "--external ../ext" came out as "ext/" from a run at the top and as
+# "../ext/" from a run inside, with no variable in front of either --
+# one line, two spellings, and buildroot writes the list it was given
+# into its output directory and complains when a later make disagrees.
+merge_tree()
+{
+    mkdir -p "$1/package/thing" "$1/support/kconfig" "$1/utils"
+
+    cat >"$1/Config.in" <<'EOF'
+config BR2_BASE
+	bool "base"
+	default y
+EOF
+
+    cat >"$1/Makefile" <<'EOF'
+O ?= $(CURDIR)/output
+
+all:
+	@mkdir -p $(O)
+EOF
+
+    cat >"$1/package/Config.in" <<'EOF'
+source "package/thing/Config.in"
+EOF
+}
+
+mkdir -p outside/sub outside/ext/package/mine
+merge_tree outside/sub/br
+touch outside/ext/external.desc outside/ext/external.mk
+touch outside/ext/Config.in
+
+cat >outside/Configfile <<'EOF'
+SUBPROJECTS += sub
+EOF
+
+cat >outside/sub/Configfile <<'EOF'
+BUILD_SYSTEMS += buildroot
+
+SUBPROJECTS   += br
+CONFIGUREOPTS += --external ../ext
+EOF
+
+if (cd outside && $PTEST_BINARY $PCONFIGURE_ARGS) > outside.out 2>&1
+then
+    exit 1
+fi
+cat outside.out
+grep -qF "'--external ../ext' reaches outside the project that wrote it" \
+    outside.out
+grep -q "like '--external br2-external'" outside.out
+test ! -e outside/Makefile
+test ! -e outside/sub/obj/Makefile.sub
+
+# And from inside the subproject, which used to be the reading that
+# was accepted -- with a different answer than the one above, out of
+# the same line.
+mkdir -p outside/sub/ext/package/mine
+touch outside/sub/ext/external.desc outside/sub/ext/external.mk
+touch outside/sub/ext/Config.in
+
+if (cd outside/sub && $PTEST_BINARY $PCONFIGURE_ARGS) \
+    > outside-inside.out 2>&1
+then
+    exit 1
+fi
+cat outside-inside.out
+grep -qF "'--external ../ext' reaches outside the project that wrote it" \
+    outside-inside.out
+test ! -e outside/sub/Makefile
+
+# An absolute one is the other way of naming a directory no Makefile
+# here owns, and it used to be accepted outright: buildroot wants the
+# list absolutely, so the "$(abspath ...)" that gets written round it
+# hid the whole question.
+mkdir -p absolute/br2-external/package/mine
+merge_tree absolute/br
+touch absolute/br2-external/external.desc
+
+cat >absolute/Configfile <<EOF
+BUILD_SYSTEMS += buildroot
+
+SUBPROJECTS   += br
+CONFIGUREOPTS += --external $tempdir/absolute/br2-external
+EOF
+
+if (cd absolute && $PTEST_BINARY $PCONFIGURE_ARGS) > absolute.out 2>&1
+then
+    exit 1
+fi
+cat absolute.out
+grep -q "is an absolute path" absolute.out
+test ! -e absolute/Makefile
+
+# And the spelling that does work, which is what says the refusals
+# above are about where the directory is rather than about the option.
+mkdir -p inside/br2-external/package/mine
+merge_tree inside/br
+touch inside/br2-external/external.desc inside/br2-external/external.mk
+touch inside/br2-external/Config.in
+
+cat >inside/Configfile <<'EOF'
+BUILD_SYSTEMS += buildroot
+
+SUBPROJECTS   += br
+CONFIGUREOPTS += --external br2-external
+EOF
+
+(cd inside && $PTEST_BINARY $PCONFIGURE_ARGS)
+grep -q -- "BR2_EXTERNAL=\$(abspath br2-external/)" inside/Makefile
+
+# And the list arrives as one word, quoted whole the way every
+# variable a --make-var wrote is quoted by makeopt_flags().  It is one
+# variable on a make command line like those, so it wants the same
+# treatment: what is inside the quotes is still expanded, because make
+# reads the line before the shell ever sees it, and it is still
+# rewritten for a subproject, because path_prefix::rewrite() reads a
+# quote as the end of one word and the start of the next.
+grep -q -- "'BR2_EXTERNAL=\$(abspath br2-external/)'" inside/Makefile
+
+##############################################################################
+# A second answer to where buildroot builds, or to where it puts what        #
+# it built                                                                   #
+##############################################################################
+# buildroot inherits every one of these from kconfig, and then adds
+# the directories it gave names of its own: it took the shape of
+# kbuild's command line and then called the output directory
+# BASE_DIR, the filesystem it assembles TARGET_DIR, the images
+# BINARIES_DIR, and so on.  Every one of them is a plain '=' in
+# buildroot's own Makefile, so a variable of that name on the
+# sub-make's command line replaces it outright.
+#
+# Before this, neither build system overrode take_makeopt() or
+# already_answered(), so the "DESTDIR=" autotools, cmake and cargo
+# each refused was taken here without a word -- and a plain "make"
+# then staged an install wherever the line pointed.
+br_tree()
+{
+    mkdir -p "$1/package/thing" "$1/utils"
+
+    cat >"$1/Config.in" <<'EOF'
+config BR2_BASE
+	bool "base"
+	default y
+EOF
+
+    cat >"$1/Makefile" <<'EOF'
+O ?= $(CURDIR)/output
+
+all:
+	@mkdir -p $(O)
+
+defconfig:
+	@mkdir -p $(O)
+	@touch $(O)/.config
+EOF
+
+    cat >"$1/package/Config.in" <<'EOF'
+source "package/thing/Config.in"
+EOF
+}
+
+second_answer()
+{
+    dir="$1"
+
+    mkdir -p "$dir"
+    br_tree "$dir/br"
+
+    {
+        echo "BUILD_SYSTEMS += buildroot"
+        echo ""
+        echo "SUBPROJECTS   += br"
+        shift
+        for line in "$@"
+        do
+            echo "$line"
+        done
+    } > "$dir/Configfile"
+    cat "$dir/Configfile"
+
+    if (cd "$dir" && $PTEST_BINARY $PCONFIGURE_ARGS) > "$dir.out" 2>&1
+    then
+        exit 1
+    fi
+    cat "$dir.out"
+    test ! -e "$dir/Makefile"
+}
+
+# What it inherits.  A command-line variable reaches every package's
+# own make through MAKEFLAGS, so a DESTDIR at the top of buildroot is
+# a DESTDIR in front of every install it runs.
+second_answer sa-destdir "MAKEOPS += DESTDIR=$tempdir/elsewhere"
+grep -q "^buildroot: 'MAKEOPS DESTDIR=$tempdir/elsewhere' sets 'DESTDIR'" \
+    sa-destdir.out
+grep -q "says where an install target of this tree writes" sa-destdir.out
+
+second_answer sa-o "CONFIGUREOPTS += --make-var O=$tempdir/elsewhere"
+grep -q "^buildroot: '--make-var O=$tempdir/elsewhere' sets 'O'" sa-o.out
+
+# And what it adds.  TARGET_DIR is the filesystem buildroot assembles
+# -- which is what a project vendoring buildroot is after -- and it is
+# derived from the "O=" this build system wrote, so a second answer
+# leaves the images somewhere nothing here names.
+second_answer sa-target-dir \
+    "CONFIGUREOPTS += --make-var TARGET_DIR=$tempdir/elsewhere"
+grep -q "sets 'TARGET_DIR'" sa-target-dir.out
+grep -q "says where part of what buildroot builds is assembled" \
+    sa-target-dir.out
+
+second_answer sa-host-dir \
+    "CONFIGUREOPTS += --env HOST_DIR=$tempdir/elsewhere"
+grep -q "sets 'HOST_DIR'" sa-host-dir.out
+
+second_answer sa-staging-dir \
+    "MAKEOPS += STAGING_DIR=$tempdir/elsewhere"
+grep -q "sets 'STAGING_DIR'" sa-staging-dir.out
+
+second_answer sa-binaries-dir \
+    "CONFIGUREOPTS += --make-var BINARIES_DIR=$tempdir/elsewhere"
+grep -q "sets 'BINARIES_DIR'" sa-binaries-dir.out
+
+second_answer sa-base-dir \
+    "CONFIGUREOPTS += --make-var BASE_DIR=$tempdir/elsewhere"
+grep -q "sets 'BASE_DIR'" sa-base-dir.out
+grep -q "says where the tree builds" sa-base-dir.out
+
+second_answer sa-build-dir \
+    "CONFIGUREOPTS += --make-var BUILD_DIR=$tempdir/elsewhere"
+grep -q "sets 'BUILD_DIR'" sa-build-dir.out
+
+# PER_PACKAGE_DIR sits beside BUILD_DIR in already_answered() rather
+# than beside BR2_DL_DIR: it's buildroot's own per-package build
+# output, holding exactly what BUILD_DIR holds split one directory per
+# package, so a word that redirects it is the same hazard BUILD_DIR
+# already refuses one directory further down.
+second_answer sa-per-package-dir \
+    "CONFIGUREOPTS += --make-var PER_PACKAGE_DIR=$tempdir/elsewhere"
+grep -q "sets 'PER_PACKAGE_DIR'" sa-per-package-dir.out
+grep -q "says where the tree builds" sa-per-package-dir.out
+
+second_answer sa-per-package-dir-makeops \
+    "MAKEOPS += PER_PACKAGE_DIR=$tempdir/elsewhere"
+grep -q "sets 'PER_PACKAGE_DIR'" sa-per-package-dir-makeops.out
+
+second_answer sa-topdir "CONFIGUREOPTS += --make-var TOPDIR=$tempdir/elsewhere"
+grep -q "sets 'TOPDIR'" sa-topdir.out
+
+# And the list of external trees, which '--external' has already
+# written onto this same command line -- where a second one does not
+# quietly win but quietly loses: buildroot writes the list it was
+# first given into its output directory and stops a later make that
+# disagrees with it.
+mkdir -p sa-external/other/package/mine
+touch sa-external/other/external.desc sa-external/other/external.mk
+touch sa-external/other/Config.in
+second_answer sa-external "CONFIGUREOPTS += --make-var BR2_EXTERNAL=other"
+grep -q "sets 'BR2_EXTERNAL'" sa-external.out
+grep -q "'--external' has already written onto this command line" \
+    sa-external.out
+
+##############################################################################
+# One option is one target                                                   #
+##############################################################################
+# Inherited from kconfig along with everything else, and asserted here
+# for the reason the --env quoting above is: buildroot writes no
+# --target handling of its own, so the day it does is the day this
+# stops being true and nothing else would notice.
+mkdir -p inject
+br_tree inject/br
+cat >>inject/br/Makefile <<'EOF'
+
+.DEFAULT:
+	@mkdir -p $(O)
+EOF
+
+cat >inject/Configfile <<EOF
+BUILD_SYSTEMS += buildroot
+
+SUBPROJECTS   += br
+CONFIGUREOPTS += --target all; touch $tempdir/PWNED-BUILDROOT
+EOF
+
+(cd inject && $PTEST_BINARY $PCONFIGURE_ARGS)
+cat inject/Makefile
+grep -qF "'all; touch $tempdir/PWNED-BUILDROOT'" inject/Makefile
+
+rm -f $tempdir/PWNED-BUILDROOT
+(cd inject && make $MAKE_ARGS)
+test ! -e $tempdir/PWNED-BUILDROOT
 
 exit 0

@@ -423,4 +423,228 @@ grep -q '^O ?= ' router/Makefile
 test ! -e sub/build
 test ! -e router/output
 
+##############################################################################
+# A CROSS_COMPILE the shell would take apart                                 #
+##############################################################################
+# A CROSS_COMPILE is a prefix stuck on the front of a program name, so
+# it is a path as often as it is a word: a toolchain lives wherever
+# whoever unpacked it put it, and a directory with a space in its name
+# is a thing that happens rather than a thing to be clever about.  It
+# reaches a kbuild tree as a variable on its sub-make's command line,
+# which is the one place the space matters -- unquoted, make is handed
+# a CROSS_COMPILE worth the first word and a second word it reads as a
+# target it was asked to build.
+#
+# Which is the same failure every --make-var beside it was quoted to
+# avoid, and this is the line that used to be written the other way.
+# Nothing above says anything about it: the CROSS_COMPILE the section
+# further up uses is "faketc-", and a value with no space in it is
+# spelled identically whether it was quoted or not.
+mkdir -p $tempdir/spaced/tree/configs
+
+cat >$tempdir/spaced/tree/Kconfig <<'EOF'
+config BASE
+	bool "base"
+	default y
+EOF
+
+cat >$tempdir/spaced/tree/configs/tiny_defconfig <<'EOF'
+CONFIG_BASE=y
+EOF
+
+# The tree writes back what it was handed, which is the only way to
+# tell a CROSS_COMPILE that arrived whole from one that arrived as its
+# first word -- and "$(MAKECMDGOALS)" is what says whether the rest of
+# it turned into a goal.  The recipe that builds a kbuild tree names
+# no target at all, on purpose: the tree's own first rule is what a
+# build means, and a sub-make that was asked for a goal was asked by
+# something that wasn't this Makefile.
+cat >$tempdir/spaced/tree/Makefile <<'EOF'
+O ?= $(CURDIR)/build
+
+all: $(O)/.config
+	@mkdir -p $(O)
+	@cp $(O)/.config $(O)/built.txt
+	@echo "CROSS_COMPILE=$(CROSS_COMPILE)" >> $(O)/built.txt
+	@echo "GOALS=$(MAKECMDGOALS)" >> $(O)/built.txt
+
+tiny_defconfig:
+	@mkdir -p $(O)
+	@cp $(CURDIR)/configs/tiny_defconfig $(O)/.config
+EOF
+
+cat >$tempdir/spaced/Configfile <<'EOF'
+BUILD_SYSTEMS += kconfig
+
+CROSS_COMPILE  = /opt/fake tools/bin/faketc-
+
+SUBPROJECTS   += tree
+CONFIGUREOPTS += --defconfig tiny_defconfig
+EOF
+
+cd $tempdir/spaced
+$PTEST_BINARY $PCONFIGURE_ARGS
+cat Makefile
+
+# In the recipe first, because the two halves say different things:
+# this is that the quoting was written, and the build below is that a
+# shell then read it the way it was meant.  Quoted whole, name and
+# all, which is what a variable on a make command line is -- an
+# assignment in front of a command is the other shape and the other
+# quoting, and this is not one.
+grep -q "'CROSS_COMPILE=/opt/fake tools/bin/faketc-'" Makefile
+
+make $MAKE_ARGS > spaced.out
+cat spaced.out
+
+# What the tree was actually handed, whole, rather than the first word
+# of it.
+cat obj/tree/build/built.txt
+grep -q '^CROSS_COMPILE=/opt/fake tools/bin/faketc-$' obj/tree/build/built.txt
+
+# And the sub-make was asked for nothing, which is what the recipe
+# says and what the empty line here means.  This is the half that
+# fails loudly rather than quietly: a "tools/bin/faketc-" that reached
+# make as a goal of its own is a make that stops on a rule it hasn't
+# got, so the assertion above would never be reached at all -- and
+# this is what says which of the two went wrong when it does.
+grep -q '^GOALS=$' obj/tree/build/built.txt
+
+##############################################################################
+# A path with a space in it, which make has no way to spell                  #
+##############################################################################
+# The section above is about a value, where the answer is quoting: a
+# CROSS_COMPILE is text the recipe hands to a program, and a shell has
+# a way to say "this is one argument".  A path is the other thing, and
+# quoting is no answer to it at all.  What pconfigure does with a path
+# is write it into a Makefile, and a target line, a prerequisite list
+# and the argument of a make function are each read as a list of
+# words: "$(abspath obj/my prefix)" is two absolute paths, so the tree
+# gets told to install somewhere nobody named and every rule written
+# under the prefix is two rules.  make has no quoting for a target
+# name to fix that with, and by the time make has the line there is no
+# record that the two words were ever one path.
+#
+# So the answer is a refusal, and it is written once --
+# build_system::checked_project_path() -- for every path any vendored
+# build system reads out of a CONFIGUREOPTS.  The two below are here
+# to say "once": they are different build systems reading differently
+# spelled options, one an install prefix and one a file that becomes a
+# prerequisite, and what they print is the same sentence.
+#
+# It cannot be caught a level up, where "SUBPROJECTS += my sub" is
+# caught, because a CONFIGUREOPTS is a command line: the spaces in one
+# are what separate a flag from its value.  strict-lint.bash pins that
+# from the other side, by asserting that a CONFIGUREOPTS with spaces
+# in it draws no complaint at all.
+mkdir -p $tempdir/spaced-prefix/tree
+cd $tempdir/spaced-prefix
+
+cat >tree/CMakeLists.txt <<'EOF'
+project(tree)
+EOF
+
+cat >Configfile <<'EOF'
+BUILD_SYSTEMS += cmake
+
+SUBPROJECTS   += tree
+CONFIGUREOPTS += --prefix obj/my prefix
+EOF
+
+if $PTEST_BINARY $PCONFIGURE_ARGS > spaced-prefix.out 2>&1
+then
+    exit 1
+fi
+cat spaced-prefix.out
+
+grep -q "cmake: '--prefix obj/my prefix' has a space in it" spaced-prefix.out
+
+# The diagnostic says what make would do with it rather than just
+# saying no, and it says it in the words make would end up with --
+# which is the thing nobody works out on their own from a build that
+# failed two steps later.  The brackets are how the fake cmake in
+# cmake.bash logs the same distinction, for the same reason: a list
+# printed bare reads as the one thing it was meant to be.
+grep -q 'reaches make as \[obj/my\] \[prefix\] rather than as one path' \
+    spaced-prefix.out
+
+# And it says what to write, which is the half a refusal is useless
+# without.
+grep -q "like '--prefix obj/toolchain'" spaced-prefix.out
+
+# Nothing was written.  A refusal that left a Makefile behind would be
+# the next "make" building against whatever the last configure
+# decided, which is this failure wearing a different hat.
+test ! -e Makefile
+
+# The same question in a build system that shares nothing with cmake
+# except the function that asks it, and about a path that isn't an
+# install prefix: a --merge-config names a file that becomes a
+# prerequisite of the configuration.  The file really is there and
+# really is one file, which is what makes this a statement about what
+# make can spell rather than about what exists.
+mkdir -p $tempdir/spaced-frag/tree/configs $tempdir/spaced-frag/tree/scripts/kconfig
+cd $tempdir/spaced-frag
+
+cat >tree/Kconfig <<'EOF'
+config BASE
+	bool "base"
+	default y
+EOF
+
+cat >tree/Makefile <<'EOF'
+all:
+	@true
+EOF
+
+cat >tree/scripts/kconfig/merge_config.sh <<'EOF'
+#!/bin/sh
+exit 0
+EOF
+chmod +x tree/scripts/kconfig/merge_config.sh
+
+cat >"tree/configs/my frag.config" <<'EOF'
+CONFIG_BASE=y
+EOF
+
+test -f "tree/configs/my frag.config"
+
+cat >Configfile <<'EOF'
+BUILD_SYSTEMS += kconfig
+
+SUBPROJECTS   += tree
+CONFIGUREOPTS += --defconfig tiny_defconfig
+CONFIGUREOPTS += --merge-config tree/configs/my frag.config
+EOF
+
+if $PTEST_BINARY $PCONFIGURE_ARGS > spaced-frag.out 2>&1
+then
+    exit 1
+fi
+cat spaced-frag.out
+
+grep -q "kconfig: '--merge-config tree/configs/my frag.config' has a space in it" \
+    spaced-frag.out
+grep -q 'reaches make as \[tree/configs/my\] \[frag.config\] rather than as one path' \
+    spaced-frag.out
+test ! -e Makefile
+
+# And the check is about the space rather than about the option, which
+# is the half that would be a much worse bug the other way round: the
+# same line with a name make can spell is taken, and the prefix lands
+# in the recipe as the one path it names.
+cd $tempdir/spaced-prefix
+
+cat >Configfile <<'EOF'
+BUILD_SYSTEMS += cmake
+
+SUBPROJECTS   += tree
+CONFIGUREOPTS += --prefix obj/my-prefix
+EOF
+
+$PTEST_BINARY $PCONFIGURE_ARGS
+grep -q -- "-DCMAKE_INSTALL_PREFIX=\$(abspath obj/my-prefix)" Makefile
+
+cd $tempdir
+
 exit 0
