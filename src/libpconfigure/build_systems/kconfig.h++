@@ -82,7 +82,8 @@
  *
  *   --target NAME        Ask the tree for a target rather than for
  *                        whatever it builds when it's asked for
- *                        nothing.  May be given more than once, and
+ *                        nothing.  One option is one target: a tree
+ *                        that wants two of them gets two lines, and
  *                        they're asked for one at a time in the order
  *                        they were given.
  *
@@ -155,6 +156,27 @@ protected:
                      const std::string& project_base) const;
     void take_configureopt(const std::string& opt);
 
+    /* A MAKEOPS lands on the command line of the sub-make that builds
+     * the tree, which is the same command line --make-var writes on
+     * and the same one this build system already wrote "O=" on -- so
+     * both spellings ask the one question, in the one place.  See
+     * already_answered() just below for what the answers are. */
+    void take_makeopt(const std::string& opt);
+
+    /* What a kbuild tree reads off its own command line that this
+     * build system has already decided.  The refusing itself is
+     * build_system::refuse_second_answer()'s, which is what every
+     * place a word of a Configfile reaches the sub-make calls: the
+     * --make-var, the --env, the --defconfig, the --target and the
+     * MAKEOPS.  This is only the list of names.
+     *
+     * Virtual because a tree that copied kbuild copied the shape of
+     * the command line and then spelled its own directories
+     * differently: buildroot's answer is kbuild's plus its own, and
+     * it says so by overriding this and adding to what it gets
+     * back. */
+    virtual answers already_answered(void) const;
+
     /* Takes one CONFIGUREOPTS, and answers whether it was one of
      * these.  A tree with options of its own overrides this, handles
      * what it knows, and hands the rest back here -- which is what
@@ -164,12 +186,6 @@ protected:
     /* What to print when nobody recognized an option, which is the
      * list of the ones that would have been recognized. */
     virtual std::string configureopt_help(void) const;
-
-    /* The value a flag was given, or "" when this option isn't that
-     * flag.  Both "--flag value" and "--flag=value" turn up in the
-     * wild and neither is any harder to read than the other. */
-    static std::string option_value(const std::string& opt,
-                                    const std::string& flag);
 
 protected:
     /* The variables this run put on the sub-make's command line,
@@ -192,17 +208,6 @@ protected:
      * since that's the project they belong to. */
     std::string based_file(const std::string& flag,
                            const std::string& path) const;
-
-    /* What one of the --depend paths actually names.  A path that
-     * turns out to be another vendored tree in this run becomes that
-     * tree's stamp rather than its directory, which is the difference
-     * between "wait for it to be built" and "wait for the directory
-     * to change" -- and only the first of those is what anybody
-     * means. */
-    std::string resolve_depend(
-        const std::string& flag,
-        const std::string& path,
-        const std::vector<build_system::ptr>& peers) const;
 
 protected:
     /* The files the dependency guess starts from, which is most of

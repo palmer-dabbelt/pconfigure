@@ -291,4 +291,144 @@ fi
 cat bad-self.out
 grep -q "'--depend linux' names this subproject" bad-self.out
 
+# A path that climbs out of the project is the one refusal here that
+# isn't about a mistake in the name.  Everything a Makefile this run
+# writes is named relative to where pconfigure ran, so a path above
+# that is a path no Makefile here owns: there is nothing to hang a
+# rule on, and what the line would mean depends on which directory
+# somebody happened to run pconfigure in rather than on what the line
+# says.
+mkdir -p bad-outside
+fake_tree bad-outside/linux
+
+cat >bad-outside/Configfile <<'EOF'
+BUILD_SYSTEMS += kconfig
+
+SUBPROJECTS   += linux
+CONFIGUREOPTS += --defconfig tiny_defconfig
+CONFIGUREOPTS += --depend ../elsewhere/vmlinux
+EOF
+
+if (cd bad-outside && $PTEST_BINARY $PCONFIGURE_ARGS) > bad-outside.out 2>&1
+then
+    exit 1
+fi
+cat bad-outside.out
+grep -qF "'--depend ../elsewhere/vmlinux' reaches outside the project that wrote it" \
+    bad-outside.out
+grep -q "write it inside the project, like '--depend toolchain'" \
+    bad-outside.out
+
+# And it stopped rather than writing half a Makefile, which is the
+# thing every refusal in this file has in common and the reason any of
+# them is worth making: a Makefile that exists is a Makefile make will
+# use.
+test ! -e bad-outside/Makefile
+
+# The same line one project down, which is where the question is
+# actually decided and where this used to give the other answer.
+# Asked of the resolved path -- which is what happened before -- a
+# subproject's "../shared.txt" comes out as the parent's
+# "shared.txt", climbs out of nothing, and is accepted: so one
+# Configfile line configures from the top and aborts from inside the
+# subproject, and the reading that accepts it writes a bare
+# "shared.txt" into the subproject's Makefile with no prefix variable
+# in front of it -- a prerequisite that means the parent's file when
+# make runs at the top and the subproject's when it runs down there.
+#
+# Asked of the path as the Configfile wrote it, both readings say the
+# same thing, and this is the one that says it.
+mkdir -p bad-child/sub
+fake_tree bad-child/sub/linux
+echo "shared" > bad-child/shared.txt
+
+cat >bad-child/Configfile <<'EOF'
+SUBPROJECTS += sub
+EOF
+
+cat >bad-child/sub/Configfile <<'EOF'
+BUILD_SYSTEMS += kconfig
+
+SUBPROJECTS   += linux
+CONFIGUREOPTS += --defconfig tiny_defconfig
+CONFIGUREOPTS += --depend ../shared.txt
+EOF
+
+if (cd bad-child && $PTEST_BINARY $PCONFIGURE_ARGS) > bad-child.out 2>&1
+then
+    exit 1
+fi
+cat bad-child.out
+grep -qF "'--depend ../shared.txt' reaches outside the project that wrote it" \
+    bad-child.out
+test ! -e bad-child/Makefile
+test ! -e bad-child/sub/obj/Makefile.sub
+
+# And the same reading from inside the subproject, which is the half
+# that was already refused.  One line, one answer, from either
+# direction -- which is the whole of what the rule buys.
+if (cd bad-child/sub && $PTEST_BINARY $PCONFIGURE_ARGS) \
+    > bad-child-inside.out 2>&1
+then
+    exit 1
+fi
+cat bad-child-inside.out
+grep -qF "'--depend ../shared.txt' reaches outside the project that wrote it" \
+    bad-child-inside.out
+test ! -e bad-child/sub/Makefile
+
+# An absolute path is the other way of naming a file no Makefile here
+# owns, and it used to be accepted outright: it climbs out of nothing,
+# so a check that only looked for a leading "../" saw nothing wrong
+# and wrote "/etc/hosts" into the Makefile as a prerequisite.
+mkdir -p bad-absolute
+fake_tree bad-absolute/linux
+
+cat >bad-absolute/Configfile <<'EOF'
+BUILD_SYSTEMS += kconfig
+
+SUBPROJECTS   += linux
+CONFIGUREOPTS += --defconfig tiny_defconfig
+CONFIGUREOPTS += --depend /etc/hosts
+EOF
+
+if (cd bad-absolute && $PTEST_BINARY $PCONFIGURE_ARGS) \
+    > bad-absolute.out 2>&1
+then
+    exit 1
+fi
+cat bad-absolute.out
+grep -q "'--depend /etc/hosts' is an absolute path" bad-absolute.out
+grep -q "write it relative to that project, like '--depend toolchain'" \
+    bad-absolute.out
+test ! -e bad-absolute/Makefile
+
+# A shell metacharacter is a third way of naming something no Makefile
+# here owns -- or rather of naming something else entirely once a
+# shell reads the recipe this is pasted into.  resolve_depend() asks
+# checked_project_path() before it asks anything of its own, which is
+# what build_system::unsafe_metacharacter() is asked from, so a
+# "--depend" gets this refusal for free rather than needing one of its
+# own.
+mkdir -p bad-metachar
+fake_tree bad-metachar/linux
+
+cat >bad-metachar/Configfile <<'EOF'
+BUILD_SYSTEMS += kconfig
+
+SUBPROJECTS   += linux
+CONFIGUREOPTS += --defconfig tiny_defconfig
+CONFIGUREOPTS += --depend toolchain;touch PWNED;true
+EOF
+
+if (cd bad-metachar && $PTEST_BINARY $PCONFIGURE_ARGS) \
+    > bad-metachar.out 2>&1
+then
+    exit 1
+fi
+cat bad-metachar.out
+grep -q "has a ';' in it" bad-metachar.out
+test ! -e bad-metachar/Makefile
+test ! -e bad-metachar/PWNED
+
 exit 0

@@ -71,25 +71,124 @@ kconfig_deps::roots build_system_kconfig::dep_roots(void) const
     return out;
 }
 
-std::string build_system_kconfig::option_value(const std::string& opt,
-                                               const std::string& flag)
+build_system::answers build_system_kconfig::already_answered(void) const
 {
-    if (opt.compare(0, flag.size(), flag) != 0)
-        return "";
+    auto out = answers();
 
-    auto rest = opt.substr(flag.size());
-    if (rest.size() == 0)
-        return "";
-    if (rest[0] != ' ' && rest[0] != '=')
-        return "";
+    /* Every one of these is a make variable rather than an option:
+     * kbuild reads them off the sub-make's command line as a
+     * "NAME=VALUE", or out of the environment under the same name,
+     * and there is no "--name" spelling of any of them.  So the only
+     * decoration is the empty one, which answers() already has, and
+     * nothing here is abbreviated or spelled with dashes.
+     *
+     * There is no prefix_option either.  A kbuild tree builds into
+     * its output directory and installs nowhere at all unless a
+     * --target asks it to, so there is no option here that says where
+     * an install goes -- and refuse_second_answer() says that rather
+     * than naming an option nobody could write. */
 
-    return string_utils::clean_white(rest.substr(1));
+    /* Where an install goes, one per install target a kbuild tree
+     * has.  The list is the kernel's own: these are the variables
+     * Documentation/kbuild/kbuild.rst writes down as the ones that
+     * say where something installed lands, and they are written out
+     * rather than matched by shape because "INSTALL_MOD_STRIP" starts
+     * the same way as two of them and says nothing about where
+     * anything goes.
+     *
+     * The install here runs during "make" rather than during "make
+     * install" -- a --target modules_install is a goal of the build
+     * stamp like any other -- so one of these written in a Configfile
+     * is a plain "make" writing wherever the line pointed, which for
+     * INSTALL_PATH and INSTALL_MOD_PATH means "/boot" and "/" by
+     * default.
+     *
+     * DESTDIR is neither kbuild's nor this build system's, and it
+     * belongs with them for the reason it belongs with autotools'
+     * and cmake's: it is make's own convention for the thing pasted
+     * onto the front of an install, every kconfig-derived tree that
+     * installs anything honours it, and a command-line variable
+     * reaches every sub-make the tree starts.
+     *
+     * INSTALL_MOD_DIR is deliberately not here.  It names a
+     * directory under MODLIB rather than a place of its own -- kbuild
+     * joins it to "$(MODLIB)/", so an absolute value comes out as
+     * ".../lib/modules/$(KERNELRELEASE)//tmp/x" and still lands
+     * inside -- and refusing it would be refusing its default,
+     * "extra", which is a value somebody has every right to change. */
+    for (const auto& variable: {
+            "INSTALL_MOD_PATH", "MODLIB", "INSTALL_PATH",
+            "INSTALL_HDR_PATH", "INSTALL_DTBS_PATH", "DESTDIR"})
+        out.destinations.push_back(
+            {variable, "says where an install target of this tree writes"});
+
+    /* And where the tree builds, which this build system already
+     * wrote on the same command line: vendored_targets() puts an
+     * "O=$(abspath ...)" on every sub-make it composes, and
+     * makeopt_flags() comes after it -- so a second one wins, quietly,
+     * and every path pconfigure wrote down about this tree points at
+     * a directory the tree never used.  What comes of it is a whole
+     * kernel build somewhere "make distclean" does not name, a
+     * .config the configure rule says it wrote and didn't, and a
+     * build stamp that says a tree was built that has nothing in it.
+     *
+     * KBUILD_OUTPUT is the same statement spelled for the
+     * environment, which is what kbuild.rst calls it and what an
+     * --env would set. */
+    out.directories.push_back(
+        {"O", "says where the tree builds"});
+    out.directories.push_back(
+        {"KBUILD_OUTPUT",
+         "says where the tree builds, being kbuild's environment spelling"
+         " of 'O'"});
+
+    /* "M" is the same statement about a smaller tree: kbuild.rst
+     * documents "make -C /path/to/kernel M=$PWD" as how an external
+     * module gets built against a kernel tree that isn't its own, and
+     * a Configfile that wrote "M=" here would send that module's build
+     * wherever the line pointed rather than into this project's object
+     * directory -- the same hazard "O=" already refuses, one level
+     * down. KBUILD_EXTMOD is the same thing spelled for the
+     * environment, the way KBUILD_OUTPUT is to "O". */
+    out.directories.push_back(
+        {"M", "says where the tree builds an external module"});
+    out.directories.push_back(
+        {"KBUILD_EXTMOD",
+         "says where the tree builds an external module, being kbuild's"
+         " environment spelling of 'M'"});
+
+    /* KCONFIG_CONFIG is the third thing this build system already
+     * knows the shape of, having set it itself a few lines down in
+     * vendored_targets(): it is what kbuild calls the .config it
+     * reads and writes, defaulting to ".config" in the output
+     * directory this build system already chose.  A Configfile that
+     * also wrote it -- on the sub-make's command line, in the
+     * environment, or as a --target's variable -- would move the file
+     * this build system reads back after configuring and writes into
+     * the fragment kbuild_output() and config_file() both point at,
+     * to wherever the line said instead. */
+    out.directories.push_back(
+        {"KCONFIG_CONFIG", "says where the tree's .config lives"});
+
+    return out;
+}
+
+void build_system_kconfig::take_makeopt(const std::string& opt)
+{
+    refuse_second_answer("MAKEOPS", opt);
 }
 
 bool build_system_kconfig::handle_configureopt(const std::string& opt)
 {
     auto defconfig = option_value(opt, "--defconfig");
     if (defconfig.size() > 0) {
+        /* A goal on the sub-make's command line is a goal or it is a
+         * variable, and make decides which by whether there is an '='
+         * in it: "make INSTALL_MOD_PATH=/tmp/x" asks for the default
+         * goal with that variable set.  So a defconfig goes through
+         * the same door a --make-var does. */
+        refuse_second_answer("--defconfig", defconfig);
+
         _defconfig = defconfig;
         return true;
     }
@@ -117,6 +216,14 @@ bool build_system_kconfig::handle_configureopt(const std::string& opt)
 
     auto make_var = option_value(opt, "--make-var");
     if (make_var.size() > 0) {
+        /* What a variable on the sub-make's command line may not say
+         * is build_system::refuse_second_answer()'s question.  Asked
+         * here as well as in take_makeopt(), which add_makeopt()
+         * reaches anyway, so that the diagnostic names the option the
+         * Configfile actually wrote rather than the MAKEOPS this
+         * shares a list with. */
+        refuse_second_answer("--make-var", make_var);
+
         /* The same thing a MAKEOPS says, spelled the way the options
          * are.  One list and one order, since two lists would mean an
          * argument about which of them make hears last -- and the
@@ -127,12 +234,17 @@ bool build_system_kconfig::handle_configureopt(const std::string& opt)
 
     auto env = option_value(opt, "--env");
     if (env.size() > 0) {
-        if (env.find('=') == std::string::npos) {
-            std::cerr << name() << ": '--env " << env
-                      << "' has no value: it should look like"
-                      << " '--env PATH=/opt/gnubin:$(PATH)'\n";
-            abort();
-        }
+        /* What an --env is allowed to look like is one question with
+         * one answer for every build system here, so it is asked in
+         * one place: see build_system::checked_env(). */
+        checked_env("--env", env, "PATH=/opt/gnubin:$(PATH)");
+
+        /* And what it may not say is the other one question with one
+         * answer: kbuild reads where it builds and where it installs
+         * out of the environment just as readily as off a command
+         * line, so an --env is a spelling of the same statement a
+         * --make-var makes. */
+        refuse_second_answer("--env", env);
 
         _env.push_back(env);
         return true;
@@ -140,6 +252,13 @@ bool build_system_kconfig::handle_configureopt(const std::string& opt)
 
     auto make_target = option_value(opt, "--target");
     if (make_target.size() > 0) {
+        /* A goal and a variable arrive on the same command line and
+         * are told apart by an '=', which is why this is asked of a
+         * --target at all: '--target INSTALL_MOD_PATH=/tmp/x' names
+         * no goal, sets a variable, and gets the tree's default goal
+         * built with an install destination nobody here decided. */
+        refuse_second_answer("--target", make_target);
+
         _make_targets.push_back(make_target);
         return true;
     }
@@ -176,7 +295,25 @@ std::string build_system_kconfig::make_var_flags(void) const
      * CONFIGUREOPTS still gets to disagree on purpose: a vendored
      * tree that has to be built with a different toolchain than the
      * project around it is a thing that happens, and saying so is
-     * what a --make-var is for. */
+     * what a --make-var is for.
+     *
+     * Quoted whole, name and all, because that is what this is: one
+     * variable on a make command line, which is the same thing every
+     * --make-var beside it is and so wants the same treatment
+     * makeopt_flags() gives those.  A CROSS_COMPILE is a prefix stuck
+     * on the front of a program name, so it is a path as often as it
+     * is a word -- "/opt/my tools/bin/riscv64-unknown-elf-" is a
+     * toolchain somebody unpacked where they unpacked it -- and
+     * unquoted that line hands the sub-make a CROSS_COMPILE worth
+     * "/opt/my" and then a "tools/bin/riscv64-unknown-elf-" that make
+     * reads as a target it was asked to build.  What comes of it is a
+     * tree built with a toolchain prefix nobody wrote, or a make that
+     * stops on a goal nobody asked for, from a Configfile line that
+     * was accepted without a murmur.
+     *
+     * The value is not taken apart by that, so a CROSS_COMPILE that
+     * was written as "$(abspath toolchain/bin/riscv64-)" still gets
+     * make's expansion and still means what it says. */
     if (wants_cross_compile() == true && ctx()->cross_compile.size() > 0) {
         auto flag = std::string("CROSS_COMPILE=");
 
@@ -186,7 +323,7 @@ std::string build_system_kconfig::make_var_flags(void) const
                 given = true;
 
         if (given == false)
-            out += " " + flag + ctx()->cross_compile;
+            out += " " + string_utils::quoted(flag + ctx()->cross_compile);
     }
 
     return out + makeopt_flags();
@@ -195,8 +332,36 @@ std::string build_system_kconfig::make_var_flags(void) const
 std::string build_system_kconfig::with_env(const std::string& command) const
 {
     auto out = std::string();
-    for (const auto& env: _env)
-        out += env + " ";
+
+    for (const auto& env: _env) {
+        /* The value is quoted and the name is not, which is the only
+         * way round that works: a shell reads "NAME=VALUE cmd" as an
+         * assignment in front of a command, and 'NAME=VALUE' quoted
+         * whole stops being an assignment and becomes the name of a
+         * program nobody has.
+         *
+         * Left unquoted altogether -- which is how this was first
+         * written -- an "--env KCFLAGS=-O2 -g" hands the shell a "-g"
+         * to run as a command of its own once the sub-make has
+         * finished, so the recipe dies with "-g: command not found"
+         * at build time having been accepted without a murmur at
+         * configure time.  Worse is the value that happens to name a
+         * program: then nothing fails, and a build quietly runs a
+         * word out of a Configfile.
+         *
+         * string_utils::quoted() leaves the value exactly as it was
+         * written, so an "--env PATH=/opt/gnubin:$(PATH)" still gets
+         * make's expansion and still means what it says -- which is
+         * the whole reason these are worth having.
+         *
+         * There is an '=' in every one of these, and a name a
+         * shell reads as a name in front of it, because an --env
+         * without either never got past checked_env(). */
+        auto equals = env.find('=');
+        out += env.substr(0, equals + 1)
+             + string_utils::quoted(env.substr(equals + 1))
+             + " ";
+    }
 
     return out + command;
 }
@@ -204,19 +369,24 @@ std::string build_system_kconfig::with_env(const std::string& command) const
 std::string build_system_kconfig::based_file(const std::string& flag,
                                              const std::string& path) const
 {
-    auto out = file_utils::normalize_path(ctx()->base + path);
-
     /* A prerequisite is written into the Makefile of the project that
      * asked for it, and that Makefile has to keep working when
      * somebody runs make in that project rather than above it.  Only
      * a path that stays inside the project can be rewritten to say
      * both of those things at once, so one that climbs out is a
-     * question with two answers rather than a path. */
-    if (out.compare(0, 3, "../") == 0) {
-        std::cerr << name() << ": '" << flag << " " << path << "' can't reach"
-                  << " outside the project\n";
-        abort();
-    }
+     * question with two answers rather than a path -- which is
+     * build_system::checked_project_path()'s question, asked there
+     * and not here.
+     *
+     * It used to be asked here, of the resolved path rather than of
+     * what the Configfile wrote, and that is the difference between a
+     * rule and a coincidence: a '--merge-config ../frag.config' in a
+     * subproject resolves to the parent's 'frag.config', which climbs
+     * out of nothing and was accepted -- and the fragment then
+     * reached the Makefile as a bare 'frag.config' with no prefix
+     * variable in front of it, so the same line was legal from the
+     * top and refused from inside the subproject. */
+    auto out = checked_project_path(flag, path, "configs/extra.config");
 
     struct stat buf;
     if (stat(out.c_str(), &buf) != 0 || S_ISREG(buf.st_mode) == false) {
@@ -226,75 +396,6 @@ std::string build_system_kconfig::based_file(const std::string& flag,
     }
 
     return out;
-}
-
-std::string build_system_kconfig::resolve_depend(
-    const std::string& flag,
-    const std::string& path,
-    const std::vector<build_system::ptr>& peers) const
-{
-    /* A subproject is spelled here the same way it was spelled in the
-     * SUBPROJECTS that pulled it in, so the same function has to tidy
-     * it up: two spellings of one directory that don't come out of
-     * here identical are two different directories as far as the
-     * search below can tell. */
-    auto dir = file_utils::normalize_directory(ctx()->base + path);
-    auto file = file_utils::normalize_path(ctx()->base + path);
-
-    if (dir == base()) {
-        std::cerr << name() << ": '" << flag << " " << path << "' names this"
-                  << " subproject\n";
-        abort();
-    }
-
-    /* Everything a Makefile this run writes names is named relative
-     * to where pconfigure ran, so a path that climbs out of that tree
-     * is one no Makefile here owns. */
-    if (dir.compare(0, 3, "../") == 0) {
-        std::cerr << name() << ": '" << flag << " " << path << "' can't reach"
-                  << " outside the project\n";
-        abort();
-    }
-
-    /* Peers are the trees this same project vendored, and only those:
-     * targets are generated at the end of every project, so a tree
-     * some other project pulled in was never in this list and falls
-     * through to the error at the bottom.  Within one project the
-     * order doesn't matter, since every SUBPROJECTS has been read
-     * before any of this runs. */
-    for (const auto& peer: peers)
-        if (peer->base() == dir && peer->build_stamp().size() > 0)
-            return peer->build_stamp();
-
-    /* A file another tree in this run says it builds is a target with
-     * a rule behind it, so waiting for it is waiting for that rule.
-     * It doesn't have to exist yet, which is the whole difference
-     * between this and the check below: on a fresh checkout nothing
-     * any of these trees produces exists. */
-    for (const auto& peer: peers)
-        if (peer.get() != this && peer->produces(file) == true)
-            return file;
-
-    struct stat buf;
-    if (stat(file.c_str(), &buf) == 0 && S_ISREG(buf.st_mode) == true)
-        return file;
-
-    /* A pconfigure subproject is never a peer -- it's read into this
-     * run rather than built by one -- so it always lands here, which
-     * is where a typo lands too and both want the same advice. */
-    if (stat(dir.c_str(), &buf) == 0 && S_ISDIR(buf.st_mode) == true) {
-        std::cerr << name() << ": '" << flag << " " << path << "' names '"
-                  << dir << "', which isn't a vendored subproject\n"
-                  << "  a pconfigure subproject has no one file that says"
-                  << " it's been built,\n"
-                  << "  so name the file you actually need instead\n";
-        abort();
-    }
-
-    std::cerr << name() << ": '" << flag << " " << path << "' names '"
-              << file << "', which is neither a file nor a vendored"
-              << " subproject\n";
-    abort();
 }
 
 std::string build_system_kconfig::configureopt_help(void) const
@@ -454,9 +555,18 @@ build_system_kconfig::vendored_targets(
     config_deps.push_back(std::make_shared<makefile::target>(
         configureopts_file()));
 
+    /* The goal is quoted, which is what everything else a
+     * CONFIGUREOPTS wrote gets on its way into a recipe.  One option
+     * is one goal, so the spaces in it are characters of a name
+     * rather than a list this is allowed to split on -- and a
+     * semicolon in it, left raw, ends the recipe's command and hands
+     * the shell whatever came after to run as a program of its own.
+     * A "--defconfig x; rm -rf ~" was read without a murmur at
+     * configure time and run by a plain "make", which then said the
+     * build had succeeded. */
     auto config_commands = std::vector<std::string>{
         "mkdir -p " + output,
-        submake + " " + _defconfig,
+        submake + " " + string_utils::quoted(_defconfig),
     };
 
     if (_merges.size() > 0) {
@@ -482,9 +592,30 @@ build_system_kconfig::vendored_targets(
         /* The fragments go on in the order they were written, since
          * that's the order the program reads them in and a later one
          * is allowed to overwrite an earlier one. */
+        /* The fragment is quoted where it lands in the recipe and
+         * bare where it lands in the prerequisite list, because those
+         * are two different readers: a prerequisite is a make word
+         * and has no quoting at all, while a recipe is a shell
+         * command and a path that isn't quoted there is however many
+         * words the shell decides it is.  So this is the same thing
+         * every other value a CONFIGUREOPTS wrote gets, for the same
+         * reason, and it costs nothing: a quote is one of the
+         * characters path_prefix::rewrite() reads as the end of one
+         * word and the start of the next, so a subproject's fragment
+         * is still named through that project's own prefix variable.
+         *
+         * What it is NOT is the answer to a path with shell syntax in
+         * it.  checked_project_path() already refuses the space, the
+         * '$', the absolute path and the "..", and it has no opinion
+         * about a ';' -- and a ';' in one of these reaches make on
+         * the prerequisite line above, where make reads it as the
+         * start of an inline recipe rather than as part of a
+         * filename.  That is one question with one answer for every
+         * path a Configfile writes, in the one place all of them go
+         * through, and it is not this one. */
         for (const auto& merge: _merges) {
             auto path = based_file("--merge-config", merge);
-            command += " " + path;
+            command += " " + string_utils::quoted(path);
             config_deps.push_back(std::make_shared<makefile::target>(path));
         }
 
@@ -507,12 +638,27 @@ build_system_kconfig::vendored_targets(
         for (const auto& option: _options) {
             auto command = with_env(tool + " --file " + config);
 
+            /* The name and the value are each quoted, and each is one
+             * argument to the tree's own program however many spaces
+             * are in it.  Left raw -- which is how this was written --
+             * a '--configure CONFIG_X; rm -rf ~ =y' ends the recipe's
+             * command at the semicolon and hands the shell the rest
+             * to run as a program of its own: read without a murmur
+             * at configure time, run by a plain "make", and reported
+             * as a build that succeeded.
+             *
+             * It is the same decision autotools and cmake made about
+             * a --target, for the same reason, and it costs the same
+             * thing: one option says one name and one value, so
+             * neither of them is a place to write two. */
+            auto name = string_utils::quoted(option.name);
+
             if (option.value == "y")
-                command += " --enable " + option.name;
+                command += " --enable " + name;
             else if (option.value == "m")
-                command += " --module " + option.name;
+                command += " --module " + name;
             else if (option.value == "n")
-                command += " --disable " + option.name;
+                command += " --disable " + name;
             else if (option.value.size() > 1
                      && option.value[0] == '"'
                      && option.value[option.value.size() - 1] == '"')
@@ -520,12 +666,25 @@ build_system_kconfig::vendored_targets(
                  * string, and a string symbol is the one kind whose
                  * value goes into the .config with quotes back on --
                  * which the tree's own program does and we don't.
-                 * The quotes stay on here so that the shell takes
-                 * them off, which is what keeps a string with a space
-                 * in it one argument. */
-                command += " --set-str " + option.name + " " + option.value;
+                 * The quotes the Configfile wrote are what says which
+                 * kind this is, so they are taken off here and the
+                 * rest is quoted the way every other value is: the
+                 * tree's program sees exactly what it saw before,
+                 * which is the string with no quotes round it and in
+                 * one argument however many spaces are in it.
+                 *
+                 * Leaving the '"' on and letting the shell take it
+                 * off is what this did before, and it is the same
+                 * hole one character narrower: a value of '"a"; rm
+                 * -rf ~; "' starts and ends with a '"' and is a
+                 * command in the middle. */
+                command += " --set-str " + name + " "
+                         + string_utils::quoted(
+                               option.value.substr(1,
+                                                   option.value.size() - 2));
             else
-                command += " --set-val " + option.name + " " + option.value;
+                command += " --set-val " + name + " "
+                         + string_utils::quoted(option.value);
 
             config_commands.push_back(command);
         }
@@ -681,8 +840,27 @@ build_system_kconfig::vendored_targets(
     auto build_commands = std::vector<std::string>();
     if (_make_targets.size() == 0)
         build_commands.push_back(submake);
+
+    /* Each one quoted, which is the same decision autotools and cmake
+     * made about their own --target and is here for the same reason:
+     * one option is one target.  That is what the option says it is
+     * -- a tree that wants two of them writes --target twice, and
+     * they are asked for one at a time on purpose -- so the spaces in
+     * one of them are characters of a name rather than a list this is
+     * allowed to split on.  Left raw, a semicolon in a target ends
+     * the recipe's command and hands the shell whatever came after it
+     * to run as a program of its own: a Configfile read without a
+     * murmur at configure time and a plain "make" that runs it and
+     * then reports success.
+     *
+     * The paths around it stay as they are, here and everywhere else
+     * in this file: every recipe line goes through
+     * path_prefix::rewrite() on its way into the Makefile, which is
+     * what lets a subproject's rules name the same files from above
+     * and from inside. */
     for (const auto& make_target: _make_targets)
-        build_commands.push_back(submake + " " + make_target);
+        build_commands.push_back(
+            submake + " " + string_utils::quoted(make_target));
     build_commands.push_back("mkdir -p " + output_dir());
     build_commands.push_back(reread);
     if (reread_build.size() > 0)
