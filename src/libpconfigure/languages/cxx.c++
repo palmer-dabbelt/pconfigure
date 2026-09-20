@@ -1266,6 +1266,17 @@ language_cxx::deps_source(const context::ptr& ctx,
     )->as_included();
 }
 
+/* Every path this writes into a recipe is a bare word, and that is
+ * deliberate rather than an oversight waiting to be tidied up: a file
+ * or directory whose name holds a quote, a space or a shell
+ * metacharacter does not build, here or anywhere else in pconfigure.
+ * Quoting these recipes does not fix it and is not wanted -- a
+ * subproject's paths arrive as an expansion of the make variable that
+ * stands for its directory, so quotes round the reference quote
+ * nothing that is inside it, and that variable cannot hold an escaped
+ * path because it also names make prerequisites.  The reasoning, and
+ * what a real fix would cost, is on makefile::path_prefix and under
+ * "Odd Behavior" in doc/pconfigure.tex. */
 std::vector<language_cxx::target::ptr>
 language_cxx::compile_source(const context::ptr& ctx,
                              const context::ptr& child,

@@ -27,6 +27,7 @@
 #include "string_utils.h++"
 #include <pinclude.h++>
 #include <cctype>
+#include <cstdlib>
 #include <iostream>
 #include <unistd.h>
 
@@ -275,6 +276,133 @@ static bool names_a_suite(const std::string& str)
             return false;
 
     return true;
+}
+
+/* Which of the ways of leaving the project this path is, or "" for
+ * one that stays inside it.  What comes back is the clause a
+ * diagnostic puts after naming the command, since the three spellings
+ * are wrong for three different reasons and a message that named none
+ * of them leaves whoever reads it working out which one they wrote.
+ *
+ * This is build_system::checked_project_path()'s question, asked of
+ * the commands rather than of a vendored tree's options, and the
+ * reasoning is written down there.  The part worth having twice is
+ * why it is asked of the text exactly as the Configfile wrote it,
+ * before this project's own base goes on the front: resolving first
+ * turns a subproject's "../elsewhere" into the parent's "elsewhere",
+ * which climbs out of nothing and sails through -- so one line would
+ * be legal read from the top and refused read from inside the
+ * subproject, and the reading that accepts it is the one where the
+ * line names a directory belonging to somebody else.
+ *
+ * It is not a call to that function, and the difference is the one
+ * question it asks that this one must not.  A space in a value that
+ * names a path is a strict::complain() in process() below, because
+ * these commands are a great deal older than the rule and strict.h++
+ * is where this project writes down what it does about that.  Asking
+ * it again here would promote a documented warning to a refusal on
+ * the way past, which is a change to a rule nobody made -- and
+ * checked_project_path() says as much in its own comment, where it
+ * names "LIBDIR = my dir" as the case that belongs up here.  This is
+ * the other end of that sentence. */
+static std::string leaves_the_project(const std::string& written)
+{
+    auto relative = file_utils::normalize_path(written);
+
+    /* An absolute path names one directory however the line is read,
+     * which is exactly what stops it being this project's: the
+     * project moves between one run and the next and the path
+     * doesn't. */
+    if (relative.size() > 0 && relative[0] == '/')
+        return "it's an absolute path, which names the same directory"
+               " however this project is read -- so it isn't a directory"
+               " of this project's";
+
+    /* Both spellings of climbing, because the bare ".." is the one a
+     * check written as "starts with '../'" lets through: there is no
+     * trailing slash on it for that to match.  It is also the worst
+     * of them -- "../out" names a directory beside the project, while
+     * ".." names the directory the project was checked out into,
+     * which is everything. */
+    if (relative == ".." || relative.compare(0, 3, "../") == 0)
+        return "it climbs out of the project, and a path that climbs out"
+               " has no prefix of this project's to hang off -- so it"
+               " names one directory read from above and a different one"
+               " read from inside";
+
+    /* And a path that isn't a path yet.  Everything decided here is
+     * decided from the text as written, and what make expands is not
+     * text anything out here can read: "$(HOME)/lib" goes past as one
+     * harmless-looking component and is an absolute path by the time
+     * a recipe runs, with the quotes around it belonging to the shell
+     * rather than to make. */
+    if (written.find('$') != std::string::npos)
+        return "it's a make expansion rather than a path, so what it"
+               " comes to is settled by make -- long after the last place"
+               " that could have said whether it was inside this project";
+
+    return "";
+}
+
+/* The directory a path actually reaches, with every symlink along the
+ * way resolved, or "" for a path that doesn't name anything yet.
+ *
+ * Asked in one place only, and the comment at the SUBPROJECTS that
+ * uses it says why that one is different from everything above: what
+ * a line means is settled by its text, but what an "rm -rf" removes
+ * is settled by the filesystem. */
+static std::string real_directory(const std::string& path)
+{
+    auto resolved = ::realpath(path.c_str(), NULL);
+    if (resolved == NULL)
+        return "";
+
+    auto out = std::string(resolved);
+    free(resolved);
+    return out;
+}
+
+/* Refuses "cmd" outright when its value has one of
+ * build_system::unsafe_metacharacter()'s characters in it -- a
+ * character a shell, or make's own recipe line, reads as an
+ * instruction of its own wherever it sits, with no space needed on
+ * either side to do it.  "command_name" is how the diagnostic names
+ * the command that carried the value, so one wording serves LIBDIR,
+ * SOURCES, PREFIX and everything else that calls this.
+ *
+ * This is the one refusal on this list with no compatibility question
+ * behind it.  A bare ".." is something an old project might be
+ * relying on without knowing it, which is what strict.h++'s warnings
+ * are for; nothing was ever relying on a semicolon in a LIBDIR,
+ * because nothing before this asked whether there was one.  So every
+ * call site gets a hard abort, whether or not that site's own
+ * "leaves the project" check below is a warning or a refusal.
+ *
+ * Asked once, here, of every command that reaches build_system's
+ * checked_project_path() through a different door -- LIBDIR, SOURCES,
+ * PREFIX, ENTITLEMENTS, GENERATE, TESTDEPS, DEPTESTS, SUBPROJECTS --
+ * rather than copied out at each of them, for the same reason
+ * unsafe_metacharacter() itself is shared: one list of characters,
+ * asked one way, rather than as many as there are call sites. */
+static void refuse_unsafe_metacharacter(const command::ptr& cmd,
+                                        const std::string& command_name)
+{
+    auto found = build_system::unsafe_metacharacter(cmd->data());
+    if (found.size() == 0)
+        return;
+
+    std::cerr << std::to_string(cmd->debug()) << "\n"
+              << "  error: " << command_name << " has a '" << found
+              << "' in it: '" << cmd->data() << "'\n"
+              << "  " << command_name << " reaches a Makefile recipe as"
+              << " text, and a shell -- which is what runs that recipe --"
+              << " reads a '" << found << "' as an instruction of its own"
+              << " wherever it appears, with no space needed on either"
+              << " side: what this names is not the one word it looks"
+              << " like, it is that word followed by whatever the"
+              << " character tells a shell to do next\n"
+              << "  write " << command_name << " without one\n";
+    abort();
 }
 
 void command_processor::process(const command::ptr& cmd)
@@ -770,8 +898,33 @@ void command_processor::process_one(const command::ptr& cmd)
      * Configfile shouldn't have to know which machine is reading it,
      * and a platform with nothing to sign has nothing to do here. */
     case command_type::ENTITLEMENTS:
+    {
         if (cmd->check_operation("=") == false)
             goto bad_op_eq;
+
+        /* Read relative to the project the same way a SOURCES is, and
+         * checked the same way: nothing before this asked whether an
+         * ENTITLEMENTS climbed out of the project or named an absolute
+         * path, so "ent.plist;>/abs/PWNED;true" reached the codesign
+         * command line in languages/cxx.c++ unquoted and unquestioned.
+         * There is no compatibility argument for letting a plain
+         * escape stand once it is noticed, the way there is for the
+         * bare ".." a SRCDIR still warns about -- nothing was ever
+         * relying on this, because nothing before this asked. */
+        auto leaves = leaves_the_project(cmd->data());
+        if (leaves.size() > 0) {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: ENTITLEMENTS names a file outside this"
+                      << " project: " << leaves << "\n"
+                      << "  write it inside the project, like"
+                      << " 'ENTITLEMENTS = app.plist'\n";
+            abort();
+        }
+
+        /* After the escape check above, for the same reason LIBDIR
+         * asks after its own: a value with both a '$' and a '(' keeps
+         * the more specific "make expansion" answer. */
+        refuse_unsafe_metacharacter(cmd, "ENTITLEMENTS");
 
         /* Only a whole linked thing is ever signed, so an
          * ENTITLEMENTS that landed below one is asking for nothing --
@@ -802,10 +955,34 @@ void command_processor::process_one(const command::ptr& cmd)
         tos->entitlements = cmd->data();
 
         return;
+    }
 
     case command_type::GENERATE:
+    {
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
+
+        /* Named and checked the same way a SOURCES is, since this
+         * becomes one a few lines down -- with ".proc" stuck on the
+         * end -- and a GENERATE with no check of its own would reach
+         * that SOURCES having already skipped the one thing that would
+         * have refused it. */
+        {
+            auto leaves = leaves_the_project(cmd->data());
+            if (leaves.size() > 0) {
+                std::cerr << std::to_string(cmd->debug()) << "\n"
+                          << "  error: GENERATE names a file outside this"
+                          << " project: " << leaves << "\n"
+                          << "  write it inside the project, like"
+                          << " 'GENERATE += gen.h'\n";
+                abort();
+            }
+        }
+
+        /* After the escape check above, for the same reason LIBDIR
+         * asks after its own: a value with both a '$' and a '(' keeps
+         * the more specific "make expansion" answer. */
+        refuse_unsafe_metacharacter(cmd, "GENERATE");
 
         clear_until({context_type::DEFAULT}, cmd);
         dup_tos_and_push(context_type::GENERATE, cmd);
@@ -823,6 +1000,7 @@ void command_processor::process_one(const command::ptr& cmd)
             );
 
         return;
+    }
 
     case command_type::HDRDIR:
         goto unimplemented;
@@ -878,6 +1056,60 @@ void command_processor::process_one(const command::ptr& cmd)
             goto bad_op_eq;
 
         clear_until({context_type::DEFAULT}, cmd);
+
+        /* Where a library lands is an output directory, and every
+         * output directory in the run is a line of "make distclean":
+         * the recipe is an "rm -rf" of each one, because everything
+         * in there is output this build knows how to make again.
+         * That is what makes this the directory command that can't be
+         * let through with a warning.  A "LIBDIR = /usr/lib" reads
+         * like a line about where libraries go and arrives as "rm -rf
+         * '/usr/lib'"; a "LIBDIR = $(HOME)/lib" gets there with
+         * make's help, since the quotes in that recipe are the
+         * shell's and make has already had its turn on the line.
+         *
+         * Refused rather than warned about, which is the other thing
+         * this project does with a line that quietly means something
+         * nobody meant.  strict.h++ is where that choice is written
+         * down and the argument there is compatibility: a line some
+         * project is relying on cannot simply become an error.  That
+         * argument doesn't reach this one.  What a project would be
+         * relying on here is "make distclean" removing a directory
+         * outside itself, which is to say relying on the one outcome
+         * nothing can put back -- and one it could only have found
+         * out about by losing something.  A refusal at configure time
+         * names the line and costs a one-line edit; the warning costs
+         * whatever was in the directory.
+         *
+         * It is also the answer the rest of the tree already gives.
+         * Every vendored build system's install prefix goes through
+         * build_system::checked_install_dir(), which refuses these
+         * same spellings for a path with a great deal less at stake:
+         * a prefix is confined to the object directory and distclean
+         * only ever reaches it by covering that directory, while this
+         * one is pasted into the "rm -rf" outright. */
+        auto leaves = leaves_the_project(cmd->data());
+        if (leaves.size() > 0) {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: LIBDIR names a directory outside this"
+                      << " project: " << leaves << "\n"
+                      << "  'make distclean' is an 'rm -rf' of every"
+                      << " output directory this build has, and a LIBDIR"
+                      << " is one of them -- so this line hands a"
+                      << " directory nothing in this build owns to an"
+                      << " 'rm -rf'\n"
+                      << "  write it inside the project, like"
+                      << " 'LIBDIR = lib'\n";
+            abort();
+        }
+
+        /* Asked after leaves_the_project() above rather than before
+         * it, so that a value with both -- "$(HOME)/lib" is a '$' and
+         * two parentheses -- keeps the more specific answer: make
+         * expands the whole of that before a shell ever reads any of
+         * it, which leaves_the_project() already has a name for. */
+        refuse_unsafe_metacharacter(cmd, "LIBDIR");
+
         _stack.top()->lib_dir = _base + cmd->data();
         return;
     }
@@ -1002,6 +1234,16 @@ void command_processor::process_one(const command::ptr& cmd)
         if (cmd->check_operation("=") != true)
             goto bad_op_eq;
 
+        /* Only the metacharacter check, and deliberately not
+         * leaves_the_project()'s: an install prefix is legitimately
+         * absolute -- "/usr/local" is the default -- and it is spliced
+         * into an install recipe unquoted (languages/cxx.c++,
+         * languages/bash.c++, languages/pkgconfig.c++,
+         * languages/implicit_h.c++ all write "$(DESTDIR)/" + prefix +
+         * "/..." raw), which is exactly the shape a semicolon turns
+         * into a second command. */
+        refuse_unsafe_metacharacter(cmd, "PREFIX");
+
         tos->prefix = cmd->data();
 
         return;
@@ -1009,6 +1251,33 @@ void command_processor::process_one(const command::ptr& cmd)
     case command_type::SOURCES:
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
+
+        /* Checked the same way a SRCDIR is, but refused rather than
+         * warned about: a source file's path is pasted onto the
+         * object directory to name the object it compiles to (see
+         * build_system::output_dir()'s sibling logic in the
+         * language implementations), so a "../../x.c" doesn't merely
+         * read a file from outside the project -- it writes an object
+         * out there too, in a directory nothing here made and nothing
+         * here will only ever clean by name.  Nothing before this
+         * asked the question, so there is no line anywhere relying on
+         * the answer being "yes". */
+        {
+            auto leaves = leaves_the_project(cmd->data());
+            if (leaves.size() > 0) {
+                std::cerr << std::to_string(cmd->debug()) << "\n"
+                          << "  error: SOURCES names a file outside this"
+                          << " project: " << leaves << "\n"
+                          << "  write it inside the project, like"
+                          << " 'SOURCES += main.c'\n";
+                abort();
+            }
+        }
+
+        /* After the escape check above, for the same reason LIBDIR
+         * asks after its own: a value with both a '$' and a '(' keeps
+         * the more specific "make expansion" answer. */
+        refuse_unsafe_metacharacter(cmd, "SOURCES");
 
         clear_until({context_type::DEFAULT,
                     context_type::GENERATE,
@@ -1055,6 +1324,34 @@ void command_processor::process_one(const command::ptr& cmd)
             goto bad_op_eq;
 
         clear_until({context_type::DEFAULT}, cmd);
+
+        /* The same question as the LIBDIR above, with the same answer
+         * about what the line means and a different one about what to
+         * do -- and the difference is the whole of why that one is a
+         * refusal and this one isn't.  A source directory is read
+         * rather than removed: nothing pastes it into an "rm -rf", so
+         * the worst this does is compile a file from outside the
+         * project and write its object out there beside somebody
+         * else's tree, since an object's path is its source's pasted
+         * onto the object directory.  A line that quietly does
+         * something nobody meant and takes nothing with it is exactly
+         * what strict.h++ says to warn about and let through. */
+        auto leaves = leaves_the_project(cmd->data());
+        if (leaves.size() > 0)
+            _stack.top()->strictness.complain(
+                strict_since::v0_13(),
+                cmd->debug(),
+                "SRCDIR names a directory outside this project: " + leaves,
+                "write it inside the project, like 'SRCDIR = src' -- an"
+                " object is named by pasting its source's path onto the"
+                " object directory, so a source read from out there is"
+                " built into a directory out there too");
+
+        /* After the warning above, for the same reason LIBDIR asks
+         * after its own refusal: a value with both a '$' and a '('
+         * keeps the more specific "make expansion" answer. */
+        refuse_unsafe_metacharacter(cmd, "SRCDIR");
+
         _stack.top()->src_dir = _base + cmd->data();
         return;
     }
@@ -1078,6 +1375,8 @@ void command_processor::process_one(const command::ptr& cmd)
     {
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
+
+        refuse_unsafe_metacharacter(cmd, "SUBPROJECTS");
 
         clear_until({context_type::DEFAULT}, cmd);
 
@@ -1111,6 +1410,117 @@ void command_processor::process_one(const command::ptr& cmd)
             std::cerr << "SUBPROJECTS can't reach outside the project: '"
                       << std::to_string(cmd->debug())
                       << "'\n";
+            abort();
+        }
+
+        /* And the other end of the same sentence.  pconfigure owns
+         * every byte under an object directory -- that is what lets
+         * an install prefix be in there, and it is what "make
+         * distclean" acts on: the recipe is an "rm -rf" of the
+         * object directory and nothing finer, because everything
+         * under it is output this build knows how to make again.  A
+         * tree checked out in there is not, so the first distclean
+         * after somebody writes this line takes the checkout with
+         * it, and what was lost is whatever had not been pushed.
+         *
+         * The object directory this asks about is the one in force
+         * where the line was written, which for a SUBPROJECTS inside
+         * a subproject is that subproject's own rather than the one
+         * at the top of the run.  No command moves it: an object
+         * directory is a project's directory with "obj" on the end,
+         * and what changes from one context to the next is which
+         * project that is. */
+        auto obj = file_utils::normalize_path(_stack.top()->obj_dir);
+        if (file_utils::inside(
+                file_utils::normalize_path(path), obj) == true) {
+            std::cerr << "SUBPROJECTS can't name a directory inside an"
+                      << " object directory: '"
+                      << std::to_string(cmd->debug())
+                      << "'\n"
+                      << "  '" << obj << "' is where this build writes, and"
+                      << " 'make distclean' removes it whole -- so a tree"
+                      << " checked out in there is one distclean away from"
+                      << " being gone, and nothing about the recipe says"
+                      << " so\n"
+                      << "  check the tree out somewhere this build doesn't"
+                      << " write, beside the Configfile that names it; where"
+                      << " it builds to is pconfigure's to pick\n";
+            abort();
+        }
+
+        /* And both of those questions asked a second time, of the
+         * directory rather than of the name, because a symlink is
+         * where the two stop agreeing.  "rm -rf sub/obj" follows a
+         * symlinked "sub" -- rm declines to walk through a symlink
+         * only when it is the last thing on the path -- so a "sub"
+         * pointing anywhere at all is a distclean that reaches there,
+         * and a "vendor" pointing into the object directory is the
+         * checkout this build removes whole.  Both read as an
+         * ordinary name, which is what a symlink is for.
+         *
+         * Asking lexically is still the rule about what a line means,
+         * and this leaves that alone.  A path that climbs out or
+         * lands in the object directory is refused above on its text,
+         * before any of this runs, so nothing refused there becomes
+         * legal here: all this can do is refuse something more.  What
+         * it asks is a different question -- not "what does this line
+         * name", which the text settles, but "what is the recipe
+         * about to remove", which only the filesystem knows.  And it
+         * keeps the property the lexical rule exists to protect,
+         * because both sides are resolved: the answer is the same
+         * whether pconfigure ran in this project or in one above it,
+         * which is exactly what resolving only one side would have
+         * thrown away.
+         *
+         * A symlink that stays inside the tree is left alone, which
+         * is why this asks where the link goes rather than refusing a
+         * link outright.  Linking a vendored tree into place from
+         * somewhere else in the same checkout is a real thing to do
+         * and there is nothing wrong with it: what the "rm -rf"
+         * reaches is inside the project either way.
+         *
+         * A path that doesn't resolve is left to whoever reads the
+         * Configfile that isn't there.  Saying nothing here costs
+         * nothing, since a directory that doesn't exist is one no
+         * symlink can have pointed out of the tree. */
+        auto real_sub = real_directory(path);
+        auto real_root = real_directory(".");
+        auto real_obj = real_directory(obj);
+
+        if (real_sub.size() > 0 && real_root.size() > 0
+            && file_utils::inside(real_sub, real_root) == false) {
+            std::cerr << "SUBPROJECTS can't reach outside the project: '"
+                      << std::to_string(cmd->debug())
+                      << "'\n"
+                      << "  '" << path << "' resolves to '" << real_sub
+                      << "', which is outside '" << real_root << "'\n"
+                      << "  'make distclean' is an 'rm -rf' of this"
+                      << " subproject's output directories, and rm walks"
+                      << " through a symlink it meets partway along a path"
+                      << " -- so the recipe removes directories out there"
+                      << " rather than in here\n"
+                      << "  check the tree out beside the Configfile that"
+                      << " names it, or point the link somewhere inside"
+                      << " this project\n";
+            abort();
+        }
+
+        if (real_sub.size() > 0 && real_obj.size() > 0
+            && file_utils::inside(real_sub, real_obj) == true) {
+            std::cerr << "SUBPROJECTS can't name a directory inside an"
+                      << " object directory: '"
+                      << std::to_string(cmd->debug())
+                      << "'\n"
+                      << "  '" << path << "' resolves to '" << real_sub
+                      << "', which is inside '" << real_obj << "'\n"
+                      << "  '" << obj << "' is where this build writes, and"
+                      << " 'make distclean' removes it whole -- so a tree"
+                      << " checked out in there is one distclean away from"
+                      << " being gone, and nothing about the recipe says"
+                      << " so\n"
+                      << "  check the tree out somewhere this build doesn't"
+                      << " write, beside the Configfile that names it; where"
+                      << " it builds to is pconfigure's to pick\n";
             abort();
         }
 
@@ -1235,19 +1645,34 @@ void command_processor::process_one(const command::ptr& cmd)
          * that really is about two projects at once is an
          * integration test and belongs to the project that has both
          * of them, where the path to either one is an ordinary path
-         * that doesn't leave the tree. */
+         * that doesn't leave the tree.
+         *
+         * Which spellings leave it is leaves_the_project()'s answer
+         * rather than one written out here, so that a TESTDEPS is
+         * refused for exactly what a LIBDIR is refused for.  Asking
+         * it in its own words is how the bare ".." got in: a check
+         * written as "starts with '../'" has nothing to match against
+         * on a path with no trailing slash, so "TESTDEPS += .." went
+         * past and came out as a prerequisite naming the directory
+         * this project was checked out into. */
         auto named = file_utils::normalize_path(cmd->data());
-        if (named.compare(0, 3, "../") == 0
-            || (named.size() > 0 && named[0] == '/')) {
+        auto leaves = leaves_the_project(cmd->data());
+        if (leaves.size() > 0) {
             std::cerr << "TESTDEPS can't reach outside the project: '"
                       << std::to_string(cmd->debug())
                       << "'\n"
+                      << "  " << leaves << "\n"
                       << "  a test that needs something another project"
                       << " builds wants it on the link line,\n"
                       << "  and a test that's about both of them belongs to"
                       << " whoever has both of them\n";
             abort();
         }
+
+        /* After the escape check above, for the same reason LIBDIR
+         * asks after its own: a value with both a '$' and a '(' keeps
+         * the more specific "make expansion" answer. */
+        refuse_unsafe_metacharacter(cmd, "TESTDEPS");
 
         /* A file a vendored tree was said to produce is spelled from
          * the object directory that tree builds into, rather than
@@ -1291,6 +1716,8 @@ void command_processor::process_one(const command::ptr& cmd)
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
+        refuse_unsafe_metacharacter(cmd, "DEPTESTS");
+
         /* This lands on one test rather than on a target, which is
          * what makes it different from every other DEP- and -DEPS
          * command.  A target-wide one would be read by every test
@@ -1327,13 +1754,22 @@ void command_processor::process_one(const command::ptr& cmd)
          * both of them, which is what a PHONY is for.  Ordering them
          * across targets instead would be an order that only holds
          * when one make happens to build both, which is no order at
-         * all. */
-        auto named = file_utils::normalize_path(cmd->data());
-        if (named.compare(0, 3, "../") == 0
-            || (named.size() > 0 && named[0] == '/')) {
+         * all.
+         *
+         * Which spellings reach out of it is leaves_the_project()'s
+         * answer, the same one a TESTDEPS gets, and for the same
+         * reason: a check written here in its own words was a check
+         * that let the bare ".." through.  That one was caught
+         * further down, by the rule that a DEPTESTS names a test this
+         * target actually has -- but caught there it is reported as a
+         * missing test rather than as a path that left the project,
+         * which sends whoever reads it looking for the wrong thing. */
+        auto leaves = leaves_the_project(cmd->data());
+        if (leaves.size() > 0) {
             std::cerr << std::to_string(cmd->debug()) << "\n"
                       << "  error: DEPTESTS can't reach outside the"
                       << " target\n"
+                      << "  " << leaves << "\n"
                       << "  it names a test of this same target, spelled"
                       << " the way that test's own TESTS line spelled"
                       << " it\n"

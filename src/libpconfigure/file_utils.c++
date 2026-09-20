@@ -277,3 +277,11 @@ bool file_utils::write_if_changed(const std::string& path,
 
     return fclose(out) == 0 && wrote;
 }
+
+bool file_utils::inside(const std::string& path, const std::string& dir)
+{
+    if (path == dir)
+        return true;
+
+    return path.compare(0, dir.size() + 1, dir + "/") == 0;
+}

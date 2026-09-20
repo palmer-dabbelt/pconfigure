@@ -65,6 +65,30 @@ namespace file_utils {
      * sticking a filename on the end of one always works. */
     std::string normalize_directory(const std::string& path);
 
+    /* TRUE when a path names a directory or names something
+     * somewhere underneath it.  Both arguments are spelled the way
+     * normalize_path() spells a path: relative to where pconfigure
+     * ran, with no trailing '/'.
+     *
+     * The character after the directory has to be a '/' rather than
+     * anything at all, which is the difference between "obj/sub"
+     * being inside "obj" and "objects" being inside it.  A directory
+     * is inside itself, since every caller of this is asking whether
+     * one path may be reasoned about as part of another and a path is
+     * part of itself.
+     *
+     * Both arguments name a directory, and "dir" in particular is a
+     * directory some build actually has: every caller asks this of an
+     * object directory or of something built out of one, so neither
+     * "" nor "." is among the things it has to answer for.  That is
+     * worth saying because the answer for those would have to be a
+     * special case -- they are spellings of the directory pconfigure
+     * ran in, which the test below reads as a name no path starts
+     * with -- and a special case nothing reaches is a special case
+     * nothing can check.  A caller that wants one is a caller that
+     * brings it, and the test that goes with it. */
+    bool inside(const std::string& path, const std::string& dir);
+
     /* How to get from one directory to another when both of them are
      * named relative to the same place.  Both arguments and the
      * answer are spelled the way normalize_directory() spells a

@@ -57,7 +57,25 @@ diff help.out h.out
 # Every option the help text lists is one the parser really takes.  A
 # help message that names something pconfigure rejects is worse than
 # no help message at all.
-for option in $(grep -oE '^  (-h, )?--[a-z-]+' help.out | grep -oE '\-\-[a-z-]+')
+#
+# The list is scraped out of the help text, which is the part of this
+# that can go quiet: a help message that changed shape would leave the
+# loop below with nothing to iterate over, every assertion in it
+# unreached, and the whole section passing while checking nothing.  So
+# the list is counted before it is walked, and counted a second way --
+# off the help text's own option lines rather than off the names
+# pulled out of them -- because one count is only a number and two
+# that have to agree is a statement.  The second count deliberately
+# does not care how far the line is indented, where the first one
+# insists on two spaces: an option that drifted out from under the
+# scraper is counted by one of them and not the other, which is a
+# mismatch rather than a silence.
+options="$(grep -oE '^  (-h, )?--[a-z-]+' help.out | grep -oE '\-\-[a-z-]+')"
+echo "$options"
+test -n "$options"
+test "$(echo "$options" | wc -l)" -eq "$(grep -c -E '^ +-' help.out)"
+
+for option in $options
 do
     echo "checking $option"
     $PTEST_BINARY $option > check.out 2>&1 || true
