@@ -2166,6 +2166,17 @@ context::ptr command_processor::enclosing_test(void) const
 
 void command_processor::process_directives(const std::string& path)
 {
+    /* A TESTDEPS is read out of this file rather than out of a
+     * Configfile, but it's the same kind of fact: a line here decides
+     * what the Makefile says, so editing it has to be a reason to
+     * write the Makefile again.  AUTORECONFIGURE only watches what
+     * configfiles_read() names, and nothing else visits this path --
+     * so without this, a "#pconfigure TESTDEPS" line added to a test
+     * takes effect at the next pconfigure and not one edit sooner,
+     * which for an AUTORECONFIGURE project is a plain "make" that
+     * never runs it. */
+    add_configfile_dep(path);
+
     pinclude::list(
         path,
         [](std::string) { return 0; },
@@ -2183,6 +2194,14 @@ void command_processor::process_directives(const std::string& path)
         true,
 
         [&](const pinclude::directive& directive) {
+            /* The directive can be reached through an "#include"
+             * instead of sitting in "path" itself (see
+             * testdeps-directive.bash's "includes-it.bash"), and it's
+             * that file's edits a TESTDEPS on it has to survive --
+             * same reason as the add_configfile_dep() above, one
+             * level over. */
+            add_configfile_dep(directive.filename);
+
             auto debug = std::make_shared<debug_info>(directive.filename,
                                                       directive.line_number,
                                                       directive.line);

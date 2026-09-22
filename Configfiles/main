@@ -265,6 +265,7 @@ TESTSRC     += autoreconfigure.bash
 TESTSRC     += autoreconfigure-bad.bash
 TESTSRC     += autoreconfigure-subproject.bash
 TESTSRC     += autoreconfigure-configfile.bash
+TESTSRC     += autoreconfigure-testdeps-directive.bash
 TESTSRC     += autoreconfigure-pdeps-rebuilt.bash
 TESTSRC     += config-deps.bash
 TESTSRC     += builtin-rules.bash
