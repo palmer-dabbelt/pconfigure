@@ -19,6 +19,7 @@
  */
 
 #include "file_utils.h++"
+#include "string_utils.h++"
 #include "vector_util.h++"
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -284,4 +285,48 @@ bool file_utils::inside(const std::string& path, const std::string& dir)
         return true;
 
     return path.compare(0, dir.size() + 1, dir + "/") == 0;
+}
+
+std::set<std::string> file_utils::git_ignored_paths(const std::string& srcdir)
+{
+    std::set<std::string> out;
+
+    /* "--directory" is what keeps this cheap for a tree with a
+     * scratch directory full of its own output: without it, git
+     * would list every file underneath one by one, and a caller
+     * walking the tree would still have to recurse into the
+     * directory to find them all.  With it, an entirely-ignored
+     * directory is one entry ending in '/', which is stripped below
+     * so it matches the directory path a walk is deciding whether to
+     * recurse into. */
+    auto cmd = "git -C " + string_utils::quoted(srcdir)
+             + " ls-files --others --ignored --exclude-standard"
+               " --directory -z 2>/dev/null";
+    auto pipe = popen(cmd.c_str(), "r");
+    if (pipe == NULL)
+        return out;
+
+    std::string buf;
+    char chunk[4096];
+    size_t n;
+    while ((n = fread(chunk, 1, sizeof(chunk), pipe)) > 0)
+        buf.append(chunk, n);
+    pclose(pipe);
+
+    size_t start = 0;
+    while (start < buf.size()) {
+        auto nul = buf.find('\0', start);
+        if (nul == std::string::npos)
+            nul = buf.size();
+
+        auto entry = buf.substr(start, nul - start);
+        if (entry.size() > 0 && entry.back() == '/')
+            entry.pop_back();
+        if (entry.size() > 0)
+            out.insert(srcdir + "/" + entry);
+
+        start = nul + 1;
+    }
+
+    return out;
 }

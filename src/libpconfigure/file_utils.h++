@@ -21,6 +21,7 @@
 #ifndef FILE_UTILS_HXX
 #define FILE_UTILS_HXX
 
+#include <set>
 #include <vector>
 #include <string>
 
@@ -119,6 +120,22 @@ namespace file_utils {
      * as saying something different. */
     bool write_if_changed(const std::string& path,
                           const std::string& contents);
+
+    /* What git considers ignored inside "srcdir", one entry per
+     * top-level ignored file or directory, spelled "srcdir/name" --
+     * the same way a caller walking srcdir spells the paths it finds,
+     * so a lookup is a set membership test rather than a pattern
+     * match.
+     *
+     * This is for a vendored tree's own scratch: a build system
+     * driven from outside has no way to know a foreign tree's output
+     * paths ahead of time, but the tree already wrote them down the
+     * day it added a .gitignore, and asking git is cheaper than
+     * guessing. Empty and silent wherever git has nothing to say --
+     * srcdir isn't a checkout, or git isn't installed at all -- so a
+     * tree vendored by copying rather than by submodule sees no
+     * difference from before this existed. */
+    std::set<std::string> git_ignored_paths(const std::string& srcdir);
 }
 
 #endif
