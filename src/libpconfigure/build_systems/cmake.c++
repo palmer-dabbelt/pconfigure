@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <cctype>
 #include <iostream>
+#include <set>
 
 build_system_cmake::build_system_cmake(const std::string& name)
 : build_system(name),
@@ -194,6 +195,7 @@ namespace {
     void chase(const std::string& dir,
                const std::string& skip,
                bool root,
+               const std::set<std::string>& ignored,
                std::vector<std::string>& out)
     {
         /* A tree named as the directory pconfigure itself ran in has
@@ -236,6 +238,20 @@ namespace {
                 continue;
 
             if (S_ISDIR(info.st_mode) == true) {
+                /* A directory the tree's own .gitignore says is
+                 * output rather than source, the same reasoning as
+                 * the CMakeCache.txt check below applied one step
+                 * earlier: nothing recurses into it, so nothing in it
+                 * becomes a glob a rewrite of it could make newer
+                 * than the build.  llvm/utils/lit's own
+                 * "__pycache__", left behind by running lit itself,
+                 * is exactly this -- a directory the source tree
+                 * never had until the tests were run once, and would
+                 * otherwise look like a source change on every build
+                 * after. */
+                if (ignored.count(path) > 0)
+                    continue;
+
                 subdirs.push_back(path + "/");
                 continue;
             }
@@ -266,7 +282,7 @@ namespace {
         out.push_back(dir + "*");
 
         for (const auto& subdir: subdirs)
-            chase(subdir, skip, false, out);
+            chase(subdir, skip, false, ignored, out);
     }
 }
 
@@ -967,7 +983,8 @@ build_system_cmake::vendored_targets(
      * than any guess made out here would be.  All these are for is
      * giving make a reason not to recurse at all. */
     auto dirs = std::vector<std::string>();
-    chase(base(), output_dir() + "/", true, dirs);
+    chase(base(), output_dir() + "/", true,
+          file_utils::git_ignored_paths(source_dir()), dirs);
     std::sort(dirs.begin(), dirs.end());
 
     /* The build-side options, written into a file by make out of what

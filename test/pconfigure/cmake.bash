@@ -187,6 +187,20 @@ EOF
 }
 
 fake_tree $top/sub
+
+# A vendored tree that leaves scratch behind inside its own source
+# directory -- the way running llvm-lit fills
+# llvm/utils/lit/lit/__pycache__ with .pyc files -- writes into a
+# directory chase() would otherwise watch for source changes, unless
+# the tree said in its own .gitignore that the directory isn't source.
+# The file has to exist before the first source scan, same as the
+# fixture above, so that whether it counts turns on whether it was
+# ignored rather than on whether it had been seen yet.
+(cd $top/sub && git init -q)
+echo "scratch/" > $top/sub/.gitignore
+mkdir -p $top/sub/scratch
+echo "first run" > $top/sub/scratch/output.txt
+
 mkdir -p $top/src
 
 # The fake's three refusals, run here rather than left to be believed.
@@ -551,6 +565,28 @@ then
     exit 1
 fi
 test -f obj/sub/build/marker
+
+##############################################################################
+# But a gitignored one does nothing at all                                   #
+##############################################################################
+# The scratch file was created before the first source scan rather
+# than after, so it has already been offered as part of a watched
+# directory's glob -- which is the one case where getting this wrong
+# would actually be caught. A tool that rewrites its own scratch on
+# every run -- same name, new mtime, sometimes new content -- would
+# otherwise make the build look stale every time the tool ran, forever.
+sleep 2s
+echo "second run" > sub/scratch/output.txt
+make $MAKE_ARGS > scratch.out
+cat scratch.out
+if grep -q "CMAKE" scratch.out
+then
+    exit 1
+fi
+if grep -q "BUILD" scratch.out
+then
+    exit 1
+fi
 
 # A build-side option is one more run of a build that has already
 # happened.  The tree is asked for "extra" instead of for its default,
