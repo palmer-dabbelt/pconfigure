@@ -239,6 +239,20 @@ cat >sub/src/hello.c <<'EOF'
 int hello(void) { return 1; }
 EOF
 
+# A vendored tree that keeps a test suite of its own inside its source
+# directory, the way Verilator's test_regress does, leaves that
+# suite's scratch behind in there too -- and unlike autom4te.cache,
+# nothing about that scratch's name is something pconfigure could
+# know ahead of time.  The tree said so itself, in a .gitignore, so
+# this is a real git checkout rather than a bare directory: the file
+# below has to exist before the source scan runs, so that whether it
+# gets treated as a prerequisite is a question of whether it was
+# ignored rather than a question of whether it was ever seen.
+(cd sub && git init -q)
+echo "scratch/" > sub/.gitignore
+mkdir -p sub/scratch
+echo "first run" > sub/scratch/output.txt
+
 ##############################################################################
 # And one that does, the way a release tarball looks                         #
 ##############################################################################
@@ -609,6 +623,33 @@ then
     exit 1
 fi
 if grep -q "AUTORECONF" third.out
+then
+    exit 1
+fi
+
+##############################################################################
+# But a gitignored one does nothing at all                                   #
+##############################################################################
+# The whole reason this scratch file was created before the source
+# scan rather than after: it has already been offered to the build as
+# a prerequisite, so this is the one case where being wrong would
+# actually be caught.  A test run rewrites its own scratch on every
+# pass -- same name, new mtime, sometimes new content -- and a build
+# that watched it would go stale every time the tests did, which is
+# exactly the loop this is here to prove doesn't happen.
+sleep 2s
+echo "second run" > sub/scratch/output.txt
+make $MAKE_ARGS > scratch.out
+cat scratch.out
+if grep -q "AUTOTOOLS" scratch.out
+then
+    exit 1
+fi
+if grep -q "MAKE" scratch.out
+then
+    exit 1
+fi
+if grep -q "AUTORECONF" scratch.out
 then
     exit 1
 fi

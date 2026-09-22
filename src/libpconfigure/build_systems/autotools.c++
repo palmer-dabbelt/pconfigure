@@ -26,7 +26,9 @@
 #include <unistd.h>
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
 #include <iostream>
+#include <set>
 
 build_system_autotools::build_system_autotools(const std::string& name)
 : build_system(name),
@@ -560,8 +562,24 @@ std::string build_system_autotools::configure_signature(void) const
  * up to itself is a walk that never finishes, and a tree that has a
  * good reason for one -- a build that stages headers into a directory
  * of links, say -- has that reason during its build rather than
- * before it. */
-static void walk_tree(const std::string& dir, std::vector<std::string>& out)
+ * before it.
+ *
+ * autom4te.cache is named outright because every autotools tree has
+ * one, but it's not the only scratch a foreign build writes inside
+ * its own source directory -- a tree with an in-tree test suite
+ * (Verilator's test_regress, say) leaves the state of its last run
+ * sitting right next to the tests that made it, and that state is
+ * output wearing an input's clothes exactly the way autom4te.cache
+ * is: watching it doesn't find a real change, it finds the previous
+ * "make check", and a file that a test run rewrites is a build-stamp
+ * that goes stale every time the tests do.  Nobody outside the tree
+ * knows its scratch paths by name, but the tree said so itself the
+ * day it wrote a .gitignore -- so ignored_paths() asks git instead of
+ * guessing, which is the same trick as the autom4te.cache special
+ * case with the naming done for us. */
+static void walk_tree(const std::string& dir,
+                       const std::set<std::string>& ignored,
+                       std::vector<std::string>& out)
 {
     auto handle = opendir(dir.c_str());
     if (handle == NULL)
@@ -578,6 +596,8 @@ static void walk_tree(const std::string& dir, std::vector<std::string>& out)
             continue;
 
         auto path = dir + "/" + name;
+        if (ignored.count(path) > 0)
+            continue;
 
         /* lstat rather than stat, so that a symlink is whatever it is
          * rather than whatever it points at. */
@@ -599,7 +619,59 @@ static void walk_tree(const std::string& dir, std::vector<std::string>& out)
      * prerequisite lists is one nobody can diff. */
     std::sort(subdirs.begin(), subdirs.end());
     for (const auto& subdir: subdirs)
-        walk_tree(subdir, out);
+        walk_tree(subdir, ignored, out);
+}
+
+/* What git inside srcdir considers ignored, one entry per top-level
+ * ignored file or directory, spelled the same way walk_tree() spells
+ * its own paths ("srcdir/name") so a lookup is a set membership test.
+ *
+ * "--directory" is what keeps this cheap for a tree like
+ * test_regress/obj_vlt/: without it, git would list every file
+ * underneath one by one, and walk_tree() would still have to recurse
+ * into the directory to find them all.  With it, an entirely-ignored
+ * directory is one entry ending in '/', which is stripped here so it
+ * matches the directory path walk_tree() is about to decide whether
+ * to recurse into.
+ *
+ * Empty and silent whenever git has nothing to say -- srcdir isn't a
+ * git checkout, or git isn't installed at all -- so a tree vendored
+ * by copying rather than by submodule gets exactly the old behavior,
+ * not an error. */
+static std::set<std::string> ignored_paths(const std::string& srcdir)
+{
+    std::set<std::string> out;
+
+    auto cmd = "git -C " + string_utils::quoted(srcdir)
+             + " ls-files --others --ignored --exclude-standard"
+               " --directory -z 2>/dev/null";
+    auto pipe = popen(cmd.c_str(), "r");
+    if (pipe == NULL)
+        return out;
+
+    std::string buf;
+    char chunk[4096];
+    size_t n;
+    while ((n = fread(chunk, 1, sizeof(chunk), pipe)) > 0)
+        buf.append(chunk, n);
+    pclose(pipe);
+
+    size_t start = 0;
+    while (start < buf.size()) {
+        auto nul = buf.find('\0', start);
+        if (nul == std::string::npos)
+            nul = buf.size();
+
+        auto entry = buf.substr(start, nul - start);
+        if (entry.size() > 0 && entry.back() == '/')
+            entry.pop_back();
+        if (entry.size() > 0)
+            out.insert(srcdir + "/" + entry);
+
+        start = nul + 1;
+    }
+
+    return out;
 }
 
 std::vector<makefile::target::ptr>
@@ -914,7 +986,7 @@ build_system_autotools::vendored_targets(
      * The build                                                        *
      ********************************************************************/
     auto files = std::vector<std::string>();
-    walk_tree(srcdir, files);
+    walk_tree(srcdir, ignored_paths(srcdir), files);
     std::sort(files.begin(), files.end());
 
     auto build_deps = std::vector<makefile::target::ptr>{config_target};
