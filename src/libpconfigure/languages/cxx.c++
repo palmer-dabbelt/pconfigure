@@ -649,6 +649,17 @@ language_cxx::link_target::generate_makefile_target(void) const
         if (std::find(_opts.begin(), _opts.end(), rpath) == _opts.end())
             rpath_suffix += " " + rpath;
 
+    /* "-framework Foo" is Apple ld64 syntax with no ELF equivalent, so
+     * it only ever belongs on the link line when this link is actually
+     * producing a Mach-O -- the same "mach_o" check that gates
+     * codesigning below.  FRAMEWORKS is parsed and stored on every
+     * platform (see command_processor.c++); this is the one place
+     * that turns it into anything. */
+    auto framework_suffix = std::string();
+    if (mach_o == true)
+        for (const auto& framework: _ctx->frameworks)
+            framework_suffix += " -framework " + framework;
+
     /* What gets linked.  A project that worked its dependencies out
      * here knows the list; one that leaves it to the build does not,
      * and asks make for whatever turned up as a prerequisite -- which
@@ -668,6 +679,7 @@ language_cxx::link_target::generate_makefile_target(void) const
           + " " + vector_util::join(_opts, " ")
           + " " + shared
           + rpath_suffix
+          + framework_suffix
     };
 
 #ifdef __APPLE__

@@ -162,6 +162,7 @@ TESTSRC     += autodeps-headers.bash
 TESTSRC     += autodeps-bash.bash
 TESTSRC     += osx-shared-deps.bash
 TESTSRC     += osx-entitlements.bash
+TESTSRC     += frameworks.bash
 TESTSRC     += subdir-rpath.bash
 TESTSRC     += dup-rpath.bash
 TESTSRC     += dup-rpath-linkopts.bash

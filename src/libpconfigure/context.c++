@@ -62,6 +62,7 @@ context::context(const std::string& base)
       autodeps_debug(NULL),
       phc(makefile::tool_command("phc")),
       entitlements(""),
+      frameworks(),
       children(),
       lib_dir_built(false),
       autoreconfigure(false)
@@ -102,6 +103,7 @@ context::context(const context_type& _type,
                  const debug_info::ptr& _autodeps_debug,
                  const std::string& _phc,
                  const std::string& _entitlements,
+                 const std::vector<std::string>& _frameworks,
                  const std::vector<ptr>& _children,
                  bool _lib_dir_built,
                  bool _autoreconfigure)
@@ -139,6 +141,7 @@ context::context(const context_type& _type,
       autodeps_debug(_autodeps_debug),
       phc(_phc),
       entitlements(_entitlements),
+      frameworks(_frameworks),
       children(_children),
       lib_dir_built(_lib_dir_built),
       autoreconfigure(_autoreconfigure)
@@ -194,6 +197,7 @@ context::ptr context::dup(const context_type& type,
                                      this->autodeps_debug,
                                      this->phc,
                                      this->entitlements,
+                                     this->frameworks,
                                      children,
                                      this->lib_dir_built,
                                      this->autoreconfigure);
@@ -273,6 +277,11 @@ void context::add_compileopt(const std::string& data)
 void context::add_linkopt(const std::string& data)
 {
     link_opts.push_back(data);
+}
+
+void context::add_framework(const std::string& data)
+{
+    frameworks.push_back(data);
 }
 
 std::string std::to_string(const context::ptr& ctx)
