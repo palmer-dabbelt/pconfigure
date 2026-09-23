@@ -548,7 +548,18 @@ language_cxx::link_target::generate_makefile_target(void) const
                 if (mach_o == true)
                     return " -shared -Wl,-install_name,@rpath/"
                          + _ctx->cmd->data();
-                return " -shared";
+                /* Without an ELF soname, a consumer's NEEDED entry
+                 * doesn't get this library's name -- it gets whatever
+                 * path "-l" happened to resolve to when THAT consumer
+                 * was linked (here, literally "lib/libgladefs.a"),
+                 * because that's the only string an ld with no soname
+                 * to prefer has to record.  That string is a build-time
+                 * relative path, not a name: it only resolves again if
+                 * the consumer is later run from the one directory it
+                 * was linked from, which is exactly as fragile as it
+                 * sounds. -install_name is the Mach-O spelling of the
+                 * same idea just above; -soname is ELF's. */
+                return " -shared -Wl,-soname," + _ctx->cmd->data();
             case shared_target::FALSE:
                 return "";
             }
