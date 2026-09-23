@@ -181,6 +181,7 @@ static bool names_a_path(const command_type& type)
     case command_type::DEBUG:
     case command_type::DEFAULT_TEST_SUITE:
     case command_type::DEPLIBS:
+    case command_type::FRAMEWORKS:
     case command_type::HELP:
     case command_type::INCLUDE_TEST_SUITES:
     case command_type::LANGUAGES:
@@ -227,6 +228,7 @@ static bool takes_a_qualifier(const command_type& type)
     case command_type::DEPLIBS:
     case command_type::DEPTESTS:
     case command_type::ENTITLEMENTS:
+    case command_type::FRAMEWORKS:
     case command_type::GENERATE:
     case command_type::HDRDIR:
     case command_type::HEADERS:
@@ -383,7 +385,12 @@ static std::string real_directory(const std::string& path)
  * PREFIX, ENTITLEMENTS, GENERATE, TESTDEPS, DEPTESTS, SUBPROJECTS --
  * rather than copied out at each of them, for the same reason
  * unsafe_metacharacter() itself is shared: one list of characters,
- * asked one way, rather than as many as there are call sites. */
+ * asked one way, rather than as many as there are call sites.
+ *
+ * FRAMEWORKS also asks this, even though a framework name never
+ * reaches checked_project_path() -- it reaches a linker command line
+ * exactly the way an ENTITLEMENTS path reaches codesign's, which is
+ * the same hazard by a different door. */
 static void refuse_unsafe_metacharacter(const command::ptr& cmd,
                                         const std::string& command_name)
 {
@@ -956,6 +963,49 @@ void command_processor::process_one(const command::ptr& cmd)
 
         return;
     }
+
+    /* A framework name is an Apple ld64 concept ("-framework Foo") with
+     * no ELF equivalent, so it gets the same treatment as ENTITLEMENTS
+     * just above: a plain field on the context rather than something
+     * that goes through the opts_target interface LINKOPTS uses, which
+     * exists so that COMPILEOPTS/LINKOPTS can target either a context
+     * or a language's own defaults -- FRAMEWORKS, like ENTITLEMENTS,
+     * only ever means anything on the one linked-and-signed context
+     * that's actually open, never as a language-wide default.  It's
+     * accepted on every platform, so a Configfile never has to ask
+     * which machine is reading it, and languages/cxx.c++ only ever
+     * turns it into a "-framework" argument when what's being linked
+     * is actually a Mach-O -- elsewhere it's silently nothing, which is
+     * the point: spelling "-framework Foo" out by hand in a LINKOPTS
+     * would instead hard-fail every linker that isn't Apple's. */
+    case command_type::FRAMEWORKS:
+        if (cmd->check_operation("+=") == false)
+            goto bad_op_pluseq;
+
+        /* Same reasoning as ENTITLEMENTS above: only a whole linked
+         * binary is signed, so a FRAMEWORKS that landed under a
+         * compile-only context asks for nothing. */
+        if (tos->check_type({context_type::SOURCE,
+                             context_type::HEADER,
+                             context_type::GENERATE,}) == true)
+            tos->strictness.complain(
+                strict_since::v0_13(),
+                cmd->debug(),
+                "FRAMEWORKS written under a "
+                + std::to_string(tos->type)
+                + " asks for nothing: only a whole linked binary is"
+                " signed",
+                "move it up so it sits directly under the BINARIES or"
+                " LIBRARIES it's about");
+
+        /* A framework name reaches the linker command line as text
+         * the same way an ENTITLEMENTS path reaches codesign's --
+         * same hazard, same refusal. */
+        refuse_unsafe_metacharacter(cmd, "FRAMEWORKS");
+
+        tos->add_framework(cmd->data());
+
+        return;
 
     case command_type::GENERATE:
     {

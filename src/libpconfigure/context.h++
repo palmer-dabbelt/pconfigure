@@ -216,6 +216,14 @@ public:
      * kernel looks to find out what a binary is allowed to do. */
     std::string entitlements;
 
+    /* The Apple frameworks this target should link against, named the
+     * way "-framework" wants them (no path, no extension).  This only
+     * means anything when the thing being linked is a Mach-O: like
+     * entitlements, it's accepted on every platform so a Configfile
+     * never has to ask which machine is reading it, and is silently
+     * empty of effect anywhere else. */
+    std::vector<std::string> frameworks;
+
     /***************************************************************
      * Filled in after language::find_all_children                 *
      ***************************************************************/
@@ -297,6 +305,7 @@ public:
             const debug_info::ptr& autodeps_debug,
             const std::string& phc,
             const std::string& entitlements,
+            const std::vector<std::string>& frameworks,
             const std::vector<ptr>& children,
             bool lib_dir_built,
             bool autoreconfigure);
@@ -414,6 +423,7 @@ public:
 public:
     void add_compileopt(const std::string& data);
     void add_linkopt(const std::string& data);
+    void add_framework(const std::string& data);
     void set_compiler(const std::string& data) { compiler = data; }
     void set_linker(const std::string& data) { linker = data; }
     const std::vector<std::string>& list_compile_opts(void) const
