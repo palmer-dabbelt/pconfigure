@@ -212,7 +212,8 @@ int write_line(const char *line, void *defs_uncast)
 
 char *replace(const char *line, const char *pair)
 {
-    char *from, *to, *out;
+    char *from, *out;
+    const char *to;
     int count;
     size_t ii, oi;
 
