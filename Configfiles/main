@@ -276,15 +276,16 @@ TESTSRC     += builtin-rules.bash
 # toggles, subproject relinks, exported flags, vendored dep reports.
 # A mutation, a plain make, and assertions on what did and did not
 # rebuild.  The shapes that hit gaps in today's pconfigure (dropped
-# link inputs, exported-flag changes, deleted headers, bootstrap-tool
-# rebuilds, and the GENERATE --deps snapshot) arrive with their
-# per-gap fix PRs, each landing with the fix that makes it pass.
+# link inputs, deleted headers, bootstrap-tool rebuilds, and the
+# GENERATE --deps snapshot) arrive with their per-gap fix PRs, each
+# landing with the fix that makes it pass.
 TESTSRC     += generate-input-change-recompiles-consumers.bash
 TESTSRC     += generate-script-change-regenerates-output.bash
 TESTSRC     += generator-binary-change-regenerates.bash
 TESTSRC     += compileopts-change-recompiles-objects.bash
 TESTSRC     += configfile-toggle-adds-source.bash
 TESTSRC     += subproject-lib-change-relinks-consumer-only.bash
+TESTSRC     += exported-flags-change-recompiles-consumer.bash
 TESTSRC     += gen-dir-creation-no-spurious-rebuild.bash
 TESTSRC     += vendored-tree-new-dep-noticed-incrementally.bash
 TESTSRC     += shared-source-two-libs-rebuilds-both.bash
