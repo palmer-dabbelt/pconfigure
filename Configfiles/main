@@ -281,6 +281,7 @@ TESTSRC     += builtin-rules.bash
 # fix that makes it pass.
 TESTSRC     += generate-input-change-recompiles-consumers.bash
 TESTSRC     += generate-script-change-regenerates-output.bash
+TESTSRC     += generate-late-input-appears.bash
 TESTSRC     += generator-binary-change-regenerates.bash
 TESTSRC     += compileopts-change-recompiles-objects.bash
 TESTSRC     += configfile-toggle-adds-source.bash
