@@ -103,4 +103,13 @@ void add_configfile_dep(const std::string& path);
 
 void add_pkgconfig_path(const std::string& dir);
 
+/* Names the built copy of a pkg-config file this run writes, the
+ * other half of add_pkgconfig_path() above: the directory says where
+ * a package's .pc gets built, and this is what gets watched once a
+ * backtick in a Configfile has gone looking there.  Without it a .pc
+ * that changes is a change to the inputs of the configure step that
+ * nothing notices, and consumers keep the flags the last configure
+ * expanded into their compile commands. */
+void add_pkgconfig_dep(const std::string& path);
+
 #endif

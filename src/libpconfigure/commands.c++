@@ -76,6 +76,28 @@ void add_pkgconfig_path(const std::string& dir)
     pkgconfig_path.push_back(dir);
 }
 
+/* The built copies of the pkg-config files this run writes: one per
+ * pkgconfig LIBRARY, spelled the way the Makefile names them.  These
+ * are inputs to the backtick expansion below -- a Configfile that
+ * asks ppkg-config about a package is answered out of one of these --
+ * and the answer is written into the generated makefile as literal
+ * text, so a built .pc that changes later is a change to what the
+ * configure step said, not to anything make was watching.  They go on
+ * the watched list at expansion time, so that a build that never
+ * asked about the package doesn't watch it either. */
+static std::vector<std::string> pkgconfig_deps;
+
+void add_pkgconfig_dep(const std::string& path)
+{
+    /* The same de-duplication add_configfile_dep() does, and for the
+     * same reason: a prerequisite list is a set. */
+    auto normalized = file_utils::normalize_path(path);
+    for (const auto& already: pkgconfig_deps)
+        if (already == normalized)
+            return;
+    pkgconfig_deps.push_back(normalized);
+}
+
 static std::string execute(std::string line);
 static std::string replace_all(std::string haystack, std::string needle, std::string new_needle);
 
@@ -298,6 +320,18 @@ std::string execute(std::string line)
 
                 command_str = "PKG_CONFIG_PATH=" + path + "$PKG_CONFIG_PATH "
                               + command_str;
+
+                /* The PKG_CONFIG_PATH above says this command gets its
+                 * answer out of the build tree, which makes the .pc
+                 * files in it inputs to the expansion they feed: their
+                 * contents end up in the makefile as text, and nothing
+                 * else in the build reads them first.  Written down
+                 * before the command runs, the same way a Configfile
+                 * is written down before it is opened -- which is also
+                 * why this does not try to guess which .pc the command
+                 * will actually name. */
+                for (const auto& dep: pkgconfig_deps)
+                    add_configfile_dep(dep);
             }
 
             auto f = popen(command_str.c_str(), "r");
