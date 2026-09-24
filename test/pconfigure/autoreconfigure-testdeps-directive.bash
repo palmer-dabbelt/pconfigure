@@ -15,6 +15,11 @@
 # report a verdict -- before that tool exists, or without noticing an edit
 # to it.
 
+# The rule below runs whatever the PATH calls "pconfigure", the same
+# as "make reconfigure" does (see autoreconfigure-configfile.bash), so
+# the PATH is what has to be pointed at the one under test.
+export PATH="$(dirname "$PTEST_BINARY"):$PATH"
+
 mkdir -p src test/uses-tool
 
 cat >Configfile <<'CONFIGFILE'
