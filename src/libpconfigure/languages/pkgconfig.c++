@@ -214,6 +214,13 @@ language_pkgconfig::targets(const context::ptr& ctx) const
 
         add_pkgconfig_path(pkgconfig_dir);
 
+        /* The built copy is what a consumer's ppkg-config backtick
+         * gets answered out of, so it is an input to the configure
+         * step: named here so that its changing is a reason to
+         * reconfigure rather than a change the build keeps quiet
+         * about. */
+        add_pkgconfig_dep(build_path);
+
         if (access(build_path.c_str(), R_OK) != 0) {
             auto have_sources = true;
             for (const auto& source: sources)
