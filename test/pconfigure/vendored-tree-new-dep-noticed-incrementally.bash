@@ -21,12 +21,18 @@
 
 mkdir -p src hostinc sub/configs sub/include sub/kernel
 
+# "-P" so this matches the "root" kconfig.c++ writes into the build
+# context, which comes from getcwd() and is therefore already resolved
+# past any symlink -- $PTEST_TMPDIR sits under one on a Mac, where
+# "/tmp" is a link to "/private/tmp", and the two spellings of the
+# same directory would make hostinc/extra.h look unreachable from
+# "root" below.
 cat >Configfile <<EOF
 BUILD_SYSTEMS += kconfig
 
 SUBPROJECTS   += sub
 CONFIGUREOPTS += --defconfig tiny_defconfig
-MAKEOPS       += HOSTINC=$(pwd)/hostinc
+MAKEOPS       += HOSTINC=$(pwd -P)/hostinc
 
 LANGUAGES   += c
 BINARIES    += test
