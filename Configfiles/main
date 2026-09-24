@@ -270,6 +270,31 @@ TESTSRC     += autoreconfigure-pdeps-rebuilt.bash
 TESTSRC     += config-deps.bash
 TESTSRC     += builtin-rules.bash
 
+# Incremental-rebuild behavior, one dependency type per test, the
+# shapes LLVM's CMake build and Linux's Kbuild express (see the
+# dependency taxonomy): generator chains, option flips, source-list
+# toggles, subproject relinks, exported flags, vendored dep reports.
+# A mutation, a plain make, and assertions on what did and did not
+# rebuild.  Four of them fail against today's pconfigure by design --
+# they spell the correct incremental behavior out unweakened and stay
+# red until the build gets it right.
+TESTSRC     += generate-input-change-recompiles-consumers.bash
+TESTSRC     += generate-script-change-regenerates-output.bash
+TESTSRC     += generate-late-input-appears.bash
+TESTSRC     += generator-binary-change-regenerates.bash
+TESTSRC     += compileopts-change-recompiles-objects.bash
+TESTSRC     += configfile-toggle-removes-source.bash
+TESTSRC     += configfile-toggle-adds-source.bash
+TESTSRC     += subproject-lib-change-relinks-consumer-only.bash
+TESTSRC     += exported-flags-change-recompiles-consumer.bash
+TESTSRC     += deleted-header-recompiles-not-stops.bash
+TESTSRC     += gen-dir-creation-no-spurious-rebuild.bash
+TESTSRC     += vendored-tree-new-dep-noticed-incrementally.bash
+TESTSRC     += shared-source-two-libs-rebuilds-both.bash
+TESTSRC     += host-tool-in-cross-build.bash
+TESTSRC     += bootstrap-tool-source-change-reconfigures-once.bash
+TESTSRC     += link-order-stable-across-relinks.bash
+
 # The half of pconfigure that a build can run on its own, one source
 # at a time.  It is a BINARY rather than a LIBEXEC because pconfigure
 # names its own tools by the directory it is running out of, and that
