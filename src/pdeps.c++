@@ -46,7 +46,9 @@
 #include <libpconfigure/file_utils.h++>
 #include <libpconfigure/languages/cxx.h++>
 #include <pinclude.h++>
+#include <cstdint>
 #include <fstream>
+#include <functional>
 #include <unistd.h>
 #include <iostream>
 #include <set>
@@ -209,6 +211,19 @@ namespace {
     std::string guard(const std::string& kind, const std::string& name)
     {
         return "__pconfigure__" + kind + "-" + name;
+    }
+
+    /* The same arithmetic language_cxx hashes compile options into
+     * an object's name with; what is hashed here is the list of
+     * headers, which is this program's own answer. */
+    std::string hash_of(const std::vector<std::string>& words)
+    {
+        std::hash<std::string> hash_fn;
+        uint32_t seed = 5831;
+        for (const auto& word: words)
+            seed ^= hash_fn(word) + 0x9e3779b9
+                  + (seed << 6) + (seed >> 2);
+        return std::to_string(seed);
     }
 
     deps_context read_context(const std::string& path)
@@ -514,17 +529,97 @@ int main(int argc, const char **argv)
         say(link + ": " + object);
     out += "\n";
 
-    say(object + ": " + source + " " + join(headers));
+    /* The headers as a file, because a list is the one thing make
+     * cannot see change.  The object's line below names every header
+     * this source read the last time pdeps was asked, and a header it
+     * can no longer resolve comes back off that list: the re-derived
+     * fragment does not say the header went away, it says nothing at
+     * all, and a name that is not there is a name make has never
+     * heard of.  The build believes whatever it believed before,
+     * which is how a binary goes on carrying the contents of a file
+     * that is no longer in the tree.
+     *
+     * So the list is hashed into a stamp beside this fragment, and
+     * the object reads the stamp as a prerequisite.  The hash changes
+     * exactly when the list does, the stamp moves exactly once, and
+     * the object is remade against the include graph that is actually
+     * on disk.
+     *
+     * Written through write_if_changed(), the way pconfigure writes
+     * the context this run read: a stamp rewritten by every run is a
+     * prerequisite that moves every run, and an object behind one of
+     * those is a build that never settles.  Nothing here is allowed
+     * to be new except the answer.
+     *
+     * The stamp takes a rule too, and one with nothing to run while
+     * the file is there: make fires a rule with no prerequisites only
+     * for a target that does not exist.  That is what stands between
+     * a stamp that has gone missing and a build that stops on a file
+     * nothing has a rule for, and it is also why the rule cannot be
+     * the empty kind the headers below get -- make's opinion of a
+     * file it remade and could not find is that the file changed, and
+     * an object behind a permanently missing stamp is a build that
+     * never stops rebuilding.  Running pdeps writes the stamp back,
+     * and the object chases it once.  The rule also makes the stamp a
+     * target, which is what "make cache-clean" reads to decide what
+     * the build still knows how to make: named only as a
+     * prerequisite, the stamp would be thrown away out from under the
+     * line that names it, and the next build would stop on it.
+     *
+     * "make clean" leaves the stamp where it is, the way it leaves
+     * the context files: its rules take fragments and objects by
+     * name, and a stamp whose content still describes the headers
+     * says nothing new.  The object it belongs to is coming back
+     * regardless. */
+    auto stamp = deps + ".headers";
+    {
+        auto body = std::string();
+        body += "# Written by pdeps, from " + ctx.path + "\n";
+        body += "#\n";
+        body += "# The headers '" + source + "' reads, under the hash\n";
+        body += "# the object is restaled on.  Editing it achieves\n";
+        body += "# nothing.\n";
+        body += "\n";
+        body += hash_of(headers) + "\n";
+        for (const auto& header: headers)
+            body += header + "\n";
+
+        if (file_utils::write_if_changed(stamp, body) == false)
+            die("unable to write '" + stamp + "'");
+    }
+
+    say(stamp + ":");
+    out += "\t" + ctx.at + "test -f $@ || " + prefix.rewrite(
+               ctx.pdeps + " --context " + ctx.path
+               + " --source " + name) + "\n";
+    out += "\n";
+
+    auto object_deps = std::vector<std::string>{source};
+    object_deps.insert(object_deps.end(), headers.begin(), headers.end());
+    object_deps.push_back(stamp);
+
+    say(object + ": " + join(object_deps));
     say(deps + ": " + source + " " + join(headers));
     out += "\n";
 
     /* A header that has been deleted is a prerequisite make has no
      * rule for, and make stops rather than building anything.  But a
      * header going away is one of the ordinary things that happens to
-     * a source tree, and what should follow is a rebuild -- which is
-     * what a rule with nothing in it gets: the prerequisite stops
-     * being an error, and the file being missing is still older than
-     * everything, so whatever read it is built again. */
+     * a source tree, and the build has to stay answerable rather than
+     * fatal: a rule with nothing in it gives make something to run
+     * instead of an error -- and, having no recipe, nothing that
+     * changes the world while it runs.
+     *
+     * What it does not do is get the object rebuilt.  The deletion
+     * does restale the fragment -- a prerequisite make remade without
+     * finding it afterwards is one it treats as changed -- and
+     * remaking the fragment is what runs pdeps again, which is how
+     * the re-derived copy above stops naming the header.  But
+     * remaking a file make has included also sends it back to the
+     * top, and the graph it reads on the way back through no longer
+     * mentions the deletion anywhere: every trace of the header is in
+     * the file that was just replaced.  The object therefore starts
+     * over up to date, which is what the stamp above is for. */
     {
         auto said = std::set<std::string>();
 
