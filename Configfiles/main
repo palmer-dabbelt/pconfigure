@@ -291,6 +291,7 @@ TESTSRC     += gen-dir-creation-no-spurious-rebuild.bash
 TESTSRC     += vendored-tree-new-dep-noticed-incrementally.bash
 TESTSRC     += shared-source-two-libs-rebuilds-both.bash
 TESTSRC     += host-tool-in-cross-build.bash
+TESTSRC     += bootstrap-tool-source-change-reconfigures-once.bash
 TESTSRC     += link-order-stable-across-relinks.bash
 
 # The half of pconfigure that a build can run on its own, one source
