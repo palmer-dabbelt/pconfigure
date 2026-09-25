@@ -208,6 +208,20 @@ language_gen_proc::targets(const context::ptr& ctx) const
                            ? std::string(".") : procfile.substr(0, slash));
         }
 
+        /* Never watch the directory the target itself lands in.  The
+         * recipe above writes both the generated file and this very
+         * .d fragment into that directory, so watching it makes the
+         * rule its own trigger: build it once and $(wildcard <dir>)
+         * is newer than what was just built, forever.  A script that
+         * genuinely wants to notice a sibling of its own output has
+         * no way to ask for that today, but an infinite rebuild loop
+         * is a worse answer than missing that one case. */
+        {
+            auto slash = target.rfind('/');
+            watched.erase(slash == std::string::npos
+                          ? std::string(".") : target.substr(0, slash));
+        }
+
         auto dep_deps = std::vector<makefile::target::ptr>{
             std::make_shared<makefile::target>(
                 "$(wildcard " + procfile + ")")
