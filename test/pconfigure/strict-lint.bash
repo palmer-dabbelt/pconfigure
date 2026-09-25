@@ -93,7 +93,16 @@ if grep -q 'ENTITLEMENTS written under a TEST' ent.out
 then
     exit 1
 fi
-grep -q "entitlements app.plist" Makefile
+
+# Signing is a macOS idea -- the codesign line that names the plist
+# only gets written into the Makefile under __APPLE__ -- so checking
+# that the valid ENTITLEMENTS actually landed only means something
+# there.  Elsewhere ENTITLEMENTS is still parsed and still lints, which
+# is everything above this point already covers.
+if test "$(uname -s)" = Darwin
+then
+    grep -q "entitlements app.plist" Makefile
+fi
 
 # A warning leaves the build alone: the Makefile was written and the
 # exit status was zero, which is the entire difference between this
