@@ -159,6 +159,12 @@ protected:
         const std::string _linker_command;
         const std::string _linker_pretty;
 
+        /* Where the hash of this link's inputs lives, from
+         * link_objects().  It rides the rule as one more
+         * prerequisite, because a link input that leaves changes the
+         * file without touching anything else make watches. */
+        const std::string _link_inputs_path;
+
     public:
         link_target(const std::string& target_path,
                     const std::vector<target::ptr>& objects,
@@ -169,7 +175,8 @@ protected:
                     const std::vector<std::string>& opts,
                     const context::ptr& ctx,
                     const std::string linker_command,
-                    const std::string linker_pretty);
+                    const std::string linker_pretty,
+                    const std::string link_inputs_path);
 
         virtual ~link_target(void) {}
 

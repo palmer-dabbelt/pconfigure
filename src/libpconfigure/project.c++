@@ -1088,6 +1088,19 @@ makefile::target::ptr project::cache_clean_target(const std::vector<ptr>& projec
         if (project->_processor->autoreconfigure() == true)
             prune += " -not -name 'deps-context-*'";
 
+        /* And the file that hashes what goes into each link, which
+         * the link rules name as a prerequisite and nothing names as
+         * a target -- so the "what the build still knows how to
+         * make" test below would call every one of them stale.  It
+         * is pconfigure's output, written at configure time and
+         * refreshed by the reconfigure, which is the same reason the
+         * Makefiles above are spared; the one difference is that it
+         * exists for every project rather than only for an
+         * AUTORECONFIGURE one, so this is said without a condition.
+         * Throwing one away leaves the next make stopped on a
+         * prerequisite nothing has a rule for. */
+        prune += " -not -name 'link-inputs'";
+
         /* And the scratch a test was given, which the Makefile names
          * as an argument to ptest rather than as something it knows
          * how to build -- so reading it back decides every byte in

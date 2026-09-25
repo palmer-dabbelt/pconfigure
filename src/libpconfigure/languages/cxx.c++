@@ -29,6 +29,8 @@
 #include <pinclude.h++>
 #include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
+#include <string.h>
 #include <iostream>
 #include <set>
 #include <sstream>
@@ -462,7 +464,7 @@ cxx_sources_for_header(const std::string& full_header_path)
     return out;
 }
 
-language_cxx::link_target::link_target(const std::string& target_path, 
+language_cxx::link_target::link_target(const std::string& target_path,
                                        const std::vector<target::ptr>& objects,
                                        const std::vector<target::ptr>& additional_deps,
                                        const install_target& install,
@@ -471,7 +473,8 @@ language_cxx::link_target::link_target(const std::string& target_path,
                                        const std::vector<std::string>& opts,
                                        const context::ptr& ctx,
                                        const std::string linker_command,
-                                       const std::string linker_pretty)
+                                       const std::string linker_pretty,
+                                       const std::string link_inputs_path)
 : _target_path(target_path),
   _objects(objects),
   _additional_deps(additional_deps),
@@ -481,7 +484,8 @@ language_cxx::link_target::link_target(const std::string& target_path,
   _opts(opts),
   _ctx(ctx),
   _linker_command(linker_command),
-  _linker_pretty(linker_pretty)
+  _linker_pretty(linker_pretty),
+  _link_inputs_path(link_inputs_path)
 {
 }
 
@@ -493,6 +497,15 @@ language_cxx::link_target::generate_makefile_target(void) const
                                     return t->generate_makefile_target();
                                  });
     auto target2name = [](const target::ptr& t){ return t->path(); };
+
+    /* The hash of this link's inputs, from link_objects().  It rides
+     * the rule as a prerequisite so that an input leaving the link --
+     * which changes the file but makes nothing that remains newer --
+     * still runs the link again.  The recipe below filters
+     * non-%.o prerequisites out of the link line, so the file adds
+     * nothing to what gets linked. */
+    if (_link_inputs_path.size() > 0)
+        deps.push_back(std::make_shared<makefile::target>(_link_inputs_path));
 
     /* Whether what comes out of this link is a Mach-O.  That's a
      * question about the machine being built for rather than the one
@@ -905,6 +918,46 @@ language_cxx::link_objects(const context::ptr& ctx,
     auto bin_dir = output_dir(ctx);
     auto shared_link_dir = link_dir(ctx);
 
+    /* The link's inputs, hashed into a file that rides the link rule
+     * as a prerequisite.  GNU make relinks a target only when one of
+     * its prerequisites is newer than it is -- never because one went
+     * away -- so a source commented out of a SOURCES list took its
+     * object off the rule's prerequisite list without giving make a
+     * single reason to run the link again, and the binary went on
+     * carrying the removed code.  A file that says what the inputs
+     * are, and is rewritten only when that changes, is what brings
+     * make around: it is written here, at configure time, so the
+     * reconfigure rule's run of pconfigure refreshes it whenever the
+     * input list moves -- the shape the vendored trees already get
+     * for their configure options (project::write_configureopts(),
+     * and the configureopts_file() prerequisite the configure rules
+     * hang off in build_systems).  write_if_changed() leaves the file
+     * alone when nothing changed, so a reconfigure that changes no
+     * input relinks nothing, and the recipe's "filter %.o" below
+     * keeps the file itself off the link line.
+     *
+     * What goes into the hash is the sources as the Configfile named
+     * them, which is the same list the objects above were compiled
+     * from: a link input that leaves the build leaves this list, and
+     * an option change was already an input to the directory this
+     * file sits in, through hash_link_options(). */
+    auto link_inputs = std::vector<std::string>();
+    for (const auto& child: ctx->children)
+        if (child->type == context_type::SOURCE)
+            link_inputs.push_back(child->src_dir + "/" + child->cmd->data());
+
+    auto link_inputs_path = shared_link_dir + "link-inputs";
+    if (file_utils::write_if_changed(link_inputs_path,
+                                     this->hash_options(link_inputs)) == false) {
+        std::cerr << "can't write '" << link_inputs_path << "': "
+                  << strerror(errno) << "\n"
+                  << "  this is where the inputs of '"
+                  << ctx->cmd->data() << "'s link get hashed, which is\n"
+                  << "  how a source leaving the link gets the link to"
+                  << " run again\n";
+        abort();
+    }
+
     auto dedup_link_opts = [](std::vector<std::string> opts) {
         std::vector<std::string> tokens;
         for (const auto& opt : opts) {
@@ -956,7 +1009,8 @@ language_cxx::link_objects(const context::ptr& ctx,
         all_opts,
         ctx,
         this->linker_command(ctx),
-        this->linker_pretty()
+        this->linker_pretty(),
+        link_inputs_path
     );
 
     auto local_target = std::make_shared<link_target>(
@@ -969,7 +1023,8 @@ language_cxx::link_objects(const context::ptr& ctx,
         all_opts,
         ctx,
         this->linker_command(ctx),
-        this->linker_pretty()
+        this->linker_pretty(),
+        link_inputs_path
     );
 
     /* In order to keep the local and install targets consistant with the
