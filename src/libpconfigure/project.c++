@@ -1356,8 +1356,48 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
      * build is the same thing that keeps its going away quiet -- and
      * a target that stopped being asked for keeps whatever it last
      * built. */
-    if (_base.size() == 0 && _processor->autoreconfigure() == true)
+    if (_base.size() == 0 && _processor->autoreconfigure() == true) {
         out->reconfigure_on(configfiles_read());
+
+        /* A project that bootstraps its own pconfigure builds the tool
+         * that wrote this Makefile out of the Makefile itself: after
+         * the first bootstrap the vendored tree is an ordinary
+         * subproject, and the pconfigure in it is one more binary in
+         * the same dependency graph as everything else.  Which makes
+         * the binary an input to the configure step that nothing was
+         * watching -- a source edited, the binary relinked, and this
+         * Makefile still saying what the old binary said, for as long
+         * as nothing else happened to run pconfigure.  So a tree that
+         * bootstraps puts the tool on the same rule the Configfiles
+         * are on: make remakes what it includes, which means building
+         * the rebuilt binary first and running it second, and the
+         * reconfigure the new tool was going to be asked for arrives
+         * in the same make that built it.
+         *
+         * Nothing here sets a loop going.  Every configure rewrites
+         * this file unconditionally -- the comment at the top of
+         * makefile::write_to_file() is the reason that is right and
+         * not an oversight -- so the file comes back newer than the
+         * tool that wrote it, and the next make has nothing left to
+         * do.  It is the same settle the Configfile prerequisites
+         * above already ride on, arrived at from the other side: those
+         * name an input that changed on disk, this one an input the
+         * build changed itself.
+         *
+         * The prerequisite is spelled here rather than in the
+         * committed Makefile the recipe lives in, because of when the
+         * two files are known: on a fresh checkout make has to remake
+         * this Makefile before it has read it, and all it knows then
+         * is what the committed one says -- where the binary does not
+         * exist yet and no rule for it has been included, so naming it
+         * there would stop the very first make with "No rule to make
+         * target" before the bootstrap that builds it could run.  This
+         * file is only read once a binary is in place, by which point
+         * the subproject that builds it is included too. */
+        const auto& bootstrap = _processor->bootstrap();
+        if (bootstrap.size() > 0)
+            out->add_dep(makefile_path(), bootstrap + "bin/pconfigure");
+    }
 
     out->add_standalone_target(cache_clean_target(aggregated));
     out->add_standalone_target(distclean_target(aggregated));
