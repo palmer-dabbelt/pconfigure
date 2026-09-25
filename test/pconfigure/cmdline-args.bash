@@ -90,16 +90,19 @@ do
 done
 
 # --verbose leaves the recipes unsilenced, so make echoes what it
-# actually runs rather than the short label pconfigure prints.
+# actually runs rather than the short label pconfigure prints.  The
+# "cp" itself picks up a "--reflink=auto" ahead of the "-f" on Linux
+# and not elsewhere, so the pattern leaves that part optional rather
+# than pinning down which platform built this pconfigure.
 $PTEST_BINARY
-grep -q "^	@cp -f " Makefile
+grep -qE '^	@cp( --reflink=auto)? -f ' Makefile
 
 $PTEST_BINARY --verbose
-if grep -q "^	@cp -f " Makefile
+if grep -qE '^	@cp( --reflink=auto)? -f ' Makefile
 then
     exit 1
 fi
-grep -q "^	cp -f " Makefile
+grep -qE '^	cp( --reflink=auto)? -f ' Makefile
 
 # --debug says what it is building while it builds it, and still
 # writes a Makefile that works.
