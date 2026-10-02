@@ -21,6 +21,15 @@
 # include it adds to the include path has to exist while the target's
 # SOURCES line is being read, and the tool's own block has already
 # closed its CROSS_COMPILE by then.
+#
+# The generate script prints its header rather than writing the
+# header's file itself, which is what the "--generate" contract asks
+# for and is no longer merely the tidier of two spellings.  The
+# generated file is written to a temporary and moved into place, so that
+# a "--generate" which fails leaves no truncated file behind -- and a
+# script that writes the target behind pconfigure's back then has its
+# work moved over by whatever it printed, which for such a script is
+# nothing at all.
 
 mkdir -p src tc
 
@@ -65,7 +74,7 @@ cat >src/gen.h.proc <<'EOF'
 #!/bin/bash
 case "$1" in
 --deps)     echo "src/gen.c bin/gen" ;;
---generate) if test -x bin/gen; then bin/gen > obj/proc/gen.h; else echo "#define ANSWER 0" > obj/proc/gen.h; fi ;;
+--generate) if test -x bin/gen; then bin/gen; else echo "#define ANSWER 0"; fi ;;
 esac
 EOF
 chmod +x src/gen.h.proc
