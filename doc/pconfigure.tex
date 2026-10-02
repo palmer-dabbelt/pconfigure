@@ -2129,6 +2129,64 @@ these dependencies are eventually handled by \pconfigure.  Everything
 it prints is named relative to the project the script belongs to,
 which is also the directory it was run from.
 
+A line whose first character is a \texttt{?} names an \emph{optional}
+dependency: an input the script reads when it is there and does without
+when it is not, which is the shape of a script that asks whether some
+toolchain or other generated tree exists yet.  The \texttt{?} is not
+part of the path, whitespace between the two is a separator rather than
+part of the path, and the path may contain \texttt{make}'s glob
+characters.  An input that is genuinely required should still be named
+without the \texttt{?}, so that a build missing it says so rather than
+generating something quietly wrong.
+
+\pconfigure\ records such a line as a glob filtered by
+\texttt{\$(realpath ...)} rather than naming it outright, which is what
+makes both halves work.  While the file is absent the glob expands to
+nothing, so the line is not the hard error that an absent prerequisite
+no rule builds would be.  Once the file appears \texttt{make} treats it
+as an ordinary prerequisite --- a file nothing in the \texttt{Makefile}
+knows how to build but which is nonetheless there is, to \texttt{make},
+simply up to date --- so it joins the graph with no reconfigure.  The
+\texttt{\$(realpath ...)} is what covers a \emph{dangling symlink}:
+a glob answers out of the directory listing rather than by stat, so
+without the filter a link whose target is gone is reported as present
+and \texttt{make} is handed a prerequisite it can neither stat nor
+build.  That is the very hard error the glob was chosen to avoid, and
+it stops every target in the tree rather than just the generated one.
+
+One thing the \texttt{?} deliberately does not promise is that an
+optional input which \emph{arrives} regenerates the output.  What
+\texttt{make} promises for an ordinary prerequisite is that a
+\emph{newer} one regenerates the target, and that is all the
+\texttt{?} inherits: an input that lands older than the output it should
+have fed leaves that output stale, and \texttt{make} exits 0 saying
+there was nothing to be done.  This state cannot arise for a mandatory
+input, where an absent prerequisite is a hard error and so there is no
+earlier output for a late arrival to be older than; the \texttt{?}
+creates it by making absence legal.  It is reachable in practice and not
+only in principle, because \texttt{tar} restores mtimes --- a prebuilt
+toolchain unpacked into a watched directory arrives carrying whatever
+timestamps the machine that rolled the tarball had.  The recovery is a
+\texttt{touch} of the arrived file, not a reconfigure: the file really is
+on the rule, and only its timestamp is wrong.  Closing the limitation
+instead of documenting it would mean beating mtime, which is all
+\texttt{make} has to go on, and so would mean a check that runs on every
+\texttt{make} whether or not anything moved.  That price was measured.
+Hanging the dependency fragment's rule off a \texttt{FORCE} does not
+merely cost time: the fragment is \emph{included}, so \texttt{make}
+remakes it, re-executes, finds it out of date again and re-executes
+again, and the build never finishes --- 1818 \texttt{--deps} runs in the
+twenty seconds before the measurement was killed.  Spelling it
+carefully, so that the recipe keeps the existing fragment when the
+answer has not changed and \texttt{make} therefore has no reason to
+re-execute, does terminate, and costs one \texttt{--deps} subprocess per
+generated file per \texttt{make}: a no-op \texttt{make} in a tree with
+one generated file went from 1.7 ms to 13 ms.  That is paid by every
+incremental build in order to catch a backdated arrival, and the trade
+has not been made --- but it is a trade and not an impossibility, and
+the numbers are recorded here so that it can be made without being
+re-derived.
+
 Calling \texttt{\$SRCDIR\$name.proc --generate} prints the generated
 file to \texttt{/dev/stdout}.  Note that \pconfigure\ may call this
 when \pconfigure\ is run in addition to when \texttt{make} is run, as

@@ -11,11 +11,19 @@
 # BINARIES entry.
 #
 # The script also answers for the configure-time run, where the tool
-# does not exist yet: it writes a placeholder, and the first build
+# does not exist yet: it prints a placeholder, and the first build
 # replaces the placeholder with the tool's real answer before anything
 # reads the header.  That the real answer, not the placeholder, is
 # what the consumer was compiled against is part of the order the
 # assertions below check.
+#
+# It prints the header rather than writing the header's file itself,
+# which is what the "--generate" contract asks for and is no longer
+# merely the tidier of two spellings.  The generated file is written to
+# a temporary and moved into place, so that a "--generate" which fails
+# leaves no truncated file behind -- and a script that writes the target
+# behind pconfigure's back then has its work moved over by whatever it
+# printed, which for such a script is nothing at all.
 
 mkdir -p src
 
@@ -40,7 +48,7 @@ cat >src/gen.h.proc <<'EOF'
 #!/bin/bash
 case "$1" in
 --deps)     echo "src/gen.c bin/gen" ;;
---generate) if test -x bin/gen; then bin/gen > obj/proc/gen.h; else echo "#define ANSWER 0" > obj/proc/gen.h; fi ;;
+--generate) if test -x bin/gen; then bin/gen; else echo "#define ANSWER 0"; fi ;;
 esac
 EOF
 chmod +x src/gen.h.proc
