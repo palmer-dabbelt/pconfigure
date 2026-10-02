@@ -198,8 +198,17 @@ Section~\ref{prog:ppkg-config}) when a \texttt{Configfile} runs it in
 backticks.  The substitution is textual: the word
 \texttt{ppkg-config} is replaced wherever it appears inside a
 backticked command, so \texttt{`ppkg-config --cflags x`} runs
-\texttt{<path>} instead.  Otherwise the one found on
-\texttt{\$PATH} is what runs.
+\texttt{<path>} instead.
+
+Without this option the \texttt{ppkg-config} sitting beside the
+running \pconfigure\ is the one that runs, named by its absolute path
+the same way \pconfigure's other helper tools are (see
+Section~\ref{prog:ppkg-config}).  A tree that vendors \pconfigure\ and
+builds it into \texttt{src/pconfigure/bin} therefore needs nothing
+installed: the copy that matches the \pconfigure\ doing the
+configuring is the copy that answers.  \texttt{\$PATH} is still asked
+when there is no such sibling, which is the case a layout that keeps
+\pconfigure\ apart from its tools leaves.
 
 There is no \texttt{Configfile} command for this one, and it is
 deliberately not one: which \texttt{ppkg-config} answers a question is

@@ -22,6 +22,7 @@
 #include "debug_info.h++"
 #include "file_utils.h++"
 #include "string_utils.h++"
+#include <libmakefile/self_path.h++>
 #include <unistd.h>
 #include <fcntl.h>
 #include <cstdlib>
@@ -29,8 +30,41 @@
 #include <regex>
 #include <sstream>
 
-/* FIXME: This is a hack, it's used to set the path to ppkg-config */
-std::string ppkg_config = "ppkg-config";
+/* The ppkg-config named by --ppkg-config, or empty when nobody named
+ * one.  FIXME: this is a hack, it doesn't fit the regular argument
+ * parsing framework. */
+static std::string ppkg_config_option = "";
+
+/* How a backtick is told to say "ppkg-config".
+ *
+ * Not the bare name: that leaves the answer to $PATH, which is a
+ * question about the machine rather than about this build.  A tree
+ * that vendors pconfigure and runs it out of src/pconfigure/bin has
+ * the matching ppkg-config sitting right beside it and no reason to
+ * have installed one, so the bare name sent it looking for a copy that
+ * need not exist -- and getting it wrong is quiet: the shell writes
+ * "ppkg-config: command not found" and the backtick expands to
+ * nothing, so a LINKOPTS line that asked about a package comes out as
+ * though it had asked about nothing at all.  Resolved beside the
+ * running pconfigure instead, which is where every other helper tool
+ * is named from (makefile::tool_command) and for the same reason: the
+ * tool that matches the pconfigure doing the configuring is the one
+ * that should answer.
+ *
+ * $PATH still answers when there is no sibling to run, because a
+ * layout that keeps pconfigure apart from its tools is exactly the
+ * case $PATH was covering. */
+static std::string ppkg_config_command(void)
+{
+    if (ppkg_config_option.empty() == false)
+        return ppkg_config_option;
+
+    auto sibling = makefile::tool_command("ppkg-config");
+    if (sibling != "ppkg-config" && access(sibling.c_str(), X_OK) == 0)
+        return sibling;
+
+    return "ppkg-config";
+}
 
 /* The pkg-config files this run knows how to build.  There's one list
  * for the whole run rather than one per project on purpose: which
@@ -122,7 +156,7 @@ std::vector<command::ptr> commands(int argc, const char **argv)
                 abort();
             }
 
-            ppkg_config = argv[i+1];
+            ppkg_config_option = argv[i+1];
             ++i;
             continue;
         }
@@ -306,7 +340,7 @@ std::string execute(std::string line)
     bool in_command = false;
     for (const auto& c: line) {
         if (in_command == true && c == '`') {
-            auto command_str = replace_all(command.str(), "ppkg-config", ppkg_config);
+            auto command_str = replace_all(command.str(), "ppkg-config", ppkg_config_command());
 
             /* A pkg-config that this build produces itself comes
              * first, so that a project linking against a subproject
