@@ -2,56 +2,340 @@
 
 version="v0.12.5"
 
+# Whether the directory this ran in is the top of a git working tree
+# that belongs to THIS project.  Both halves below turn on that one
+# question, so it is asked in one place: a "--deps" that says there is
+# no git and a "--generate" that goes and asks git anyway is a cache
+# with no key, which is the whole bug this file had.
+#
+# The spelling it replaces, "test -d .git", got the question wrong in
+# one direction and right in the other, and both are worth naming
+# because the obvious fix loses the half that worked.
+#
+# WRONG: it says no to a working tree whose ".git" is a FILE rather
+# than a directory -- a "gitdir:" pointer at a repository kept
+# somewhere else, which is what git writes for a submodule and for a
+# linked worktree.  That is not a corner, it is this repository's
+# normal shape the moment anybody vendors it.  Measured in the tree
+# this was written in, where pconfigure is a submodule at
+# src/pconfigure of a superproject: "--deps" printed nothing at all
+# and "--generate" printed
+#
+#     #define PCONFIGURE_VERSION "v0.12.5"
+#
+# -- the hardcoded fallback above -- while "git describe" in the very
+# same directory said v0.12.5-217-gf7f69ad.  So every pconfigure built
+# as part of that tree has reported a version with no commit in it,
+# and nothing anywhere said so.  "git worktree add" produces the same
+# shape and measured the same way.
+#
+# RIGHT, and by accident: it also says no when this directory is a
+# plain subdirectory of somebody else's checkout -- a release tarball
+# unpacked inside an unrelated tree, or a copy of this project
+# vendored into one.  "git rev-parse" answers for whatever repository
+# encloses the current directory, which there is the WRONG repository,
+# and its tag has nothing to do with this version.  Measured: a copy
+# of this project at vendor/proj of a repo tagged v9.9.9 answers
+# "git describe" with v9.9.9, which the mismatch check below turns
+# into "exit 1" -- so a naive "just ask git" would not merely report a
+# wrong version there, it would fail the build outright.
+#
+# So the test is not "is there a .git" but "is the repository git
+# would answer for MINE", which is --show-toplevel against this
+# directory.  Both are run through "cd && pwd -P" before they are
+# compared, so that a symlinked path above the project does not make
+# two spellings of one directory look like two directories.
+own_git_worktree()
+{
+    local top
+
+    top="$(git rev-parse --show-toplevel 2>/dev/null)"
+    test -n "$top" || return 1
+
+    test "$(cd "$top" 2>/dev/null && pwd -P)" = "$(pwd -P)"
+}
+
+# $1, which must be absolute, spelled relative to the directory this
+# ran in.
+#
+# Every path "--deps" prints has to be relative to the project,
+# because pconfigure records it as the project's own prefix with the
+# printed path stuck on the end -- so an absolute path arrives in the
+# Makefile as "src/pconfigure//home/palmer/...", which is not a file
+# and never will be.  That is the one escape the Makefile genuinely
+# cannot express, and it matters here because the answer this is
+# relativizing is often absolute: "git rev-parse --git-dir" prints
+# ".git" in a plain clone but an absolute path for a submodule.
+#
+# A relative path that leaves the project through "../.." IS
+# expressible, and that is the case this tree is actually in -- the
+# real git directory of a submodule lives in the superproject, at
+# ../../.git/modules/<path>, outside the project entirely.  make
+# neither knows nor cares where a prerequisite sits: it stats the name
+# it is given.  And the prefixing works out, because the number of
+# ".."s is exactly the depth of the project below the superproject, so
+# "src/pconfigure/" + "../../.git/modules/src/pconfigure/HEAD" names
+# the superproject's own .git, inside the build it is part of.
+#
+# Done by walking the project path up one component at a time rather
+# than with "realpath --relative-to", which is GNU coreutils and not
+# on a mac.  "$base" is quoted inside the case patterns so that a
+# directory with a glob character in its name is matched literally
+# rather than as a pattern.
+project_relative()
+{
+    local target base up rest
+
+    # An absolute target is what makes the walk terminate: once "$base"
+    # has been eaten down to the empty string the first pattern reads
+    # "/*", which any absolute path matches.  A relative one would spin
+    # forever, so it is refused rather than trusted.
+    case "$1" in
+    /*) ;;
+    *)  return 1 ;;
+    esac
+
+    target="${1%/}"
+    base="$(pwd -P)"
+    base="${base%/}"
+    up=""
+
+    while true
+    do
+        case "$target" in
+        "$base"/*)
+            # "$base" is quoted here and in the pattern above because
+            # it is a directory name rather than a pattern: a project
+            # under a directory with a '[' or a '*' in its name would
+            # otherwise be matched against its own name read as a glob.
+            # Measured with the project at "a[1]b/pro*j" and with a git
+            # directory reached through "g[x]/": both come out right.
+            rest="${target#"$base"/}"
+            echo "$up$rest"
+            return 0
+            ;;
+        "$base")
+            echo "$up."
+            return 0
+            ;;
+        esac
+
+        base="${base%/*}"
+        up="../$up"
+    done
+}
+
 if [[ "$1" == "--deps" ]]
 then
-    if ! test -d .git
-    then
-	exit 0
-    fi
+    own_git_worktree || exit 0
 
-    ref="$(cat .git/HEAD | cut -d' ' -f2)"
-    if [[ "$?" != "0" ]]
-    then
-        exit 0
-    fi
+    # HEAD lives in the per-worktree git directory; the branch refs and
+    # packed-refs live in the common one.  Those are the same directory
+    # in every repository except a linked worktree, where --git-dir is
+    # <main>/.git/worktrees/<name> and --git-common-dir is <main>/.git
+    # -- measured, along with "git rev-parse --git-path packed-refs"
+    # resolving to the common directory from inside such a worktree.
+    # Asking for both costs nothing and is the difference between a
+    # worktree's refs being watched and not.
+    #
+    # Both are put through "cd && pwd -P" for two reasons at once: it
+    # absolutizes the relative answer a plain clone gives -- --git-dir
+    # prints ".git" there and an absolute path for a submodule -- and
+    # it makes the result physical, which is what project_relative's
+    # common-prefix walk needs on the other side.
+    #
+    # Each is asked for and checked BEFORE it is cd'd into, rather than
+    # the two being nested into one line, and that is legibility rather
+    # than a bug fix.  Measured on a git rigged to refuse
+    # --git-common-dir: cd "" in bash fails outright ("cd: null
+    # directory", status 1), so the nested spelling came out empty and
+    # fell into the fallback correctly.  It is written out because what
+    # made that work is a shell behaviour POSIX leaves unspecified for
+    # an empty operand, buried two levels down a line doing three other
+    # things -- and what it would have cost is a path quietly naming
+    # the wrong directory, which is this file's own bug.
+    #
+    # What the fallback costs when it does fire, on a git old enough
+    # not to have --git-common-dir at all: a LINKED WORKTREE looks for
+    # its branch ref in the per-worktree directory, where there is no
+    # such file, so the wildcard drops it and a commit there goes
+    # unnoticed -- HEAD holds a symbolic ref and does not move on a
+    # commit.  No other shape is affected, the two directories being
+    # the same one outside a linked worktree; measured with the rigged
+    # git, a plain clone answers identically either way.
+    gitdir="$(git rev-parse --git-dir 2>/dev/null)"
+    test -n "$gitdir" || exit 0
+    gitdir="$(cd "$gitdir" 2>/dev/null && pwd -P)"
+    test -n "$gitdir" || exit 0
 
-    if test -f ".git/$ref"
+    common="$(git rev-parse --git-common-dir 2>/dev/null)"
+    if test -n "$common"
     then
-        echo ".git/$ref"
-    else
-        if test -f ".git/refs/heads/master"
+        common="$(cd "$common" 2>/dev/null && pwd -P)"
+    fi
+    test -n "$common" || common="$gitdir"
+
+    gitdir="$(project_relative "$gitdir")" || exit 0
+    common="$(project_relative "$common")" || exit 0
+
+    # Empty on a detached HEAD, which is a state with no ref to watch:
+    # what the version turns on there is HEAD itself, and HEAD is named
+    # below regardless.  This replaces reading .git/HEAD by hand and
+    # cutting the second field out of it, which had two faults -- the
+    # "$?" it checked afterwards was the exit status of the "cut" at
+    # the end of the pipe rather than of the "cat" that could actually
+    # fail, and on a detached HEAD the cut returned the whole line (a
+    # bare sha, no space in it to cut at), so the name of a ref that
+    # did not exist went on to miss and fall through to "master".
+    ref="$(git symbolic-ref --quiet HEAD)"
+
+    # make cannot carry certain characters in a prerequisite, and two
+    # of them it drops SILENTLY, which is this bug's own failure mode
+    # arriving by a different door.  Measured on GNU Make 4.4.1, with
+    # one file per shape and the prerequisite written exactly as
+    # pconfigure writes an optional one:
+    #
+    #     a b   the prerequisite list comes out EMPTY -- $(wildcard)
+    #           splits at the space into two names, neither of which
+    #           exists -- and touching the input leaves the target
+    #           "up to date".  Nothing said.
+    #     a$b   the same, make having eaten "$b" as a variable
+    #           reference before $(wildcard) ever saw it.
+    #     a:b   "*** target pattern contains no '%'.  Stop." -- loud,
+    #           and fatal to every target in the Makefile.
+    #
+    # while '#', '%', '*', ',' and parentheses all survive and are
+    # really watched.  '*' and friends surviving is the point of the
+    # convention, so the guard has to be the three above and not
+    # "anything unusual".
+    #
+    # When one of them turns up there is no spelling of the answer that
+    # works, so the answer is nothing -- but said out loud, on stderr,
+    # which the build shows.  Printing the other two paths and dropping
+    # the bad one would be worse: it would leave a dependency graph
+    # that looks complete and is not, which is exactly the state this
+    # whole file was in.  The version still comes out right at
+    # configure time, from --generate; what is lost is noticing a later
+    # commit, and the reader is told so rather than left to find out.
+    for path in "$gitdir/HEAD" "$common/packed-refs" "$common/$ref"
+    do
+        bad=""
+        case "$path" in
+        *[[:space:]]*) bad="whitespace" ;;
+        *'$'*)         bad="a '\$'" ;;
+        *:*)           bad="a ':'" ;;
+        esac
+
+        if [[ "$bad" != "" ]]
         then
-            echo ".git/refs/heads/master"
+            echo "$0: the git directory's path contains $bad:" >&2
+            echo "  $path" >&2
+            echo "  make cannot carry that in a prerequisite, so this" \
+                 "build will not notice" >&2
+            echo "  a commit until something else makes it rerun" \
+                 "$0 --generate." >&2
+            exit 0
         fi
-    fi
+    done
 
-    if test -f ".git/packed-refs"
-    then
-        echo  ".git/packed-refs"
-    fi
+    # All three are OPTIONAL, which is what the leading '?' says: a
+    # path pconfigure records wrapped in a wildcard, so that it is a
+    # real prerequisite when the file is there and not named at all
+    # when it is not.  Every one of them needs it, and each for its own
+    # measured reason.
+    #
+    # The loose ref, because git packs refs away on its own -- "git gc"
+    # does it, and so does any "git pack-refs" -- and a ref that was
+    # loose when pconfigure ran and is packed now is a prerequisite
+    # with no file and no rule.  Measured against the old file, which
+    # named it outright: configure, build, "git pack-refs --all", then
+    # a plain make, and the answer is
+    #
+    #     make: *** No rule to make target '.git/refs/heads/trunk',
+    #     needed by 'obj/proc/version.h'.  Stop.
+    #
+    # which stops the whole build and not merely version.h, over a
+    # routine piece of git housekeeping.
+    #
+    # packed-refs, because it need not exist yet: a repository that has
+    # never packed has no such file, and the old file's "test -f" guard
+    # therefore left it out of the answer entirely -- so a tree
+    # configured before its first "git gc" went on watching a loose ref
+    # that packing was about to delete, and had nothing watching the
+    # file the ref moved INTO.  Measured on a fresh "git init": the old
+    # --deps printed ".git/refs/heads/trunk" and nothing else.
+    #
+    # And HEAD, because a repository can go away while a build tree
+    # stays -- a tarball rolled from a built tree, or a superproject's
+    # .git/modules pruned under a submodule's feet.  Named outright
+    # that is a build that cannot run any target; named optionally it
+    # is a version that stops moving, which is the right way round.
+    #
+    # What declaring packed-refs unconditionally costs, because it is
+    # not nothing and the number should not have to be rediscovered.
+    # pconfigure watches the DIRECTORY of every path declared here, so
+    # that a file which does not exist yet can still be noticed when it
+    # arrives -- and the directory of packed-refs is the git directory
+    # itself, whose mtime moves on any git command that writes a lock
+    # file beside it.  So the fragment is re-derived on the first make
+    # after almost any use of git.  Measured, in a one-generator
+    # project, a no-op make immediately after a "git status":
+    #
+    #     never-packed repository, old file    2.5 ms
+    #     never-packed repository, this file  24.6 ms
+    #
+    # all of which is the DEPS recipe re-running.  The fragment comes
+    # out with the same content, nothing is regenerated, and make still
+    # says "Nothing to be done".  Of the 22 ms, 10 is this file: --deps
+    # went from 2.8 ms to 12.5 ms over ten runs, four "git rev-parse"
+    # and "git symbolic-ref" calls having replaced a "cat".
+    #
+    # In a repository that has ever packed -- which is every clone,
+    # since cloning packs -- there is no new watching at all: the old
+    # file named packed-refs too whenever it happened to exist, so the
+    # git directory was already watched and the fragment was already
+    # being re-derived.  The delta there is the subprocesses alone,
+    # against a no-op make of pconfigure's own tree measuring 18 ms
+    # settled and 41 ms with the fragment re-derived.
+    #
+    # The "test -f" guards those three replace are the part of the old
+    # file this convention exists to delete.  A guard asked at
+    # configure time answers for configure time only: it is a verdict
+    # about a file, recorded in a dependency list that does not name
+    # the file it is a verdict about.  '?' records the question instead
+    # of the answer, and make asks it again on every build.
+    echo "?$gitdir/HEAD"
+    test -n "$ref" && echo "?$common/$ref"
+    echo "?$common/packed-refs"
 
     exit 0
 fi
 
 if [[ "$1" == "--generate" ]]
 then
-    if test -d .git
+    if own_git_worktree
     then
-	gv=`git describe`
-	if [[ "$?" == "0" ]]
-	then
+        # stderr is dropped because a repository with no tag at all is
+        # a legitimate thing to build in -- a fresh "git init", or a
+        # clone made with --depth 1, where describe fails and the
+        # fallback above is the right answer.  The old file let that
+        # "fatal: No names found" through to the build log, which is
+        # noise claiming to be a problem.  The status is still checked.
+        gv="$(git describe 2>/dev/null)"
+        if [[ "$?" == "0" ]]
+        then
             if [[ "$(echo "$gv" | cut -d'-' -f1)" != "$version" ]]
             then
-		echo "$0 has mismatched version" >&2
-		exit 1
+                echo "$0 has mismatched version" >&2
+                exit 1
             fi
 
             version="${gv}-git"
-	fi
+        fi
     fi
 
     echo "#define PCONFIGURE_VERSION \"${version}\""
-    
+
     exit 0
 fi
 
