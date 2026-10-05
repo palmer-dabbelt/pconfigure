@@ -108,6 +108,17 @@ namespace file_utils {
      * was for it to exist rather than for it to be new. */
     bool mkdir_p(const std::string& path);
 
+    /* Whether a file already says exactly this, and nothing else.
+     *
+     * The question write_if_changed asks itself, named so that a
+     * caller can ask it without writing anything.  That is for a file
+     * whose content is a KEY rather than an output: "was the thing
+     * beside this made by what I am about to write down?", where the
+     * answer no is a cached answer to throw away rather than a file
+     * to bring up to date.  A file that isn't there says nothing, so
+     * it does not say this. */
+    bool says(const std::string& path, const std::string& contents);
+
     /* Writes a file, but only when what it should say isn't what it
      * already says.
      *

@@ -246,22 +246,27 @@ bool file_utils::mkdir_p(const std::string& path)
     return made;
 }
 
+bool file_utils::says(const std::string& path, const std::string& contents)
+{
+    auto in = fopen(path.c_str(), "r");
+    if (in == NULL)
+        return false;
+
+    auto read = std::string();
+    char buffer[4096];
+    size_t got;
+    while ((got = fread(buffer, 1, sizeof(buffer), in)) > 0)
+        read.append(buffer, got);
+    fclose(in);
+
+    return read == contents;
+}
+
 bool file_utils::write_if_changed(const std::string& path,
                                   const std::string& contents)
 {
-    auto read = std::string();
-
-    auto in = fopen(path.c_str(), "r");
-    if (in != NULL) {
-        char buffer[4096];
-        size_t got;
-        while ((got = fread(buffer, 1, sizeof(buffer), in)) > 0)
-            read.append(buffer, got);
-        fclose(in);
-
-        if (read == contents)
-            return true;
-    }
+    if (says(path, contents) == true)
+        return true;
 
     auto slash = path.rfind('/');
     if (slash != std::string::npos)
