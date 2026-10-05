@@ -686,6 +686,106 @@ language_gen_proc::targets(const context::ptr& ctx) const
                   + " || (rm -f $@.raw $@.tmp; exit 1)"
         };
 
+        /* The recipe above, written down beside the fragment it makes,
+         * and the fragment thrown away when the two no longer match.
+         *
+         * A fragment is not the answer the script gave: it is what one
+         * version of this recipe made of that answer.  The script is a
+         * prerequisite already and the directories it reads are
+         * watched, so a changed ANSWER is noticed.  What nothing was
+         * watching is a changed QUESTION -- the sed above, which is
+         * where the whole format of the fragment lives -- so a
+         * pconfigure that learns to write the fragment differently
+         * leaves every fragment already on disk saying the old thing,
+         * with a Makefile beside it that says the new one.
+         *
+         * Measured in the tree that vendors this, on the configure that
+         * first taught "--deps" the '?' marker.  The fragment on disk
+         * had been written by the previous recipe, which knew nothing
+         * of the marker and so prefixed the line without stripping it:
+         *
+         *     make: *** No rule to make target
+         *     'src/pconfigure/?../../.git/modules/src/pconfigure/HEAD',
+         *     needed by 'src/pconfigure/obj/proc/version.h'.  Stop.
+         *
+         * A fragment is INCLUDED, so that is not one stale target: it
+         * stops every target in the tree.
+         *
+         * Dropped at configure time rather than named as a prerequisite
+         * of the rule, and that is the part worth measuring before
+         * believing.  Naming it looks like the tidier answer -- it is
+         * what cxx does with the context it hands pdeps -- and in this
+         * tree it does not work: by the time make could act on it the
+         * stale fragment has already been read, and its lines are in
+         * force while make is still deciding what to remake.  A tree
+         * that bootstraps its own pconfigure remakes the top Makefile
+         * first, which means building pconfigure, which means the
+         * generated header, whose prerequisites now include the bad
+         * line -- so make dies on the fragment before reaching the rule
+         * that would have rewritten it.  Measured with the prerequisite
+         * in place and a context file newer than the fragment: the
+         * error above, unchanged, and no recovery from any make at all.
+         * The record therefore has to be read by whoever can act before
+         * make reads anything, and that is the configure.
+         *
+         * What it costs when the recipe has not changed is one file
+         * read, which is why the question is asked of the content
+         * rather than of the file's mtime: a configure that changed
+         * nothing must leave the fragment alone, or every configure
+         * re-runs every "--deps" script in the tree.
+         *
+         * The recipe is recorded whole rather than just the sed, so
+         * that a change to any part of it -- the guard, the ".raw"
+         * plumbing, the rename -- counts, and so that there is no
+         * second list here to be kept in step with the first.
+         *
+         * The fragment goes before the record, and that order is the
+         * difference between a safe interruption and a silent one.  A
+         * configure killed between the two leaves the old record with
+         * no fragment, which the next make simply derives again.
+         * Written the other way round it would leave the new record
+         * beside the OLD fragment, and every configure after that would
+         * find the record matching and the fragment wrong -- the state
+         * this whole comment is about, now immune to the thing that
+         * fixes it.
+         *
+         * The leftovers go with it.  A ".raw" is the answer the last
+         * run got and a ".tmp" is a fragment that was being written
+         * when something died; both are read by the recipe that is
+         * about to run under a recipe that is no longer the one that
+         * wrote them.
+         *
+         * One record per fragment, under one name, because the fragment
+         * has one name.  The kconfig build system suffixes its contexts
+         * per project, since a vendored tree is described once from
+         * inside a subproject and once from the top; doing that here
+         * would leave the standalone record saying what it said before
+         * a parent's build ever ran, so it would MATCH while the
+         * fragment beside it had been written by the parent's recipe --
+         * a key that has stopped describing the thing it is the key
+         * for.  Shared, a mismatch always means what it says.
+         *
+         * What such a fragment does when it is believed is measured and
+         * is quieter than it sounds, which is the argument for fixing it
+         * here rather than waiting for a build to complain.  Read from
+         * inside the subproject a parent's fragment collapses to the
+         * right thing, the project's own Makefile defining its prefix
+         * variable as empty; read from the parent a standalone fragment
+         * goes on naming the unprefixed target, which that build never
+         * asks for, so its lines are inert.  Both builds go green, and
+         * an input arriving later is watched by nothing in either. */
+        auto dep_context = target + ".d-context";
+        auto dep_context_content = std::string();
+        for (const auto& command: dep_commands)
+            dep_context_content += command + "\n";
+
+        if (file_utils::says(dep_context, dep_context_content) == false) {
+            unlink(deps_path.c_str());
+            unlink((deps_path + ".raw").c_str());
+            unlink((deps_path + ".tmp").c_str());
+            file_utils::write_if_changed(dep_context, dep_context_content);
+        }
+
         auto deps_target = std::make_shared<makefile::target>(
             deps_path,
             "DEPS\t" + ctx->cmd->data(),

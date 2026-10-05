@@ -296,6 +296,7 @@ TESTSRC     += generate-optional-dep-bad-fragment.bash
 TESTSRC     += generate-optional-dep-dangling-symlink.bash
 TESTSRC     += generate-optional-dep-mtime-inverted.bash
 TESTSRC     += generate-failed-generate-leaves-no-target.bash
+TESTSRC     += generate-recipe-change-rederives-fragment.bash
 TESTSRC     += generator-binary-change-regenerates.bash
 TESTSRC     += compileopts-change-recompiles-objects.bash
 TESTSRC     += configfile-toggle-adds-source.bash
