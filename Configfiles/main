@@ -8,6 +8,49 @@ COMPILEOPTS += -pedantic
 
 LANGUAGES   += bash
 
+# A tree that vendors this one aggregates it, and the aggregate's
+# "make check" is a suite rather than every test in the build.  A
+# suite collects nothing from a project that never named it --
+# deliberately, because a project that has not heard of a suite has no
+# opinion about which of its tests could run in it, and "all of them"
+# is an opinion.  So this file has to say so, or every test below
+# drops out of the aggregate's suites while a "make check" run in here
+# still runs all of them and reports them green.  Which is exactly
+# what was happening: the tests that guard pconfigure's own behaviour
+# ran in neither of the GladeOS superproject's two suites, and the
+# only place they ran was a "make check" nobody up there types.
+#
+# Being the tree a BOOTSTRAP names changes nothing about this, which
+# is the part that made it easy to miss.  A bootstrap is an ordinary
+# subproject in every way but the two it has to be special in -- a way
+# to build a first pconfigure with none in hand, and a Makefile that
+# says so -- so its tests reach a parent's suites by the same route as
+# any other subproject's, and that route starts here.
+#
+# Both names rather than just smoke, and the reason is NOT that
+# inclusion stops at a project boundary.  It used to be: a suite was
+# told which tests an inclusion brought it by asking one project, so a
+# subproject test that joined smoke did not arrive in a parent's
+# overnight.  46df8ee ("pconfigure: Resolve an INCLUDE_TEST_SUITES
+# across the whole build") ended that -- aggregate_test_suite_members
+# unions every project's members and every project's includes first,
+# then walks the inclusions once over the union -- so smoke alone here
+# would in fact reach a parent's overnight that includes smoke.
+#
+# Both names anyway, because this project's membership should not
+# depend on the parent's inclusion graph.  A parent that reorganises
+# its suites, or vendors this tree into a build where overnight does
+# not include smoke, would otherwise silently stop running these
+# tests in it -- which is the failure this whole block exists to
+# prevent, arriving by a different route.  Two lines is a cheap way
+# not to care.
+#
+# And no DEFAULT_TEST_SUITE, so every TESTSRC below is a member of
+# each of them without saying so, and a bare "make check" in here goes
+# on meaning every test this project has.
+TEST_SUITES += smoke
+TEST_SUITES += overnight
+
 LANGUAGES   += h
 
 LANGUAGES   += pkgconfig
