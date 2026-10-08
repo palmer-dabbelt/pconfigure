@@ -110,10 +110,28 @@ killed_scoring_leaves_no_report() {
 
     # The report is gone while the scoring is still in flight, so there
     # is no instant at which a kill could leave the old one behind.
-    test ! -e "$report"
+    #
+    # CAPTURED here and asserted after the kill, not asserted here.  This
+    # script runs under `set -e`, so a failing assertion at this point exits
+    # with the background `make` and its two recipe shells still blocked in
+    # open(2) on the FIFO -- and the EXIT trap then removes the directory
+    # holding that FIFO, so nothing can ever open it for reading and they
+    # sleep until reboot.  Measured 2026-10-08: one such group was still
+    # blocked 1h30m after the run that made it, which is three leaked
+    # processes for every run on the only path this test exists to check.
+    # An `if` condition rather than `test && gone=1`, because the latter
+    # fails the compound under `set -e` when the test fails, which is the
+    # case being handled.
+    local gone=0
+    if test ! -e "$report"
+    then
+        gone=1
+    fi
 
     kill -9 "-$mkpid" || true
     wait "$mkpid" || true
+
+    test "$gone" = 1
 
     # And it stays gone: nothing in that recipe ran to put it back, and
     # nothing was going to.
