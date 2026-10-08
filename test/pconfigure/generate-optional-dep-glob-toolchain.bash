@@ -118,8 +118,28 @@ timeout 60 make $MAKE_ARGS > fourth.out 2>&1 || { cat fourth.out; exit 1; }
 cat fourth.out
 grep -q "^GEN	gen.h$" fourth.out
 
+# The answer it came back with is the one already on disk -- one
+# compiler or two, the define is still 1 -- so the recipe leaves the
+# output's mtime alone and the consumers are not rebuilt.  That is the
+# whole of generate-identical-output-does-not-cascade.bash, arrived at
+# from here by accident, and it is what this block asks about instead of
+# the build settling: the output stays older than the file that was
+# touched, so make goes on asking the script until something changes the
+# answer.  Asserted rather than tolerated, because the day it settles
+# again is the day the suppression has stopped working or has grown a
+# witness file, and either is worth being told about.
+grep -q "define HAVE_CROSS_CC 1" obj/proc/gen.h
+if grep -q "^CC	app.c$" fourth.out
+then
+    exit 1
+fi
+
 timeout 60 make $MAKE_ARGS > fifth.out 2>&1 || { cat fifth.out; exit 1; }
 cat fifth.out
-grep -q "Nothing to be done" fifth.out
+grep -q "^GEN	gen.h$" fifth.out
+if grep -q "^CC	app.c$" fifth.out
+then
+    exit 1
+fi
 
 exit 0

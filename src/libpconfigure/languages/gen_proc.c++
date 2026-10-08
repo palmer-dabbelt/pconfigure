@@ -406,14 +406,74 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * glade-vm's fixture scripts produce when the toolchain they
          * look for is not there.  "--generate prints the generated
          * file" is what the manual has always said, and it is now what
-         * it means. */
+         * it means.
+         *
+         * And the temporary is moved into place only when it says
+         * something the target did not already say, which is the one
+         * thing standing between a prerequisite that was REWRITTEN and
+         * a consumer that gets rebuilt.  make's question about a
+         * prerequisite is "is it newer than the target", and a script
+         * whose answer is a function of its inputs' CONTENT has inputs
+         * whose mtime moves without their content moving: a file
+         * rewritten with the bytes it already had is the ordinary
+         * shape of a cache being repacked.  A rule that always mv'd
+         * passed that straight through, so the output came back
+         * byte-identical with a new mtime and everything downstream of
+         * it rebuilt for nothing.
+         *
+         * Measured in the tree that vendors this, which is where this
+         * stops being tidiness.  Its glibc and xfstests conformance
+         * harnesses each watch a stamp whose body is `git rev-parse
+         * HEAD` for a submodule, and the files that body is read out of
+         * are .git's HEAD, the branch ref and packed-refs.  `git
+         * pack-refs` rewrites packed-refs, and so does the auto-gc any
+         * `git fetch` may trigger -- for a revision that did not move.
+         * The stamp then regenerated identical, and an hours-long suite
+         * re-ran to produce the verdicts it had already produced.  That
+         * is a whole night of machine time for a `git gc`, and the
+         * declaration cannot be narrowed to avoid it: a branch's tip
+         * lives in the loose ref until it is packed and in packed-refs
+         * afterwards, so watching one and not the other misses the move
+         * itself.  The content was always the authority; nothing was
+         * asking it.
+         *
+         * What it COSTS is that such a rule no longer settles, and that
+         * is the honest half.  The target stays older than the
+         * prerequisite that was touched, so make asks again on the next
+         * build, and on every build after it, until something actually
+         * changes the output.  The script therefore runs every make
+         * once one of its inputs has been rewritten in place -- cheap
+         * for a script whose job is to print a revision, not cheap for
+         * one that builds an archive, and there is no third option
+         * available: mtime is all make has, and a target cannot be
+         * newer than its prerequisite while staying older than its
+         * consumers.  Leaving it alone is still the better trade, since
+         * what it buys back is bounded by the cost of the CONSUMERS
+         * rather than of the script.  The settling shape would be a
+         * second witness file, touched unconditionally, with the output
+         * hanging off it -- two targets and a name per GENERATE, for a
+         * re-run of a script that is already a prerequisite of
+         * everything it feeds.  Not worth it until a GENERATE shows up
+         * that is expensive AND insensitive to its inputs' mtimes.
+         *
+         * The spelling is build_systems/cmake.c++'s, which asks this
+         * same question of the options file it writes beside a vendored
+         * build, down to the "2>/dev/null" that keeps a cmp with no
+         * target to compare against quiet.  It is braced so that the
+         * "||" below still reaches a failed mv: the rule that a target
+         * exists if and only if the last run that wrote it succeeded is
+         * the rule this recipe is mostly about, and a cmp in the middle
+         * of the chain may not be the thing that quietly ends it. */
         auto tmp_target = target + ".tmp";
         auto short_cmd = "GEN\t" + ctx->cmd->data();
         auto commands = std::vector<std::string>{
             "mkdir -p " + ctx->gen_dir,
             "(" + in_project(ctx->unbased(procfile) + " --generate")
                 + ") > " + tmp_target
-                + " && mv " + tmp_target + " " + target
+                + " && { if cmp -s " + tmp_target + " " + target
+                + " 2>/dev/null;"
+                + " then rm -f " + tmp_target + ";"
+                + " else mv " + tmp_target + " " + target + "; fi; }"
                 + " || (rm -f " + tmp_target + " " + target + "; exit 1)"
         };
 

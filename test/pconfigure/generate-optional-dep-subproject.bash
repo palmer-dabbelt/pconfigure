@@ -100,7 +100,7 @@ grep -qF 's|^?[[:space:]]*\(.*\)|$$(pconfigure_subdir_sub)obj/proc/gen.h: $$(for
 # failed would reach the same "||" as a script that failed, and the
 # recipe would delete the target because it could not find the
 # directory to generate it in.
-grep -q '(cd .*sub.* && src/gen.h.proc --generate) > .*obj/proc/gen.h.tmp && mv ' sub/obj/Makefile.sub
+grep -q '(cd .*sub.* && src/gen.h.proc --generate) > .*obj/proc/gen.h.tmp && { if cmp -s ' sub/obj/Makefile.sub
 
 # The fragment the build wrote holds the variable rather than the
 # directory, so the subproject's own make reads the same file and means

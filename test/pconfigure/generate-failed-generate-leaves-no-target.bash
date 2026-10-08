@@ -151,7 +151,15 @@ test "$(./bin/app)" = "1"
 # than something that happened to pass the measurements above.  Checked
 # here rather than before the build so that a regression reads as the
 # truncated file it leaves behind rather than as a grep that missed.
-grep -q 'obj/proc/gen.h.tmp && mv obj/proc/gen.h.tmp obj/proc/gen.h || (rm -f obj/proc/gen.h.tmp obj/proc/gen.h; exit 1)$' Makefile
+#
+# The cmp in the middle is what keeps a regeneration whose answer is the
+# bytes already on disk from moving the output's mtime, and it is inside
+# the braces for the sake of the contract this test is about: the "||"
+# has to reach a failed mv as well as a failed script, or "the target
+# exists if and only if the last run that wrote it succeeded" stops
+# holding.  generate-identical-output-does-not-cascade.bash is where the
+# suppression itself is measured.
+grep -q 'obj/proc/gen.h.tmp && { if cmp -s obj/proc/gen.h.tmp obj/proc/gen.h 2>/dev/null; then rm -f obj/proc/gen.h.tmp; else mv obj/proc/gen.h.tmp obj/proc/gen.h; fi; } || (rm -f obj/proc/gen.h.tmp obj/proc/gen.h; exit 1)$' Makefile
 
 timeout 60 make $MAKE_ARGS > fifth.out 2>&1 || { cat fifth.out; exit 1; }
 cat fifth.out

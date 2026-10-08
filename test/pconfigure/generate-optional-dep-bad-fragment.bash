@@ -176,7 +176,23 @@ grep -qxF 'obj/proc/gen.h: $(foreach f,$(wildcard src/opt/answer.txt),$(if $(rea
 
 timeout 60 make $MAKE_ARGS > fifth.out 2>&1 || { cat fifth.out; exit 1; }
 cat fifth.out
-grep -q "Nothing to be done" fifth.out
+
+# The fragment side has settled: it was re-derived from the fixed script
+# and is not asked again, which is what says the recovery is a state
+# rather than a single green build.
+if grep -q "^DEPS	gen.h$" fifth.out
+then
+    exit 1
+fi
+
+# The output side has not settled, and will not.  The script this test
+# rewrote prints exactly what it printed before, so the recipe left the
+# output's mtime alone and the script stays newer than it -- make goes on
+# asking until something changes the answer.  That is the trade
+# generate-identical-output-does-not-cascade.bash measures: a cascade
+# into everything downstream of a generated file is paid for with a
+# re-run of the one script that generates it.
+grep -q "^GEN	gen.h$" fifth.out
 
 ##############################################################################
 # And "? " is refused here too                                                #
