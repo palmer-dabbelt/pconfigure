@@ -2260,6 +2260,34 @@ opposed to \texttt{--deps} which will only be called when
 it's possible that the script will be run before its dependencies are
 ready, so plan accordingly!
 
+What the script prints is compared against the file already on disk, and
+the output is replaced only when the two differ.  A regeneration whose
+answer is the bytes that were already there therefore leaves the
+output's mtime exactly where it was, and nothing downstream of it is
+rebuilt.  That matters because a script whose answer is a function of
+its inputs' \emph{content} has inputs whose mtime can move without their
+content moving --- a cache repacked, a lock file rewritten, an archive
+unpacked over itself --- and \texttt{make} cannot tell any of those from
+an edit.  Measured in the tree \pconfigure\ is vendored into: a stamp
+holding a submodule's revision is declared against that submodule's
+\texttt{HEAD}, branch ref and \texttt{packed-refs}, \texttt{git
+pack-refs} rewrites \texttt{packed-refs} for a revision that did not
+move, and what hung off the stamp was a conformance suite measured in
+hours.
+
+The cost of that is paid in the other direction, and it is worth
+planning for: such a rule no longer \emph{settles}.  The output stays
+older than the prerequisite that was touched, so \texttt{make} asks
+again on the next build and on every build after it, and the script runs
+each time until something actually changes its answer.  A script that is
+expensive \emph{and} insensitive to its inputs' timestamps will
+therefore run on every \texttt{make} once one of those inputs has been
+rewritten in place.  This is the only trade available: mtime is all
+\texttt{make} has, and one file cannot be newer than its prerequisites
+while staying older than its consumers.  It is made this way round
+because what it buys back is bounded by the cost of the consumers rather
+than of the script.
+
 \subsection{\texttt{TGENERATE += \$script}}
 
 Exactly the same as generate, but runs \texttt{test/\$script}
