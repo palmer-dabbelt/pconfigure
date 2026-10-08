@@ -689,6 +689,99 @@ void project::check_default_test_suite(const std::vector<ptr>& aggregated) const
     abort();
 }
 
+/* The names a complaint about a project that declared no suite wants
+ * to offer: every suite this build has, since those are the names a
+ * TEST_SUITES line down there could usefully write. */
+static void print_build_suites(
+    const std::map<std::string, std::vector<std::string>>& members)
+{
+    std::cerr << "  the suites of this build are:";
+    for (const auto& pair: members)
+        std::cerr << " '" << pair.first << "'";
+    std::cerr << "\n";
+}
+
+void project::check_aggregated_test_suites(
+    const std::vector<ptr>& aggregated) const
+{
+    /* Only a build whose "make check" means a suite.  Without a
+     * DEFAULT_TEST_SUITE those two words mean every test the build
+     * has, so a project that joined nothing has lost nothing: its
+     * tests still run, and the only thing it cannot be is asked for
+     * by a suite's name.  That is the shape every project had before
+     * suites existed, and it is still a good one. */
+    const auto& fallback = _processor->default_test_suite();
+    if (fallback.size() == 0)
+        return;
+
+    for (const auto& project: aggregated) {
+        /* A project that declared a suite has had this thought, and
+         * which of its tests go in which of them is its own business.
+         * A project of nothing but hours-long harnesses belongs in
+         * "overnight" and in no "smoke", so a configure that refused
+         * that would be refusing an answer rather than a mistake.
+         *
+         * Never having said anything is the mistake, and it is a
+         * different one: a project with no suites has its tests in no
+         * suite at all, so the two words nobody has to be told to
+         * type reach none of them. */
+        if (project->processor()->test_suites().size() > 0)
+            continue;
+
+        /* A project with no tests is outside every suite for a reason
+         * that has nothing to do with suites, and every vendored tree
+         * a build pulls in looks exactly like that. */
+        const auto tests = project->tests();
+        if (tests.size() == 0)
+            continue;
+
+        /* Fatal, for the reason the rest of this family is fatal: what
+         * goes wrong downstream is a green report, and a green report
+         * is no warning at all.  There is deliberately no Configfile
+         * line quoted, because the defect is a line that isn't there
+         * -- so the complaint names the directory to write it in.
+         *
+         * Which is also why this is not a strict::complain().  That
+         * mechanism is for a line pconfigure used to accept and has
+         * to go on accepting, and it hangs its warning off the line;
+         * there is no line here.  Nor is there an older project to
+         * stay compatible with: a build with no DEFAULT_TEST_SUITE
+         * returned above, and nothing predating dce1a9a
+         * ("pconfigure: Choose what \"make check\" runs with
+         * DEFAULT_TEST_SUITE") has one.  So every build this can
+         * reach was written after suites existed, and in those the
+         * silence is the bug rather than the behaviour. */
+        const auto where = project->base().size() > 0
+            ? "'" + project->base() + "'"
+            : std::string("this project");
+
+        std::cerr << "error: " << where << " has "
+                  << std::to_string(tests.size()) << " test"
+                  << (tests.size() == 1 ? "" : "s")
+                  << " and declares no test suite, so \"make check\""
+                  << " here runs none of them\n"
+                  << "  \"make check\" here means the '" << fallback
+                  << "' suite, and a suite collects nothing from a"
+                  << " project that never named it -- while a \"make"
+                  << " check\" run in there runs every one of those"
+                  << " tests and reports that they passed, which is"
+                  << " where anybody would go to find out whether they"
+                  << " ran\n"
+                  << "  write a TEST_SUITES line in that project's own"
+                  << " Configfile for each suite its tests belong in,"
+                  << " spelled the way this build spells it\n"
+                  << "  one line can be enough: an INCLUDE_TEST_SUITES"
+                  << " is resolved over the whole build, so a test that"
+                  << " joins a suite down there does arrive in one that"
+                  << " includes it up here -- what inclusion cannot do is"
+                  << " give a suite to a project that named none, which is"
+                  << " why this has to be reported rather than inferred\n";
+
+        print_build_suites(aggregate_test_suite_members(aggregated));
+        abort();
+    }
+}
+
 void project::check_bootstrap(const std::vector<ptr>& everyone) const
 {
     const auto& srcpath = _processor->bootstrap();

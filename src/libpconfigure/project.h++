@@ -166,6 +166,33 @@ public:
      * project this Makefile is responsible for put into it. */
     void check_default_test_suite(const std::vector<ptr>& aggregated) const;
 
+    /* Complains if a project this build is responsible for has tests
+     * and never declared a suite, in a build whose "make check" means
+     * one.  "aggregated" is the same list as above, for the same
+     * reason.
+     *
+     * This is the question check_default_test_suite() asks, turned
+     * around: that one looks at the default suite and asks whether
+     * anything is in it, which a build whose other projects are full
+     * answers "yes" to while one project's tests sit outside every
+     * suite it has.  There is no symptom downstream of that.  Nothing
+     * goes red, no report mentions a test it didn't run, and the
+     * "make check" in the project itself -- which is where anybody
+     * would look to find out whether its guards ran -- runs every one
+     * of them and says they passed.
+     *
+     * Three shapes this is deliberately not, because each of them is
+     * an answer rather than an omission.  A build with no
+     * DEFAULT_TEST_SUITE runs every test it has under "make check",
+     * so a project that joined no suite has lost nothing.  A project
+     * that declared some suite and not the default one has said where
+     * its tests go, which is its business -- a project of nothing but
+     * hours-long harnesses belongs in "overnight" and in no "smoke".
+     * And a project with no tests is outside every suite for a reason
+     * that has nothing to do with suites, which is every vendored
+     * tree a build pulls in. */
+    void check_aggregated_test_suites(const std::vector<ptr>& aggregated) const;
+
     /* Complains if a BOOTSTRAP names a tree that doesn't build the
      * pconfigure it promised.  "everyone" is every project in the
      * run, since the tree is one of them by the time this is asked.

@@ -173,6 +173,15 @@ int main(int argc, const char **argv)
     for (const auto& project: projects)
         project->check_default_test_suite(project::flatten(project));
 
+    /* The same question asked per project rather than per suite, and
+     * in the same place for the same reason.  Asked of every project
+     * in the run and not only the one make gets run in, because a
+     * project that is only ever included is a project somebody can
+     * also walk into and type "make check" in -- and when they do,
+     * the answer they get is the one this is about. */
+    for (const auto& project: projects)
+        project->check_aggregated_test_suites(project::flatten(project));
+
     for (const auto& project: projects)
         project->write_makefile(edges[project->base()],
                                 project::flatten(project),
