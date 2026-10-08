@@ -584,6 +584,25 @@ Instead, it is run at \texttt{make check} and the results are
 collected into \texttt{\$CHECKDIR}.  These results can then be listed
 by running \texttt{ptest} (see Section~\ref{prog:ptest}).
 
+A test that finds it cannot run at all --- a cross compiler that is
+not installed, a hypervisor the host does not have --- says so instead
+of passing or failing.  It prints a line of its own beginning
+\texttt{SKIP:}, with the reason after it, and exits zero.  Either
+output stream will do, since both are captured into the same place.
+\texttt{ptest} then counts that result as a skip rather than as a pass
+(see Section~\ref{prog:ptest}), which is what tells a suite that
+stopped running half of itself apart from one that passed.
+
+Exiting zero in silence instead is what makes those two the same
+number, and the number that goes wrong that way is the one nobody
+looks at: a passing suite is not read, so a toolchain that went
+missing takes tests out of service and the report goes on saying they
+all passed.  A nonzero exit is not the alternative.  Nothing is wrong
+with the tree when a test skips, and whether a particular skip is
+acceptable is a question about a particular machine that
+\pconfigure\ has not been told the answer to --- so the run does not
+fail, and the count is left where whoever asked for it can see it.
+
 Written as \texttt{TESTS[\$suite]} the test joins a test suite (see
 Section~\ref{cmd:test_suites}) rather than only being part of every
 test the project has.  The name in the brackets belongs to the command
@@ -4296,6 +4315,31 @@ result on disk records the exit status of the test that left it and
 nothing about why the test was run, so there is nothing in
 \texttt{\$CHECKDIR} to pick a suite out by.  This is what
 \texttt{make report-\$name} runs, and it is easier to type that.
+
+A result is scored by the exit status of the test that left it: zero
+is a pass, one is a failure, and anything else is counted as an error.
+The exception is a test that announced a skip (see
+Section~\ref{cmd:tests}).  A line beginning \texttt{SKIP:} anywhere in
+what such a test printed makes its result a skip rather than a pass,
+and the report says so on the line that names the test, with the
+reason the test gave --- which was otherwise reachable only by
+untarring the result by hand, and so was never read, since nobody
+untars a result that is reporting success.
+
+Skips are counted as \texttt{NSKIP}, reported beside \texttt{NPASS}:
+they are not in \texttt{NPASS}, so the four counts still add up to
+\texttt{NRUN}.  Under \texttt{--quiet}, which prints a line only for a
+result somebody has to act on, the count alone is printed and only
+when it is not zero --- so the quiet report of a run with nothing to
+excuse is still an empty file.  A skip does not change what the report
+exits with: that status still answers only whether anything failed.
+
+Anywhere in the output rather than on the first line, because a test
+that got half way through before finding out it could not finish has
+still not run.  A line of its own rather than a substring, because a
+test is free to mention the convention in passing --- the ones that
+audit other tests' results do --- and reading that as a verdict would
+be the same mistake pointing the other way.
 
 See Section~\ref{cmd:tests} for the environment a test is run in.
 
