@@ -238,6 +238,7 @@ then
     results | {
         run="0"
         pass="0"
+        skip="0"
         fail="0"
         error="0"
 
@@ -251,11 +252,58 @@ then
             ret="$(tar -xOf "$f" ptest__return)"
             if [[ "$ret" == "0" ]]
             then
-                if [[ "$quiet" != "true" ]]
+                # A test that decided it could not run says so and
+                # exits 0, because nothing is wrong with the tree and
+                # a FAIL would be a lie about it.  Counted as a pass
+                # -- which is what happened for as long as nobody
+                # looked -- that makes "ran and succeeded" and "did
+                # not run" the same number, and the second is the one
+                # that goes wrong silently: a missing cross compiler
+                # or an empty generated payload takes a third of a
+                # suite out of service and the report still says
+                # everything passed.
+                #
+                # So the report asks, and the exit status stays what
+                # it always was: every result already on disk keeps
+                # meaning exactly what it meant, which is the whole
+                # difference between this and reserving a third status
+                # for a skip.
+                #
+                # The convention is a line of its own beginning with
+                # "SKIP:", which is what the suites here already write
+                # -- to stderr, which lands in the same captured file
+                # as stdout.  A line and not a substring: a test is
+                # free to mention the word in passing, and reading
+                # that as a verdict would be the same wrong answer
+                # pointing the other way.  Anywhere in the output and
+                # not just the first line, because a test that got
+                # half way through before finding out it could not
+                # finish has still not run.
+                why="$(tar -xOf "$f" ptest__output 2>/dev/null \
+                       | grep -m 1 '^SKIP:')"
+                if [[ "$why" != "" ]]
                 then
-                    echo -e "  PASS\t$name"
+                    # The reason, which was otherwise reachable only
+                    # by opening the tarball by hand.  The report has
+                    # the line in front of it already, so saying it
+                    # costs nothing.  Quiet mode stays quiet: it
+                    # prints a line per test only for the ones
+                    # somebody has to act on, and the count below is
+                    # how a suite that stopped running half of itself
+                    # shows up there instead.
+                    if [[ "$quiet" != "true" ]]
+                    then
+                        why="${why#SKIP:}"
+                        echo -e "- SKIP\t$name\t${why# }"
+                    fi
+                    skip=$(expr $skip + 1)
+                else
+                    if [[ "$quiet" != "true" ]]
+                    then
+                        echo -e "  PASS\t$name"
+                    fi
+                    pass=$(expr $pass + 1)
                 fi
-                pass=$(expr $pass + 1)
             elif [[ "$ret" == "1" ]]
             then
                 echo -e "* FAIL\t$name"
@@ -287,6 +335,15 @@ then
 
         if [[ "$quiet" == "true" ]]
         then
+            # Printed only when there is one, the way NFAIL and NEROR
+            # are: the quiet report of a green run is an empty file,
+            # and that is load-bearing -- "make check" writes it and
+            # stale-report.bash asserts its size.  A suite with
+            # nothing to excuse keeps saying nothing.
+            if [[ "$skip" != "0" ]]
+            then
+                echo -e "NSKIP\t"$skip
+            fi
             if [[ "$fail" != "0" ]]
             then
                 echo -e "NFAIL\t"$fail
@@ -299,6 +356,7 @@ then
             echo ""
             echo -e "NRUN\t"$run
             echo -e "NPASS\t"$pass
+            echo -e "NSKIP\t"$skip
             echo -e "NFAIL\t"$fail
             echo -e "NEROR\t"$error
         fi

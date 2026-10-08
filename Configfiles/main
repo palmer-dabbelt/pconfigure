@@ -89,6 +89,7 @@ SOURCES	    += pnasm.bash
 BINARIES    += ptest
 SOURCES	    += ptest.bash
 TESTSRC     += check-result.bash
+TESTSRC     += skip-not-pass.bash
 
 BINARIES    += pinclude
 DEPLIBS     += pinclude
