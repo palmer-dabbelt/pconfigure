@@ -247,6 +247,7 @@ TESTSRC     += abrt-is-eror-by-default.bash
 TESTSRC     += abrt-is-fail-flag.bash
 TESTSRC     += abrt-is-fail.bash
 TESTSRC     += abrt-is-fail-subproject.bash
+TESTSRC     += report-after-failure.bash
 TESTSRC     += ptest-check-dirs.bash
 TESTSRC     += makeflags.bash
 TESTSRC     += cmdline-args.bash

@@ -45,6 +45,26 @@
  * if the last scoring of it passed, which leaves absence as the one
  * state a reader cannot misread.
  *
+ * The "rm -f $@" is what makes that "only if" hold when the scoring
+ * neither passes nor fails, which is the common way for an overnight
+ * run to end: somebody hits ^C, a job timeout fires, the machine goes
+ * down.  The "||" arm covers a scorer that exited nonzero and nothing
+ * else -- kill the recipe's shell and no arm runs at all, "$@" is
+ * never touched, and the PREVIOUS run's report is still sitting there
+ * looking exactly like a fresh one, with the mtime of the run it
+ * really did describe.  make's own interrupt handling does not close
+ * this: it deletes the target of the recipe it was running only if
+ * that recipe had changed the file, and this one writes "$@.tmp"
+ * until the very last step, so there is nothing for make to decide to
+ * delete.  SIGKILL gets no handler either way.
+ *
+ * Clearing it up front instead means the window in which the report
+ * is wrong is replaced by a window in which it is absent, and absent
+ * is the state the rest of this recipe has already arranged to be
+ * unmisreadable.  It costs a report that was good while the next
+ * scoring runs, which is a few seconds of a file nobody is reading
+ * yet, and it cannot leave a report newer than its stamp.
+ *
  * The detail still comes out, on stdout, through "cat $@.tmp": what ran
  * is in the result tarballs under the check directories either way, so
  * asking again re-scores them in seconds without re-running a single
@@ -69,7 +89,7 @@ static void write_report_rule(FILE *file,
                               const std::string& args)
 {
     fprintf(file,
-            "%s: %s\n\t%s%s%s --no-check-make-check%s"
+            "%s: %s\n\t%srm -f $@ && %s%s --no-check-make-check%s"
             " > $@.tmp && mv $@.tmp $@"
             " || (cat $@.tmp; rm -f $@.tmp $@; exit 1)\n\n",
             report.c_str(), stamp.c_str(), quiet_make, ptest.c_str(),
