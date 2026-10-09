@@ -151,7 +151,15 @@ $BOOTSTRAP_DIR/pbashc "$SOURCE_PATH"src/pclean.bash \
 $BOOTSTRAP_DIR/pbashc "$SOURCE_PATH"src/pgcc-config.bash \
     -o $BOOTSTRAP_DIR/pgcc-config
 
-export PATH="$BOOTSTRAP_DIR:$PATH"
+# No $PATH prepend here.  pconfigure resolves its helper tools beside
+# the running binary (makefile::tool_command), so the pconfigure built
+# below finds the pbashc and phc just built next to it by location,
+# both while it configures and in the Makefile it writes.
+#
+# Prepending was also prepending a RELATIVE directory -- BOOTSTRAP_DIR
+# is "bootstrap_bin", not an absolute path -- so it only answered at
+# all while the shell stayed in the tree root, which is the kind of
+# thing that works until something cds.
 
 # Actually build pconfigure here, this is the simple part :)
 $CXX -x c++ --std=c++0x -Wall -Werror -g $CXXFLAGS \
@@ -172,7 +180,7 @@ then
 else
     sp=""
 fi
-env PATH="$BOOTSTRAP_DIR:$PATH" $BOOTSTRAP_DIR/pconfigure $sp
+$BOOTSTRAP_DIR/pconfigure $sp
 err="$?"
 if [[ "$err" != "0" ]]
 then
@@ -187,7 +195,7 @@ make || exit $?
 # into the Makefile, resolved relative to the running pconfigure binary.  The
 # Makefile generated above points those at $BOOTSTRAP_DIR, which is about to be
 # removed, so rewrite it to point at the just-built bin/ instead.
-env PATH="$BOOTSTRAP_DIR:$PATH" ./bin/pconfigure $sp || exit $?
+./bin/pconfigure $sp || exit $?
 
 # Cleans up from the bootstrap process
 rm -rf $BOOTSTRAP_DIR
