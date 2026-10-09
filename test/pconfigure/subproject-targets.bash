@@ -153,7 +153,10 @@ then
 fi
 
 make $MAKE_ARGS check
-ptest --verbose
+# The ptest beside the pconfigure under test, for the reason
+# harness.bash gives: nothing has installed one.
+ptest="$(dirname "$PTEST_BINARY")/ptest"
+$ptest --verbose
 test -f check/integration/boots.bash
 
 # A SUBPROJECT_TARGETS that names a file the tree doesn't build is a

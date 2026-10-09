@@ -13,7 +13,17 @@ then
 fi
 
 make $MAKE_ARGS check
-ptest --verbose || exit 1
+# The ptest built beside the pconfigure under test, not whichever one
+# is installed on the machine running the suite.  A tree that vendors
+# pconfigure and runs it out of bin/ has never installed one, so a
+# bare "ptest" is a command that is simply not there -- and then every
+# test that gets this far fails in the harness rather than on the
+# thing it was written to check, which is a suite reporting on itself.
+#
+# $PTEST_BINARY is absolute, so the directory it sits in is the build
+# this test belongs to.  Same trick as ptest-check-dirs.bash.
+ptest="$(dirname "$PTEST_BINARY")/ptest"
+$ptest --verbose || exit 1
 
 ./bin/test > test.out
 

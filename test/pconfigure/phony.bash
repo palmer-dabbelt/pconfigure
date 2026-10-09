@@ -125,7 +125,10 @@ test -x vm/bin/vm
 
 make $MAKE_ARGS
 make $MAKE_ARGS check
-ptest --verbose
+# The ptest beside the pconfigure under test, for the reason
+# harness.bash gives: nothing has installed one.
+ptest="$(dirname "$PTEST_BINARY")/ptest"
+$ptest --verbose
 
 # Both tests ran and passed: the one under the top-level phony and the
 # one under the subproject's.
