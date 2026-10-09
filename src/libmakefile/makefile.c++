@@ -340,6 +340,7 @@ void makefile::makefile::write_to_file(const std::string& filename)
 
     auto q = _verbose ? "" : "@";
     auto ptest = tool_command("ptest");
+    auto pconfigure = tool_command("pconfigure");
     auto obj_dir = _prefix.rewrite(_obj_dir);
     auto quiet_report = obj_dir + "/check-report-quiet";
     auto report = obj_dir + "/check-report";
@@ -397,17 +398,30 @@ void makefile::makefile::write_to_file(const std::string& filename)
      * the Configfiles said the last time somebody ran pconfigure, and
      * nothing in a build changes that on its own.
      *
-     * The one on the PATH, rather than the one that wrote this file.
-     * Reconfiguring is somebody deciding to reconfigure, and the
-     * pconfigure they mean is the one they have -- not whichever one
-     * happened to be installed when the tree was first set up, which
-     * may well not be there any more. */
+     * The one that wrote this file, named by location, rather than
+     * whatever $PATH has.  This used to be the bare name, on the
+     * argument that reconfiguring is somebody deciding to reconfigure
+     * and the pconfigure they mean is the one they have.  That argument
+     * assumes they have one: a tree that vendors pconfigure and builds
+     * it into src/pconfigure/bin has never installed it, so the bare
+     * name names nothing and "make reconfigure" is a rule that cannot
+     * run on a tree where every other rule works.  It is also the only
+     * rule that was still asking -- pbashc, ptest, pdeps and the rest
+     * have been resolved beside the running pconfigure for a while
+     * (makefile::tool_command), so this one was inconsistent with its
+     * own Makefile.
+     *
+     * What that costs: somebody who installs a newer pconfigure and
+     * expects "make reconfigure" in an old tree to pick it up now has
+     * to say so.  PCONFIGURE_ARGS is not the place for it, but running
+     * the pconfigure they mean is, and that is what everyone who has
+     * no installed copy at all had to do already. */
     if (_write_reconfigure == true) {
         fprintf(file, "PCONFIGURE_ARGS ?=\n\n");
         fprintf(file, ".PHONY: reconfigure\n");
         fprintf(file, "reconfigure:\n");
         fprintf(file, "\t%secho \"PCONFIGURE\"\n", q);
-        fprintf(file, "\t%spconfigure $(PCONFIGURE_ARGS)\n\n", q);
+        fprintf(file, "\t%s%s $(PCONFIGURE_ARGS)\n\n", q, pconfigure.c_str());
     }
 
     /* What this Makefile was written out of, so that a Configfile
@@ -436,7 +450,7 @@ void makefile::makefile::write_to_file(const std::string& filename)
 
         if (_write_reconfigure == true) {
             fprintf(file, "\t%secho \"PCONFIGURE\"\n", q);
-            fprintf(file, "\t%spconfigure $(PCONFIGURE_ARGS)\n", q);
+            fprintf(file, "\t%s%s $(PCONFIGURE_ARGS)\n", q, pconfigure.c_str());
         }
 
         fprintf(file, "\n");
