@@ -46,6 +46,8 @@ command_processor::command_processor(const std::string& base,
       _read_a_subproject(false),
       _default_test_suite(),
       _default_test_suite_cmd(NULL),
+      _abrt_is_fail(false),
+      _abrt_is_fail_cmd(NULL),
       _test_suite_target(NULL),
       _given_version_command(false),
       _given_help_command(false),
@@ -169,6 +171,7 @@ static bool names_a_path(const command_type& type)
     case command_type::TGENERATE:
         return true;
 
+    case command_type::ABRT_IS_FAIL:
     case command_type::AUTODEPS:
     case command_type::AUTORECONFIGURE:
     case command_type::BUILD_SYSTEMS:
@@ -210,6 +213,7 @@ static bool takes_a_qualifier(const command_type& type)
     case command_type::TESTSRC:
         return true;
 
+    case command_type::ABRT_IS_FAIL:
     case command_type::AUTODEPS:
     case command_type::AUTORECONFIGURE:
     case command_type::BINARIES:
@@ -450,6 +454,36 @@ void command_processor::process_one(const command::ptr& cmd)
     auto tos = _stack.top();
 
     switch (cmd->type()) {
+    /* Whether ptest should count a test that calls abort() as a FAIL
+     * instead of an EROR.  ptest's own default is right for the
+     * general case -- see the comment on _abrt_is_fail in
+     * command_processor.h++ for why a signal death stays an EROR
+     * unless a project opts in -- so this just bakes "--abrt-is-fail"
+     * onto the "make check"/"make report" recipes this project
+     * writes, the same way AUTORECONFIGURE bakes in a different
+     * answer to a different question. */
+    case command_type::ABRT_IS_FAIL:
+    {
+        if (cmd->check_operation("=") == false)
+            goto bad_op_eq;
+
+        clear_until({context_type::DEFAULT}, cmd);
+
+        if (cmd->data() != "true" && cmd->data() != "false") {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: '" << cmd->data() << "' is not"
+                      << " 'true' or 'false'\n"
+                      << "  " << std::to_string(cmd->type())
+                      << " asks whether a crash is a FAIL or an EROR,"
+                      << " and there are two answers\n";
+            abort();
+        }
+
+        _abrt_is_fail = cmd->data() == "true";
+        _abrt_is_fail_cmd = cmd;
+        return;
+    }
+
     case command_type::AUTODEPS:
     {
         if (cmd->check_operation("=") == false)

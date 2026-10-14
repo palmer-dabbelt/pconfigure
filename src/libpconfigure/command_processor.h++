@@ -113,6 +113,18 @@ private:
     std::string _default_test_suite;
     command::ptr _default_test_suite_cmd;
 
+    /* TRUE once an ABRT_IS_FAIL asked for a test that calls abort()
+     * to be scored as a FAIL instead of an EROR.  ptest's default --
+     * an uncaught signal is an EROR, same as a missing binary or an
+     * unreadable result -- is correct for the general case: a crash
+     * can mean the harness never finished running the test at all.
+     * It is also common for a test whose only failure mode is a
+     * libc assert() to look exactly like that every single time it
+     * fails, so this exists for the project that would rather see
+     * those in NFAIL. */
+    bool _abrt_is_fail;
+    command::ptr _abrt_is_fail_cmd;
+
     /* The suite that an INCLUDE_TEST_SUITES lands on, which is
      * whichever one a TEST_SUITES named most recently.  It's dropped
      * whenever a line opens a target, so a subcommand that ended up
@@ -224,6 +236,11 @@ public:
         { return _default_test_suite; }
     const command::ptr& default_test_suite_cmd(void) const
         { return _default_test_suite_cmd; }
+
+    const bool& abrt_is_fail(void) const
+        { return _abrt_is_fail; }
+    const command::ptr& abrt_is_fail_cmd(void) const
+        { return _abrt_is_fail_cmd; }
 
     /* The suite of the given name, or NULL when this project has
      * never declared one. */

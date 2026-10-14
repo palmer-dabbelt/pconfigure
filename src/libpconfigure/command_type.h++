@@ -30,6 +30,7 @@
  * in C++ is kind of funky, if you modify this you're going to have to
  * modify a whole lot of stuff below...*/
 enum class command_type {
+    ABRT_IS_FAIL,
     AUTODEPS,
     AUTORECONFIGURE,
     BINARIES,
@@ -83,6 +84,7 @@ enum class command_type {
  * values inside the "command_type" enum. */
 static const std::vector<command_type> all_command_types =
 {
+    command_type::ABRT_IS_FAIL,
     command_type::AUTODEPS,
     command_type::AUTORECONFIGURE,
     command_type::BINARIES,
@@ -137,6 +139,8 @@ namespace std {
     static __inline__ std::string to_string(command_type cmd)
     {
         switch (cmd) {
+        case command_type::ABRT_IS_FAIL:
+            return "ABRT_IS_FAIL";
         case command_type::AUTODEPS:
             return "AUTODEPS";
         case command_type::AUTORECONFIGURE:

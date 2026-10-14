@@ -1313,6 +1313,7 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
      * make was run in, and a subproject that has an opinion about its
      * own "make check" doesn't get to have one about a parent's. */
     out->set_default_test_suite(_processor->default_test_suite());
+    out->set_abrt_is_fail(_processor->abrt_is_fail());
 
     /* A project that bootstraps its own pconfigure has the rule that
      * runs it in the Makefile it keeps beside this one, since that is

@@ -94,6 +94,10 @@ namespace makefile {
          * "make check" that means every test in the build. */
         std::string _default_test_suite;
 
+        /* Whether every ptest invocation this Makefile writes gets
+         * "--abrt-is-fail" on its command line. */
+        bool _abrt_is_fail;
+
         /* Whether this Makefile writes the rule that runs pconfigure
          * again.  A project that keeps a Makefile of its own above
          * this one has the rule up there instead, because the
@@ -175,6 +179,13 @@ namespace makefile {
         /* Points "make check" and "make report" at one of those
          * rather than at every test in the build. */
         void set_default_test_suite(const std::string& name);
+
+        /* Bakes "--abrt-is-fail" onto every ptest invocation this
+         * Makefile writes, so a test that calls abort() scores as a
+         * FAIL instead of ptest's default EROR.  See ABRT_IS_FAIL in
+         * command_processor.h++ for why that default exists and when
+         * a project would rather have this. */
+        void set_abrt_is_fail(bool abrt_is_fail);
 
         /* Says that somebody else writes the "make reconfigure" rule,
          * so this Makefile shouldn't: two recipes for the one name
