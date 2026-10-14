@@ -1763,6 +1763,45 @@ relinked the next time anything it still names is rebuilt.  That is
 equally true of a \texttt{Makefile} with the objects written into it,
 and is not something this changes either way.
 
+\subsection{\texttt{ABRT\_IS\_FAIL = bool} \label{cmd:abrt_is_fail}}
+
+Changes how \texttt{ptest} (see Section~\ref{prog:ptest}) scores a
+test that was killed by \texttt{SIGABRT}: ordinarily that is an
+\texttt{EROR}, the same bucket a missing binary or an unreadable
+result lands in, because a crash can just as well mean the harness
+never got a straight answer out of the test as it can mean the test
+ran and found a bug.  \texttt{ptest} has no way to tell those two
+apart on its own, so by default it doesn't try.
+
+\begin{verbatim}
+ABRT_IS_FAIL = true
+
+LANGUAGES += c++
+TESTS     += checks-an-invariant
+SOURCES   += checks-an-invariant.c++
+\end{verbatim}
+
+A project whose tests fail by calling a libc \texttt{assert()} --
+rather than catching whatever they expect to go wrong and turning it
+into an \texttt{exit 1} themselves -- has every one of those failures
+looking exactly like the crash \texttt{EROR} is for, every time,
+which is the case this exists for: it bakes \texttt{--abrt-is-fail}
+onto every \texttt{ptest} invocation this project's \texttt{Makefile}
+writes, both the whole-project \texttt{check}/\texttt{report} pair and
+any \texttt{TEST\_SUITES}' (see Section~\ref{cmd:test_suites}) own, so
+an exit status of \texttt{128+SIGABRT} is counted in \texttt{NFAIL}
+instead.  It changes nothing about a crash from any other signal, or
+about what \texttt{make check} itself does when a test is red --
+only which column a \texttt{SIGABRT} lands in.
+
+Like \texttt{AUTORECONFIGURE} (see Section~\ref{cmd:autoreconfigure})
+it belongs to the project rather than to one target, so it means the
+same thing wherever in the Configfile it is written.  Unlike
+\texttt{AUTORECONFIGURE} there is nothing it changes about how a
+source is read, so -- not being able to disagree with a reading that
+already happened -- it has nothing to refuse: whichever line runs
+last wins, the ordinary rule for a value written more than once.
+
 \subsection{\texttt{VERBOSE} \label{cmd:verbose}}
 
 Writes a \texttt{Makefile} whose recipes are not silenced, so
@@ -4185,6 +4224,31 @@ nothing about why the test was run, so there is nothing in
 \texttt{make report-\$name} runs, and it is easier to type that.
 
 See Section~\ref{cmd:tests} for the environment a test is run in.
+
+Each result is scored one of three ways, off the exit status left in
+\texttt{ptest\_\_return}: \texttt{0} is a \texttt{PASS}, \texttt{1} is
+a \texttt{FAIL}, and everything else -- a missing binary, a result
+\texttt{tar} can't read, a test killed by a signal -- is an
+\texttt{EROR}.  The distinction those two failing categories draw is
+between the test running and finding something wrong, which is what
+\texttt{FAIL} is for, and the harness never getting a straight answer
+out of the test at all, which is what \texttt{EROR} is for.  A test
+that crashes could be either: a fuzzer that corrupts memory on
+purpose and wants to know when it worked is firmly in \texttt{FAIL}
+territory, while a test that aborts because its fixture didn't build
+is firmly in \texttt{EROR}'s.  \texttt{ptest} can't tell those two
+apart from the exit status alone, so it doesn't try, and a test that
+knows which one it is can say so itself by catching what it expects
+and turning that into an \texttt{exit 1} before \texttt{ptest} ever
+sees a signal.
+
+A test that fails by calling a libc \texttt{assert()}, though,
+crashes with \texttt{SIGABRT} on every single failure rather than on
+some subset of them -- and a project built that way would rather see
+those in \texttt{NFAIL} than in \texttt{NEROR} by default.
+\texttt{ABRT\_IS\_FAIL} (see Section~\ref{cmd:abrt_is_fail}) is the
+opt-in for exactly that project, and \texttt{--abrt-is-fail} is the
+flag it bakes onto \texttt{ptest}'s own command line to do it.
 
 \subsection{\texttt{pinclude} \label{prog:pinclude}}
 
