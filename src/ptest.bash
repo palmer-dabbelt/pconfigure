@@ -1,6 +1,7 @@
 verbose="false"
 quiet="false"
 check_make_check="true"
+abrt_is_fail="false"
 check_dirs=()
 check_suite=""
 check_results=()
@@ -15,6 +16,14 @@ do
     elif [[ "$1" == "--no-check-make-check" ]]
     then
         check_make_check="false"
+    elif [[ "$1" == "--abrt-is-fail" ]]
+    then
+        # A test that calls abort() (an assert(), an uncaught C++
+        # exception reaching the default terminate handler, and so
+        # on) exits 134 -- 128+SIGABRT -- which is otherwise scored as
+        # an EROR: see the classification loop below for why that's
+        # the right default and what this flag deliberately narrows.
+        abrt_is_fail="true"
     elif [[ "$1" == "--check-dir" ]]
     then
         # One per project: a build with subprojects has its test
@@ -212,6 +221,15 @@ then
                 fi
                 pass=$(expr $pass + 1)
             elif [[ "$ret" == "1" ]]
+            then
+                echo -e "* FAIL\t$name"
+                fail=$(expr $fail + 1)
+
+                if [[ "$verbose" == "true" ]]
+                then
+                    cat "$f"
+                fi
+            elif [[ "$abrt_is_fail" == "true" ]] && [[ "$ret" == "134" ]]
             then
                 echo -e "* FAIL\t$name"
                 fail=$(expr $fail + 1)
