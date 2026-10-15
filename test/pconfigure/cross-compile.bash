@@ -17,18 +17,36 @@ mkdir -p src sub/src native/src cmdline/src
 # it has the considerable advantage of existing.  The log it leaves
 # is what turns "the Makefile says faketc-gcc" into "faketc-gcc is
 # what ran".
+#
+# That holds until the host's compiler isn't an ELF one.  A cross target
+# is linked as an ELF -- pconfigure can't know what the far end's object
+# format is, and every cross toolchain anybody points CROSS_COMPILE at
+# makes ELFs -- so a shared library gets "-Wl,-soname,".  Handed to
+# macOS's ld64 that is an unknown option and the link stops.  So on a
+# Darwin host the wrapper does the one translation a real ELF toolchain
+# wouldn't need, after logging the command line exactly as pconfigure
+# wrote it: the log is the evidence, and it must not be the rewrite.
 tcdir=$(pwd)/toolchain
 mkdir -p $tcdir
+
+if [[ "$(uname -s)" == "Darwin" ]]
+then
+    translate='args=(); for a in "$@"; do case "$a" in -Wl,-soname,*) args+=("-Wl,-install_name,${a#-Wl,-soname,}") ;; *) args+=("$a") ;; esac; done; set -- "${args[@]}"'
+else
+    translate=':'
+fi
 
 cat >$tcdir/faketc-gcc <<EOF
 #!/bin/bash
 echo "faketc-gcc \$@" >> $tcdir/ran.log
+$translate
 exec cc "\$@"
 EOF
 
 cat >$tcdir/faketc-g++ <<EOF
 #!/bin/bash
 echo "faketc-g++ \$@" >> $tcdir/ran.log
+$translate
 exec c++ "\$@"
 EOF
 
@@ -309,6 +327,15 @@ grep -q "^faketc-gcc .* -c src/hello\.c " $tcdir/ran.log
 grep -q "^faketc-gcc .* -c src/common\.c " $tcdir/ran.log
 grep -q "^faketc-g++ .* -c src/hellopp\.c++ " $tcdir/ran.log
 grep -q "^faketc-gcc .* -c sub/src/sub\.c " $tcdir/ran.log
+
+# A cross-linked shared library is an ELF one, whatever this host's own
+# linker makes -- which is what the wrapper's translation leans on, so
+# it is asserted here against the untranslated command line.
+grep -q -- "^faketc-gcc .* -Wl,-soname,libsub\.so" $tcdir/ran.log
+if grep -q -- "-install_name" $tcdir/ran.log
+then
+    exit 1
+fi
 if grep -q "mkimage" $tcdir/ran.log
 then
     exit 1
