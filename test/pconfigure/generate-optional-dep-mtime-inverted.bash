@@ -12,7 +12,7 @@
 # call the output up to date.  Measured:
 #
 #     echo 42 > src/opt/answer.txt
-#     touch -d 2020-01-01 src/opt/answer.txt
+#     touch -t 202001010000 src/opt/answer.txt
 #     make
 #     DEPS	gen.h
 #     make: Nothing to be done for 'all'.
@@ -82,7 +82,7 @@ grep -q "Nothing to be done" settled.out
 sleep 2
 mkdir -p src/opt
 echo 42 > src/opt/answer.txt
-touch -d 2020-01-01 src/opt/answer.txt
+touch -t 202001010000 src/opt/answer.txt
 
 # The premise of the whole test: the arrived file really is older than
 # the output that was generated without it.
