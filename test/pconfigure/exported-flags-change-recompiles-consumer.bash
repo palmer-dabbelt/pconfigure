@@ -109,7 +109,7 @@ grep -q "Nothing to be done" settled.out
 # The subproject's exported flags change                                     #
 ##############################################################################
 sleep 2
-sed -i 's/-DANSWER=9/-DANSWER=13/' sub/src/sub.pc
+sed -i.bak 's/-DANSWER=9/-DANSWER=13/' sub/src/sub.pc
 
 make $MAKE_ARGS > second.out 2>&1
 cat second.out
