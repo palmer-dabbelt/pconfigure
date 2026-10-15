@@ -11,11 +11,23 @@
 # build outright rather than link something wrong.
 mkdir -p src
 
+# Which framework to name depends on which half of that claim this host
+# can check.  Off Darwin it has to be one that exists nowhere, so that a
+# leak is a failed build.  On Darwin the flag is supposed to reach the
+# linker, and ld64 refuses a framework it cannot find -- so it has to be
+# one every macOS has, or the build below fails for having worked.
+if [[ "$(uname -s)" == "Darwin" ]]
+then
+    framework=CoreFoundation
+else
+    framework=Foo
+fi
+
 cat >Configfile <<EOF
 LANGUAGES    += c
 
 BINARIES     += test
-FRAMEWORKS   += Foo
+FRAMEWORKS   += $framework
 SOURCES      += test.c
 EOF
 
@@ -30,13 +42,13 @@ if [[ "$(uname -s)" == "Darwin" ]]
 then
     # Where the signature is named for ENTITLEMENTS, this is where the
     # linker itself is told: on the link line building the binary.
-    grep -q -- "-framework Foo" Makefile
+    grep -q -- "-framework $framework" Makefile
 else
     # No such framework exists to link against, so if this leaked
     # through onto the link line, the build below would fail outright
     # rather than link something silently wrong -- which is exactly
     # what makes "the build still succeeds" a real assertion here.
-    if grep -q -- "-framework Foo" Makefile
+    if grep -q -- "-framework $framework" Makefile
     then
         echo "FRAMEWORKS leaked a '-framework' onto a non-Darwin link line" >&2
         exit 1
