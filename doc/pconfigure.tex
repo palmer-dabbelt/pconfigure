@@ -946,10 +946,13 @@ In full, they are:
   (Section~\ref{buildsys:cmake});
 
 \item \texttt{cargo}, for a Rust crate --- a tree with a
-  \texttt{Cargo.toml} in it (Section~\ref{buildsys:cargo}).
+  \texttt{Cargo.toml} in it (Section~\ref{buildsys:cargo});
+
+\item \texttt{meson}, for a tree with a \texttt{meson.build} in it
+  (Section~\ref{buildsys:meson}).
 \end{itemize}
 
-The last three install what they built, and where they are allowed to
+The last four install what they built, and where they are allowed to
 install it is one question with one answer for all of them: see
 Section~\ref{buildsys:prefix}.
 
@@ -1081,9 +1084,10 @@ fatal error: there is no \texttt{make} being run there for a variable
 to go on the command line of.  That is a \texttt{pconfigure}
 subproject, whose rules come out of this same run; a \texttt{cargo}
 one, whose build is a \texttt{cargo} command
-(Section~\ref{buildsys:cargo}); and a \texttt{cmake} one whose
-generator writes something other than \texttt{Makefile}s
-(Section~\ref{buildsys:cmake}).  It is refused rather than dropped,
+(Section~\ref{buildsys:cargo}); a \texttt{meson} one, whose build
+is a \texttt{ninja} command (Section~\ref{buildsys:meson}); and a
+\texttt{cmake} one whose generator writes something other than
+\texttt{Makefile}s (Section~\ref{buildsys:cmake}).  It is refused rather than dropped,
 since a variable that was quietly dropped is a build that is wrong in
 exactly the way the variable was written to prevent.
 
@@ -2517,11 +2521,11 @@ deciding whether a directory is its kind of tree and which
 
 \subsection{Where a vendored tree installs \label{buildsys:prefix}}
 
-Three of the build systems below install what they built, and all
-three ask the same thing of the directory they are pointed at,
+Four of the build systems below install what they built, and all
+four ask the same thing of the directory they are pointed at,
 whatever they spell the option --- a \texttt{--prefix} for
-\texttt{autotools} and \texttt{cmake}, an \texttt{--install} for
-\texttt{cargo}.  An install prefix is a directory \emph{inside the
+\texttt{autotools}, \texttt{cmake} and \texttt{meson}, an
+\texttt{--install} for \texttt{cargo}.  An install prefix is a directory \emph{inside the
 object directory of the project that vendored the tree}, named
 relative to that project.  Anything else is a fatal error while the
 \texttt{Configfile} is being read, which is the only place the line
@@ -2675,6 +2679,15 @@ The names are the tree's own, so each build system knows its own list:
   it installs takes the next word, and its one-letter flags cluster.
   Section~\ref{buildsys:cargo} says what an \texttt{--arg} and an
   \texttt{--env} may not say there.
+
+\item \texttt{meson} refuses \texttt{prefix}, \texttt{DESTDIR} and
+  \texttt{destdir}, and meson's directory options ---
+  \texttt{bindir}, \texttt{libdir} and the rest --- by value, the way
+  \texttt{cmake} refuses its \texttt{GNUInstallDirs} variables.
+  Written as a \texttt{-D}, as a bare \texttt{NAME=VALUE}, or as a
+  \texttt{--} option, shortened or not, since meson's command line
+  takes any unambiguous prefix of a long option as the option.  See
+  Section~\ref{buildsys:meson}.
 \end{itemize}
 
 Where part of an install goes is refused by name for
@@ -4015,6 +4028,132 @@ cargo then decides nothing changed and says so in well under a second.
 A \texttt{target} directory is skipped on the way down, and so is any
 directory holding a \texttt{CACHEDIR.TAG}, since both are output
 wearing an input's clothes.
+
+\subsection{\texttt{meson}: Meson \label{buildsys:meson}}
+
+A \texttt{meson.build} that a \texttt{meson setup} turns into a ninja
+build directory, which ninja then builds.  It recognizes a directory
+with a \texttt{meson.build} in it, which is what \texttt{meson setup}
+looks for.  Like a \texttt{CMakeLists.txt}, that is a file plenty of
+trees ship beside some other build system's --- QEMU has a
+\texttt{meson.build}, a hand-written \texttt{configure}, a
+\texttt{Cargo.toml} and a \texttt{Makefile} at its top level --- and
+which build system claims such a tree is the \texttt{BUILD\_SYSTEMS}
+order's to say.
+
+Almost everything about how a meson tree is driven is the answer
+\texttt{cmake} gives (Section~\ref{buildsys:cmake}), because almost
+everything about the problem is cmake's problem: a meson build
+directory remembers a \texttt{-D} that has been deleted from the
+\texttt{Configfile} exactly the way a cmake cache does.  So the build
+directory is \texttt{\$obj\_dir/\$dirname/build}; configuring is
+starting over, taking the build directory and the default prefix with
+it; the configure-side and build-side options are written into the
+same two files by the same two writers; and \texttt{make clean} and
+\texttt{make distclean} take the same things.  The configure rule
+hangs off the build directory's \texttt{build.ninja}, which meson
+writes last and a failed setup does not write at all, so it plays the
+part a \texttt{CMakeCache.txt} plays for cmake.  An edit to a
+\texttt{meson.build} is the build rule's to notice rather than the
+configure rule's, because \texttt{build.ninja} re-runs meson itself
+when one of meson's inputs changes.
+
+The build is \texttt{ninja -C} and the install is the build
+directory's own \texttt{install} target, rather than \texttt{meson
+compile} and \texttt{meson install}.  Both of those are wrappers that
+find the build directory's ninja and run it, which would make no
+difference except for which meson does the wrapping: the
+\texttt{meson} on the \texttt{PATH} is not necessarily the meson that
+set the tree up, and a meson handed a build directory that a
+different version of it wrote refuses it.  \texttt{build.ninja}
+records the meson that set it up by its absolute path and calls that
+one for the regenerate and the install.
+
+ninja also decides how parallel the build is.  A ninja new enough to
+be a jobserver client --- 1.13 onwards --- takes its jobs from the
+\texttt{make} that ran it when it is given no \texttt{-j} of its own,
+and a GNU \texttt{make} that passes its jobserver through a fifo hands
+it to every recipe, so a \texttt{make -j8} is eight jobs in total.
+The recipe has no leading \texttt{+}, which would also run the build
+under a \texttt{make -n}.  There is no \texttt{make} anywhere in the
+build, so a \texttt{MAKEOPS} is a fatal error; what a tree would take
+as a variable it takes here as a \texttt{--define}.
+
+The options are:
+
+\begin{itemize}
+\item \texttt{--build-type \$name} sets meson's \texttt{buildtype}:
+  \texttt{--build-type release}.  It reaches the tree as
+  \texttt{-Dbuildtype=\$name}, which meson reads the same as its
+  \texttt{--buildtype} and which, being a \texttt{-D} like any other,
+  is the spelling a \texttt{--setup-script} is most likely to pass
+  through unchanged.
+
+\item \texttt{--define \$name=\$value} sets a build option, which
+  reaches the tree as \texttt{-D\$name=\$value} and as one argument
+  however many spaces or commas are in it.  A value with no
+  \texttt{=} in it is a fatal error.
+
+\item \texttt{--prefix \$dirname} says where the tree installs to, as
+  it does for cmake.  It reaches the tree as an absolute
+  \texttt{--prefix=}, rather than as a \texttt{-Dprefix=}, because
+  meson refuses to be handed both and a \texttt{--configure-arg} is
+  far more likely to be written the first way.
+
+\item \texttt{--configure-arg \$arg} puts one more argument on the
+  command line of whatever sets the tree up, raw, as it does for
+  cmake: \texttt{--configure-arg --wrap-mode=nofallback}.  This is
+  also how a \texttt{--setup-script} is handed options of its own.
+
+\item \texttt{--setup-script \$path} names a script inside the tree
+  that sets the tree up in place of \texttt{meson setup}:
+  \texttt{--setup-script configure}.  This is for a tree whose
+  \texttt{meson.build} reads files that only its own script writes.
+  QEMU is one: its \texttt{meson.build} starts by loading a
+  \texttt{config-host.mak} out of the build directory, and the only
+  thing that writes one is QEMU's \texttt{configure}, which then runs
+  \texttt{meson setup} itself with a meson it installed into a Python
+  venv of its own.  The script is run from inside the build directory
+  and by its absolute path, which is how a configure of that kind is
+  told where to build and where its sources are, and it is handed
+  everything \texttt{meson setup} would have been handed except the
+  two directories.  It has to leave a meson build directory behind,
+  since everything after it is ninja's.  A \texttt{--configure-arg}
+  that names a relative path is relative to the build directory here.
+  \texttt{\$path} is relative to the top of the tree, may not leave
+  it, and is made of letters, digits and \texttt{.\_/+-}, since it
+  lands in a recipe as a bare word; anything else is a fatal error,
+  and so is a \texttt{\$path} that is not an executable file.
+
+\item \texttt{--target \$name} asks ninja for a target rather than for
+  its default.  May be given more than once, in which case they are
+  asked for one at a time in the order they were written.
+
+\item \texttt{--jobs \$n} says how many jobs ninja runs at once.
+  Leave it off to have a new enough ninja share the jobserver of the
+  \texttt{make} that ran it instead.
+
+\item \texttt{--install} and \texttt{--no-install} say whether the
+  build directory's install target is part of building the tree.  It
+  is, unless it is turned off.
+
+\item \texttt{--env \$name=\$value}, \texttt{--depend \$path} and
+  \texttt{--depend-config \$path} mean what they mean for cmake.
+\end{itemize}
+
+Where the tree installs is refused from a \texttt{--define}, a
+\texttt{--configure-arg} and an \texttt{--env} alike: meson's
+\texttt{prefix}, \texttt{DESTDIR}, which the install reads out of the
+environment, and \texttt{meson install}'s own \texttt{destdir}; and
+meson's directory options --- \texttt{bindir}, \texttt{libdir},
+\texttt{sysconfdir} and the rest --- when they are given anything but
+an ordinary relative path, since meson joins a relative one to the
+prefix the way cmake does.  Each of those as a \texttt{-D}, as a bare
+\texttt{NAME=VALUE}, and as a \texttt{--} option in full or in any
+shortened form: meson's command line takes an unambiguous prefix of a
+long option as the option, so \texttt{--prefi=} is
+\texttt{--prefix=} there just as it is to a generated
+\texttt{configure}.
 
 \section{Warnings \label{warn}}
 
