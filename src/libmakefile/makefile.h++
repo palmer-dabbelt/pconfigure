@@ -80,7 +80,8 @@ namespace makefile {
 
         /* The directories ptest should look in for test results,
          * which is one per project. */
-        std::vector<std::string> _check_dirs;
+        /* Each with whether its project said ABRT_IS_FAIL. */
+        std::vector<std::pair<std::string, bool>> _check_dirs;
 
         /* The named sets of tests this Makefile can be asked to run
          * on their own, each with the test results that are in it.
@@ -93,10 +94,6 @@ namespace makefile {
         /* The one of those that "make check" runs, or empty for a
          * "make check" that means every test in the build. */
         std::string _default_test_suite;
-
-        /* Whether every ptest invocation this Makefile writes gets
-         * "--abrt-is-fail" on its command line. */
-        bool _abrt_is_fail;
 
         /* Whether this Makefile writes the rule that runs pconfigure
          * again.  A project that keeps a Makefile of its own above
@@ -165,7 +162,7 @@ namespace makefile {
         /* Waits on another project's "make check" stamp, and looks in
          * another project's directory for test results. */
         void add_check_stamp(const std::string& stamp);
-        void add_check_dir(const std::string& dir);
+        void add_check_dir(const std::string& dir, bool abrt_is_fail);
 
         /* Adds the results of one named set of tests, which get their
          * own "check-<name>" and "report-<name>" rules.  A name that
@@ -179,13 +176,6 @@ namespace makefile {
         /* Points "make check" and "make report" at one of those
          * rather than at every test in the build. */
         void set_default_test_suite(const std::string& name);
-
-        /* Bakes "--abrt-is-fail" onto every ptest invocation this
-         * Makefile writes, so a test that calls abort() scores as a
-         * FAIL instead of ptest's default EROR.  See ABRT_IS_FAIL in
-         * command_processor.h++ for why that default exists and when
-         * a project would rather have this. */
-        void set_abrt_is_fail(bool abrt_is_fail);
 
         /* Says that somebody else writes the "make reconfigure" rule,
          * so this Makefile shouldn't: two recipes for the one name

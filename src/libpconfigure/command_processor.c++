@@ -459,8 +459,9 @@ void command_processor::process_one(const command::ptr& cmd)
      * general case -- see the comment on _abrt_is_fail in
      * command_processor.h++ for why a signal death stays an EROR
      * unless a project opts in -- so this just bakes "--abrt-is-fail"
-     * onto the "make check"/"make report" recipes this project
-     * writes, the same way AUTORECONFIGURE bakes in a different
+     * for this project's check directory onto every "make check"/"make
+     * report" recipe that reads it, this project's own and any
+     * parent's, the same way AUTORECONFIGURE bakes in a different
      * answer to a different question. */
     case command_type::ABRT_IS_FAIL:
     {

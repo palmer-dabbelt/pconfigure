@@ -1785,12 +1785,19 @@ A project whose tests fail by calling a libc \texttt{assert()} --
 rather than catching whatever they expect to go wrong and turning it
 into an \texttt{exit 1} themselves -- has every one of those failures
 looking exactly like the crash \texttt{EROR} is for, every time,
-which is the case this exists for: it bakes \texttt{--abrt-is-fail}
-onto every \texttt{ptest} invocation this project's \texttt{Makefile}
-writes, both the whole-project \texttt{check}/\texttt{report} pair and
-any \texttt{TEST\_SUITES}' (see Section~\ref{cmd:test_suites}) own, so
-an exit status of \texttt{128+SIGABRT} is counted in \texttt{NFAIL}
-instead.  It changes nothing about a crash from any other signal, or
+which is the case this exists for: every \texttt{ptest} invocation
+that reads this project's results -- the whole-project
+\texttt{check}/\texttt{report} pair and any \texttt{TEST\_SUITES}' (see
+Section~\ref{cmd:test_suites}) own, in this project's
+\texttt{Makefile} and in any parent's that pulls it in as a
+subproject -- names its check directory with
+\texttt{--abrt-is-fail-dir} rather than \texttt{--check-dir}, so an
+exit status of \texttt{128+SIGABRT} there is counted in \texttt{NFAIL}
+instead.  It is said per directory because a parent's report is one
+\texttt{ptest} run over every project it pulled in, and each of those
+gave its own answer: a parent that says \texttt{ABRT\_IS\_FAIL} does
+not rescore its subprojects' crashes, and a subproject that says it
+keeps that when the report is run from above.  It changes nothing about a crash from any other signal, or
 about what \texttt{make check} itself does when a test is red --
 only which column a \texttt{SIGABRT} lands in.
 
@@ -4247,8 +4254,13 @@ crashes with \texttt{SIGABRT} on every single failure rather than on
 some subset of them -- and a project built that way would rather see
 those in \texttt{NFAIL} than in \texttt{NEROR} by default.
 \texttt{ABRT\_IS\_FAIL} (see Section~\ref{cmd:abrt_is_fail}) is the
-opt-in for exactly that project, and \texttt{--abrt-is-fail} is the
-flag it bakes onto \texttt{ptest}'s own command line to do it.
+opt-in for exactly that project.  By hand, \texttt{--abrt-is-fail}
+scores every \texttt{SIGABRT} in the run as a \texttt{FAIL};
+\texttt{--abrt-is-fail-dir DIR} is a \texttt{--check-dir} that does
+it for \texttt{DIR}'s results alone, which is what the generated
+\texttt{Makefile} uses, and what a tab and \texttt{abrt-is-fail}
+after a directory in \texttt{\$OBJDIR/check-dirs} means to a bare
+\texttt{ptest}.
 
 \subsection{\texttt{pinclude} \label{prog:pinclude}}
 

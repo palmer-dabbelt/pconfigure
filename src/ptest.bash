@@ -3,6 +3,7 @@ quiet="false"
 check_make_check="true"
 abrt_is_fail="false"
 check_dirs=()
+abrt_dirs=()
 check_suite=""
 check_results=()
 while [[ "$1" == --* ]]
@@ -24,6 +25,18 @@ do
         # an EROR: see the classification loop below for why that's
         # the right default and what this flag deliberately narrows.
         abrt_is_fail="true"
+    elif [[ "$1" == "--abrt-is-fail-dir" ]]
+    then
+        # A --check-dir whose project asked for --abrt-is-fail, and
+        # --abrt-is-fail for that directory's results alone.  One
+        # report covers every project a build pulled in, and whether
+        # a SIGABRT is a FAIL is each project's own answer: a parent
+        # that never asked shouldn't have its crashes rescored by a
+        # child that did, and a child that asked shouldn't lose that
+        # just because the report was run from above it.
+        shift
+        check_dirs+=("$1")
+        abrt_dirs+=("$1")
     elif [[ "$1" == "--check-dir" ]]
     then
         # One per project: a build with subprojects has its test
@@ -59,11 +72,17 @@ then
     # one directory everybody has.
     if [[ -r obj/check-dirs ]]
     then
-        while read -r dir
+        # A tab and "abrt-is-fail" after a directory is the same thing
+        # --abrt-is-fail-dir says on the command line.
+        while IFS=$'\t' read -r dir flag
         do
             if [[ "$dir" != "" ]]
             then
                 check_dirs+=("$dir")
+                if [[ "$flag" == "abrt-is-fail" ]]
+                then
+                    abrt_dirs+=("$dir")
+                fi
             fi
         done <obj/check-dirs
     fi
@@ -197,6 +216,23 @@ then
         done
     }
 
+    # Whether a SIGABRT under this check directory is scored as a FAIL.
+    dir_abrt_is_fail() {
+        local d
+        if [[ "$abrt_is_fail" == "true" ]]
+        then
+            return 0
+        fi
+        for d in "${abrt_dirs[@]}"
+        do
+            if [[ "$d" == "$1" ]]
+            then
+                return 0
+            fi
+        done
+        return 1
+    }
+
     # This subshell is necessary to keep these variables after the
     # loop terminates
     results | {
@@ -229,7 +265,7 @@ then
                 then
                     cat "$f"
                 fi
-            elif [[ "$abrt_is_fail" == "true" ]] && [[ "$ret" == "134" ]]
+            elif [[ "$ret" == "134" ]] && dir_abrt_is_fail "$dir"
             then
                 echo -e "* FAIL\t$name"
                 fail=$(expr $fail + 1)

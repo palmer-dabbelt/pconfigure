@@ -28,7 +28,6 @@ makefile::makefile::makefile(bool verbose,
 : _verbose(verbose),
   _obj_dir(obj_dir),
   _prefix(prefix),
-  _abrt_is_fail(false),
   _write_reconfigure(true)
 {
 }
@@ -67,9 +66,10 @@ void makefile::makefile::add_check_stamp(const std::string& stamp)
     _check_stamps.push_back(stamp);
 }
 
-void makefile::makefile::add_check_dir(const std::string& dir)
+void makefile::makefile::add_check_dir(const std::string& dir,
+                                       bool abrt_is_fail)
 {
-    _check_dirs.push_back(dir);
+    _check_dirs.push_back(std::make_pair(dir, abrt_is_fail));
 }
 
 void makefile::makefile::add_test_suite(const std::string& name,
@@ -90,11 +90,6 @@ void makefile::makefile::add_test_suite(const std::string& name,
 void makefile::makefile::set_default_test_suite(const std::string& name)
 {
     _default_test_suite = name;
-}
-
-void makefile::makefile::set_abrt_is_fail(bool abrt_is_fail)
-{
-    _abrt_is_fail = abrt_is_fail;
 }
 
 void makefile::makefile::skip_reconfigure(void)
@@ -295,16 +290,18 @@ void makefile::makefile::write_to_file(const std::string& filename)
     for (const auto& target: _standalone_targets)
         target->write_to_file(file, _verbose, stamp, _prefix);
 
+    /* An ABRT_IS_FAIL Configfile line lands here, on every "make
+     * check"/"make report" recipe that reads that project's results --
+     * its own, the project-wide and the per-suite ones alike, and a
+     * parent's that aggregate it -- rather than on ptest's own
+     * default, which stays what it was for every project that didn't
+     * ask.  It's said per directory rather than once for the whole
+     * ptest run, since a parent's report covers projects that gave
+     * different answers. */
     auto check_dirs = std::string();
     for (const auto& dir: _check_dirs)
-        check_dirs += " --check-dir " + _prefix.rewrite(dir);
-
-    /* An ABRT_IS_FAIL Configfile line lands here, on every "make
-     * check"/"make report" recipe this Makefile writes -- the
-     * project-wide and the per-suite ones alike -- rather than on
-     * ptest's own default, which stays what it was for every project
-     * that didn't ask. */
-    auto abrt_is_fail = std::string(_abrt_is_fail ? " --abrt-is-fail" : "");
+        check_dirs += (dir.second ? " --abrt-is-fail-dir " : " --check-dir ")
+                    + _prefix.rewrite(dir.first);
 
     /* A report is read off the disk at least as often as it is read
      * out of "make report" -- by a person looking at what last night
@@ -338,10 +335,10 @@ void makefile::makefile::write_to_file(const std::string& filename)
      * "&&" means this one never got as far as the mv -- and it is
      * file-global, so it would start removing half-written targets
      * for every other rule in the Makefile besides. */
-    fprintf(file, "%s: %s\n\t%s%s --quiet --no-check-make-check%s%s > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp $@; exit 1)\n\n",
-            quiet_report.c_str(), stamp.c_str(), q, ptest.c_str(), check_dirs.c_str(), abrt_is_fail.c_str());
-    fprintf(file, "%s: %s\n\t%s%s --no-check-make-check%s%s > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp $@; exit 1)\n\n",
-            report.c_str(), stamp.c_str(), q, ptest.c_str(), check_dirs.c_str(), abrt_is_fail.c_str());
+    fprintf(file, "%s: %s\n\t%s%s --quiet --no-check-make-check%s > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp $@; exit 1)\n\n",
+            quiet_report.c_str(), stamp.c_str(), q, ptest.c_str(), check_dirs.c_str());
+    fprintf(file, "%s: %s\n\t%s%s --no-check-make-check%s > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp $@; exit 1)\n\n",
+            report.c_str(), stamp.c_str(), q, ptest.c_str(), check_dirs.c_str());
     /* "make check" runs one named set of tests when the project said
      * which, and every test it has when it didn't.  "make report"
      * follows it: a report about a run that didn't happen is a report
@@ -440,12 +437,12 @@ void makefile::makefile::write_to_file(const std::string& filename)
          * deletion when the scoring fails: see the project-wide
          * reports above for why a failed run leaves no report
          * behind. */
-        fprintf(file, "%s: %s\n\t%s%s --quiet --no-check-make-check%s%s%s > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp $@; exit 1)\n\n",
+        fprintf(file, "%s: %s\n\t%s%s --quiet --no-check-make-check%s%s > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp $@; exit 1)\n\n",
                 suite_quiet.c_str(), suite_stamp.c_str(), q, ptest.c_str(),
-                check_dirs.c_str(), results.c_str(), abrt_is_fail.c_str());
-        fprintf(file, "%s: %s\n\t%s%s --no-check-make-check%s%s%s > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp $@; exit 1)\n\n",
+                check_dirs.c_str(), results.c_str());
+        fprintf(file, "%s: %s\n\t%s%s --no-check-make-check%s%s > $@.tmp && mv $@.tmp $@ || (cat $@.tmp; rm -f $@.tmp $@; exit 1)\n\n",
                 suite_report.c_str(), suite_stamp.c_str(), q, ptest.c_str(),
-                check_dirs.c_str(), results.c_str(), abrt_is_fail.c_str());
+                check_dirs.c_str(), results.c_str());
 
         /* Both of these are names rather than files, and unlike
          * "check" there is no directory that happens to be called

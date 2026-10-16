@@ -1296,7 +1296,8 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
      * it pulled in.  These only get written out for a standalone
      * build, so a parent's copies are what run when there is one. */
     for (const auto& project: aggregated)
-        out->add_check_dir(project->processor()->root_context()->check_dir);
+        out->add_check_dir(project->processor()->root_context()->check_dir,
+                           project->processor()->abrt_is_fail());
 
     /* Same reason, and the same list: a suite is a name make can be
      * asked for, so the Makefile that gets asked is the one that has
@@ -1313,7 +1314,6 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
      * make was run in, and a subproject that has an opinion about its
      * own "make check" doesn't get to have one about a parent's. */
     out->set_default_test_suite(_processor->default_test_suite());
-    out->set_abrt_is_fail(_processor->abrt_is_fail());
 
     /* A project that bootstraps its own pconfigure has the rule that
      * runs it in the Makefile it keeps beside this one, since that is
@@ -1755,11 +1755,14 @@ void project::write_check_dirs(const std::vector<ptr>& aggregated) const
     }
 
     /* Written the way whoever reads it will be standing: "ptest" runs
-     * where make runs, which for this file is this project. */
+     * where make runs, which for this file is this project.  A project
+     * that said ABRT_IS_FAIL has that after a tab, so a bare "ptest"
+     * scores its results the way "make report" does. */
     for (const auto& project: aggregated)
-        fprintf(file, "%s\n",
+        fprintf(file, "%s%s\n",
                 root->unbased(
-                    project->processor()->root_context()->check_dir).c_str());
+                    project->processor()->root_context()->check_dir).c_str(),
+                project->processor()->abrt_is_fail() ? "\tabrt-is-fail" : "");
 
     fclose(file);
 }
