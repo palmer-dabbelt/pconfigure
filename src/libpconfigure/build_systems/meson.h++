@@ -70,7 +70,10 @@
  * absolute path and calls that one for the regenerate and the
  * install, so asking ninja is how every step after the setup runs
  * under the meson that did the setup, whatever the PATH happens to
- * say by the time the build runs.
+ * say by the time the build runs.  A tree whose own --setup-script
+ * does the setup -- see below -- may well run a meson it brought with
+ * it, which is where that stops being a nicety: QEMU's configure
+ * builds a Python venv and installs its own meson into it.
  *
  * ninja is also what decides how parallel the build is, which is the
  * other thing that would otherwise want a recursive make here.  A
@@ -119,11 +122,36 @@
  *                        for where it is enforced.
  *
  *   --configure-arg ARG  One more argument for the "meson setup" that
- *                        configures the tree, passed on exactly as
+ *                        configures the tree, or for the --setup-script
+ *                        that runs in its place, passed on exactly as
  *                        written and split by the shell:
  *                        '--configure-arg --wrap-mode=nofallback'.
  *                        This is the way out for anything the options
- *                        above don't cover.
+ *                        above don't cover, and for a setup script's
+ *                        own options, which meson has never heard of.
+ *
+ *   --setup-script PATH  A script inside the tree that sets the tree
+ *                        up instead of a "meson setup": for a tree
+ *                        whose meson.build reads files only its own
+ *                        script writes.  QEMU is one -- its
+ *                        meson.build loads a config-host.mak out of
+ *                        the build directory, its configure is what
+ *                        writes that and then runs "meson setup"
+ *                        itself, and a bare "meson setup" fails at
+ *                        the first line that wants the file.  The
+ *                        script is run from inside the build
+ *                        directory, which is how a configure of that
+ *                        kind is told where to build, by its absolute
+ *                        path, which is how it finds its sources, and
+ *                        with the arguments "meson setup" would have
+ *                        been handed bar the two directories -- a
+ *                        "--prefix=", a "-D" per option -- since a
+ *                        script that wraps meson has to take at least
+ *                        those.  It has to leave a meson build
+ *                        directory behind, build.ninja and all, since
+ *                        everything after it is ninja's.  A
+ *                        --configure-arg that names a relative path is
+ *                        relative to the build directory here.
  *
  *   --target NAME        Ask ninja for a target rather than for its
  *                        default.  May be given more than once, and
@@ -150,7 +178,8 @@
  *                        while it is deciding what the tree can do.
  *
  * A --define, a --configure-arg and an --env each hand a word of a
- * Configfile to meson, and a word that says where the tree installs is refused from all
+ * Configfile to meson, or to the script that runs in its place, and a
+ * word that says where the tree installs is refused from all
  * three: see already_answered() for the names and
  * build_system::refuse_second_answer() for the rest.
  */
@@ -166,6 +195,10 @@ private:
     /* Everything else this run puts on the setup's command line, in
      * the order it was written. */
     std::vector<std::string> _configure_args;
+
+    /* The tree's own script that sets it up, relative to the top of
+     * the tree, or empty for a plain "meson setup". */
+    std::string _setup_script;
 
     /* Where the tree installs to, exactly as the option wrote it:
      * resolving it needs the project this was bound to, and an
@@ -264,7 +297,8 @@ protected:
      * to refuse a MAKEOPS where it is written. */
     bool run_by_make(void) const { return false; }
 
-    /* What meson reads as a second answer to where the tree installs.  The names only; the
+    /* What meson, and a setup script in its place, reads as a second
+     * answer to where the tree installs.  The names only; the
      * refusing is build_system::refuse_second_answer()'s. */
     answers already_answered(void) const;
 

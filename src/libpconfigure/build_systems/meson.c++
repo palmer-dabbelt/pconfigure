@@ -32,6 +32,7 @@ build_system_meson::build_system_meson(const std::string& name)
   _build_type(),
   _defines(),
   _configure_args(),
+  _setup_script(),
   _prefix(),
   _install(true),
   _ninja_targets(),
@@ -125,6 +126,8 @@ std::string build_system_meson::configureopt_help(void) const
            "  '--prefix DIR' says where the tree installs to\n"
            "  '--configure-arg ARG' puts one more argument on the setup's"
            " command line\n"
+           "  '--setup-script PATH' runs the tree's own script in place of"
+           " 'meson setup'\n"
            "  '--target NAME' asks ninja for a target rather than for"
            " its default\n"
            "  '--jobs N' says how many jobs ninja may use\n"
@@ -245,6 +248,48 @@ void build_system_meson::take_configureopt(const std::string& opt)
         refuse_second_answer("--configure-arg", configure_arg);
 
         _configure_args.push_back(configure_arg);
+        _configure_lines.push_back(opt);
+        return;
+    }
+
+    auto setup_script = option_value(opt, "--setup-script");
+    if (setup_script.size() > 0) {
+        /* Inside the tree, and spelled so that pasting it after a
+         * "$(abspath ...)" in a recipe can't mean anything but a file:
+         * it goes into the Makefile as a bare word, so a space would
+         * split it, a '$' would be make's, and a quote or a ';' would
+         * be the shell's.  That is a narrower list than
+         * unsafe_metacharacter() refuses, and deliberately: this is a
+         * file name somebody else's tree chose, and every tree that
+         * ships one of these calls it something like "configure".
+         *
+         * Not above the tree either, absolutely or with a "..": a
+         * script from somewhere else is a program the SUBPROJECTS
+         * didn't name, run with the tree's build directory as its
+         * working directory. */
+        auto bad = setup_script[0] == '/'
+                || setup_script == ".."
+                || setup_script.compare(0, 3, "../") == 0
+                || setup_script.find("/../") != std::string::npos
+                || (setup_script.size() >= 3
+                    && setup_script.compare(setup_script.size() - 3, 3,
+                                            "/..") == 0);
+        for (const auto& c: setup_script) {
+            if (isalnum((unsigned char)c) == 0
+                && std::string("._/+-").find(c) == std::string::npos)
+                bad = true;
+        }
+
+        if (bad == true) {
+            std::cerr << name() << ": '--setup-script " << setup_script
+                      << "' isn't a file inside the tree: it should be a"
+                      << " path relative to the top of it, made of"
+                      << " letters, digits and '._/+-', like"
+                      << " '--setup-script configure'\n";
+            abort();
+        }
+
+        _setup_script = setup_script;
         _configure_lines.push_back(opt);
         return;
     }
@@ -380,8 +425,32 @@ build_system_meson::vendored_targets(
     for (const auto& arg: _configure_args)
         args += " " + arg;
 
-    auto configure = with_env("meson setup" + args + " " + build
-                              + " " + srcdir);
+    /* A tree's own script runs from inside the build directory, by
+     * its absolute path, with everything but the two directories: a
+     * configure of the kind that wraps meson works out where its
+     * sources are from the path it was run as and where to build from
+     * the directory it was run in.  The cd goes in front of the
+     * environment rather than after it, so that the variables are the
+     * script's rather than the cd's. */
+    auto configure = std::string();
+    if (_setup_script.size() > 0) {
+        /* Asked here rather than where the option arrived, since only
+         * a bound build system knows which tree the path is inside. */
+        if (access((base() + _setup_script).c_str(), X_OK) != 0) {
+            std::cerr << name() << ": '--setup-script " << _setup_script
+                      << "' isn't a program in " << srcdir << "\n"
+                      << "  it names a file relative to the top of the"
+                      << " tree, which has to be there and executable\n";
+            abort();
+        }
+
+        configure = "mkdir -p " + build + " && cd " + build + " && "
+                  + with_env("$(abspath " + srcdir + ")/" + _setup_script
+                             + args);
+    } else {
+        configure = with_env("meson setup" + args + " " + build
+                             + " " + srcdir);
+    }
 
     auto config_deps = std::vector<makefile::target::ptr>();
     for (const auto& depend: _config_depends)

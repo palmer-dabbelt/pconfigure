@@ -378,6 +378,82 @@ fi
 test -f $top/shared/obj/toolchain/bin/tool
 
 ##############################################################################
+# A tree that sets itself up                                                 #
+##############################################################################
+# QEMU's meson.build reads a file only its own configure writes, so the
+# configure is what has to run, from inside the build directory, and it
+# runs "meson setup" itself.  This one writes down where it ran and
+# what it was handed, then leaves the build directory the fake ninja
+# wants -- and calls the fake meson not at all, which is how the log
+# tells "the script set it up" from "pconfigure ran meson anyway".
+mkdir -p $top/script
+fake_tree $top/script/sub
+cat >$top/script/sub/configure <<'EOF'
+#!/bin/sh
+set -e
+pwd > ran-in.txt
+for arg in "$@"
+do
+    echo "arg=[$arg]"
+done > args.txt
+echo "MY_ENV=$MY_ENV" > env.txt
+for arg in "$@"
+do
+    case "$arg" in
+    --prefix=*) echo "${arg#--prefix=}" > prefix.txt;;
+    esac
+done
+echo "# from configure" > build.ninja
+EOF
+chmod +x $top/script/sub/configure
+
+cat >$top/script/Configfile <<'EOF'
+BUILD_SYSTEMS += meson
+SUBPROJECTS   += sub
+CONFIGUREOPTS += --setup-script configure
+CONFIGUREOPTS += --build-type release
+CONFIGUREOPTS += --define targets=one, two
+CONFIGUREOPTS += --configure-arg --target-list=riscv64-softmmu
+CONFIGUREOPTS += --env MY_ENV=one two
+SUBPROJECT_TARGETS += bin/tool
+EOF
+
+: > $MESON_FAKE_LOG
+(cd $top/script && $PTEST_BINARY $PCONFIGURE_ARGS)
+cat $top/script/Makefile
+
+awk '/^\t/ { if (p) print; next } { p = 0 } /^obj\/sub\/build\/build.ninja:/ { p = 1 }' $top/script/Makefile > script.rule
+cat script.rule
+grep -q "cd obj/sub/build && MY_ENV='one two' \$(abspath sub)/configure '--prefix=" script.rule
+if grep -q "meson setup" script.rule
+then
+    exit 1
+fi
+
+(cd $top/script && make $MAKE_ARGS)
+if grep -q "^meson" $MESON_FAKE_LOG
+then
+    exit 1
+fi
+
+# Run from inside the build directory, with everything a "meson setup"
+# would have had bar the two directories, each still one argument.
+build=$top/script/obj/sub/build
+test "$(cat $build/ran-in.txt)" = "$(cd $build && pwd -P)" \
+    || test "$(cat $build/ran-in.txt)" = "$(cd $build && pwd)"
+cat $build/args.txt
+grep -q "^arg=\[--prefix=/.*/script/obj/sub/prefix\]$" $build/args.txt
+grep -q "^arg=\[-Dbuildtype=release\]$" $build/args.txt
+grep -q "^arg=\[-Dtargets=one, two\]$" $build/args.txt
+grep -q "^arg=\[--target-list=riscv64-softmmu\]$" $build/args.txt
+test "$(wc -l < $build/args.txt)" -eq 4
+grep -q "^MY_ENV=one two$" $build/env.txt
+
+# And from there on it's ninja's, as it is for any other tree.
+test -f $top/script/obj/sub/prefix/bin/tool
+test -f $top/script/obj/sub/build-stamp
+
+##############################################################################
 # Refusals                                                                   #
 ##############################################################################
 # Each takes a Configfile line and the text the refusal has to contain.
@@ -429,6 +505,27 @@ do
     refused "answer-${spelling%%:*}" "CONFIGUREOPTS += ${spelling#*:}" \
         "write '--prefix DIR' instead"
 done
+
+# A setup script is a file inside the tree, spelled so it can be pasted
+# into a recipe as a bare word.
+refused script-up "CONFIGUREOPTS += --setup-script ../configure" \
+    "isn't a file inside the tree"
+refused script-absolute "CONFIGUREOPTS += --setup-script /bin/sh" \
+    "isn't a file inside the tree"
+refused script-down-up "CONFIGUREOPTS += --setup-script src/../../x" \
+    "isn't a file inside the tree"
+refused script-space "CONFIGUREOPTS += --setup-script con figure" \
+    "isn't a file inside the tree"
+refused script-dollar "CONFIGUREOPTS += --setup-script \$(HOME)/x" \
+    "isn't a file inside the tree"
+refused script-missing "CONFIGUREOPTS += --setup-script configure" \
+    "'--setup-script configure' isn't a program in sub"
+
+# And it gets the same second-answer refusals meson does, since it is
+# handed the same words.
+refused script-prefix "CONFIGUREOPTS += --setup-script configure
+CONFIGUREOPTS += --configure-arg --prefix=/usr/local" \
+    "write '--prefix DIR' instead"
 
 # A directory option is read under the prefix when it is relative, so
 # that's allowed; an absolute one moves part of the install out from
