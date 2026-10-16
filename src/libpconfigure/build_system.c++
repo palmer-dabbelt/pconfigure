@@ -24,6 +24,7 @@
 #include "build_systems/cargo.h++"
 #include "build_systems/cmake.h++"
 #include "build_systems/kconfig.h++"
+#include "build_systems/meson.h++"
 #include "build_systems/pconfigure.h++"
 #include "file_utils.h++"
 #include "string_utils.h++"
@@ -1288,6 +1289,8 @@ build_system::ptr build_system::create(const std::string& name)
         return std::make_shared<build_system_cmake>(name);
     if (name == "cargo")
         return std::make_shared<build_system_cargo>(name);
+    if (name == "meson")
+        return std::make_shared<build_system_meson>(name);
 
     return NULL;
 }
@@ -1295,5 +1298,5 @@ build_system::ptr build_system::create(const std::string& name)
 std::vector<std::string> build_system::names(void)
 {
     return std::vector<std::string>{"pconfigure", "kconfig", "buildroot",
-                                   "autotools", "cmake", "cargo"};
+                                   "autotools", "cmake", "cargo", "meson"};
 }

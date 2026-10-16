@@ -265,6 +265,7 @@ TESTSRC     += buildroot.bash
 TESTSRC     += autotools.bash
 TESTSRC     += cmake.bash
 TESTSRC     += cargo.bash
+TESTSRC     += meson.bash
 TESTSRC     += kconfig-opts.bash
 TESTSRC     += kconfig-deps.bash
 TESTSRC     += kconfig-build-deps.bash
