@@ -26,6 +26,8 @@
 #include <sys/stat.h>
 #include <cctype>
 #include <cerrno>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <functional>
 #include <iostream>
@@ -1463,10 +1465,33 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
          * Makefile still saying what the old binary said, for as long
          * as nothing else happened to run pconfigure.  So a tree that
          * bootstraps puts the tool on the same rule the Configfiles
-         * are on: make remakes what it includes, which means building
-         * the rebuilt binary first and running it second, and the
-         * reconfigure the new tool was going to be asked for arrives
-         * in the same make that built it.
+         * are on, and the first make after the build relinked it
+         * reruns it.
+         *
+         * The next make, not the same one, and that is the spelling
+         * below rather than a thing anybody chose.  The tool is named
+         * by its absolute path, which is a prerequisite make has no
+         * rule for -- a timestamp and nothing more, exactly as the
+         * fragments name pdeps (see deps_source() in cxx.c++, which
+         * says why at length).  Named by the relative path the
+         * vendored tree's own rule uses, make would find that rule
+         * while it is remaking the makefiles it includes, and build
+         * the tool then: before it has read the pdeps fragments that
+         * say which objects the tool and its libraries are linked
+         * out of.  On a fresh checkout none of those fragments exist
+         * yet, so every library came out of an empty object list,
+         * pdeps -- linked against them -- could no longer load, and
+         * nothing could write the fragments that would have fixed
+         * it.  The very first make of every tree that bootstraps a
+         * real pconfigure stopped there, and so did every make after
+         * it.  The relative spelling looked like it was only being
+         * eager; it was linking out of a dependency graph make had
+         * not finished reading.
+         *
+         * Through "$(wildcard)" for the reason pdeps is: "make clean"
+         * deletes the tool along with everything else the build made,
+         * and a bare path to a missing file is "No rule to make
+         * target" on a tree that only needs building.
          *
          * Nothing here sets a loop going.  Every configure rewrites
          * this file unconditionally -- the comment at the top of
@@ -1487,10 +1512,26 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
          * there would stop the very first make with "No rule to make
          * target" before the bootstrap that builds it could run.  This
          * file is only read once a binary is in place, by which point
-         * the subproject that builds it is included too. */
+         * the subproject that builds it is included too.
+         *
+         * Absolute by way of this directory rather than realpath() of
+         * the binary, because the binary need not exist at configure
+         * time -- a pconfigure run from somewhere else can configure
+         * a tree whose own has not been built yet -- and the question
+         * is about where this tree's tool will be, not where the one
+         * running happens to live. */
         const auto& bootstrap = _processor->bootstrap();
-        if (bootstrap.size() > 0)
-            out->add_dep(makefile_path(), bootstrap + "bin/pconfigure");
+        if (bootstrap.size() > 0) {
+            char *here = ::realpath(".", NULL);
+            if (here == NULL) {
+                perror("realpath(\".\")");
+                abort();
+            }
+            auto tool = std::string(here) + "/" + bootstrap
+                      + "bin/pconfigure";
+            free(here);
+            out->add_dep(makefile_path(), "$(wildcard " + tool + ")");
+        }
     }
 
     out->add_standalone_target(cache_clean_target(aggregated));

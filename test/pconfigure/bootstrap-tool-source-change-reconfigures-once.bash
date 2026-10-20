@@ -100,20 +100,31 @@ cat second.out
 test "$(wc -l < bootstraps)" -eq 1
 grep -q "^BASH	pconfigure$" second.out
 
-# ... and the tree reconfigured exactly once with the new tool: the
-# new brain has not written anything down yet, and a build that
-# leaves the counts here where they started is a build whose rebuilt
-# tool sits unused.  Unweakened: this is what correct incremental
-# behavior looks like, and the test fails while the build settles for
-# a relink.
+# ... but not reconfigured by it.  The relink happened in the build,
+# after make had read the Makefiles, and the reconfigure rule names the
+# tool by its absolute path precisely so that make cannot go and build
+# it any earlier than that: building it while the Makefiles are still
+# being remade links a real, C++ pconfigure out of fragments make has
+# not read yet, which bootstrap-real-tool-fresh-checkout pins.  This
+# stand-in has no fragments to get wrong, so the count is asserted to
+# show the rule's timing rather than for its own sake.
+test "$(wc -l < configures)" -eq 1
+
+# The next make is the one that runs the new tool, exactly once: the
+# new brain has not written anything down yet, and a make that leaves
+# the count where it was is a build whose rebuilt tool sits unused.
+# Unweakened: the test fails while the build settles for a relink.
+make $MAKE_ARGS > third.out 2>&1
+cat third.out
 test "$(wc -l < configures)" -eq 2
+test "$(wc -l < bootstraps)" -eq 1
 
 # And then it settles -- the "once" in the name is the point, and a
 # loop would answer this make with another configure instead of
 # nothing.
-make $MAKE_ARGS > third.out 2>&1
-cat third.out
-grep -q "Nothing to be done" third.out
+make $MAKE_ARGS > fourth.out 2>&1
+cat fourth.out
+grep -q "Nothing to be done" fourth.out
 test "$(wc -l < configures)" -eq 2
 test "$(wc -l < bootstraps)" -eq 1
 
