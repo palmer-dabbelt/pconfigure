@@ -1234,6 +1234,15 @@ with everything else \pconfigure\ wrote, and leaves the committed
 \texttt{Makefile} alone: a tree it had removed that from is a tree
 nobody could type \texttt{make} in any more.
 
+\texttt{make clean} takes back \texttt{Makefile.pconfigure} as well.
+A clean deletes the vendored \pconfigure\ and the tools beside it,
+which are build outputs like any other, and the
+\texttt{Makefile.pconfigure} left behind could not build them again:
+some of what it needs to do that, the clean has just taken.  So the
+\texttt{make} after a clean bootstraps and configures the way the first
+one in a fresh checkout does, which is slower than an ordinary rebuild
+and is the only one of the two that works.
+
 Bootstrapping clears out the vendored tree first, its own
 \texttt{Makefile} included.  That matters because a bootstrap
 normally runs in a tree this project has already configured, which
@@ -1735,6 +1744,14 @@ out of that directory as much as out of any file, and a file appearing
 in it changes nothing this rule is watching.  \texttt{CONFIG\_DEPS}
 (Section~\ref{cmd:config_deps}) is how such a \texttt{Configfile} says
 so.
+
+It also runs \pconfigure\ again when one of the \texttt{Makefile}s it
+wrote for a \texttt{SUBPROJECTS} has gone missing, which is what
+deleting a subproject's object directory does --- by hand, or by
+running a vendored \pconfigure's own \texttt{bootstrap.sh}, which
+starts from an empty one.  Nothing else writes those files, so before
+this a deleted object directory was a tree that stopped on ``No rule
+to make target'' until somebody configured it by hand.
 
 Without \texttt{AUTORECONFIGURE} nothing of the sort happens, and that
 is deliberate rather than an omission: the header graph is frozen at
