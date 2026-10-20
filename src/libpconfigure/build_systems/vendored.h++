@@ -66,7 +66,11 @@ namespace vendored {
      * "root" is TRUE for the first call and FALSE for every call it
      * makes, which is what exempts the directory the walk was pointed
      * at from the marker check: a tree somebody configured in place is
-     * still a tree they asked to have built. */
+     * still a tree they asked to have built.
+     *
+     * A directory with a symlink to nothing in it is written out a
+     * file at a time instead, leaving the link out: a glob would list
+     * it, and make would then have a prerequisite it can't find. */
     void chase(const std::string& dir,
                const std::string& skip,
                const std::string& marker,

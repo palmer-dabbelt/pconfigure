@@ -154,7 +154,9 @@ void vendored::chase(const std::string& dir,
         return;
 
     auto subdirs = std::vector<std::string>();
+    auto files = std::vector<std::string>();
     auto configured = false;
+    auto dangling = false;
 
     while (true) {
         auto entry = readdir(handle);
@@ -202,6 +204,23 @@ void vendored::chase(const std::string& dir,
 
         if (name == marker)
             configured = true;
+
+        /* A symlink to nothing, which a glob lists -- it reads the
+         * directory, not what the entries point at -- and make
+         * then can't find, so it is a prerequisite with no rule
+         * and the build stops.  QEMU's roms/edk2 has one, a
+         * link to the X11 headers where a Mac keeps them.  The
+         * directory it's in is written down a file at a time
+         * instead of as a glob, without it. */
+        if (S_ISLNK(info.st_mode) == true) {
+            struct stat target;
+            if (stat(path.c_str(), &target) != 0) {
+                dangling = true;
+                continue;
+            }
+        }
+
+        files.push_back(path);
     }
 
     closedir(handle);
@@ -223,7 +242,10 @@ void vendored::chase(const std::string& dir,
     if (dir == skip)
         return;
 
-    out.push_back(dir + "*");
+    if (dangling == false)
+        out.push_back(dir + "*");
+    else
+        out.insert(out.end(), files.begin(), files.end());
 
     for (const auto& subdir: subdirs)
         chase(subdir, skip, marker, false, ignored, out);
