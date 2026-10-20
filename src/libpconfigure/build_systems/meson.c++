@@ -551,7 +551,7 @@ build_system_meson::vendored_targets(
     auto build_deps = std::vector<makefile::target::ptr>{config_target};
     if (dirs.size() > 0)
         build_deps.push_back(std::make_shared<makefile::target>(
-            "$(wildcard " + string_utils::join(dirs, " ") + ")"));
+            vendored::globbed(dirs)));
 
     for (const auto& depend: _depends)
         build_deps.push_back(std::make_shared<makefile::target>(

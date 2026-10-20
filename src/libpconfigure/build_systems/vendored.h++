@@ -73,6 +73,11 @@ namespace vendored {
                bool root,
                const std::set<std::string>& ignored,
                std::vector<std::string>& out);
+
+    /* The globs chase() wrote, as the one prerequisite a build
+     * waits on.  See the definition for why that's two
+     * "$(wildcard)"s rather than one. */
+    std::string globbed(const std::vector<std::string>& globs);
 }
 
 #endif

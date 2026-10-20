@@ -848,7 +848,7 @@ build_system_cmake::vendored_targets(
     auto build_deps = std::vector<makefile::target::ptr>{config_target};
     if (dirs.size() > 0)
         build_deps.push_back(std::make_shared<makefile::target>(
-            "$(wildcard " + string_utils::join(dirs, " ") + ")"));
+            vendored::globbed(dirs)));
 
     /* Said again here rather than left to the configuration this
      * build already waits for, so that the rule that names the thing

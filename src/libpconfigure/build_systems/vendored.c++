@@ -228,3 +228,19 @@ void vendored::chase(const std::string& dir,
     for (const auto& subdir: subdirs)
         chase(subdir, skip, marker, false, ignored, out);
 }
+
+/* Twice, because the first one's answer is a list of words and a
+ * file is not always one.  A directory's glob hands back a file
+ * called "a - b.txt" as the three words "a", "-" and "b.txt", and
+ * as a prerequisite list those are three files named outright that
+ * the tree doesn't have -- which stops make building anything, the
+ * same way a bump that deleted a named path would.  QEMU's
+ * roms/edk2, once its submodules are checked out, has a dozen of
+ * them in openssl's tlsfuzzer.  Globbing the answer again keeps
+ * every word that is a file and drops the rest, so a file with a
+ * space in its name falls out of the guess the way a directory with
+ * one already does. */
+std::string vendored::globbed(const std::vector<std::string>& globs)
+{
+    return "$(wildcard $(wildcard " + string_utils::join(globs, " ") + "))";
+}
