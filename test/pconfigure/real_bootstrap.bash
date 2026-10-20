@@ -38,8 +38,17 @@ real_bootstrap_tree()
         cp -R "$PTEST_SRCDIR/$part" tools/pconfigure/
     done
 
-    cat >Configfile <<'EOF'
-AUTORECONFIGURE  = true
+    # "no-autoreconfigure" leaves the line out, for the tests that have
+    # to show a fix holds in both modes rather than only the one that
+    # found the bug.
+    local autoreconfigure="AUTORECONFIGURE  = true"
+    if [[ "${1-}" == "no-autoreconfigure" ]]
+    then
+        autoreconfigure=""
+    fi
+
+    cat >Configfile <<EOF
+$autoreconfigure
 BOOTSTRAP        = tools/pconfigure
 LANGUAGES       += c
 BINARIES        += hello
@@ -101,4 +110,39 @@ real_bootstrap_tools_load()
             return 1
         fi
     done
+}
+
+# A built and settled tree, "make clean", and then the make that has to
+# work.  Shared by the two make-clean tests, which differ only in
+# whether the tree has AUTORECONFIGURE: the clean broke both, in
+# different ways, so a fix that only covers the mode that was noticed
+# first is a fix the other test exists to catch.
+real_bootstrap_clean_then_make()
+{
+    real_bootstrap_make first.out
+    real_bootstrap_make second.out
+    real_bootstrap_make settled.out
+    grep -q "Nothing to be done" settled.out
+
+    real_bootstrap_make clean.out clean
+
+    # The clean took the tool, which is the whole problem.
+    test ! -e tools/pconfigure/bin/pdeps
+
+    # The make is asserted before anything about how it managed, so
+    # that a test fails on the symptom -- the make after a clean not
+    # working -- rather than on a detail of one way of fixing it.  The
+    # detail comes after: it went through the committed Makefile's
+    # bootstrap, the one route that builds the tool out of nothing the
+    # clean could have taken.
+    real_bootstrap_make rebuilt.out
+    grep -q "^BOOTSTRAP	tools/pconfigure/$" rebuilt.out
+    test "$(./bin/hello)" = "hello"
+    real_bootstrap_tools_load
+
+    # And then settles, the same way a fresh checkout does.
+    real_bootstrap_make after.out
+    real_bootstrap_tools_load
+    real_bootstrap_make settled-again.out
+    grep -q "Nothing to be done" settled-again.out
 }

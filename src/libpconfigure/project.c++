@@ -1584,6 +1584,43 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
         }
     }
 
+    /* A tree that bootstraps its own pconfigure has "make clean" take
+     * this Makefile with it, because the clean takes the tool.  The
+     * vendored tree's binaries are build outputs like any other, so
+     * cleaning deletes pconfigure and the tools beside it, the
+     * libraries they load, and whatever headers the vendored build
+     * generates for itself -- and none of that is something the
+     * Makefile left behind can be trusted to build back.  Measured,
+     * both ways: under AUTORECONFIGURE the next make went straight to
+     * rewriting the pdeps fragments with a pdeps that was no longer
+     * there ("No such file or directory"), and how to link pdeps is
+     * what those fragments say; without it, the header the vendored
+     * library includes could not be made again, since the clean took
+     * phc, which makes it, along with the header.  Either way, every
+     * make after a clean, until somebody reconfigured by hand.
+     *
+     * The committed Makefile already knows what to do about a missing
+     * tool -- bootstrap it from source, which needs none of this --
+     * but only gets asked when this file has to be written.  Removing
+     * it is how it gets asked: a missing include is remade before
+     * anything else is read, so the bootstrap and the configure finish
+     * before any rule in here is even known, which is also what keeps
+     * it from racing those rules under -j.  The cost is a bootstrap and
+     * a configure after every clean, which is what the comment on that
+     * rule always said a clean would cost. */
+    if (_base.size() == 0 && _processor->bootstrap().size() > 0) {
+        auto clean_name = "__pconfigure__clean-" + makefile_path();
+        out->add_standalone_target(std::make_shared<makefile::target>(
+            clean_name,
+            "",
+            std::vector<makefile::target::ptr>{},
+            std::vector<makefile::global_targets>{},
+            std::vector<std::string>{"rm -f " + makefile_path()},
+            std::vector<std::string>{}));
+        out->add_dep(".PHONY", clean_name);
+        out->add_dep("clean", clean_name);
+    }
+
     out->add_standalone_target(cache_clean_target(aggregated));
     out->add_standalone_target(distclean_target(aggregated));
 
