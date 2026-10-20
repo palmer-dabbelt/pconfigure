@@ -23,6 +23,7 @@
 #include "file_utils.h++"
 #include "pick_language.h++"
 #include "string_utils.h++"
+#include <libmakefile/self_path.h++>
 #include <sys/stat.h>
 #include <cctype>
 #include <cerrno>
@@ -1531,6 +1532,55 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
                       + "bin/pconfigure";
             free(here);
             out->add_dep(makefile_path(), "$(wildcard " + tool + ")");
+        }
+
+        /* The other Makefiles this one includes, which a configure
+         * writes and nothing else does.  Each lives in its project's
+         * object directory, and an object directory is a thing people
+         * delete -- by hand, or by running a vendored tree's own
+         * bootstrap.sh, which starts from an empty one -- and until
+         * now a deleted one was "No rule to make target" on every
+         * make after, in a tree whose Configfiles had not changed and
+         * whose answer was one configure away.  So each gets a rule
+         * that is that configure.
+         *
+         * No prerequisites, so the rule means "if it is missing" and
+         * nothing else: a file with no prerequisites and a rule is up
+         * to date for as long as it exists, which is every make but
+         * the one after it went away.  A configure writes every one
+         * of them, so the make that remakes one comes back with all
+         * of them and settles.  That is what keeps it from being the
+         * empty-rule loop the Configfile prerequisites go through
+         * $(wildcard) to avoid -- this rule makes the file it names.
+         *
+         * Order-only on this Makefile, because the two can be due on
+         * the same make -- a Configfile edited and an object
+         * directory deleted -- and two configures of one tree running
+         * side by side under -j is two writers of every file in it.
+         * Waiting on this one means a configure that was going to
+         * happen anyway happens first, and the second one finds
+         * everything already written.
+         *
+         * Every project the run includes, not only this one's
+         * children, because a grandchild's Makefile is included from
+         * its parent's and is as deletable as any other.  Named the
+         * way the include names it, so that the rule is for the file
+         * make goes looking for. */
+        auto reconfigure = makefile::tool_command("pconfigure")
+                         + " $(PCONFIGURE_ARGS)";
+        for (const auto& other: aggregated) {
+            if (other->_base == _base)
+                continue;
+
+            auto included = other->makefile_include();
+            out->add_standalone_target(std::make_shared<makefile::target>(
+                included,
+                "PCONFIGURE",
+                std::vector<makefile::target::ptr>{},
+                std::vector<makefile::global_targets>{},
+                std::vector<std::string>{reconfigure},
+                std::vector<std::string>{}));
+            out->add_dep(included, "| " + makefile_path());
         }
     }
 

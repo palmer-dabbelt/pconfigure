@@ -364,6 +364,8 @@ TESTSRC     += host-tool-in-cross-build.bash
 TESTSRC     += bootstrap-tool-source-change-reconfigures-once.bash
 TESTSRC     += bootstrap-real-tool-fresh-checkout.bash
 TESTSRC     += bootstrap-real-tool-source-edit.bash
+TESTSRC     += bootstrap-real-tool-objdir-deleted.bash
+TESTSRC     += subproject-objdir-deleted-reconfigures.bash
 TESTSRC     += link-order-stable-across-relinks.bash
 
 # The half of pconfigure that a build can run on its own, one source
