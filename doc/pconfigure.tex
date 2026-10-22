@@ -584,6 +584,14 @@ once without it.  Both of these will be linked into the final
 executable.  Be sure to take this into account when structuring your
 \texttt{\#define}s.
 
+A source is named by the path it reaches rather than by how the line
+spelled it, so \texttt{main.c}, \texttt{./main.c} and
+\texttt{util/../main.c} are all the same source: written under the
+same options they are compiled once and linked once, just as
+\texttt{main.c} written twice is.  The \texttt{..} is taken off as
+text, so \texttt{gone/../main.c} names \texttt{main.c} whether or not
+there is a directory called \texttt{gone}.
+
 Calling \texttt{SOURCES} without a target is a fatal error.
 
 Neither may the file's name hold a quote, a space or a shell
@@ -2216,6 +2224,9 @@ This is just a macro that generates
 TESTS   += $name
 SOURCES += $name
 \end{verbatim}
+
+The test is named by the same path its source is, so
+\texttt{t.bash} and \texttt{./t.bash} are one test and run once.
 
 \texttt{TESTSRC[\$suite]} generates \texttt{TESTS[\$suite]} and a
 plain \texttt{SOURCES}, since a test suite is a thing tests are in
