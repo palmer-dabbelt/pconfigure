@@ -21,6 +21,7 @@
 #include "bash.h++"
 #include "../language_list.h++"
 #include "../pick_language.h++"
+#include "../string_utils.h++"
 #include <pinclude.h++>
 #include <assert.h>
 #include <iostream>
@@ -246,8 +247,20 @@ language_bash::targets(const context::ptr& ctx) const
          * A test attached to a program can work this out from
          * $PTEST_BINARY.  One attached to a PHONY has no program to work
          * it out from, and this is what it anchors on instead of a
-         * relative path with two answers. */
-        auto srcdir = "$(abspath " + ctx->src_path + ".)";
+         * relative path with two answers.
+         *
+         * It is also the one word of this recipe that is not a path
+         * pconfigure wrote itself: it is wherever somebody checked the
+         * project out, which is not the project's choice, and a
+         * "/home/me/my proj" pasted in as text reaches ptest as two
+         * arguments, the second of which it has never heard of.  So it is
+         * quoted, and make expanding the $(abspath) from inside the quotes
+         * is exactly what's wanted, since make has no idea they are there.
+         * What single quotes still can't carry is a checkout path with a
+         * single quote in it, since make puts that in after the quoting
+         * was decided.
+         */
+        auto srcdir = string_utils::quoted("$(abspath " + ctx->src_path + ".)");
 
         /* Scratch that does not get collected, named after the test and
          * sitting beside the test's own compiled self under $OBJDIR.
