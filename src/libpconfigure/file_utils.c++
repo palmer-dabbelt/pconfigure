@@ -25,29 +25,38 @@
 #include <sys/types.h>
 #include <cerrno>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <sstream>
 using namespace file_utils;
 
-#ifndef LINE_MAX
-#define LINE_MAX 1024
-#endif
-
 std::vector<struct line_and_number> file_utils::readlines_and_numbers(FILE *f)
 {
-    char line[LINE_MAX];
     size_t num = 1;
     std::vector<struct line_and_number> out;
 
-    while (std::fgets(line, LINE_MAX, f) != NULL) {
+    /* One physical line is one entry, however long it is.  This used
+     * to read into a LINE_MAX buffer with fgets(), which hands a
+     * longer line back in pieces: each piece then became a command of
+     * its own with a line number of its own, so a long COMPILEOPTS
+     * lost everything past the cut and every diagnostic after it
+     * named the wrong line.  Nothing promises a Configfile's lines
+     * are short -- a generator printing every define it found is
+     * exactly what makes a long one -- so getline() grows the buffer
+     * to fit instead. */
+    char *lineptr = NULL;
+    size_t n = 0;
+    ssize_t length;
+    while ((length = getline(&lineptr, &n, f)) > 0) {
         struct line_and_number lan;
-        lan.line = line;
+        lan.line = std::string(lineptr, length);
         lan.number = num;
         out.push_back(lan);
         num++;
     }
 
+    free(lineptr);
     return out;
 }
 
