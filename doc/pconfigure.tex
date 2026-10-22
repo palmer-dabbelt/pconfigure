@@ -1231,6 +1231,17 @@ executable \texttt{bootstrap.sh} while the \texttt{Configfile} is
 being read, since the usual way to get this wrong is a submodule
 nobody has checked out yet.
 
+Being inside the tree means what it means for \texttt{SUBPROJECTS},
+and is asked the same way: a path that climbs out with \texttt{../},
+one inside the object directory, and one that reaches outside the
+project or into the object directory through a symlink are all fatal
+errors, as is a shell metacharacter.  The vendored \pconfigure\ is the
+last tree anybody wants a \texttt{make distclean} to remove.  An
+absolute path is a fatal error here too, even one that names a
+directory inside the tree, because it ends up in the committed
+\texttt{Makefile} and names that directory only where this checkout
+happens to sit.
+
 With one of these, \pconfigure\ writes two files instead of one.
 Everything it generates goes into \texttt{Makefile.pconfigure}, and
 the \texttt{Makefile} in its place holds only what the
