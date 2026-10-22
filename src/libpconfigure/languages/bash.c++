@@ -162,8 +162,16 @@ language_bash::targets(const context::ptr& ctx) const
 
         auto install_path = "$(DESTDIR)/" + ctx->prefix + "/" + ctx->unbased(target);
 
+        /* Whatever "make install" writes is something "make uninstall"
+         * has to know how to take back out, and the only way it knows
+         * is a target putting itself on both.  This rule used to name
+         * just the one, so a script -- and a header or a perl script,
+         * which are installed by this same code -- went in under the
+         * prefix and stayed there after everything compiled beside it
+         * had been removed. */
         auto global_install_targets = std::vector<makefile::global_targets>{
             makefile::global_targets::INSTALL,
+            makefile::global_targets::UNINSTALL,
         };
 
         /* Copied next to where it goes and then renamed over it, for
