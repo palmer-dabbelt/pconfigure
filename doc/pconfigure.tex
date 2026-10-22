@@ -821,6 +821,15 @@ The directory may not have a quote, a space or a shell
 metacharacter in its name; see Section~\ref{odd:quoting} for
 what happens if it does and why it is not caught earlier.
 
+Nor may two subprojects in one run have directories whose names differ
+only in their punctuation, such as \texttt{lib-a} and \texttt{lib\_a},
+or \texttt{a-b} and \texttt{a/b}.  Each project's \texttt{Makefile}
+finds its own directory through a make variable spelled from the
+directory's name with every run of punctuation turned into one
+underscore, so those pairs would share one.  \pconfigure\ refuses
+the pair, naming both \texttt{SUBPROJECTS} lines; rename one of the
+directories.
+
 It may not be the project itself, it may not climb out of the project,
 and it may not be inside an object directory.  The last of those is
 the other end of the sentence that lets a vendored tree install into
