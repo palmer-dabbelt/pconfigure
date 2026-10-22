@@ -773,6 +773,14 @@ state \pconfigure\ is in:
 
 When \pconfigure\ has a current source, then the list of compile-time
 options for just that source is appended with \texttt{\$opt}.
+That does not include the sources found behind its headers (see
+Section~\ref{cmd:autodeps}): those are built with the target's
+options, because they are the same sources whichever of the target's
+files happened to read the header, and building one of them a second
+way for every source with options of its own would put two copies of
+it on the link line.  A source the \texttt{Configfile} also names
+outright is the exception, and is built the way its own
+\texttt{SOURCES} line says, options and all, however it is reached.
 
 When \pconfigure\ has no current source but a current target, then the
 list of compile-time options for all sources linked into that target
