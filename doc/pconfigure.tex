@@ -103,6 +103,10 @@ value.  If \texttt{value} starts and ends with a \texttt{`} character
 then it is executed as a shell out (the syntax here is just like BASH
 and Ruby).
 
+A UTF-8 byte order mark at the very start of a \texttt{Configfile},
+which some editors write without being asked, is ignored.  Anywhere
+else in the file those bytes are an error on the line they appear on.
+
 By default, the following configuration files are loaded in this order
 \begin{verbatim}
 Configfiles/local
