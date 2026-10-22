@@ -94,11 +94,13 @@ static std::vector<std::string> reroot_link_opts(const std::vector<std::string>&
 
 /* The flags that add a directory to the include search, which are
  * the ones whose argument a subproject writes from its own directory
- * and the ones whose directories the header search has to look in. */
+ * and the ones whose directories the header search has to look in.
+ * "-I" is the only one of them short enough to be the two-character
+ * flag that path_prefix knows takes its argument stuck on. */
 static const std::vector<std::string>& include_flags(void)
 {
     static const auto out = std::vector<std::string>{
-        "-I"
+        "-I", "-isystem", "-iquote", "-idirafter"
     };
     return out;
 }
@@ -1291,6 +1293,20 @@ language_cxx::compile_options(const context::ptr& ctx,
                     pending = true;
                 } else if (split.first == "-I") {
                     out.push_back("-I" + reroot(split.second));
+                } else if (split.first.size() > 0) {
+                    /* Given back as two words rather than as the one
+                     * it came in.  Both mean the same to the compiler,
+                     * but this line is also rewritten so that a build
+                     * run from inside the subproject spells the
+                     * subproject's directory with nothing on the front,
+                     * and that rewriting only finds a path where a word
+                     * starts or right after a two-character flag like
+                     * "-I".  Stuck on to "-isystem" it would go on
+                     * naming the subproject from the top of the tree,
+                     * which from inside it is a directory that isn't
+                     * there. */
+                    out.push_back(split.first);
+                    out.push_back(reroot(split.second));
                 } else if (opt == "-std=c++11") {
 #if (defined(__GNUC__) && !defined(__clang__) && (__GNUC__ == 4) && (__GNUC_MINOR__ <= 6))
                     std::cerr << "INFO: gcc-4.6 and older don't support c++11, falling back to c++0x\n";
