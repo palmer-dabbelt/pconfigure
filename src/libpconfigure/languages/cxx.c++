@@ -376,8 +376,17 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
              * and "make clean" already removes it. */
             auto scratch_dir = test_name + ".scratch";
 
+            /* The directory the result goes in is the one this target sits
+             * in, which is the target's check directory only when the test
+             * does.  A TESTSRC can name a file in a directory of its own --
+             * "nested/deep.bash" -- and its tarball then lands in that
+             * directory under the check directory; making only the check
+             * directory left ptest writing to a path that wasn't there, so
+             * the test never got a result at all.  The check directory itself
+             * is still what --checkdir names, since that is where every test
+             * of this target looks for the others' results. */
             auto commands = std::vector<std::string>{
-                "mkdir -p " + ctx->check_dir,
+                "mkdir -p $(dir $@)",
                 "+" + makefile::tool_command("ptest") + " --test " + test_name + " --out " + target_name
                 + (bin_name.size() > 0 ? " --bin " + bin_name : "")
                 + " --srcdir " + srcdir
