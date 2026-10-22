@@ -416,6 +416,57 @@ static void refuse_unsafe_metacharacter(const command::ptr& cmd,
     abort();
 }
 
+/* Refuses a BINARIES, LIBRARIES, LIBEXECS, TESTEXECS or HEADERS whose
+ * own name leaves the project.
+ *
+ * A target's name is a path as much as a SOURCES is, and a more
+ * dangerous one.  It is pasted onto bin/ (or lib/, libexec/,
+ * testexec/, include/) to say where the output lands, onto obj/ to
+ * say where it is linked, and onto "$(DESTDIR)$PREFIX/bin" and its
+ * siblings to say where "make install" puts it -- so "BINARIES +=
+ * ../../evil" links a program into a directory beside the checkout,
+ * installs it beside the prefix rather than in it, and hands both of
+ * those paths to "make clean" and "make uninstall" to remove.  A
+ * HEADERS with nothing under it is read from include/ and installed
+ * the same way, so "../../x.h" reads somebody else's file and
+ * installs it outside the include directory.
+ *
+ * Every other command that names a path was already asked this, and
+ * the target's own name was simply never on the list.  A refusal
+ * rather than a strict warning for the same reason SOURCES is
+ * refused: an output written outside the project is not something
+ * a working build could have been relying on.
+ *
+ * A name with a directory in it is still fine -- "BINARIES +=
+ * tools/run" is a program in bin/tools -- because the question is
+ * where the name ends up, which leaves_the_project() answers from
+ * the normalized path, not whether it has a slash in it. */
+static void refuse_target_leaving_project(const command::ptr& cmd)
+{
+    auto leaves = leaves_the_project(cmd->data());
+    if (leaves.size() == 0)
+        return;
+
+    /* The example is the kind of name this command takes, so that what
+     * the message suggests is something that could be pasted back in. */
+    std::string example = "tools/main";
+    if (cmd->type() == command_type::LIBRARIES)
+        example = "libmain.so";
+    if (cmd->type() == command_type::HEADERS)
+        example = "main/api.h";
+
+    auto command_name = std::to_string(cmd->type());
+    std::cerr << std::to_string(cmd->debug()) << "\n"
+              << "  error: " << command_name << " names a target outside"
+              << " this project: " << leaves << "\n"
+              << "  a target's name is where it is built and where 'make"
+              << " install' puts it, so this one would be written, installed"
+              << " and later removed somewhere nothing in this build owns\n"
+              << "  name it from inside the project, like '"
+              << command_name << " += " << example << "'\n";
+    abort();
+}
+
 void command_processor::process(const command::ptr& cmd)
 {
     /* Said here rather than inside the switch because TESTSRC and
@@ -585,6 +636,8 @@ void command_processor::process_one(const command::ptr& cmd)
     {
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
+
+        refuse_target_leaving_project(cmd);
 
         clear_until({context_type::DEFAULT}, cmd);
         dup_tos_and_push(context_type::BINARY, cmd);
@@ -1095,6 +1148,8 @@ void command_processor::process_one(const command::ptr& cmd)
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
+        refuse_target_leaving_project(cmd);
+
         clear_until({context_type::DEFAULT}, cmd);
         dup_tos_and_push(context_type::HEADER, cmd);
 
@@ -1205,6 +1260,8 @@ void command_processor::process_one(const command::ptr& cmd)
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
+        refuse_target_leaving_project(cmd);
+
         clear_until({context_type::DEFAULT}, cmd);
         dup_tos_and_push(context_type::BINARY, cmd);
 
@@ -1230,6 +1287,8 @@ void command_processor::process_one(const command::ptr& cmd)
     {
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
+
+        refuse_target_leaving_project(cmd);
 
         clear_until({context_type::DEFAULT}, cmd);
         dup_tos_and_push(context_type::LIBRARY, cmd);
