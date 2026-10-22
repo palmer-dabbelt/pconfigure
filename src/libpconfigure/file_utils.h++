@@ -90,6 +90,17 @@ namespace file_utils {
      * brings it, and the test that goes with it. */
     bool inside(const std::string& path, const std::string& dir);
 
+    /* The directory a path actually reaches, with every symlink along
+     * the way resolved, or "" for a path that doesn't name anything
+     * yet.
+     *
+     * Asked only by the rules about what "make distclean" may reach,
+     * and the comments where they ask it say why those are different
+     * from every other question about a path: what a line means is
+     * settled by its text, but what an "rm -rf" removes is settled by
+     * the filesystem. */
+    std::string real_directory(const std::string& path);
+
     /* How to get from one directory to another when both of them are
      * named relative to the same place.  Both arguments and the
      * answer are spelled the way normalize_directory() spells a

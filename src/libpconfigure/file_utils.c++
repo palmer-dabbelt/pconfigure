@@ -301,6 +301,17 @@ bool file_utils::inside(const std::string& path, const std::string& dir)
     return path.compare(0, dir.size() + 1, dir + "/") == 0;
 }
 
+std::string file_utils::real_directory(const std::string& path)
+{
+    auto resolved = ::realpath(path.c_str(), NULL);
+    if (resolved == NULL)
+        return "";
+
+    auto out = std::string(resolved);
+    free(resolved);
+    return out;
+}
+
 std::set<std::string> file_utils::git_ignored_paths(const std::string& srcdir)
 {
     std::set<std::string> out;

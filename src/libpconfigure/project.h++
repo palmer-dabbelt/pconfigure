@@ -236,6 +236,24 @@ public:
     void check_stale_makefile(void) const;
 
 public:
+    /* Complains if "make distclean" in this project would remove a
+     * tree that a SUBPROJECTS or a BOOTSTRAP somewhere under it
+     * named.  The recipe is an "rm -rf" of every output directory,
+     * and a subproject is somebody's checkout rather than output, so
+     * a tree under "lib" or "bin" is one distclean away from being
+     * gone.  "Under" is asked of the name and of the directory with
+     * its symlinks resolved, since the recipe follows them.
+     *
+     * Asked of the whole run rather than at the line, because the
+     * line doesn't have the answer yet: a LIBDIR below it can move
+     * the library directory onto the tree, and a project that builds
+     * nothing of its own has no "lib" for distclean to remove until
+     * a target says otherwise.  "projects" is this project flattened,
+     * which is the list its own distclean is written from. */
+    void check_distclean_spares_subprojects(
+        const std::vector<ptr>& projects) const;
+
+public:
     /* A project and everything below it, parents before children. */
     static std::vector<ptr> flatten(const ptr& root);
 
@@ -290,6 +308,14 @@ private:
      * object cache, and undoing a configure. */
     makefile::target::ptr cache_clean_target(const std::vector<ptr>& projects) const;
     makefile::target::ptr distclean_target(const std::vector<ptr>& projects) const;
+
+    /* Every directory "make distclean" removes whole for these
+     * projects, each mapped to a few words saying what the build
+     * puts there.  The recipe is written from this and so is the
+     * check that no subproject sits under one of them, so the two
+     * can't come to disagree about what the recipe reaches. */
+    static std::map<std::string, std::string>
+    distclean_dirs(const std::vector<ptr>& projects);
 
     /* Writes down where the test results this project is responsible
      * for end up, so that "ptest" run on its own can find them.  The

@@ -350,25 +350,6 @@ static std::string leaves_the_project(const std::string& written)
     return "";
 }
 
-/* The directory a path actually reaches, with every symlink along the
- * way resolved, or "" for a path that doesn't name anything yet.
- *
- * Asked in one place only, and the comment in
- * refuse_unsafe_subproject_location() that uses it says why that one
- * is different from everything above: what a line means is settled
- * by its text, but what an "rm -rf" removes is settled by the
- * filesystem. */
-static std::string real_directory(const std::string& path)
-{
-    auto resolved = ::realpath(path.c_str(), NULL);
-    if (resolved == NULL)
-        return "";
-
-    auto out = std::string(resolved);
-    free(resolved);
-    return out;
-}
-
 /* Refuses "cmd" outright when its value has one of
  * build_system::unsafe_metacharacter()'s characters in it -- a
  * character a shell, or make's own recipe line, reads as an
@@ -560,9 +541,9 @@ static void refuse_unsafe_subproject_location(const command::ptr& cmd,
      * Configfile that isn't there.  Saying nothing here costs
      * nothing, since a directory that doesn't exist is one no
      * symlink can have pointed out of the tree. */
-    auto real_sub = real_directory(path);
-    auto real_root = real_directory(".");
-    auto real_obj = real_directory(obj);
+    auto real_sub = file_utils::real_directory(path);
+    auto real_root = file_utils::real_directory(".");
+    auto real_obj = file_utils::real_directory(obj);
 
     if (real_sub.size() > 0 && real_root.size() > 0
         && file_utils::inside(real_sub, real_root) == false) {
@@ -983,6 +964,7 @@ void command_processor::process_one(const command::ptr& cmd)
          * A tree that a SUBPROJECTS also names is read once, since
          * that is true of any project two lines ask for. */
         _pending_subprojects.push_back({path, cmd});
+        _named_subprojects.push_back(std::make_pair(path, cmd));
 
         return;
     }
@@ -1915,6 +1897,15 @@ void command_processor::process_one(const command::ptr& cmd)
 
         refuse_unsafe_subproject_location(cmd, path,
                                           _stack.top()->obj_dir);
+
+        /* The object directory is the one output directory a line
+         * can be checked against as it's read, because nothing moves
+         * it.  The rest of what "make distclean" removes -- where
+         * binaries, libraries and test results go -- can still change
+         * after this line, so whether the tree is under one of those
+         * is asked once the whole run has been read; see
+         * project::check_distclean_spares_subprojects(). */
+        _named_subprojects.push_back(std::make_pair(path, cmd));
 
         /* Which build system builds it is decided by what's in it,
          * the same way the language that builds a source file is

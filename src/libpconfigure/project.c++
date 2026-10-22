@@ -876,6 +876,91 @@ void project::check_bootstrap(const std::vector<ptr>& everyone) const
     abort();
 }
 
+void project::check_distclean_spares_subprojects(
+    const std::vector<ptr>& projects) const
+{
+    /* Asked of this project's own "make distclean" rather than only
+     * the one at the top of the run, because a subproject's Makefile
+     * is one somebody can walk into and run distclean in -- and what
+     * that removes is its own output directories and those of
+     * everything below it, which is exactly "projects". */
+    const auto dirs = distclean_dirs(projects);
+
+    for (const auto& project: projects) {
+        for (const auto& named: project->_processor->named_subprojects()) {
+            /* Spelled without the trailing '/' that a project's
+             * directory carries, which is how inside() wants it and
+             * how the directory it's being compared to is spelled in
+             * the message. */
+            auto tree = file_utils::normalize_path(named.first);
+            while (tree.size() > 1 && tree[tree.size() - 1] == '/')
+                tree.pop_back();
+
+            /* And the directory it really is, because the text is
+             * only half of what the recipe acts on.  A "dep" that is
+             * a symlink to "lib/dep" reads as a name nowhere near
+             * "lib", but "rm -rf 'lib'" removes the checkout all the
+             * same and leaves the link dangling.  This is the same
+             * second question the object directory rule asks where
+             * the SUBPROJECTS line is read, for the same reason, and
+             * like that one it resolves both sides: a "lib" that is
+             * itself a link to somewhere above the tree sends the
+             * libraries into the checkout, which is just as much
+             * output landing on somebody's sources.
+             *
+             * Both of these are "" for a path that doesn't exist yet,
+             * which is fine to say nothing about: a directory that
+             * isn't there has nothing in it for distclean to take,
+             * and a tree that isn't there is complained about by
+             * whatever went looking for its Configfile. */
+            auto real_tree = file_utils::real_directory(tree);
+
+            for (const auto& pair: dirs) {
+                auto dir = file_utils::normalize_path(pair.first);
+
+                /* What to say the tree is, which for a match on the
+                 * text is just its name, and for a match through a
+                 * symlink has to show where it went or the message
+                 * reads as plainly false. */
+                auto what = std::string();
+                auto where = dir;
+                if (file_utils::inside(tree, dir) == true) {
+                    what = "'" + tree + "' is";
+                } else {
+                    auto real_dir = file_utils::real_directory(dir);
+                    if (real_tree.size() == 0 || real_dir.size() == 0)
+                        continue;
+                    if (file_utils::inside(real_tree, real_dir) == false)
+                        continue;
+                    what = "'" + tree + "' resolves to '" + real_tree
+                        + "', which is";
+                    where = real_dir;
+                }
+
+                /* A LIBDIR is the one of these a Configfile can move,
+                 * so it's the one worth suggesting moving.  The rest
+                 * are named after the project and not up for
+                 * discussion: the tree is what has to go somewhere
+                 * else. */
+                std::cerr << std::to_string(named.second->debug()) << "\n"
+                          << "  error: " << what << " inside '" << where
+                          << "', " << pair.second << "\n"
+                          << "  'make distclean' is an 'rm -rf' of '" << dir
+                          << "' -- so a tree checked out in there is one"
+                          << " distclean away from being gone, and nothing"
+                          << " about the recipe says so\n"
+                          << "  check the tree out somewhere this build"
+                          << " doesn't write";
+                if (pair.second == "where libraries go")
+                    std::cerr << ", or send the libraries somewhere else"
+                              << " with a line like 'LIBDIR = libs'";
+                std::cerr << "\n";
+                abort();
+            }
+        }
+    }
+}
+
 void project::check_autodeps(void) const
 {
     /* Everything one AUTODEPS reached, gathered under the line that
@@ -1313,17 +1398,25 @@ makefile::target::ptr project::cache_clean_target(const std::vector<ptr>& projec
     );
 }
 
-makefile::target::ptr project::distclean_target(const std::vector<ptr>& projects) const
+std::map<std::string, std::string>
+project::distclean_dirs(const std::vector<ptr>& projects)
 {
-    auto dirs = std::map<std::string, bool>();
-    auto makefiles = std::vector<std::string>();
+    /* The first thing a directory is called for wins, which only
+     * matters for a LIBDIR moved onto some other output directory:
+     * either name is true, and it is removed once either way. */
+    auto dirs = std::map<std::string, std::string>();
+    auto add = [&](const std::string& dir, const std::string& what) {
+        dirs.emplace(dir, what);
+    };
+
     for (const auto& project: projects) {
         /* Every project has an object directory whether or not it
          * builds anything, because pconfigure writes to it: the list
          * of where test results land goes there.  A project that only
          * pulls in other projects has no context to find that
          * directory through, so it gets named outright. */
-        dirs[project->_processor->root_context()->obj_dir] = true;
+        add(project->_processor->root_context()->obj_dir,
+            "the object directory");
 
         /* A vendored tree builds into this project's object
          * directory, so it's already covered by whatever covers that
@@ -1339,16 +1432,28 @@ makefile::target::ptr project::distclean_target(const std::vector<ptr>& projects
          * something this does not have to be sure about at all.  See
          * build_system::install_dir(). */
         for (const auto& vendored: project->_processor->vendored())
-            dirs[vendored->ctx()->obj_dir] = true;
+            add(vendored->ctx()->obj_dir, "the object directory");
 
+        /* Only the contexts something is built in, so a project that
+         * builds nothing of its own has no "bin" or "lib" here: there
+         * is nothing of its in either for distclean to take. */
         for (const auto& context: project->_processor->output_contexts()) {
-            dirs[context->bin_dir] = true;
-            dirs[context->check_dir] = true;
-            dirs[context->lib_dir] = true;
-            dirs[context->obj_dir] = true;
+            add(context->bin_dir, "where binaries go");
+            add(context->check_dir, "where test results go");
+            add(context->lib_dir, "where libraries go");
+            add(context->obj_dir, "the object directory");
         }
-        makefiles.push_back(project->makefile_path());
     }
+
+    return dirs;
+}
+
+makefile::target::ptr project::distclean_target(const std::vector<ptr>& projects) const
+{
+    auto dirs = distclean_dirs(projects);
+    auto makefiles = std::vector<std::string>();
+    for (const auto& project: projects)
+        makefiles.push_back(project->makefile_path());
 
     /* Every one of these is quoted, and none of them is a path a
      * Configfile author wrote by hand in the sense an install prefix
@@ -1367,9 +1472,11 @@ makefile::target::ptr project::distclean_target(const std::vector<ptr>& projects
      * either one may name the directory it names at all is settled
      * where the line was read, in command_processor::process_one():
      * a LIBDIR and a SUBPROJECTS that leave the project are refused
-     * there, so by the time a path arrives at this "rm -rf" the only
-     * thing left to get wrong about it is how many words of shell it
-     * is. */
+     * there, and a subproject one of these directories would take
+     * with it is refused once the whole run has been read, in
+     * check_distclean_spares_subprojects().  So by the time a path
+     * arrives at this "rm -rf" the only thing left to get wrong about
+     * it is how many words of shell it is. */
     auto commands = std::vector<std::string>();
     for (const auto& pair: dirs)
         commands.push_back("rm -rf " + string_utils::quoted(pair.first));

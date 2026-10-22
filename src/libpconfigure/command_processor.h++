@@ -187,6 +187,16 @@ private:
      * whole run has been read still has a line to point at. */
     std::vector<std::pair<std::string, command::ptr>> _pending_subprojects;
 
+    /* Every tree a SUBPROJECTS or a BOOTSTRAP named, kept after it
+     * has been handed out to be read and kept alongside the line that
+     * named it.  Whether "make distclean" would remove one of these
+     * is a question about the whole run rather than about the line:
+     * a LIBDIR further down this Configfile moves a directory the
+     * recipe removes, and so does a target in a project read later,
+     * so it gets asked once everything has been read and has to be
+     * able to point back here when the answer is yes. */
+    std::vector<std::pair<std::string, command::ptr>> _named_subprojects;
+
     /* The CONFIG commands whose Configfiles haven't been read yet,
      * which are handed back the same way and for the same reason.
      * The whole command is kept rather than just the name it gave,
@@ -216,6 +226,9 @@ public:
         { return _output_contexts; }
     const std::vector<build_system::ptr>& vendored(void) const
         { return _vendored; }
+    const std::vector<std::pair<std::string, command::ptr>>&
+    named_subprojects(void) const
+        { return _named_subprojects; }
     const bool& given_version_command(void) const
         { return _given_version_command; }
     const bool& given_help_command(void) const

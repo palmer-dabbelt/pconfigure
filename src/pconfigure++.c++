@@ -153,6 +153,13 @@ int main(int argc, const char **argv)
     for (const auto& project: projects)
         project->check_bootstrap(projects);
 
+    /* Asked of the whole run for the same reason as the BOOTSTRAP
+     * above: the LIBDIR that moves a directory distclean removes can
+     * come after the SUBPROJECTS line that put a tree under it. */
+    for (const auto& project: projects)
+        project->check_distclean_spares_subprojects(
+            project::flatten(project));
+
     /* Before a line of any Makefile is written, so that a build whose
      * "make check" would reach no test at all stops without leaving a
      * half-written set of them behind. */
