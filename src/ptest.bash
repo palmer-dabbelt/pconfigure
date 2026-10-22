@@ -503,9 +503,17 @@ then
     mkdir -p "$scratchdir"
 fi
 
-# This is the regular path where we actually run a test case
+# This is the regular path where we actually run a test case.
+#
+# Where mktemp puts this is up to $TMPDIR, which is the user's to set
+# and can have a space in it like any other path, so every use of it
+# below is quoted.  The trap most of all: written with the path pasted
+# in when the trap is set, a "/home/me/my tmp" became an "rm -rf" of
+# "/home/me/my" and of a relative "tmp/..." -- neither of which is the
+# directory this made, and the first of which is somebody's.  Single
+# quotes leave the expansion to when the trap runs, where it is quoted.
 tmpdir=`mktemp -d -t ptest-wrapper.XXXXXXXXXX`
-trap "rm -rf $tmpdir" EXIT
+trap 'rm -rf "$tmpdir"' EXIT
 
 # A test that builds anything runs a make of its own, and it must not
 # inherit this one's flags.  make puts them in the environment of every
@@ -527,7 +535,14 @@ export PTEST_SCRATCH_DIR="$scratchdir"
 "$test" "$@" >&"$tmpdir"/ptest__output
 echo "$?" >"$tmpdir"/ptest__return
 
-cd $tmpdir
+# A cd that fails leaves ptest wherever make started it, and the tar
+# then collects that directory as though it were this test's result --
+# which is not a failure anybody would find by reading the report.
+if ! cd "$tmpdir"
+then
+    echo "ptest: unable to enter the test's own directory $tmpdir" >&2
+    exit 1
+fi
 tar -c * > "$out"
 
-rm -rf $tmpdir
+rm -rf "$tmpdir"
