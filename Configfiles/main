@@ -408,6 +408,8 @@ TESTSRC     += sources-dot-slash-duplicate-links-once.bash
 TESTSRC     += sources-dotdot-spelling-duplicate-links-once.bash
 TESTSRC     += sources-dotdot-through-missing-dir.bash
 TESTSRC     += testsrc-dot-slash-duplicate-runs-once.bash
+TESTSRC     += link-separate-l-words-keep-every-flag.bash
+TESTSRC     += link-separate-l-repeat-drops-both-words.bash
 
 # The half of pconfigure that a build can run on its own, one source
 # at a time.  It is a BINARY rather than a LIBEXEC because pconfigure

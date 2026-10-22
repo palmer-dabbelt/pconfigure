@@ -1011,12 +1011,34 @@ language_cxx::link_objects(const context::ptr& ctx,
             while (ss >> tok)
                 tokens.push_back(tok);
         }
+        /* A library can be asked for as "-lfoo" or as "-l foo", and
+         * the second spelling is two words that only mean something
+         * together.  Deduplicating word by word would see every bare
+         * "-l" after the first as a repeat and drop it, leaving its
+         * library name behind as a bare word the linker then goes
+         * looking for as a file.  So the two words are kept or dropped
+         * as a unit, and keyed as the one-word spelling they mean, so
+         * that "-l foo" and "-lfoo" count as the same request.  A "-l"
+         * with nothing after it is passed along as written, for the
+         * linker to complain about. */
         std::set<std::string> seen;
-        return vector_util::filter(tokens, [&](const std::string& tok) {
+        std::vector<std::string> out;
+        for (size_t i = 0; i < tokens.size(); ++i) {
+            const auto& tok = tokens[i];
+            if (tok == "-l" && i + 1 < tokens.size()) {
+                if (seen.insert("-l" + tokens[i + 1]).second) {
+                    out.push_back(tok);
+                    out.push_back(tokens[i + 1]);
+                }
+                ++i;
+                continue;
+            }
             if (tok.substr(0, 11) != "-Wl,-rpath," && tok.substr(0, 2) != "-l")
-                return true;
-            return seen.insert(tok).second;
-        });
+                out.push_back(tok);
+            else if (seen.insert(tok).second)
+                out.push_back(tok);
+        }
+        return out;
     };
 
     /* The lib directory is only worth searching when something in
