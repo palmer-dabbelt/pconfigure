@@ -383,9 +383,22 @@ std::string execute(std::string line)
                     add_configfile_dep(dep);
             }
 
+            /* What the command printed goes in the way a shell's
+             * command substitution would put it there: a line break
+             * is only the space between two words, the same as any
+             * other run of white space, and all of it collapses to a
+             * single space.  Cleaning each line on its own and gluing
+             * the results end to end is how a pkg-config that prints
+             * one flag per line turned "-DA" and "-DB" into "-DA-DB",
+             * and "-lm" and "-lc" into a library called "m-lc".  The
+             * output is put back together whole, line breaks and all,
+             * before it's cleaned, so the breaks are there to be
+             * turned into spaces like any other white space. */
             auto f = popen(command_str.c_str(), "r");
+            std::string output;
             for (const auto& l: file_utils::readlines(f))
-                executed << string_utils::clean_white(l);
+                output += l;
+            executed << string_utils::clean_white(output);
             auto exitcode = pclose(f);
             if (exitcode != 0)
                 std::cerr << "'" << command_str << "': " << std::to_string(exitcode) << "\n";
