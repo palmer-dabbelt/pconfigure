@@ -2081,6 +2081,12 @@ produced without anybody having to say where it came out.  A
 the directory is never created, and a linker asked to search one that
 isn't there warns about it.
 
+The \texttt{LIBDIR} is searched ahead of any directory a
+\texttt{LINKOPTS} adds with \texttt{-L}, so a library this project
+builds wins over one of the same name somewhere else --- typically an
+older copy of it that a previous install left in a directory
+\texttt{pkg-config} points at.
+
 \subsection{\texttt{HDRDIR = \$val}}
 
 Sets the \texttt{HDRDIR} variable to \texttt{\$val}.  By default it is
