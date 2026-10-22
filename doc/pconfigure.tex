@@ -460,6 +460,16 @@ to that target.
 When a \texttt{BINARIES} target is flushed it will build a
 staticly-linked executable (as opposed to a static or shared library).
 
+\texttt{\$name} is a path as much as a \texttt{SOURCES} is: it says
+where the target is built, where it is linked and where
+\texttt{make install} puts it.  So it may have a directory in it --
+\texttt{BINARIES += tools/run} is a program in \texttt{\$BINDIR/tools}
+-- but a name that climbs out of the project with a \texttt{../}, one
+that starts from the root, and one that is a \texttt{make} expansion
+are all fatal errors, since each would build, install and later remove
+a file somewhere nothing in this build owns.  The same holds for every
+variant below and for \texttt{HEADERS}.
+
 \subsection{\texttt{LIBRARIES += \$name} \label{cmd:libraries}}
 
 Largely the same as \texttt{BINARIES += \$name} with two major
@@ -705,6 +715,10 @@ HEADERS += libname.h
 will copy \texttt{\$HDRDIR/libname.h} into \texttt{\$PREFIX/\$HDRDIR}
 when \texttt{make install} is run, and will do nothing else at any
 other time.
+
+As with \texttt{BINARIES} (see Section~\ref{cmd:binaries}), the name
+may have a directory in it but may not climb out of the project, start
+from the root or be a \texttt{make} expansion.
 
 C++ ABI compatibility necessitates that exactly the same headers are
 used when the library is built as when it is linked against, which
