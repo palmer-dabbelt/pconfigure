@@ -354,6 +354,7 @@ TESTSRC     += configfile-unknown-command-refused.bash
 TESTSRC     += configfile-repeated-replace-last-wins.bash
 TESTSRC     += configfile-missing-value-refused.bash
 TESTSRC     += configfile-utf8-values.bash
+TESTSRC     += configfile-whole-line-backtick.bash
 TESTSRC     += bootstrap.bash
 TESTSRC     += bootstrap-quiet.bash
 TESTSRC     += reconfigure.bash
