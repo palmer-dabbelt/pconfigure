@@ -48,6 +48,24 @@ const std::vector<std::string>& cxx_header_extensions(void);
 std::vector<std::string>
 cxx_sources_for_header(const std::string& full_header_path);
 
+/* The include directories and the defines a compiler command line
+ * asks for, read the way the compiler reads them.
+ *
+ * Both "-I" and "-D" may have their argument stuck on or as the
+ * word after them, and the compiler takes either.  The options are words
+ * already -- a line of COMPILEOPTS split on its spaces -- which is
+ * what compile_options() hands out.
+ *
+ * Free functions for the same reason cxx_sources_for_header() is one:
+ * pconfigure asks this question of a source when it writes the
+ * Makefile and pdeps asks it of the same source while make runs, and
+ * a header only one of them found is a header that is a prerequisite
+ * under one build and not under the other. */
+std::vector<std::string>
+cxx_include_dirs(const std::vector<std::string>& opts);
+std::vector<std::string>
+cxx_defines(const std::vector<std::string>& opts);
+
 /* C++ is probably the best supported of the pconfigure language
  * implementations, as it's the one that pconfigure itself is written
  * in. */

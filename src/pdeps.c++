@@ -279,15 +279,8 @@ namespace {
     std::vector<std::string> headers_of(const deps_context& ctx,
                                         const std::string& source)
     {
-        auto defined = std::vector<std::string>();
-        auto include_dirs = std::vector<std::string>();
-
-        for (const auto& opt: ctx.opts) {
-            if (opt.compare(0, 2, "-D") == 0)
-                defined.push_back(opt.substr(2));
-            if (opt.compare(0, 2, "-I") == 0)
-                include_dirs.push_back(opt.substr(2));
-        }
+        auto defined = cxx_defines(ctx.opts);
+        auto include_dirs = cxx_include_dirs(ctx.opts);
 
         auto out = std::vector<std::string>();
         pinclude::list(source,

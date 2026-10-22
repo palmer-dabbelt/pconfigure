@@ -35,6 +35,7 @@
 #include <iostream>
 #include <set>
 #include <sstream>
+#include <utility>
 
 /* The directories a set of link arguments tells the linker to look
  * for libraries in. */
@@ -89,6 +90,67 @@ static std::vector<std::string> reroot_link_opts(const std::vector<std::string>&
     }
 
     return out;
+}
+
+/* The flags that add a directory to the include search, which are
+ * the ones whose argument a subproject writes from its own directory
+ * and the ones whose directories the header search has to look in. */
+static const std::vector<std::string>& include_flags(void)
+{
+    static const auto out = std::vector<std::string>{
+        "-I"
+    };
+    return out;
+}
+
+/* Splits an option into the flag it starts with, out of "flags", and
+ * whatever is stuck on after it.  An empty flag means the word isn't
+ * any of them. */
+static std::pair<std::string, std::string>
+split_flag(const std::string& word, const std::vector<std::string>& flags)
+{
+    for (const auto& flag: flags)
+        if (word.compare(0, flag.size(), flag) == 0)
+            return std::make_pair(flag, word.substr(flag.size()));
+    return std::make_pair(std::string(), std::string());
+}
+
+/* Every argument of one of "flags", in either spelling: stuck on to
+ * the flag, or the word after a flag that stands alone. */
+static std::vector<std::string>
+flag_arguments(const std::vector<std::string>& opts,
+               const std::vector<std::string>& flags)
+{
+    auto out = std::vector<std::string>();
+    auto pending = false;
+    for (const auto& opt: opts) {
+        if (pending == true) {
+            out.push_back(opt);
+            pending = false;
+            continue;
+        }
+
+        auto split = split_flag(opt, flags);
+        if (split.first.size() == 0)
+            continue;
+        if (split.second.size() == 0)
+            pending = true;
+        else
+            out.push_back(split.second);
+    }
+    return out;
+}
+
+std::vector<std::string>
+cxx_include_dirs(const std::vector<std::string>& opts)
+{
+    return flag_arguments(opts, include_flags());
+}
+
+std::vector<std::string>
+cxx_defines(const std::vector<std::string>& opts)
+{
+    return flag_arguments(opts, std::vector<std::string>{"-D"});
 }
 
 const std::vector<std::string>& cxx_source_extensions(void)
@@ -1187,12 +1249,48 @@ language_cxx::compile_options(const context::ptr& ctx,
                               const context::ptr& child)
                               const
 {
+    /* A directory a Configfile names for the include search is
+     * written from that Configfile's directory, by somebody who only
+     * knew about their own project, so it gets the project's
+     * directory put on the front.  An absolute one already means the
+     * same thing from everywhere. */
+    auto reroot = [&](const std::string& dir) {
+        if (dir.size() == 0 || dir[0] == '/')
+            return dir;
+        return child->src_path + dir;
+    };
+
     auto filter_compile_opts = [&](const std::vector<std::string> compile_opts)
         {
-            auto out = std::vector<std::string>();
+            /* A line of COMPILEOPTS is a piece of a command line, and
+             * it is the shell that splits it into the words the
+             * compiler sees.  Reading it any other way -- the line as
+             * one flag -- misses "-Iinc" in "-Wall -Iinc" and takes
+             * the "-I" of "-I inc" for a flag with no directory on
+             * it.  Splitting it here is not a change to what the
+             * compiler is handed, since these are joined back up with
+             * spaces on the way into the Makefile. */
+            auto words = std::vector<std::string>();
             for (const auto& opt: compile_opts) {
-                if (opt[0] == '-' && opt[1] == 'I' && opt[2] != '/') {
-                    out.push_back("-I" + child->src_path + opt.substr(2));
+                std::istringstream ss(opt);
+                std::string word;
+                while (ss >> word)
+                    words.push_back(word);
+            }
+
+            auto out = std::vector<std::string>();
+            auto pending = false;
+            for (const auto& opt: words) {
+                auto split = split_flag(opt, include_flags());
+
+                if (pending == true) {
+                    out.push_back(reroot(opt));
+                    pending = false;
+                } else if (split.first.size() > 0 && split.second.size() == 0) {
+                    out.push_back(opt);
+                    pending = true;
+                } else if (split.first == "-I") {
+                    out.push_back("-I" + reroot(split.second));
                 } else if (opt == "-std=c++11") {
 #if (defined(__GNUC__) && !defined(__clang__) && (__GNUC__ == 4) && (__GNUC_MINOR__ <= 6))
                     std::cerr << "INFO: gcc-4.6 and older don't support c++11, falling back to c++0x\n";
@@ -1570,15 +1668,8 @@ std::vector<std::string> language_cxx::dependencies(
     const shared_target& is_shared __attribute__((unused)),
     const std::vector<std::string>& compile_opts) const
 {
-    std::vector<std::string> defined;
-    std::vector<std::string> include_dirs;
-
-    for (const auto& opt: compile_opts) {
-        if (strncmp(opt.c_str(), "-D", 2) == 0)
-            defined.push_back(opt.c_str() + 2);
-        if (strncmp(opt.c_str(), "-I", 2) == 0)
-            include_dirs.push_back(opt.c_str() + 2);
-    }
+    auto defined = cxx_defines(compile_opts);
+    auto include_dirs = cxx_include_dirs(compile_opts);
 
     std::vector<std::string> all_files;
     pinclude::list(filename,
