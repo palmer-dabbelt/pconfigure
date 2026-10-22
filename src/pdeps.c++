@@ -111,6 +111,15 @@ namespace {
          * left empty, the walk stays in this file. */
         std::string behind;
 
+        /* The context file to switch to for a source found behind a
+         * header that another language compiles, by the ending that
+         * says which.  A ".c" behind a header a C++ source reads is
+         * still C, and the compiler, options and object names that
+         * come with that are in C's own one of these.  Asked of the
+         * context "behind" names, since that is the one describing
+         * the sources nobody named. */
+        std::map<std::string, std::string> languages;
+
         std::string base, variable;
         std::vector<std::pair<std::string, std::string>> peers;
 
@@ -274,6 +283,14 @@ namespace {
                         value.substr(split + 1);
             }
             else if (key == "opt")         out.opts.push_back(value);
+            else if (key == "behind-language") {
+                auto split = value.find(' ');
+                if (split == std::string::npos)
+                    die("a 'behind-language' needs an ending and a"
+                        " context file");
+                out.languages[value.substr(0, split)] =
+                    value.substr(split + 1);
+            }
             else if (key == "peer") {
                 auto split = value.find(' ');
                 if (split == std::string::npos)
@@ -436,6 +453,29 @@ int main(int argc, const char **argv)
      * that include each other's headers describe a circle, and an
      * "include" that went round it twice would be make reading
      * Makefiles until it ran out of memory. */
+    /* The other languages' contexts, read the first time the walk
+     * reaches one of their files.  Everything about the target in
+     * them is what is in this one; what differs is how a source is
+     * compiled and so what its object and fragment are called. */
+    auto others = std::map<std::string, deps_context>();
+    auto context_for = [&](const std::string& file) -> const deps_context&
+        {
+            for (const auto& entry: behind.languages) {
+                auto& ending = entry.first;
+                if (file.size() <= ending.size()
+                    || file.compare(file.size() - ending.size(),
+                                    ending.size(), ending) != 0)
+                    continue;
+
+                auto found = others.find(entry.second);
+                if (found == others.end())
+                    found = others.emplace(entry.second,
+                                           read_context(entry.second)).first;
+                return found->second;
+            }
+            return behind;
+        };
+
     if (ctx.autodeps == true) {
         for (const auto& header: headers) {
             for (const auto& found: cxx_sources_for_header(header)) {
@@ -445,10 +485,17 @@ int main(int argc, const char **argv)
 
                 auto sibling = found.substr(ctx.src_prefix.size());
                 auto named = ctx.named.find(sibling);
+
+                /* What the sibling is compiled as is a matter of its
+                 * own name rather than this source's, so the fragment
+                 * describing a source nobody named is named, built and
+                 * rebuilt from the context of whichever language that
+                 * is. */
+                auto& owner = context_for(found);
                 auto sibling_deps =
                     (named != ctx.named.end() && named->second.size() > 0)
                     ? named->second
-                    : behind.deps_of(sibling);
+                    : owner.deps_of(sibling);
                 auto g = guard("deps", prefix.rewrite(sibling_deps));
 
                 say("ifndef " + g);
@@ -510,12 +557,12 @@ int main(int argc, const char **argv)
                         : " $(wildcard " + behind.pdeps + ")";
 
                     say(sibling_deps + ": $(wildcard " + found + ") "
-                        + behind.path + by);
+                        + owner.path + by);
                     out += "\t" + behind.at + "echo \"DEPS\t" + sibling
                            + "\"\n";
                     out += "\t" + behind.at + "mkdir -p $(dir $@)\n";
                     out += "\t" + behind.at + prefix.rewrite(
-                               behind.pdeps + " --context " + behind.path
+                               behind.pdeps + " --context " + owner.path
                                + " --source " + sibling) + "\n";
 
                     /* And "make clean" takes it, the way it takes the

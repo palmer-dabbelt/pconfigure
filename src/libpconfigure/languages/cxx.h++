@@ -362,23 +362,34 @@ protected:
      * after another. */
     makefile::target::ptr deps_source(const context::ptr& ctx,
                                       const context::ptr& child,
-                                      const shared_target& is_shared) const;
+                                      const shared_target& is_shared,
+                                      const behind_languages& behind) const;
 
     /* The pieces deps_source() is made of, split out because the
      * context file it writes has to name other sources' fragments and
      * other options' context files, spelled exactly the way their own
-     * rules spell them. */
+     * rules spell them.  Each language writes its own context file,
+     * which is what lets a walk that crosses from one into another go
+     * on in the right one; the link they all name is the target's,
+     * and so are the named sources' fragments, both of which
+     * deps_source() works out once and hands down. */
     std::string deps_suffix(const context::ptr& ctx,
                             const context::ptr& child,
+                            const std::string& link,
                             const shared_target& is_shared) const;
     std::string deps_path(const context::ptr& ctx,
                           const context::ptr& child,
+                          const std::string& link,
                           const shared_target& is_shared) const;
     std::string deps_context_path(const context::ptr& ctx,
-                                  const context::ptr& child) const;
+                                  const context::ptr& child,
+                                  const std::string& link) const;
     std::string write_deps_context(const context::ptr& ctx,
                                    const context::ptr& child,
-                                   const shared_target& is_shared) const;
+                                   const std::string& link,
+                                   const shared_target& is_shared,
+                                   const behind_languages& behind,
+                                   const std::string& named) const;
 
     /* The context a source found behind a header is built in, which is
      * the target's rather than that of the source whose header it

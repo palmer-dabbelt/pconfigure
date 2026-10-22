@@ -393,7 +393,7 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
                      * there. */
                     if (ctx->autoreconfigure == true) {
                         fragments.push_back(
-                            deps_source(ctx, child, is_shared));
+                            deps_source(ctx, child, is_shared, behind));
                         break;
                     }
 
@@ -1410,11 +1410,11 @@ language_cxx::compile_options(const context::ptr& ctx,
 std::string
 language_cxx::deps_suffix(const context::ptr& ctx,
                           const context::ptr& child,
+                          const std::string& link,
                           const shared_target& is_shared)
                           const
 {
     auto hash = hash_compile_options(ctx, child);
-    auto link = link_dir(ctx);
 
     /* A fragment sits beside the object it describes, because that is
      * where somebody looking for it will look.  What it cannot share
@@ -1435,24 +1435,27 @@ language_cxx::deps_suffix(const context::ptr& ctx,
 std::string
 language_cxx::deps_path(const context::ptr& ctx,
                         const context::ptr& child,
+                        const std::string& link,
                         const shared_target& is_shared)
                         const
 {
     return child->obj_dir + "/" + child->unbased(child->src_dir) + "/"
-        + child->cmd->data() + deps_suffix(ctx, child, is_shared);
+        + child->cmd->data() + deps_suffix(ctx, child, link, is_shared);
 }
 
 /* One of these per set of compile options rather than per source,
  * because that is the granularity everything else here has: the
  * options are hashed into the object's name, so two sources compiled
  * the same way are two sources with one answer to every question pdeps
- * asks. */
+ * asks -- in each language, since the language's own compiler and
+ * options are among those hashed. */
 std::string
 language_cxx::deps_context_path(const context::ptr& ctx,
-                                const context::ptr& child)
+                                const context::ptr& child,
+                                const std::string& link)
                                 const
 {
-    return link_dir(ctx) + "deps-context-"
+    return link + "deps-context-"
         + hash_compile_options(ctx, child)
         + project::base_suffix(child->base);
 }
@@ -1460,15 +1463,17 @@ language_cxx::deps_context_path(const context::ptr& ctx,
 std::string
 language_cxx::write_deps_context(const context::ptr& ctx,
                                  const context::ptr& child,
-                                 const shared_target& is_shared)
+                                 const std::string& link,
+                                 const shared_target& is_shared,
+                                 const behind_languages& behind,
+                                 const std::string& named)
                                  const
 {
     auto hash = hash_compile_options(ctx, child);
-    auto link = link_dir(ctx);
     auto obj_prefix =
         child->obj_dir + "/" + child->unbased(child->src_dir) + "/";
-    auto deps_suffix = this->deps_suffix(ctx, child, is_shared);
-    auto context_path = deps_context_path(ctx, child);
+    auto deps_suffix = this->deps_suffix(ctx, child, link, is_shared);
+    auto context_path = deps_context_path(ctx, child, link);
 
     auto say = [](const std::string& key, const std::string& value)
         { return key + " " + value + "\n"; };
@@ -1547,11 +1552,13 @@ language_cxx::write_deps_context(const context::ptr& ctx,
      * source is built the way its own SOURCES line says even when the
      * walk reaches it through somebody else's header -- and that line
      * can carry options of its own, which puts its fragment somewhere
-     * pdeps cannot work out from the halves above. */
-    for (const auto& sibling: ctx->children)
-        if (sibling->type == context_type::SOURCE)
-            out += say("named", sibling->cmd->data() + " "
-                                + deps_path(ctx, sibling, is_shared));
+     * pdeps cannot work out from the halves above.
+     *
+     * Worked out by deps_source() rather than here, because this is
+     * also how another language writes its own one of these, and a
+     * named source is in the target's language whoever is asking:
+     * its fragment is spelled with the target's compiler. */
+    out += named;
 
     /* And where the rest of what the walk finds is described: the
      * sources behind this one's headers that nobody named are built
@@ -1563,14 +1570,31 @@ language_cxx::write_deps_context(const context::ptr& ctx,
      * for one. */
     {
         auto plain = ctx->dup(context_type::SOURCE, child->cmd, {});
-        auto plain_path = deps_context_path(ctx, plain);
+        auto plain_path = deps_context_path(ctx, plain, link);
         if (plain_path != context_path)
-            write_deps_context(ctx, plain, is_shared);
+            write_deps_context(ctx, plain, link, is_shared, behind, named);
         out += say("behind", plain_path);
     }
 
     for (const auto& opt: compile_options(ctx, child))
         out += say("opt", opt);
+
+    /* Which of those is compiled by some other language, and where
+     * that language's own one of these is: it has the compiler, the
+     * options and the object names they hash to.  Only the endings
+     * that leave this language are listed, so a walk that never
+     * crosses into another one reads nothing it didn't read before.
+     * The file named is the one for the target's options, because
+     * those are the only ones a source nobody named is built with. */
+    {
+        auto plain = ctx->dup(context_type::SOURCE, child->cmd, {});
+        for (const auto& entry: behind)
+            if (entry.second != this)
+                out += say("behind-language",
+                           entry.first + " "
+                           + entry.second->deps_context_path(ctx, plain,
+                                                             link));
+    }
 
     /* Written only when it would say something new, because it is a
      * prerequisite of every fragment below it: a file rewritten by
@@ -1584,12 +1608,42 @@ language_cxx::write_deps_context(const context::ptr& ctx,
 makefile::target::ptr
 language_cxx::deps_source(const context::ptr& ctx,
                           const context::ptr& child,
-                          const shared_target& is_shared)
+                          const shared_target& is_shared,
+                          const behind_languages& behind)
                           const
 {
+    /* The link this target's objects go on, which is the target's
+     * own whichever language compiled them.  Every other language's
+     * context below is handed it rather than working one out: its
+     * linker is in the hash that names a link directory, and a link
+     * directory named after a linker this target doesn't use is a
+     * link nothing ever runs. */
+    auto link = link_dir(ctx);
+
+    auto named = std::string();
+    for (const auto& sibling: ctx->children)
+        if (sibling->type == context_type::SOURCE)
+            named += "named " + sibling->cmd->data() + " "
+                   + deps_path(ctx, sibling, link, is_shared) + "\n";
+
     auto source_path = child->src_dir + "/" + child->cmd->data();
-    auto deps_path = this->deps_path(ctx, child, is_shared);
-    auto context_path = write_deps_context(ctx, child, is_shared);
+    auto deps_path = this->deps_path(ctx, child, link, is_shared);
+    auto context_path =
+        write_deps_context(ctx, child, link, is_shared, behind, named);
+
+    /* And one for every other language a source found behind a header
+     * might be compiled by, which pdeps reads only when the walk gets
+     * there.  It can't be written by pdeps when it does: everything
+     * in it is pconfigure's to know, from what that language was told
+     * in the Configfile to which compiler it runs.  Only the one for
+     * the target's options, which is the only one the walk asks
+     * for. */
+    auto plain = ctx->dup(context_type::SOURCE, child->cmd, {});
+    auto written = std::set<const language_cxx*>{this};
+    for (const auto& entry: behind)
+        if (written.insert(entry.second).second == true)
+            entry.second->write_deps_context(ctx, plain, link, is_shared,
+                                             behind, named);
 
     /* Through "$(wildcard)", which is how pdeps names the sources it
      * finds behind a header, and for the same reason: a source that
