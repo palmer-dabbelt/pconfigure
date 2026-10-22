@@ -2117,7 +2117,12 @@ file is parsed as a \texttt{Configfile} and used as the input for
 parsing the current file at the next line.  This is effectively C's
 \texttt{\#include} but for \pconfigure.
 
-When \texttt{Configfiles/\$file} does not exist, a fatal error occurs.
+The same goes for \texttt{Configfile.\$file}, which is read after
+\texttt{Configfiles/\$file} when both exist.  Either one is enough on
+its own, but when neither exists a fatal error occurs, naming the line
+that wrote the \texttt{CONFIG}: a misspelled name would otherwise read
+nothing at all and leave out everything the file was meant to declare.
+This is also true of a \texttt{--config} on the command line.
 
 \subsection{\texttt{CONFIG\_DEPS += \$path} \label{cmd:config_deps}}
 
