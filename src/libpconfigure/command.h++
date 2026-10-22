@@ -45,6 +45,16 @@ private:
      * line lands on. */
     const std::string _qualifier;
 
+    /* The command as the Configfile spelled it, which is the same as
+     * _type for every command but the copies with_type() makes.  A
+     * TESTSRC is handled as a TESTS and then a SOURCES, and whatever
+     * the SOURCES half refuses it has to refuse in the words of the
+     * line that was actually written: a diagnostic that says
+     * "SOURCES" about a TESTSRC sends whoever reads it looking for a
+     * line that isn't there.  Not const only because with_type() sets
+     * it on the copy after building it. */
+    command_type _written_as;
+
 public:
     command(const command_type& type,
             const std::string& op,
@@ -62,6 +72,7 @@ public:
     const std::string data(void) const { return _data; }
     const debug_info::ptr& debug(void) const { return _debug_info; }
     const std::string& qualifier(void) const { return _qualifier; }
+    command_type written_as(void) const { return _written_as; }
 
 public:
     ptr consume_extra_arguments(int& i, int argc, const char **argv);
@@ -72,7 +83,8 @@ public:
     bool check_operation(const std::string& allowed_op)
         { return operation() == allowed_op; }
     
-    /* Copies this command, but gives it a different type. */
+    /* Copies this command, but gives it a different type.  The copy
+     * still remembers what was written, as written_as(). */
     ptr with_type(const command_type& type);
 
 public:

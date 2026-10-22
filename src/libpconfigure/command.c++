@@ -32,7 +32,8 @@ command::command(const command_type& type,
       _data(data),
       _debug_info(debug_info),
       _needs_data(false),
-      _qualifier(qualifier)
+      _qualifier(qualifier),
+      _written_as(type)
 {
 }
 
@@ -45,25 +46,28 @@ command::command(const command_type& type,
       _data(),
       _debug_info(debug_info),
       _needs_data(true),
-      _qualifier(qualifier)
+      _qualifier(qualifier),
+      _written_as(type)
 {
 }
 
 command::ptr command::with_type(const command_type& type)
 {
-    if (this->_needs_data)
-        return std::make_shared<command>(
+    auto out = this->_needs_data
+        ? std::make_shared<command>(
             type,
             this->_op,
             this->_debug_info,
-            this->_qualifier);
-    else
-        return std::make_shared<command>(
+            this->_qualifier)
+        : std::make_shared<command>(
             type,
             this->_op,
             this->_data,
             this->_debug_info,
             this->_qualifier);
+
+    out->_written_as = this->_written_as;
+    return out;
 }
 
 command::ptr command::parse(const std::string& str,

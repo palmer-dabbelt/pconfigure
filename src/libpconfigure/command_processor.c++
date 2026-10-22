@@ -1405,23 +1405,40 @@ void command_processor::process_one(const command::ptr& cmd)
          * out there too, in a directory nothing here made and nothing
          * here will only ever clean by name.  Nothing before this
          * asked the question, so there is no line anywhere relying on
-         * the answer being "yes". */
+         * the answer being "yes".
+         *
+         * A TESTSRC or a HEADERSRC arrives here as its SOURCES half,
+         * so both refusals below name the command the line was
+         * written as rather than the one it's being handled as, and
+         * the example of a line that would be accepted is in that
+         * command's shape too.  "SOURCES += main.c" is no fix for a
+         * TESTSRC: it names no test at all, so taking the suggestion
+         * as written quietly loses the test the line was there to
+         * add. */
         {
+            auto written = std::to_string(cmd->written_as());
             auto leaves = leaves_the_project(cmd->data());
             if (leaves.size() > 0) {
+                auto example = std::string("main.c");
+                if (cmd->written_as() == command_type::TESTSRC)
+                    example = "boots.bash";
+                else if (cmd->written_as() == command_type::HEADERSRC)
+                    example = "main.h";
+
                 std::cerr << std::to_string(cmd->debug()) << "\n"
-                          << "  error: SOURCES names a file outside this"
-                          << " project: " << leaves << "\n"
-                          << "  write it inside the project, like"
-                          << " 'SOURCES += main.c'\n";
+                          << "  error: " << written << " names a file"
+                          << " outside this project: " << leaves << "\n"
+                          << "  write it inside the project, like '"
+                          << written << " += " << example << "'\n";
                 abort();
             }
-        }
 
-        /* After the escape check above, for the same reason LIBDIR
-         * asks after its own: a value with both a '$' and a '(' keeps
-         * the more specific "make expansion" answer. */
-        refuse_unsafe_metacharacter(cmd, "SOURCES");
+            /* After the escape check above, for the same reason
+             * LIBDIR asks after its own: a value with both a '$' and
+             * a '(' keeps the more specific "make expansion"
+             * answer. */
+            refuse_unsafe_metacharacter(cmd, written);
+        }
 
         clear_until({context_type::DEFAULT,
                     context_type::GENERATE,
