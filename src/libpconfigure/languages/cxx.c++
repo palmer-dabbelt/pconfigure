@@ -166,22 +166,77 @@ language_cxx::shared_target language_cxx::is_shared_target(const context::ptr& c
     abort();
 }
 
+/* An option that reaches the command line and isn't in the hash is
+ * an option make can't see change: the hash names the directory the
+ * output goes in, and a new directory is the only thing that makes the
+ * link run again, because make never reruns a recipe merely because
+ * its text moved.  So everything pconfigure adds to the link line goes
+ * in, not just what the Configfile spelled as LINKOPTS -- the "-l" a
+ * DEPLIBS turns into, the "-L" for this project's own libraries, and
+ * the PREFIX and LIBDIR that the rpaths are built from.  Leaving those
+ * out is how a DEPLIBS that went away left the binary still asking for
+ * the library, and how a new PREFIX left "make install" copying a
+ * program that looked for its libraries under the old one. */
 std::string language_cxx::hash_link_options(const context::ptr& ctx) const
 {
     return hash_options(
         std::vector<std::string>{this->linker_command(ctx)}
         + this->clopts()
         + ctx->clopts()
+        + added_link_options(ctx)
+        + std::vector<std::string>{
+            "prefix:" + ctx->prefix,
+            "lib_dir:" + ctx->lib_dir,
+        }
     );
 }
 
-std::string language_cxx::hash_compile_options(const context::ptr& ctx) const
+/* The same goes for an object, so this hashes the compile line
+ * itself rather than the COMPILEOPTS it was built from: the
+ * "-D__PCONFIGURE__PREFIX" and "-D__PCONFIGURE__LIBEXEC" that
+ * compile_options() adds name the install prefix, and with only the
+ * Configfile's options in the hash a new PREFIX left every object
+ * where it was, with the old prefix compiled into it. */
+std::string language_cxx::hash_compile_options(const context::ptr& ctx,
+                                               const context::ptr& child)
+                                               const
 {
     return hash_options(
-        std::vector<std::string>{this->compiler_command(ctx)}
-        + this->compile_opts()
-        + ctx->list_compile_opts()
+        std::vector<std::string>{this->compiler_command(child)}
+        + compile_options(ctx, child)
     );
+}
+
+/* The link options pconfigure adds on top of what the Configfile
+ * said.  Both the link line and the hash naming its directory are
+ * built from these, so the two can't drift apart.  They come as two
+ * halves because the link line doesn't keep them together: the lib
+ * directory goes ahead of the Configfile's LINKOPTS and the DEPLIBS
+ * after them (link_objects() says why). */
+std::vector<std::string>
+language_cxx::lib_dir_link_options(const context::ptr& ctx) const
+{
+    /* The lib directory is only worth searching when something in
+     * this project builds a library into it.  A project that builds
+     * none never creates the directory, and a linker handed a "-L"
+     * naming one that isn't there warns about it -- a warning about a
+     * directory pconfigure invented, which leaves whoever reads it
+     * with nothing to go fix. */
+    return ctx->lib_dir_built
+        ? std::vector<std::string>{"-L" + ctx->lib_dir}
+        : std::vector<std::string>();
+}
+
+std::vector<std::string>
+language_cxx::dep_lib_link_options(const context::ptr& ctx) const
+{
+    return vector_util::map(ctx->dep_libs, [](std::string dl){ return "-l" + dl; });
+}
+
+std::vector<std::string>
+language_cxx::added_link_options(const context::ptr& ctx) const
+{
+    return lib_dir_link_options(ctx) + dep_lib_link_options(ctx);
 }
 
 std::string language_cxx::hash_options(const std::vector<std::string>& opts) const
@@ -1041,16 +1096,6 @@ language_cxx::link_objects(const context::ptr& ctx,
         return out;
     };
 
-    /* The lib directory is only worth searching when something in
-     * this project builds a library into it.  A project that builds
-     * none never creates the directory, and a linker handed a "-L"
-     * naming one that isn't there warns about it -- a warning about a
-     * directory pconfigure invented, which leaves whoever reads it
-     * with nothing to go fix. */
-    auto lib_dir_opts = ctx->lib_dir_built
-        ? std::vector<std::string>{"-L" + ctx->lib_dir}
-        : std::vector<std::string>();
-
     /* The lib directory goes ahead of every "-L" a LINKOPTS names,
      * because the linker searches its "-L" directories in the order
      * they're given and takes the first library of the right name it
@@ -1062,9 +1107,9 @@ language_cxx::link_objects(const context::ptr& ctx,
      * link against it or, worse, linked and ran the stale code.  A
      * library this project builds is always the one it means. */
     auto all_opts = dedup_link_opts(
-        lib_dir_opts +
+        lib_dir_link_options(ctx) +
         reroot_link_opts(link_opts() + ctx->link_opts, ctx->base) +
-        vector_util::map(ctx->dep_libs, [](std::string dl){ return "-l" + dl; }));
+        dep_lib_link_options(ctx));
 
     /* Note that there's deliberately nothing here that turns a
      * DEPLIB into a prerequisite: the "-l" it adds to the link line
@@ -1196,7 +1241,7 @@ language_cxx::deps_source(const context::ptr& ctx,
                           const shared_target& is_shared)
                           const
 {
-    auto hash = hash_compile_options(child);
+    auto hash = hash_compile_options(ctx, child);
     auto link = link_dir(ctx);
     auto obj_prefix =
         child->obj_dir + "/" + child->unbased(child->src_dir) + "/";
@@ -1429,7 +1474,7 @@ language_cxx::compile_source(const context::ptr& ctx,
         child->obj_dir
         + "/" + child->unbased(child->src_dir)
         + "/" + child->cmd->data()
-        + "/" + hash_compile_options(child);
+        + "/" + hash_compile_options(ctx, child);
 
     /* Recursively walks the list of targets. */
     std::vector<target::ptr> deps;
@@ -1457,7 +1502,7 @@ language_cxx::compile_source(const context::ptr& ctx,
                 auto dep_out_name =
                     child->obj_dir
                     + "/" + child->unbased(dep)
-                    + "/" + hash_compile_options(child);
+                    + "/" + hash_compile_options(ctx, child);
 
                 bool should_process = true;
                 for (const auto& p: processed)

@@ -130,7 +130,11 @@ private:
     /* Hashes the link options that are relevant to this command's linking
      * (or compiling) phase. */
     std::string hash_link_options(const context::ptr& ctx) const;
-    std::string hash_compile_options(const context::ptr& ctx) const;
+    std::string hash_compile_options(const context::ptr& ctx,
+                                     const context::ptr& child) const;
+    std::vector<std::string> lib_dir_link_options(const context::ptr& ctx) const;
+    std::vector<std::string> dep_lib_link_options(const context::ptr& ctx) const;
+    std::vector<std::string> added_link_options(const context::ptr& ctx) const;
     std::string hash_options(const std::vector<std::string>& opts) const;
 
 protected:
