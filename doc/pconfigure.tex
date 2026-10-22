@@ -97,9 +97,14 @@ lines are ignored.  All other lines are of the format
 COMMAND OPERATION VALUE
 \end{verbatim}
 where \texttt{COMMAND} is one of the options listed in
-Section~\ref{cmd}; \texttt{OPERATION} is one of \texttt{-=},
-\texttt{=}, or \texttt{+=}; and \texttt{VALUE} is a free-form text
-value.  If \texttt{value} starts and ends with a \texttt{`} character
+Section~\ref{cmd}; \texttt{OPERATION} is either \texttt{=}, which
+sets something, or \texttt{+=}, which adds to it; and \texttt{VALUE}
+is a free-form text value.  Each command takes exactly one of the two,
+as its section's heading shows, and there is no \texttt{-=}: nothing
+can take back what an earlier line added, so the way to drop something
+is to delete the line that added it.  A line written with the wrong
+operator is a fatal error that names the line and gives it back with
+the right one.  If \texttt{value} starts and ends with a \texttt{`} character
 then it is executed as a shell out (the syntax here is just like BASH
 and Ruby).
 
