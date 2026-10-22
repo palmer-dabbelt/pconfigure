@@ -709,7 +709,7 @@ void command_processor::process_one(const command::ptr& cmd)
          *
          * A tree that a SUBPROJECTS also names is read once, since
          * that is true of any project two lines ask for. */
-        _pending_subprojects.push_back(path);
+        _pending_subprojects.push_back({path, cmd});
 
         return;
     }
@@ -1657,7 +1657,7 @@ void command_processor::process_one(const command::ptr& cmd)
             /* Reading it is somebody else's job: this just says which
              * one was asked for, relative to where pconfigure is
              * running rather than to whoever asked. */
-            _pending_subprojects.push_back(path);
+            _pending_subprojects.push_back({path, cmd});
             return;
         }
 
@@ -2150,12 +2150,13 @@ command_processor::test_suite_named(const std::string& name) const
     return NULL;
 }
 
-std::string command_processor::take_pending_subproject(void)
+std::string command_processor::take_pending_subproject(command::ptr& asked_by)
 {
     if (_pending_subprojects.size() == 0)
         return "";
 
-    auto out = _pending_subprojects.front();
+    auto out = _pending_subprojects.front().first;
+    asked_by = _pending_subprojects.front().second;
     _pending_subprojects.erase(_pending_subprojects.begin());
 
     /* Whatever this tree is going to be told, it is being told now.

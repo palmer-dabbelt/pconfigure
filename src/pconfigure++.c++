@@ -104,21 +104,7 @@ int main(int argc, const char **argv)
             needed.push_back(capability);
     }
 
-    /* Two projects whose directories mangle to the same variable
-     * would each think the variable was theirs, and one of them would
-     * end up building into the other's directory. */
-    auto variables = std::map<std::string, std::string>();
-    for (const auto& project: projects) {
-        auto variable = project::prefix_variable(project->base());
-        auto found = variables.find(variable);
-        if (found != variables.end()) {
-            std::cerr << "'" << found->second << "' and '" << project->base()
-                      << "' both want the make variable '" << variable
-                      << "'\n";
-            abort();
-        }
-        variables[variable] = project->base();
-    }
+    project::check_prefix_variables(projects);
 
     auto implied = makefile::implied_deps(targets, provided, needed);
 

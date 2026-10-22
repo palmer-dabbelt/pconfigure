@@ -34,9 +34,11 @@
 #include <iostream>
 
 project::project(const std::string& base,
-                 const command_processor::ptr& processor)
+                 const command_processor::ptr& processor,
+                 const command::ptr& asked_by)
 : _base(base),
-  _processor(processor)
+  _processor(processor),
+  _asked_by(asked_by)
 {
 }
 
@@ -66,6 +68,61 @@ std::string project::prefix_variable(const std::string& base)
     }
 
     return "pconfigure_subdir_" + suffix;
+}
+
+void project::check_prefix_variables(const std::vector<ptr>& everyone)
+{
+    /* Two projects whose directories mangle to the same variable
+     * would each think the variable was theirs, and one of them would
+     * end up building into the other's directory.
+     *
+     * Refused rather than mangled apart.  A spelling that kept "lib-a"
+     * and "lib_a" distinct would have to escape the underscore too,
+     * which renames the variable of every project with one in its
+     * path -- and that name is written into the dependency fragments
+     * a build leaves behind, and read back out of them by the tools
+     * that rewrite those for a parent.  Directories that differ only
+     * in their punctuation are rare enough, and confusing enough to
+     * a person as well, that asking for one of them to be renamed is
+     * the cheaper answer.
+     *
+     * Asked once the whole run has been read rather than as each
+     * subproject is, because the two lines can be in different
+     * Configfiles and either one can come first. */
+    auto where = [](const ptr& p) -> std::string
+        {
+            if (p->asked_by() == NULL)
+                return "is the project pconfigure was run in";
+            return "was asked for by " + std::to_string(p->asked_by()->debug());
+        };
+
+    auto variables = std::map<std::string, ptr>();
+    for (const auto& project: everyone) {
+        auto variable = prefix_variable(project->base());
+        auto found = variables.find(variable);
+        if (found == variables.end()) {
+            variables[variable] = project;
+            continue;
+        }
+
+        /* Pointed at the line of the later one, since that's the line
+         * that made the pair; the earlier one gets named too, because
+         * it is just as much the one somebody might want to rename. */
+        const auto& first = found->second;
+        if (project->asked_by() != NULL)
+            std::cerr << std::to_string(project->asked_by()->debug()) << "\n";
+        std::cerr << "  error: '" << project->base() << "' and '"
+                  << first->base() << "' both come out as the make variable '"
+                  << variable << "'\n"
+                  << "  '" << first->base() << "' " << where(first) << "\n"
+                  << "  every project's Makefile finds its directory through"
+                  << " that variable, which is the directory's name with its"
+                  << " punctuation squeezed down to underscores, so the two"
+                  << " would each be building in the other's directory\n"
+                  << "  rename one of the two directories so that their"
+                  << " names differ in more than punctuation\n";
+        abort();
+    }
 }
 
 void project::process_line(const ptr& self,
@@ -109,11 +166,12 @@ void project::process_line(const ptr& self,
     /* A subproject is read before the next line, so that the rest of
      * this Configfile can ask about what it builds. */
     while (true) {
-        auto base = processor->take_pending_subproject();
+        auto asked_by = command::ptr(NULL);
+        auto base = processor->take_pending_subproject(asked_by);
         if (base.size() == 0)
             break;
 
-        auto child = read(base, processor->root_context(), seen);
+        auto child = read(base, processor->root_context(), asked_by, seen);
         if (child != NULL)
             self->_children.push_back(child);
     }
@@ -129,9 +187,11 @@ void project::read_file(const ptr& self,
 }
 
 project::ptr project::read(const command_processor::ptr& processor,
-                           std::set<std::string>& seen)
+                           std::set<std::string>& seen,
+                           const command::ptr& asked_by)
 {
-    auto out = std::make_shared<project>(processor->base(), processor);
+    auto out = std::make_shared<project>(processor->base(), processor,
+                                         asked_by);
 
     /* Anything the command line asked for comes first, since that's
      * the order it was processed in. */
@@ -174,6 +234,7 @@ project::ptr project::read(const command_processor::ptr& processor,
 
 project::ptr project::read(const std::string& base,
                            const context::ptr& defaults,
+                           const command::ptr& asked_by,
                            std::set<std::string>& seen)
 {
     /* The path arrived normalized, and whether this is a pconfigure
@@ -189,7 +250,7 @@ project::ptr project::read(const std::string& base,
         return NULL;
 
     auto processor = std::make_shared<command_processor>(normalized, defaults);
-    return read(processor, seen);
+    return read(processor, seen, asked_by);
 }
 
 std::set<std::string> project::reachable(void) const

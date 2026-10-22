@@ -45,6 +45,12 @@ private:
     const std::string _base;
     const command_processor::ptr _processor;
 
+    /* The SUBPROJECTS (or BOOTSTRAP) line that pulled this project
+     * in, or NULL for the project pconfigure was run in.  A project
+     * that two lines ask for is read for the first of them, so that
+     * is the one it remembers. */
+    const command::ptr _asked_by;
+
     /* The targets, in the order they were generated -- which is the
      * order they get written out in, so it has to be stable. */
     std::vector<makefile::target::ptr> _targets;
@@ -58,7 +64,8 @@ private:
 
 public:
     project(const std::string& base,
-            const command_processor::ptr& processor);
+            const command_processor::ptr& processor,
+            const command::ptr& asked_by);
     virtual ~project(void) {}
 
 public:
@@ -73,15 +80,18 @@ public:
      * contains itself doesn't recurse forever.
      *
      * "defaults" is the context a subproject inherits from whoever
-     * pulled it in, and is NULL for the project being configured. */
+     * pulled it in, and is NULL for the project being configured.
+     * "asked_by" is the line that pulled it in. */
     static ptr read(const std::string& base,
                     const context::ptr& defaults,
+                    const command::ptr& asked_by,
                     std::set<std::string>& seen);
 
     /* The same thing, for a project whose command processor already
      * exists because the command line had to be processed first. */
     static ptr read(const command_processor::ptr& processor,
-                    std::set<std::string>& seen);
+                    std::set<std::string>& seen,
+                    const command::ptr& asked_by = NULL);
 
     /* Turns a path into the one spelling of it that this run will
      * use, so that a project asked for as "./sub" and as "sub" is
@@ -92,6 +102,12 @@ public:
     /* The make variable this project's Makefile uses to find itself,
      * which has to be unique across the whole run. */
     static std::string prefix_variable(const std::string& base);
+
+    /* Complains if two projects in the run come out with the same
+     * prefix_variable(), which directories that differ only in their
+     * punctuation do.  "everyone" is every project in the run, since
+     * the variable has to be unique across all of them. */
+    static void check_prefix_variables(const std::vector<ptr>& everyone);
 
     /* The part of a generated file's name that says which project in
      * the run wrote it: the directory it sits in, with the separators
@@ -118,6 +134,7 @@ public:
 public:
     /* Accessor methods. */
     const std::string& base(void) const { return _base; }
+    const command::ptr& asked_by(void) const { return _asked_by; }
     const std::vector<ptr>& children(void) const { return _children; }
     const command_processor::ptr& processor(void) const { return _processor; }
     const std::vector<makefile::target::ptr>& targets(void) const

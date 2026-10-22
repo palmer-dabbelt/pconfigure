@@ -23,6 +23,7 @@
 
 #include <memory>
 #include <stack>
+#include <utility>
 #include "build_system.h++"
 #include "command.h++"
 #include "context.h++"
@@ -180,8 +181,11 @@ private:
 
     /* The subprojects that have been asked for but not read yet.
      * They're handed back one at a time rather than read here,
-     * because reading a project is the job of whoever owns this. */
-    std::vector<std::string> _pending_subprojects;
+     * because reading a project is the job of whoever owns this.
+     * Each one comes with the line that asked for it, so that a
+     * complaint about the subproject that can only be made once the
+     * whole run has been read still has a line to point at. */
+    std::vector<std::pair<std::string, command::ptr>> _pending_subprojects;
 
     /* The CONFIG commands whose Configfiles haven't been read yet,
      * which are handed back the same way and for the same reason.
@@ -251,8 +255,10 @@ public:
 
     /* Hands back a subproject that a SUBPROJECTS command asked for,
      * or an empty string once there aren't any left.  The path is
-     * relative to where pconfigure was run and ends with a '/'. */
-    std::string take_pending_subproject(void);
+     * relative to where pconfigure was run and ends with a '/'.
+     * "asked_by" is set to the SUBPROJECTS (or BOOTSTRAP) line that
+     * named it. */
+    std::string take_pending_subproject(command::ptr& asked_by);
 
     /* Hands back a CONFIG command whose Configfile hasn't been read
      * yet, or NULL once there aren't any left.  Its data is the
