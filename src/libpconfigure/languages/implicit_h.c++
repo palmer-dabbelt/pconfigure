@@ -68,8 +68,12 @@ language_implicit_h::targets(const context::ptr& ctx) const
         auto install_path = "$(DESTDIR)/" + ctx->prefix + "/" + ctx->unbased(ctx->hdr_dir) + "/" + ctx->cmd->data();
         auto header_path = ctx->hdr_dir + "/" + ctx->cmd->data();
         
+        /* On "uninstall" as well as "install", for the reason
+         * languages/bash.c++ gives: a rule that only installs is a
+         * header "make uninstall" leaves behind under the prefix. */
         auto global_install_targets = std::vector<makefile::global_targets>{
             makefile::global_targets::INSTALL,
+            makefile::global_targets::UNINSTALL,
         };
 
         auto short_cmd = "H\t" + ctx->cmd->data();
