@@ -87,6 +87,12 @@ public:
      * still remembers what was written, as written_as(). */
     ptr with_type(const command_type& type);
 
+    /* Copies this command, but gives it a different value.  Every
+     * other part of the line -- where it was written, what it was
+     * written with -- stays what it was, so a diagnostic about the
+     * copy still points at the line that said it. */
+    ptr with_data(const std::string& data);
+
 public:
     /* Converts a command string (as stored in the Configfile or as a
      * command-line argument) into an actual command object that's a

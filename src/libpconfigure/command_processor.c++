@@ -1402,6 +1402,7 @@ void command_processor::process_one(const command::ptr& cmd)
         return;
 
     case command_type::SOURCES:
+    {
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
@@ -1449,6 +1450,26 @@ void command_processor::process_one(const command::ptr& cmd)
             refuse_unsafe_metacharacter(cmd, written);
         }
 
+        /* From here on the file is called by the path it names rather
+         * than by the text that named it.  The question above was
+         * already answered of the normalized path, so this only makes
+         * the answer and the use agree: a source is pasted onto the
+         * object directory to name its object and onto the source
+         * directory to name its compile line, and either one done with
+         * the text as written gave "main.c" and "./main.c" an object
+         * each -- one function linked twice -- and handed the kernel
+         * "src/gone/../main.c", which it resolves a component at a
+         * time and so refuses for want of a "gone" that the check
+         * above had taken back off without looking.  One name per file
+         * is also what lets two lines naming the same file be one
+         * source, the way two lines spelling it the same already
+         * were.
+         *
+         * Normalized only after both checks, since normalizing can
+         * take apart exactly what they look for: "$(X)/../main.c" is
+         * just "main.c" once the ".." has eaten the expansion. */
+        auto source = cmd->with_data(file_utils::normalize_path(cmd->data()));
+
         clear_until({context_type::DEFAULT,
                     context_type::GENERATE,
                     context_type::LIBRARY,
@@ -1480,13 +1501,14 @@ void command_processor::process_one(const command::ptr& cmd)
          * of the test's context that nothing ever asks for a check
          * target. */
         if (_stack.top()->check_type({context_type::TEST}) == true)
-            process_directives(_stack.top()->src_dir + "/" + cmd->data());
+            process_directives(_stack.top()->src_dir + "/" + source->data());
 
-        dup_tos_and_push(context_type::SOURCE, cmd);
+        dup_tos_and_push(context_type::SOURCE, source);
 
         set_opts_target(_stack.top());
 
         return;
+    }
 
     case command_type::SRCDIR:
     {
@@ -2104,10 +2126,21 @@ void command_processor::process_one(const command::ptr& cmd)
         return;
     }
 
+    /* A test named by its source, which is the source's path -- so the
+     * test is named by the path that file actually has, the same one
+     * its SOURCES half settles on, or "t.bash" and "./t.bash" are two
+     * check rules for one tarball and make runs the test twice into
+     * it.  The SOURCES half is handed the line as written, since it is
+     * the half that asks whether the path is one this project may
+     * name, and it has to ask that of the text normalizing would have
+     * tidied the answer out of. */
     case command_type::TESTSRC:
-        process_one(cmd->with_type(command_type::TESTS));
+    {
+        auto named = file_utils::normalize_path(cmd->data());
+        process_one(cmd->with_data(named)->with_type(command_type::TESTS));
         process_one(cmd->with_type(command_type::SOURCES));
         return;
+    }
 
     case command_type::TGENERATE:
         unimplemented:

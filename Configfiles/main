@@ -388,6 +388,10 @@ TESTSRC     += bootstrap-real-tool-make-clean.bash
 TESTSRC     += bootstrap-real-tool-make-clean-no-autoreconfigure.bash
 TESTSRC     += subproject-objdir-deleted-reconfigures.bash
 TESTSRC     += link-order-stable-across-relinks.bash
+TESTSRC     += sources-dot-slash-duplicate-links-once.bash
+TESTSRC     += sources-dotdot-spelling-duplicate-links-once.bash
+TESTSRC     += sources-dotdot-through-missing-dir.bash
+TESTSRC     += testsrc-dot-slash-duplicate-runs-once.bash
 
 # The half of pconfigure that a build can run on its own, one source
 # at a time.  It is a BINARY rather than a LIBEXEC because pconfigure

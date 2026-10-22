@@ -70,6 +70,16 @@ command::ptr command::with_type(const command_type& type)
     return out;
 }
 
+command::ptr command::with_data(const std::string& data)
+{
+    return std::make_shared<command>(
+        this->_type,
+        this->_op,
+        data,
+        this->_debug_info,
+        this->_qualifier);
+}
+
 command::ptr command::parse(const std::string& str,
                             const debug_info::ptr& d)
 {
