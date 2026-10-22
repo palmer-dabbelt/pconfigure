@@ -795,7 +795,7 @@ void command_processor::process_one(const command::ptr& cmd)
         /* Reading it is left to whoever owns this, so that the
          * lines inside it get run at the point they're processed
          * rather than all at once up front. */
-        _pending_configs.push_back(cmd->data());
+        _pending_configs.push_back(cmd);
 
         return;
     }
@@ -2165,10 +2165,10 @@ std::string command_processor::take_pending_subproject(void)
     return out;
 }
 
-std::string command_processor::take_pending_config(void)
+command::ptr command_processor::take_pending_config(void)
 {
     if (_pending_configs.size() == 0)
-        return "";
+        return NULL;
 
     auto out = _pending_configs.front();
     _pending_configs.erase(_pending_configs.begin());

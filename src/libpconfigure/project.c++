@@ -81,13 +81,12 @@ void project::process_line(const ptr& self,
     /* A CONFIG is read right where it appeared, so its lines land in
      * the middle of the file that asked for it. */
     while (true) {
-        auto suffix = processor->take_pending_config();
-        if (suffix.size() == 0)
+        auto config = processor->take_pending_config();
+        if (config == NULL)
             break;
 
         for (const auto& included: config_lines(processor->srcpath(),
-                                                "Configfile",
-                                                suffix))
+                                                config))
             process_line(self, included, seen);
     }
 
@@ -137,13 +136,12 @@ project::ptr project::read(const command_processor::ptr& processor,
     /* Anything the command line asked for comes first, since that's
      * the order it was processed in. */
     while (true) {
-        auto suffix = processor->take_pending_config();
-        if (suffix.size() == 0)
+        auto config = processor->take_pending_config();
+        if (config == NULL)
             break;
 
         for (const auto& line: config_lines(processor->srcpath(),
-                                            "Configfile",
-                                            suffix))
+                                            config))
             process_line(out, line, seen);
     }
 

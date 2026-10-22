@@ -195,13 +195,44 @@ std::vector<command::ptr> commands(int argc, const char **argv)
 }
 
 std::vector<configfile_line> config_lines(const std::string& srcpath,
-                                          const std::string& prefix,
-                                          const std::string& suffix)
+                                          const command::ptr& config)
 {
+    const auto& suffix = config->data();
     auto filenames = std::vector<std::string>{
-        srcpath + "/" + prefix + "s/" + suffix,
-        srcpath + "/" + prefix + "." + suffix
+        srcpath + "/Configfiles/" + suffix,
+        srcpath + "/Configfile." + suffix
     };
+
+    /* Either file on its own is enough, which is what lets a tree keep
+     * a configuration in whichever of the two places suits it.  Having
+     * neither is a different matter: lines_from_file() reads a file
+     * that isn't there as one with no lines in it, which is the right
+     * answer for the default Configfiles -- nobody has to write a
+     * Configfile.local -- and the wrong one here.  A CONFIG is a line
+     * somebody wrote to pull something into the build, and a
+     * misspelled one used to pull in nothing at all while pconfigure
+     * carried on and wrote a Makefile that was quietly missing
+     * everything the file would have declared.
+     *
+     * Existence is the question rather than readability, so that a
+     * file which is there but can't be read is still found by whatever
+     * reads it, and complained about there if it is going to be. */
+    auto found = false;
+    for (const auto& filename: filenames)
+        if (access(filename.c_str(), F_OK) == 0)
+            found = true;
+    if (found == false) {
+        std::cerr << std::to_string(config->debug()) << "\n"
+                  << "  error: CONFIG names '" << suffix
+                  << "', but neither " << filenames[0]
+                  << " nor " << filenames[1] << " exists\n"
+                  << "  a CONFIG reads the Configfile with that suffix,"
+                  << " and with no file there it would read nothing at"
+                  << " all\n"
+                  << "  write the name of a Configfile that is there, or"
+                  << " create one of those two files\n";
+        abort();
+    }
 
     std::vector<configfile_line> out;
     for (const auto& filename: filenames) {

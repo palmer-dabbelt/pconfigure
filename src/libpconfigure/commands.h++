@@ -57,11 +57,11 @@ public:
  * given source path. */
 std::vector<configfile_line> configfile_lines(const std::string& srcpath);
 
-/* The lines of the Configfiles with the given suffix, which is what a
- * CONFIG command asks for. */
+/* The lines of the Configfiles a CONFIG command asks for, which are
+ * the ones whose suffix is its data.  A CONFIG naming a suffix that
+ * neither file has is a fatal error, pointing at the command. */
 std::vector<configfile_line> config_lines(const std::string& srcpath,
-                                          const std::string& prefix,
-                                          const std::string& suffix);
+                                          const command::ptr& config);
 
 /* The lines of a file with exactly this name.  The source path is
  * only used to find executable Configfiles, which are run with it as

@@ -221,6 +221,7 @@ TESTSRC     += language-after-binary.bash
 TESTSRC     += bash-test-opts.bash
 TESTSRC     += h.bash
 TESTSRC     += exec-config.bash
+TESTSRC     += config-missing-file-refused.bash
 TESTSRC     += prefix.bash
 TESTSRC     += gitdate.bash
 TESTSRC     += implicit_h.bash

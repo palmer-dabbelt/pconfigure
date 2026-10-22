@@ -183,9 +183,12 @@ private:
      * because reading a project is the job of whoever owns this. */
     std::vector<std::string> _pending_subprojects;
 
-    /* The Configfiles a CONFIG command asked for, which are handed
-     * back the same way and for the same reason. */
-    std::vector<std::string> _pending_configs;
+    /* The CONFIG commands whose Configfiles haven't been read yet,
+     * which are handed back the same way and for the same reason.
+     * The whole command is kept rather than just the name it gave,
+     * because the name can turn out to be one with no file behind
+     * it, and the line that wrote it is what that error points at. */
+    std::vector<command::ptr> _pending_configs;
     /* CONFIG_DEPS names a path rather than a Configfile, so there is
      * nothing to read -- but it is resolved against the source path of
      * the project whose line it was, exactly as a CONFIG is, and that
@@ -251,9 +254,10 @@ public:
      * relative to where pconfigure was run and ends with a '/'. */
     std::string take_pending_subproject(void);
 
-    /* Hands back the suffix of a Configfile that a CONFIG command
-     * asked for, or an empty string once there aren't any left. */
-    std::string take_pending_config(void);
+    /* Hands back a CONFIG command whose Configfile hasn't been read
+     * yet, or NULL once there aren't any left.  Its data is the
+     * suffix of the Configfile it asked for. */
+    command::ptr take_pending_config(void);
     std::string take_pending_config_dep(void);
 
 public:
