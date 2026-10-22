@@ -1051,9 +1051,19 @@ language_cxx::link_objects(const context::ptr& ctx,
         ? std::vector<std::string>{"-L" + ctx->lib_dir}
         : std::vector<std::string>();
 
+    /* The lib directory goes ahead of every "-L" a LINKOPTS names,
+     * because the linker searches its "-L" directories in the order
+     * they're given and takes the first library of the right name it
+     * finds.  A LINKOPTS directory is usually a pkg-config answer like
+     * "-L/usr/local/lib", which is just where an earlier "make
+     * install" of this same project left its old copies: searched
+     * first, it handed the link yesterday's library in place of the
+     * one this build had just made, and the program either failed to
+     * link against it or, worse, linked and ran the stale code.  A
+     * library this project builds is always the one it means. */
     auto all_opts = dedup_link_opts(
-        reroot_link_opts(link_opts() + ctx->link_opts, ctx->base) +
         lib_dir_opts +
+        reroot_link_opts(link_opts() + ctx->link_opts, ctx->base) +
         vector_util::map(ctx->dep_libs, [](std::string dl){ return "-l" + dl; }));
 
     /* Note that there's deliberately nothing here that turns a

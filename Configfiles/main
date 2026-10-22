@@ -213,6 +213,7 @@ TESTSRC     += elf-soname.bash
 TESTSRC     += subdir-rpath.bash
 TESTSRC     += dup-rpath.bash
 TESTSRC     += dup-rpath-linkopts.bash
+TESTSRC     += intree-library-found-before-linkopts-dirs.bash
 TESTSRC     += dup-rpath-multitoken.bash
 TESTSRC     += dup-libs.bash
 TESTSRC     += config.bash
