@@ -45,6 +45,7 @@ public:
     virtual std::string
     default_linker_command(const context::ptr& ctx) const;
     virtual std::string linker_pretty   (void) const { return "LD";     }
+    virtual bool owns_source(const std::string& path) const;
 
     /* Virtual methods from language. */
     virtual std::string name(void) const { return "c"; }

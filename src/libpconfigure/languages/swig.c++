@@ -20,12 +20,18 @@
 
 #include "swig.h++"
 #include "../language_list.h++"
+#include "../string_utils.h++"
 #include <iostream>
 
 language_swig* language_swig::clone(void) const
 {
     return new language_swig(this->list_compile_opts(),
                              this->list_link_opts());
+}
+
+bool language_swig::owns_source(const std::string& path) const
+{
+    return string_utils::has_extension(path, ".i");
 }
 
 bool language_swig::can_process(const context::ptr& ctx) const

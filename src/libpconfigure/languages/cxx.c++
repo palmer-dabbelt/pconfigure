@@ -215,6 +215,47 @@ bool language_cxx::can_process(const context::ptr& ctx) const
     return language::all_sources_match(ctx, cxx_source_extensions());
 }
 
+bool language_cxx::owns_source(const std::string& path) const
+{
+    for (const auto& extension: cxx_source_extensions())
+        if (string_utils::has_extension(path, extension))
+            return true;
+    return false;
+}
+
+language_cxx::behind_languages
+language_cxx::languages_behind_headers(const context::ptr& ctx) const
+{
+    auto out = behind_languages();
+
+    for (const auto& extension: cxx_header_source_extensions()) {
+        /* A name to ask about rather than a bare ending, which
+         * has_extension() doesn't count as having one. */
+        auto example = "source" + extension;
+
+        /* Every ending belongs to at most one language, so this is
+         * the same answer whatever order LANGUAGES named them in: the
+         * target's own language is only asked first because it's the
+         * one that usually says yes. */
+        auto owner = static_cast<const language_cxx*>(this);
+        if (this->owns_source(example) == false) {
+            for (const auto& l: ctx->languages) {
+                auto c = dynamic_cast<const language_cxx*>(l.get());
+                if (c == nullptr || c->name() == this->name())
+                    continue;
+                if (c->owns_source(example) == true) {
+                    owner = c;
+                    break;
+                }
+            }
+        }
+
+        out[extension] = owner;
+    }
+
+    return out;
+}
+
 language_cxx::shared_target language_cxx::is_shared_target(const context::ptr& ctx) const
 {
     switch (ctx->type) {
@@ -335,6 +376,7 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
              * sources depend on, which is what an AUTORECONFIGURE
              * project gets instead of "objects" above. */
             auto fragments = std::vector<makefile::target::ptr>();
+            auto behind = languages_behind_headers(ctx);
             for (const auto& child: ctx->children) {
                 auto is_shared = (ctx->type == context_type::BINARY)
                         ? shared_target::FALSE
@@ -358,7 +400,8 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
                     auto all_objects = compile_source(ctx,
                                                       child,
                                                       already_processed,
-                                                      is_shared);
+                                                      is_shared,
+                                                      behind);
 
                     /* Checks for duplicate objects, to avoid double linking. */
                     auto compare_object = [](const target::ptr& a, const target::ptr& b) {
@@ -570,11 +613,8 @@ language_cxx::find_files_for_header(const std::string& full_header_path) const
     return cxx_sources_for_header(full_header_path);
 }
 
-std::vector<std::string>
-cxx_sources_for_header(const std::string& full_header_path)
+const std::vector<std::string>& cxx_header_source_extensions(void)
 {
-    std::vector<std::string> out;
-
     /* A header and the source that implements it are the same name
      * with a different ending, and that's the only thing saying the
      * two go together -- nobody writes it down.  Everything that
@@ -585,15 +625,26 @@ cxx_sources_for_header(const std::string& full_header_path)
      * C++ source goes by.  ".c" is in it even though it isn't one of
      * them, because this is also how the C language finds the source
      * behind a header it saw included -- it inherits this function.
+     * Finding a file is not deciding what it is, though: each one is
+     * compiled as whatever its own ending says, which is
+     * languages_behind_headers()' business.
+     *
      * ".C" is out of it even though it is one of them, because it
      * differs from ".c" only in case: on a filesystem that doesn't
      * care about that, guessing both hands back one file twice under
      * two names, and it gets compiled and linked in twice.  A project
      * that spells its C++ ".C" can still say so in a SOURCES line,
      * where nobody has to guess. */
-    static const auto sources = std::vector<std::string>{
+    static const auto out = std::vector<std::string>{
         ".c++", ".cpp", ".cxx", ".cc", ".c"
     };
+    return out;
+}
+
+std::vector<std::string>
+cxx_sources_for_header(const std::string& full_header_path)
+{
+    std::vector<std::string> out;
 
     for (const auto& header: cxx_header_extensions()) {
         if (string_utils::has_extension(full_header_path, header) == false)
@@ -602,7 +653,7 @@ cxx_sources_for_header(const std::string& full_header_path)
         auto stem = full_header_path.substr(
             0, full_header_path.size() - header.size());
 
-        for (const auto& source: sources) {
+        for (const auto& source: cxx_header_source_extensions()) {
             auto f = stem + source;
             if (access(f.c_str(), R_OK) == 0)
                 out.push_back(f);
@@ -1637,7 +1688,8 @@ std::vector<language_cxx::target::ptr>
 language_cxx::compile_source(const context::ptr& ctx,
                              const context::ptr& child,
                              std::vector<std::string>& processed,
-                             const shared_target& is_shared)
+                             const shared_target& is_shared,
+                             const behind_languages& behind)
                              const
 {
     auto source_path = child->src_dir + "/" + child->cmd->data();
@@ -1686,10 +1738,20 @@ language_cxx::compile_source(const context::ptr& ctx,
                                                      stripped_dep,
                                                      child->cmd->debug());
 
+                /* Compiled by the language whose file it is, which
+                 * isn't necessarily this one.  That language's
+                 * compiler is in the object's name, so asking it here
+                 * is also what keeps the C and the C++ object of one
+                 * source from being taken for each other below. */
+                auto owner = static_cast<const language_cxx*>(this);
+                for (const auto& entry: behind)
+                    if (string_utils::has_extension(dep, entry.first))
+                        owner = entry.second;
+
                 auto dep_out_name =
                     dep_ctx->obj_dir
                     + "/" + dep_ctx->unbased(dep)
-                    + "/" + hash_compile_options(ctx, dep_ctx);
+                    + "/" + owner->hash_compile_options(ctx, dep_ctx);
 
                 bool should_process = true;
                 for (const auto& p: processed)
@@ -1699,7 +1761,8 @@ language_cxx::compile_source(const context::ptr& ctx,
                     continue;
                 processed.push_back(dep_out_name);
 
-                deps = deps + compile_source(ctx, dep_ctx, processed, is_shared);
+                deps = deps + owner->compile_source(ctx, dep_ctx, processed,
+                                                    is_shared, behind);
             }
         }
     }

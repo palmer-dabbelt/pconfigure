@@ -22,6 +22,7 @@
 #define LANGUAGES__CXX_CXX
 
 #include "../language.h++"
+#include <map>
 #include <memory>
 
 /* Every name a C or C++ source file goes by, and every name a header
@@ -83,6 +84,10 @@ std::vector<std::string>
 cxx_headers_read_by(const std::string& source,
                     const std::vector<std::string>& compile_opts);
 
+/* The endings that search tries, which is what anything deciding
+ * how to build what it finds has to have an answer for. */
+const std::vector<std::string>& cxx_header_source_extensions(void);
+
 /* C++ is probably the best supported of the pconfigure language
  * implementations, as it's the one that pconfigure itself is written
  * in. */
@@ -109,6 +114,13 @@ public:
     virtual std::string linker_pretty   (void) const { return "LD++";   }
 
 public:
+    /* TRUE when a source with this name is one this language
+     * compiles.  It is asked about the sources found behind a header,
+     * which nobody named and which therefore don't come with a
+     * language attached: a ".c" sitting next to a header a C++ source
+     * includes is still C, and has to be compiled as C. */
+    virtual bool owns_source(const std::string& path) const;
+
     /* Virtual methods from language. */
     virtual std::string name(void) const { return "c++"; }
     virtual language_cxx* clone(void) const;
@@ -161,6 +173,26 @@ private:
      * somewhere nothing looks for them. */
     std::string output_dir(const context::ptr& ctx) const;
     std::string link_dir(const context::ptr& ctx) const;
+
+    /* Which language compiles each of the sources that can turn up
+     * behind a header, keyed by the ending that says so.
+     *
+     * The sources a target was told about are all in its own
+     * language, because that's how its language was picked.  The ones
+     * found behind its headers are whatever the files next to those
+     * headers happen to be called, and C and C++ share their headers,
+     * so a C program can reach a ".c++" and a C++ one a ".c".  Each of
+     * those is compiled by the language whose file it is, from
+     * whichever ones the project enabled -- and by the target's own
+     * language when none of them claims it, there being nothing else
+     * to hand it to.
+     *
+     * Worked out once per target and handed down the whole walk,
+     * because the walk crosses languages: the answer has to be the
+     * same from a C++ source as it is from the C source it led to, or
+     * one file is compiled twice under two names. */
+    typedef std::map<std::string, const language_cxx*> behind_languages;
+    behind_languages languages_behind_headers(const context::ptr& ctx) const;
 
     /* Hashes the link options that are relevant to this command's linking
      * (or compiling) phase. */
@@ -315,7 +347,8 @@ protected:
         const context::ptr& ctx,
         const context::ptr& child,
         std::vector<std::string>& already_processed,
-        const shared_target& is_shared
+        const shared_target& is_shared,
+        const behind_languages& behind
     ) const;
 
     /* The piece of Makefile that says what one source depends on,

@@ -20,6 +20,7 @@
 
 #include "c.h++"
 #include "../language_list.h++"
+#include "../string_utils.h++"
 #include <iostream>
 
 std::string language_c::default_compiler_command(const context::ptr& ctx) const
@@ -36,6 +37,12 @@ std::string language_c::default_linker_command(const context::ptr& ctx) const
         return ctx->cross_compile + "gcc ${LDFLAGS} ${CFLAGS}";
 
     return "${CC} ${LDFLAGS} ${CFLAGS}";
+}
+
+/* Just the one, for the reason can_process() below gives. */
+bool language_c::owns_source(const std::string& path) const
+{
+    return string_utils::has_extension(path, ".c");
 }
 
 language_c* language_c::clone(void) const

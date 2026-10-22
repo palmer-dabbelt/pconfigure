@@ -52,6 +52,13 @@ public:
         { return "$(CXX)"; }
     virtual std::string linker_pretty   (void) const { return "SWLD";     }
 
+    /* SWIG is built on C++, but the only sources that are SWIG's are
+     * its interface files.  A ".c++" found behind a header belongs to
+     * C++, even when it's a SWIG library that found it: otherwise
+     * which of the two compiled a C program's ".c++" would come down
+     * to which of them the LANGUAGES lines happened to name first. */
+    virtual bool owns_source(const std::string& path) const;
+
     /* Virtual methods from language. */
     virtual std::string name(void) const { return "swig"; }
     virtual language_swig* clone(void) const;
