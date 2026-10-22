@@ -353,10 +353,11 @@ static std::string leaves_the_project(const std::string& written)
 /* The directory a path actually reaches, with every symlink along the
  * way resolved, or "" for a path that doesn't name anything yet.
  *
- * Asked in one place only, and the comment at the SUBPROJECTS that
- * uses it says why that one is different from everything above: what
- * a line means is settled by its text, but what an "rm -rf" removes
- * is settled by the filesystem. */
+ * Asked in one place only, and the comment in
+ * refuse_unsafe_subproject_location() that uses it says why that one
+ * is different from everything above: what a line means is settled
+ * by its text, but what an "rm -rf" removes is settled by the
+ * filesystem. */
 static std::string real_directory(const std::string& path)
 {
     auto resolved = ::realpath(path.c_str(), NULL);
@@ -465,6 +466,140 @@ static void refuse_target_leaving_project(const command::ptr& cmd)
               << "  name it from inside the project, like '"
               << command_name << " += " << example << "'\n";
     abort();
+}
+
+/* Refuses "cmd", a SUBPROJECTS or a BOOTSTRAP naming the tree at
+ * "path", when that tree sits somewhere this build's "make distclean"
+ * would either remove or reach out of: inside the object directory
+ * "obj_dir", or -- once symlinks are resolved -- outside the project
+ * or inside that object directory after all.
+ *
+ * Both commands come here because both end in the same place.  A
+ * BOOTSTRAP is read as an ordinary subproject once its two extra
+ * checks are done, so its tree is built and distcleaned exactly the
+ * way a SUBPROJECTS one is, and a tree that would be lost or reached
+ * through by one would be by the other.  The vendored pconfigure is,
+ * if anything, the worse one to lose: without it the next "make" has
+ * nothing to build a pconfigure with.  Asking once, here, keeps the
+ * two from drifting apart the way they had, with BOOTSTRAP asking
+ * only the questions its own case happened to remember. */
+static void refuse_unsafe_subproject_location(const command::ptr& cmd,
+                                              const std::string& path,
+                                              const std::string& obj_dir)
+{
+    auto command_name = std::to_string(cmd->type());
+
+    /* The caller has already refused a path that climbs out of the
+     * project, and this is the other end of the same sentence.
+     * pconfigure owns every byte under an object directory -- that is what lets
+     * an install prefix be in there, and it is what "make
+     * distclean" acts on: the recipe is an "rm -rf" of the
+     * object directory and nothing finer, because everything
+     * under it is output this build knows how to make again.  A
+     * tree checked out in there is not, so the first distclean
+     * after somebody writes this line takes the checkout with
+     * it, and what was lost is whatever had not been pushed.
+     *
+     * The object directory this asks about is the one in force
+     * where the line was written, which for a SUBPROJECTS inside
+     * a subproject is that subproject's own rather than the one
+     * at the top of the run.  No command moves it: an object
+     * directory is a project's directory with "obj" on the end,
+     * and what changes from one context to the next is which
+     * project that is. */
+    auto obj = file_utils::normalize_path(obj_dir);
+    if (file_utils::inside(
+            file_utils::normalize_path(path), obj) == true) {
+        std::cerr << command_name << " can't name a directory inside an"
+                  << " object directory: '"
+                  << std::to_string(cmd->debug())
+                  << "'\n"
+                  << "  '" << obj << "' is where this build writes, and"
+                  << " 'make distclean' removes it whole -- so a tree"
+                  << " checked out in there is one distclean away from"
+                  << " being gone, and nothing about the recipe says"
+                  << " so\n"
+                  << "  check the tree out somewhere this build doesn't"
+                  << " write, beside the Configfile that names it; where"
+                  << " it builds to is pconfigure's to pick\n";
+        abort();
+    }
+
+    /* And both of those questions asked a second time, of the
+     * directory rather than of the name, because a symlink is
+     * where the two stop agreeing.  "rm -rf sub/obj" follows a
+     * symlinked "sub" -- rm declines to walk through a symlink
+     * only when it is the last thing on the path -- so a "sub"
+     * pointing anywhere at all is a distclean that reaches there,
+     * and a "vendor" pointing into the object directory is the
+     * checkout this build removes whole.  Both read as an
+     * ordinary name, which is what a symlink is for.
+     *
+     * Asking lexically is still the rule about what a line means,
+     * and this leaves that alone.  A path that climbs out or
+     * lands in the object directory is refused on its text, by the
+     * caller and just above, before any of this runs, so nothing refused there becomes
+     * legal here: all this can do is refuse something more.  What
+     * it asks is a different question -- not "what does this line
+     * name", which the text settles, but "what is the recipe
+     * about to remove", which only the filesystem knows.  And it
+     * keeps the property the lexical rule exists to protect,
+     * because both sides are resolved: the answer is the same
+     * whether pconfigure ran in this project or in one above it,
+     * which is exactly what resolving only one side would have
+     * thrown away.
+     *
+     * A symlink that stays inside the tree is left alone, which
+     * is why this asks where the link goes rather than refusing a
+     * link outright.  Linking a vendored tree into place from
+     * somewhere else in the same checkout is a real thing to do
+     * and there is nothing wrong with it: what the "rm -rf"
+     * reaches is inside the project either way.
+     *
+     * A path that doesn't resolve is left to whoever reads the
+     * Configfile that isn't there.  Saying nothing here costs
+     * nothing, since a directory that doesn't exist is one no
+     * symlink can have pointed out of the tree. */
+    auto real_sub = real_directory(path);
+    auto real_root = real_directory(".");
+    auto real_obj = real_directory(obj);
+
+    if (real_sub.size() > 0 && real_root.size() > 0
+        && file_utils::inside(real_sub, real_root) == false) {
+        std::cerr << command_name << " can't reach outside the project: '"
+                  << std::to_string(cmd->debug())
+                  << "'\n"
+                  << "  '" << path << "' resolves to '" << real_sub
+                  << "', which is outside '" << real_root << "'\n"
+                  << "  'make distclean' is an 'rm -rf' of this"
+                  << " subproject's output directories, and rm walks"
+                  << " through a symlink it meets partway along a path"
+                  << " -- so the recipe removes directories out there"
+                  << " rather than in here\n"
+                  << "  check the tree out beside the Configfile that"
+                  << " names it, or point the link somewhere inside"
+                  << " this project\n";
+        abort();
+    }
+
+    if (real_sub.size() > 0 && real_obj.size() > 0
+        && file_utils::inside(real_sub, real_obj) == true) {
+        std::cerr << command_name << " can't name a directory inside an"
+                  << " object directory: '"
+                  << std::to_string(cmd->debug())
+                  << "'\n"
+                  << "  '" << path << "' resolves to '" << real_sub
+                  << "', which is inside '" << real_obj << "'\n"
+                  << "  '" << obj << "' is where this build writes, and"
+                  << " 'make distclean' removes it whole -- so a tree"
+                  << " checked out in there is one distclean away from"
+                  << " being gone, and nothing about the recipe says"
+                  << " so\n"
+                  << "  check the tree out somewhere this build doesn't"
+                  << " write, beside the Configfile that names it; where"
+                  << " it builds to is pconfigure's to pick\n";
+        abort();
+    }
 }
 
 void command_processor::process(const command::ptr& cmd)
@@ -667,6 +802,11 @@ void command_processor::process_one(const command::ptr& cmd)
         if (cmd->check_operation("=") == false)
             goto bad_op_eq;
 
+        /* The path lands in PCONFIGURE_SRCPATH and in the recipes
+         * that build and distclean the tree, exactly as a
+         * SUBPROJECTS one does. */
+        refuse_unsafe_metacharacter(cmd, "BOOTSTRAP");
+
         clear_until({context_type::DEFAULT}, cmd);
 
         /* Only the project make gets run in has a Makefile anybody
@@ -718,7 +858,25 @@ void command_processor::process_one(const command::ptr& cmd)
         /* Everything here is named relative to where pconfigure ran,
          * and this one ends up in a Makefile that gets committed --
          * so a path that leaves the tree is a path that only means
-         * anything on the machine it was written on. */
+         * anything on the machine it was written on.  An absolute
+         * path is the same mistake spelled more plainly: even one
+         * that happens to name a directory inside this checkout names
+         * it only where this checkout is, and every other clone gets
+         * a Makefile that bootstraps from somebody else's home
+         * directory. */
+        if (path.size() > 0 && path[0] == '/') {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: " << std::to_string(cmd->type())
+                      << " can't be an absolute path: '" << cmd->data()
+                      << "'\n"
+                      << "  the Makefile it writes is meant to be"
+                      << " committed, and an absolute path names this"
+                      << " checkout only where it sits on this machine\n"
+                      << "  name the vendored tree relative to this"
+                      << " Configfile\n";
+            abort();
+        }
+
         if (path.compare(0, 3, "../") == 0) {
             std::cerr << std::to_string(cmd->debug()) << "\n"
                       << "  error: " << std::to_string(cmd->type())
@@ -730,6 +888,16 @@ void command_processor::process_one(const command::ptr& cmd)
                       << " and name it from here\n";
             abort();
         }
+
+        /* The rest of what SUBPROJECTS asks of where a tree is, since
+         * after this the tree is one: a vendored pconfigure checked
+         * out under the object directory is removed by the next
+         * distclean, and one reached through a symlink out of the
+         * project is a tree this build writes into and distcleans
+         * somewhere else -- which is also a committed Makefile
+         * naming a link that only resolves here. */
+        refuse_unsafe_subproject_location(cmd, path,
+                                          _stack.top()->obj_dir);
 
         /* Asked now rather than left to make, because the usual way
          * to get here is a submodule nobody has checked out yet --
@@ -1605,116 +1773,8 @@ void command_processor::process_one(const command::ptr& cmd)
             abort();
         }
 
-        /* And the other end of the same sentence.  pconfigure owns
-         * every byte under an object directory -- that is what lets
-         * an install prefix be in there, and it is what "make
-         * distclean" acts on: the recipe is an "rm -rf" of the
-         * object directory and nothing finer, because everything
-         * under it is output this build knows how to make again.  A
-         * tree checked out in there is not, so the first distclean
-         * after somebody writes this line takes the checkout with
-         * it, and what was lost is whatever had not been pushed.
-         *
-         * The object directory this asks about is the one in force
-         * where the line was written, which for a SUBPROJECTS inside
-         * a subproject is that subproject's own rather than the one
-         * at the top of the run.  No command moves it: an object
-         * directory is a project's directory with "obj" on the end,
-         * and what changes from one context to the next is which
-         * project that is. */
-        auto obj = file_utils::normalize_path(_stack.top()->obj_dir);
-        if (file_utils::inside(
-                file_utils::normalize_path(path), obj) == true) {
-            std::cerr << "SUBPROJECTS can't name a directory inside an"
-                      << " object directory: '"
-                      << std::to_string(cmd->debug())
-                      << "'\n"
-                      << "  '" << obj << "' is where this build writes, and"
-                      << " 'make distclean' removes it whole -- so a tree"
-                      << " checked out in there is one distclean away from"
-                      << " being gone, and nothing about the recipe says"
-                      << " so\n"
-                      << "  check the tree out somewhere this build doesn't"
-                      << " write, beside the Configfile that names it; where"
-                      << " it builds to is pconfigure's to pick\n";
-            abort();
-        }
-
-        /* And both of those questions asked a second time, of the
-         * directory rather than of the name, because a symlink is
-         * where the two stop agreeing.  "rm -rf sub/obj" follows a
-         * symlinked "sub" -- rm declines to walk through a symlink
-         * only when it is the last thing on the path -- so a "sub"
-         * pointing anywhere at all is a distclean that reaches there,
-         * and a "vendor" pointing into the object directory is the
-         * checkout this build removes whole.  Both read as an
-         * ordinary name, which is what a symlink is for.
-         *
-         * Asking lexically is still the rule about what a line means,
-         * and this leaves that alone.  A path that climbs out or
-         * lands in the object directory is refused above on its text,
-         * before any of this runs, so nothing refused there becomes
-         * legal here: all this can do is refuse something more.  What
-         * it asks is a different question -- not "what does this line
-         * name", which the text settles, but "what is the recipe
-         * about to remove", which only the filesystem knows.  And it
-         * keeps the property the lexical rule exists to protect,
-         * because both sides are resolved: the answer is the same
-         * whether pconfigure ran in this project or in one above it,
-         * which is exactly what resolving only one side would have
-         * thrown away.
-         *
-         * A symlink that stays inside the tree is left alone, which
-         * is why this asks where the link goes rather than refusing a
-         * link outright.  Linking a vendored tree into place from
-         * somewhere else in the same checkout is a real thing to do
-         * and there is nothing wrong with it: what the "rm -rf"
-         * reaches is inside the project either way.
-         *
-         * A path that doesn't resolve is left to whoever reads the
-         * Configfile that isn't there.  Saying nothing here costs
-         * nothing, since a directory that doesn't exist is one no
-         * symlink can have pointed out of the tree. */
-        auto real_sub = real_directory(path);
-        auto real_root = real_directory(".");
-        auto real_obj = real_directory(obj);
-
-        if (real_sub.size() > 0 && real_root.size() > 0
-            && file_utils::inside(real_sub, real_root) == false) {
-            std::cerr << "SUBPROJECTS can't reach outside the project: '"
-                      << std::to_string(cmd->debug())
-                      << "'\n"
-                      << "  '" << path << "' resolves to '" << real_sub
-                      << "', which is outside '" << real_root << "'\n"
-                      << "  'make distclean' is an 'rm -rf' of this"
-                      << " subproject's output directories, and rm walks"
-                      << " through a symlink it meets partway along a path"
-                      << " -- so the recipe removes directories out there"
-                      << " rather than in here\n"
-                      << "  check the tree out beside the Configfile that"
-                      << " names it, or point the link somewhere inside"
-                      << " this project\n";
-            abort();
-        }
-
-        if (real_sub.size() > 0 && real_obj.size() > 0
-            && file_utils::inside(real_sub, real_obj) == true) {
-            std::cerr << "SUBPROJECTS can't name a directory inside an"
-                      << " object directory: '"
-                      << std::to_string(cmd->debug())
-                      << "'\n"
-                      << "  '" << path << "' resolves to '" << real_sub
-                      << "', which is inside '" << real_obj << "'\n"
-                      << "  '" << obj << "' is where this build writes, and"
-                      << " 'make distclean' removes it whole -- so a tree"
-                      << " checked out in there is one distclean away from"
-                      << " being gone, and nothing about the recipe says"
-                      << " so\n"
-                      << "  check the tree out somewhere this build doesn't"
-                      << " write, beside the Configfile that names it; where"
-                      << " it builds to is pconfigure's to pick\n";
-            abort();
-        }
+        refuse_unsafe_subproject_location(cmd, path,
+                                          _stack.top()->obj_dir);
 
         /* Which build system builds it is decided by what's in it,
          * the same way the language that builds a source file is
