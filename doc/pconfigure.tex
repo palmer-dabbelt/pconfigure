@@ -291,6 +291,21 @@ that this may require re-linking some targets in order to deal with
 something like \texttt{-rpath}.  Exactly what is rebuilt and how
 depends on the language, see Section~\ref{lang} for more information.
 
+\texttt{DESTDIR}, said on \texttt{make}'s command line, puts the whole
+install under a staging directory, the way it does for any other
+package.  It can't have whitespace in it.  Every installed file is a
+\texttt{make} target whose name starts with \texttt{DESTDIR}, and
+\texttt{make} splits target names at whitespace, so a staging
+directory called \texttt{stage dir} would have installed into a
+\texttt{dir} inside the source tree.  The \texttt{Makefile} stops with
+an error saying so instead, whatever was being built.  A symlink to
+the staging directory names the same place without the space:
+
+\begin{verbatim}
+$ ln -s "$PWD/stage dir" /tmp/stage
+$ make DESTDIR=/tmp/stage install
+\end{verbatim}
+
 \subsection{\texttt{make check} \label{make:check}}
 
 Builds and runs every test specified by the \texttt{Configfile}, or
@@ -408,7 +423,8 @@ Recursively removes \texttt{BINDIR}, \texttt{OBJDIR}, \texttt{LIBDIR},
 \subsection{\texttt{make uninstall}}
 
 Removes every target created by \texttt{make install} (see
-Section~\ref{make:install}).
+Section~\ref{make:install}), and takes the same \texttt{DESTDIR}
+with the same restriction on it.
 
 \section{Commands \label{cmd}}
 
