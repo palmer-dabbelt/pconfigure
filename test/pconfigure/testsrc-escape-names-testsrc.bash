@@ -9,9 +9,13 @@
 # add.  The diagnostic has to name the command that was written and
 # suggest a line of that command's own shape.
 #
-# All three spellings of leaving are tried, since each takes a
-# different branch of leaves_the_project() on its way to the same
-# message, and the suite-qualified TESTSRC goes through the same door.
+# Both spellings of leaving that a name can still have are tried,
+# since each takes a different branch of leaves_the_project() on its
+# way to the same message, and the suite-qualified TESTSRC goes
+# through the same door.  A "$(HOME)/x.bash" used to be the third, but
+# a '$' in a name is now refused as the line is read, before anything
+# asks where the path goes; it stays in the loop so that refusal is
+# held to the same rule, of naming the TESTSRC that was written.
 mkdir -p src test/main
 echo 'int main(void) { return 0; }' > src/main.c
 echo 'true' > test/main/t.bash
@@ -40,8 +44,15 @@ EOF2
     cat out
 
     grep -q "Configfile:6" out
-    grep -q "error: TESTSRC names a file outside this project" out
-    grep -q "like 'TESTSRC += " out
+    case "$line" in
+    *'$'*)
+        grep -q "error: TESTSRC has a '\\$' in it" out
+        ;;
+    *)
+        grep -q "error: TESTSRC names a file outside this project" out
+        grep -q "like 'TESTSRC += " out
+        ;;
+    esac
     if grep -q "SOURCES names\|'SOURCES +=" out
     then
         echo "'$line' was reported as a SOURCES" >&2

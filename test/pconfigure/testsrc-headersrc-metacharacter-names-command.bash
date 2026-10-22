@@ -1,10 +1,12 @@
 #include "harness_start.bash"
 
-# A shell metacharacter in a TESTSRC or a HEADERSRC is refused by the
-# SOURCES half of the pair, the same as an escaping path is, and the
-# refusal has to be in the words of the line that was written for the
-# same reason: "write SOURCES without one" points at a SOURCES line
-# this Configfile doesn't have.
+# A shell metacharacter in a TESTSRC or a HEADERSRC is refused, and
+# the refusal has to be in the words of the line that was written for
+# the same reason an escaping path's is: "write SOURCES without one"
+# points at a SOURCES line this Configfile doesn't have.  It is the
+# line as written that is now asked about a ';', before either half
+# of the pair is processed, but that is no excuse to name the wrong
+# command.
 mkdir -p src test/main include
 echo 'int main(void) { return 0; }' > src/main.c
 echo 'true' > test/main/t.bash
@@ -31,7 +33,7 @@ EOF2
 
     grep -q "Configfile:6" out
     grep -q "error: $command has a ';' in it" out
-    grep -q "write $command without one" out
+    grep -q "rename it without the ';'" out
     if grep -q "SOURCES has\|write SOURCES" out
     then
         echo "$command was reported as a SOURCES" >&2

@@ -5,7 +5,9 @@
 # path is refused by the SOURCES half.  A diagnostic that names a
 # command the Configfile doesn't have sends whoever reads it looking
 # for a line that isn't there, and one that suggests a SOURCES line
-# suggests something that would no longer install the header.
+# suggests something that would no longer install the header.  The
+# "$(HOME)" spelling is refused for its '$' before anything asks where
+# it goes, and is held to the same rule.
 mkdir -p src include
 echo 'int f(void) { return 0; }' > src/f.c
 
@@ -29,8 +31,15 @@ EOF2
     cat out
 
     grep -q "Configfile:5" out
-    grep -q "error: HEADERSRC names a file outside this project" out
-    grep -q "like 'HEADERSRC += " out
+    case "$path" in
+    *'$'*)
+        grep -q "error: HEADERSRC has a '\\$' in it" out
+        ;;
+    *)
+        grep -q "error: HEADERSRC names a file outside this project" out
+        grep -q "like 'HEADERSRC += " out
+        ;;
+    esac
     if grep -q "SOURCES names\|'SOURCES +=" out
     then
         echo "HEADERSRC += $path was reported as a SOURCES" >&2

@@ -583,6 +583,174 @@ static void refuse_unsafe_subproject_location(const command::ptr& cmd,
     }
 }
 
+/* Which commands name a target or a source that one of the language
+ * backends writes a rule for, under the name exactly as it was
+ * written: a BINARIES becomes "bin/<name>" on the left of a rule, a
+ * SOURCES becomes the prerequisite of an object whose own name is
+ * built out of it, and both are pasted bare into the recipes that
+ * copy, compile and link them.
+ *
+ * Narrower than names_a_path() on purpose.  A SUBPROJECTS or a
+ * SUBPROJECT_TARGETS reaches the Makefile through a vendored build
+ * system, which quotes what it writes, and a SUBPROJECT_TARGETS with
+ * an apostrophe in it is something that tree really does build.  A
+ * PREFIX, a LIBDIR and the rest of the directories go through
+ * checked_project_path(), which asks its own questions of them.
+ * These are the ones nothing asked. */
+static bool names_a_make_target(const command_type& type)
+{
+    switch (type) {
+    case command_type::BINARIES:
+    case command_type::HEADERS:
+    case command_type::HEADERSRC:
+    case command_type::LIBEXECS:
+    case command_type::LIBRARIES:
+    case command_type::SOURCES:
+    case command_type::TESTS:
+    case command_type::TESTSRC:
+        return true;
+
+    default:
+        return false;
+    }
+
+    return false;
+}
+
+/* Why "c" can't be in the name of a target or a source, or "" when it
+ * can.  These are the characters that make, or the shell running one
+ * of make's recipes, reads as syntax of its own rather than as part of
+ * a name -- each one checked by building a BINARIES with it in the
+ * middle, and each one either stopping make, stopping the shell or
+ * quietly building something other than what was named.  There are two
+ * halves to the list, and a name only has to fall foul of one.
+ *
+ * make's half is the rule line: a '#' starts a comment, a ':' ends the
+ * targets, an '=' turns the line into an assignment, a ';' starts a
+ * recipe, a '|' starts the order-only prerequisites, a '$' starts an
+ * expansion, and a '(' is an archive member.  The shell's half is the
+ * recipes the name is pasted into bare: quotes open strings, a ';', a
+ * '&', a '|', a '<' and a '>' end or redirect the command, parentheses
+ * are a subshell, and a '\' escapes whatever follows it and vanishes.
+ * Several characters are on both sides, and are listed once with the
+ * reason that bites first.
+ *
+ * It is the same shell half that build_system::unsafe_metacharacter()
+ * asks of a path, written out again here rather than asked of that
+ * function, because a name needs more than a path does: a path never
+ * lands on the left of a rule, so it has no reason to fear a '#' or an
+ * '='.  A '`' isn't here because the Configfile reader has already run
+ * everything between two of them as a command, or refused the line
+ * when there was only one, by the time any name gets this far.
+ *
+ * That none of these ever built is what makes this a refusal rather
+ * than one of strict.h++'s warnings: there is no old Configfile that
+ * works today and would stop working, only ones that configure quietly
+ * and then fail inside make with an error about a line of generated
+ * text, or that build a file with a different name from the one asked
+ * for.
+ *
+ * Quoting or escaping them was the other way out, and doesn't go far
+ * enough to be worth starting.  make has a backslash escape for a '#'
+ * and a ':' in some places and not in others, none at all for an '='
+ * at the start of what it takes for an assignment, and the shell half
+ * is the quoting problem the manual's "odd behavior" section already
+ * explains is a rewrite of every recipe in every backend.
+ *
+ * What isn't here is as deliberate as what is, and it isn't a promise
+ * that everything else is safe.  Dashes, dots, underscores and
+ * non-ASCII letters are ordinary characters to both make and the
+ * shell, which is all a name needs.  The glob characters -- '*', '?',
+ * '[' -- and '%' do build today, by the luck of there being nothing
+ * for them to match, and refusing names that work is a change for a
+ * strict.h++ warning to make if anyone ever wants it made.  And only
+ * names are asked at all, since a COMPILEOPTS or a LINKOPTS is a
+ * command line that never becomes a target and has every right to an
+ * "-DX=a:b" or a '#' in it. */
+static std::string make_special_character(char c)
+{
+    switch (c) {
+    case '#':
+        return "make reads a '#' anywhere on a rule line as the start of"
+               " a comment, so everything after it -- the rest of the name"
+               " and the rest of the rule -- is thrown away";
+    case ':':
+        return "make reads a ':' on a rule line as the end of the targets"
+               " and the start of what they depend on, so the name is cut"
+               " in two and the rule comes out a different shape";
+    case '=':
+        return "make reads a line with an '=' in it before its ':' as a"
+               " variable assignment rather than a rule, which leaves the"
+               " recipe below it belonging to nothing";
+    case ';':
+        return "make reads a ';' on a rule line as the end of the"
+               " prerequisites and the start of a recipe, so the rest of"
+               " the name becomes a command and the rule comes out a"
+               " different shape";
+    case '|':
+        return "make reads a '|' on a rule line as the start of the"
+               " order-only prerequisites, and the shell reads it in a"
+               " recipe as a pipe, so neither ever sees one name";
+    case '$':
+        return "make reads a '$' as the start of a variable expansion, so"
+               " what is built is named by whatever that expansion comes"
+               " to rather than by what was written";
+    case '(':
+    case ')':
+        return std::string("make reads a name spelled \"a(b)\" as")
+               + " member b of archive a, and the shell reads a '" + c
+               + "' in a recipe as the edge of a subshell";
+    case '&':
+        return "the name is pasted bare into the recipes that build it,"
+               " where the shell reads a '&' as the end of one command"
+               " run in the background and the start of another";
+    case '<':
+    case '>':
+        return std::string("the name is pasted bare into the recipes that")
+               + " build it, where the shell reads a '" + c + "' as a"
+               + " redirection";
+    case '\\':
+        return "the name is pasted bare into the recipes that build it,"
+               " where the shell reads a '\\' as escaping the character"
+               " after it and drops it, so the file built is not the one"
+               " named";
+    case '\'':
+    case '"':
+        return std::string("the name is pasted bare into the recipes that")
+               + " build it, where the shell reads a '" + c + "' as the"
+               + " start of a quoted string that never ends";
+    default:
+        return "";
+    }
+}
+
+/* Refuses "cmd" outright when it names a target or a source with one
+ * of make_special_character()'s characters in it.  Only the first one
+ * found is named: a diagnostic about one character is one that says
+ * exactly what to change, and the next run names the next one. */
+static void refuse_make_special_character(const command::ptr& cmd)
+{
+    if (names_a_make_target(cmd->type()) == false)
+        return;
+
+    for (const auto& c: cmd->data()) {
+        auto why = make_special_character(c);
+        if (why.size() == 0)
+            continue;
+
+        std::cerr << std::to_string(cmd->debug()) << "\n"
+                  << "  error: " << std::to_string(cmd->type())
+                  << " has a '" << c << "' in it: '" << cmd->data()
+                  << "'\n"
+                  << "  this is the name of something the Makefile builds,"
+                  << " and " << why << "\n"
+                  << "  rename it without the '" << c << "' -- letters,"
+                  << " digits, '-', '_' and '.' are all safe -- and write"
+                  << " that name here\n";
+        abort();
+    }
+}
+
 /* The refusal of a line written with the wrong operator.  Which of
  * the two a command takes is not something anybody can guess from
  * its name -- LIBDIR names one place and so is set, SOURCES names
@@ -671,6 +839,11 @@ void command_processor::process(const command::ptr& cmd)
             + " line per file -- the rule this makes gets split back up"
             " by make into targets nobody meant");
     }
+
+    /* Also of the line as it was written, so a TESTSRC is refused
+     * once, as a TESTSRC, rather than as whichever of its two
+     * commands happened to get there first. */
+    refuse_make_special_character(cmd);
 
     process_one(cmd);
 }
