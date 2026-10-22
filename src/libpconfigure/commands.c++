@@ -318,9 +318,24 @@ std::vector<configfile_line> lines_from_file(const std::string& srcpath,
         return out;
 
     /* Nothing is done to the lines here beyond reading them: a line
-     * only becomes a command when it's about to be processed. */
-    for (const auto& ln: file_utils::readlines_and_numbers(file))
+     * only becomes a command when it's about to be processed.
+     *
+     * The one exception is a UTF-8 byte order mark at the very start
+     * of the file, which plenty of Windows editors write without
+     * being asked.  It describes the file's encoding rather than being
+     * part of its text, and left in place it became the first three
+     * bytes of the first command's name -- so the complaint was about
+     * an unknown command that looked exactly like LANGUAGES on a
+     * terminal.  Only the start of the file is forgiven: the same
+     * bytes anywhere else are an invisible character somebody pasted
+     * in, and those still get refused on the line they're on. */
+    static const std::string byte_order_mark = "\xEF\xBB\xBF";
+    for (auto ln: file_utils::readlines_and_numbers(file)) {
+        if (ln.number == 1
+            && ln.line.compare(0, byte_order_mark.size(), byte_order_mark) == 0)
+            ln.line = ln.line.substr(byte_order_mark.size());
         out.push_back(configfile_line(filename, ln.number, ln.line));
+    }
 
     if (executable == true)
         pclose(file);
