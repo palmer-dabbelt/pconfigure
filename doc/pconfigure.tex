@@ -2159,6 +2159,19 @@ The second is worth preferring: it keeps the dependency next to the
 glob it describes, where whoever changes one is already looking at the
 other.
 
+A file that a vendored tree in the same build installs --- one named
+by a \texttt{SUBPROJECT\_TARGETS} (Section~\ref{cmd:subproject_targets}),
+like the \texttt{llvm-config} a \texttt{CONFIG} asks for LLVM's flags
+--- is the exception to the \texttt{\$(wildcard)}.  It is written as a
+plain prerequisite, so \texttt{make} builds the tool before it decides
+whether to reconfigure, and the first build of a fresh tree configures
+against the tool it is about to build rather than against whatever the
+\texttt{CONFIG} found in its absence.  A file \pconfigure\ itself
+links keeps the \texttt{\$(wildcard)}: \texttt{make} remakes the
+\texttt{Makefile} before it has read the dependency fragments that say
+what such a file is linked out of, so it is noticed once it exists and
+not built from there.
+
 Without \texttt{AUTORECONFIGURE} the line still adds the prerequisite,
 and a project that keeps its own committed \texttt{Makefile} beside the
 generated one supplies the recipe there
