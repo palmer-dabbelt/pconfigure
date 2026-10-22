@@ -911,6 +911,23 @@ vendored tree into place from elsewhere in the same checkout is a real
 thing to do --- and a path that does not resolve at all is left to
 whoever reads the \texttt{Configfile} that is not there.
 
+Nor may a subproject be inside any other directory \texttt{make
+distclean} removes whole: where the binaries, the libraries and the
+test results go, for every project whose \texttt{distclean} would
+reach it.  That is asked once every \texttt{Configfile} has been read rather than at
+the line, because a \texttt{LIBDIR} further down can still move the
+library directory onto the tree, and the error points at the
+\texttt{SUBPROJECTS} line either way.  A project that builds nothing
+of its own has no library directory for \texttt{distclean} to
+remove, so \texttt{SUBPROJECTS += lib/dep} is fine there and refused
+in a project with a target; a \texttt{LIBDIR} somewhere else, or the
+tree checked out somewhere else, is the way out.  \texttt{BOOTSTRAP}
+is held to the same rule, since its tree is read as a subproject.
+This rule resolves symlinks too, in the tree and in the output
+directory both, for the reason given above: a \texttt{dep} that is a
+symlink to \texttt{lib/dep} is refused just as \texttt{lib/dep}
+would be, because \texttt{rm -rf lib} takes the checkout either way.
+
 An absolute path is refused, since it names the same directory
 however the project is read and so is never relative to the
 \texttt{Configfile} that wrote it.  Climbing out, on the other hand,
