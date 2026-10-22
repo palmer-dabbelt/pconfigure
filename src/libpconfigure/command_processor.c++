@@ -602,6 +602,58 @@ static void refuse_unsafe_subproject_location(const command::ptr& cmd,
     }
 }
 
+/* The refusal of a line written with the wrong operator.  Which of
+ * the two a command takes is not something anybody can guess from
+ * its name -- LIBDIR names one place and so is set, SOURCES names
+ * several and so is added to -- so saying which one it takes is not
+ * enough on its own: the line it is about has to be named, since in a
+ * tree of Configfiles the same command is written dozens of times,
+ * and the rewrite is given in full so it can be pasted over the old
+ * one.
+ *
+ * The rewrite is spelled with the command as it was written rather
+ * than as it is processed: a HEADERSRC reaches here as a HEADERS and
+ * then a SOURCES, and a TESTS[network] is a TESTS with a name in
+ * brackets, and neither is what the line said. */
+static void refuse_operator(const command::ptr& cmd,
+                            const std::string& wanted)
+{
+    auto written = std::to_string(cmd->type());
+    if (cmd->qualifier().size() > 0)
+        written += "[" + cmd->qualifier() + "]";
+    auto words = string_utils::split_char(cmd->debug()->line(), " ");
+    if (words.size() >= 2 && words[1] == cmd->operation())
+        written = words[0];
+
+    std::cerr << std::to_string(cmd->debug()) << "\n"
+              << "  error: Command "
+              << std::to_string(cmd->type())
+              << " only supports '" << wanted << "', but given "
+              << cmd->operation()
+              << "\n";
+
+    /* Anything other than the two operators there are is somebody
+     * reaching for one there isn't -- a '-=' most of all, to take
+     * back something an earlier line added.  Swapping in the right
+     * operator would turn their removal into an addition, so the
+     * advice is about the line that added it instead. */
+    if (cmd->operation() != "=" && cmd->operation() != "+=") {
+        std::cerr << "  '" << cmd->operation() << "' is not an"
+                  << " operator: a Configfile line either sets something"
+                  << " with '=' or adds to it with '+=', and no line can"
+                  << " take back what an earlier one added\n"
+                  << "  delete the line that added it, or write '"
+                  << written << " " << wanted << " " << cmd->data()
+                  << "' if this was meant to "
+                  << (wanted == "=" ? "set it" : "add to it")
+                  << "\n";
+        return;
+    }
+
+    std::cerr << "  write '" << written << " " << wanted << " "
+              << cmd->data() << "'\n";
+}
+
 void command_processor::process(const command::ptr& cmd)
 {
     /* Said here rather than inside the switch because TESTSRC and
@@ -1145,10 +1197,26 @@ void command_processor::process_one(const command::ptr& cmd)
                                       context_type::LIBRARY,
                                       context_type::GENERATE,
                                       context_type::TEST,}) == false) {
-            std::cerr << "Attempted to add DEPLIB to a "
+            /* The two ways to get here want different advice.  After
+             * a SOURCES the target is right there, one line up, and
+             * this is LINKOPTS's mistake (which only warns, since a
+             * link option on a source is merely ignored -- a library
+             * dependency that is ignored is a link that fails later,
+             * somewhere else).  Anywhere else there is no target at
+             * all, and the line belongs under one. */
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: Attempted to add DEPLIB to a "
                       << std::to_string(_stack.top()->type)
-                      << " context, which isn't supported"
-                      << "\n";
+                      << " context, which isn't supported\n"
+                      << "  a DEPLIBS is a library something gets linked"
+                      << " against, so it lands on a BINARIES, LIBRARIES,"
+                      << " TESTS or GENERATE\n";
+            if (_stack.top()->type == context_type::SOURCE)
+                std::cerr << "  move it above the SOURCES, onto the"
+                          << " target the file gets linked into\n";
+            else
+                std::cerr << "  write it below the BINARIES, LIBRARIES,"
+                          << " TESTS or GENERATE line it is meant for\n";
             abort();
         }
 
@@ -1354,9 +1422,19 @@ void command_processor::process_one(const command::ptr& cmd)
         auto new_language = language_list::global_search(cmd->data());
 
         if (new_language == NULL) {
-            std::cerr << "Unable to find language: '"
+            /* Not a list of every name registered, since some of
+             * those are pconfigure's own plumbing (implicit_h,
+             * gen_proc, phony) rather than anything a Configfile asks
+             * for.  Nor a guess at how the name went wrong: a typo, a
+             * compiler's name in place of the language's and a
+             * language this pconfigure is too old for all end up
+             * here, and the fix for each is the same. */
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: Unable to find language: '"
                       << cmd->data()
-                      << "'\n";
+                      << "'\n"
+                      << "  write the name of a language pconfigure knows,"
+                      << " like 'LANGUAGES += c' or 'LANGUAGES += c++'\n";
             abort();
         }
 
@@ -2298,31 +2376,40 @@ void command_processor::process_one(const command::ptr& cmd)
     abort();
 
 bad_op_eq:
-    std::cerr << "Command "
-              << std::to_string(cmd->type())
-              << " only supports '=', but given "
-              << cmd->operation()
-              << "\n";
+    refuse_operator(cmd, "=");
     abort();
 
 bad_op_pluseq:
-    std::cerr << "Command "
-              << std::to_string(cmd->type())
-              << " only supports '+=', but given "
-              << cmd->operation()
-              << "\n";
+    refuse_operator(cmd, "+=");
     abort();
 
 no_opts_target:
-    std::cerr << "Command "
+    std::cerr << std::to_string(cmd->debug()) << "\n"
+              << "  error: Command "
               << std::to_string(cmd->type())
-              << " needs an *OPTS target, but none exists\n";
+              << " needs an *OPTS target, but none exists\n"
+              << "  a " << std::to_string(cmd->type())
+              << " lands on whatever was opened last above it -- a"
+              << " LANGUAGES, for every file in that language, or a"
+              << " target such as a BINARIES, LIBRARIES or SOURCES, for"
+              << " that one alone -- and"
+              << " nothing above this line opened any of them\n"
+              << "  write it below the LANGUAGES, BINARIES or LIBRARIES"
+              << " line it is meant for\n";
     abort();
 
 no_configure_target:
-    std::cerr << "Command "
+    std::cerr << std::to_string(cmd->debug()) << "\n"
+              << "  error: Command "
               << std::to_string(cmd->type())
-              << " needs a BUILD_SYSTEMS target, but none exists\n";
+              << " needs a BUILD_SYSTEMS target, but none exists\n"
+              << "  a " << std::to_string(cmd->type())
+              << " is for a tree some other build system builds: it"
+              << " lands on the BUILD_SYSTEMS or vendored SUBPROJECTS"
+              << " opened last above it, and nothing above this line"
+              << " opened one\n"
+              << "  write it below the BUILD_SYSTEMS or SUBPROJECTS line"
+              << " it is meant for\n";
     abort();
 }
 
