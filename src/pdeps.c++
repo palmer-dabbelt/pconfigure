@@ -50,6 +50,7 @@
 #include <functional>
 #include <unistd.h>
 #include <iostream>
+#include <map>
 #include <set>
 #include <string>
 #include <utility>
@@ -95,9 +96,20 @@ namespace {
         std::vector<std::string> opts;
 
         /* The sources whose fragments the Makefile already knows how
-         * to build, because a Configfile named them.  Writing a
-         * second rule for one of those is two recipes for one file. */
-        std::set<std::string> named;
+         * to build, because a Configfile named them, and the fragment
+         * each one's rule writes.  Writing a second rule for one of
+         * those is two recipes for one file; and a named source is
+         * built the way its own line says, which can be with options
+         * of its own, so its fragment is not one this file's halves
+         * can spell. */
+        std::map<std::string, std::string> named;
+
+        /* The context the sources found behind this one's headers
+         * are described by, when nobody named them.  Those are built
+         * with the target's options rather than this source's, so a
+         * source with options of its own sends them somewhere else;
+         * left empty, the walk stays in this file. */
+        std::string behind;
 
         std::string base, variable;
         std::vector<std::pair<std::string, std::string>> peers;
@@ -247,7 +259,20 @@ namespace {
             else if (key == "self")        out.self = value;
             else if (key == "autodeps")    out.autodeps = value == "true";
             else if (key == "link")        out.links.push_back(value);
-            else if (key == "named")       out.named.insert(value);
+            else if (key == "behind")      out.behind = value;
+            else if (key == "named") {
+                /* A name on its own is what a pconfigure from before
+                 * named sources carried their fragments wrote, and
+                 * the walk below spells those fragments the way it
+                 * always did.  The next configure rewrites this file
+                 * in any case. */
+                auto split = value.find(' ');
+                if (split == std::string::npos)
+                    out.named[value] = "";
+                else
+                    out.named[value.substr(0, split)] =
+                        value.substr(split + 1);
+            }
             else if (key == "opt")         out.opts.push_back(value);
             else if (key == "peer") {
                 auto split = value.find(' ');
@@ -396,6 +421,12 @@ int main(int argc, const char **argv)
 
     auto headers = headers_of(ctx, source);
 
+    /* Read after the move to the top of the tree, because that is
+     * where its path is spelled from. */
+    auto behind = (ctx.behind.size() == 0 || ctx.behind == ctx.path)
+        ? ctx
+        : read_context(ctx.behind);
+
     /* The sources behind the headers, before this source's own
      * object, because that is the order pconfigure puts them in and
      * the order they are linked in has to come out the same either
@@ -407,19 +438,23 @@ int main(int argc, const char **argv)
      * Makefiles until it ran out of memory. */
     if (ctx.autodeps == true) {
         for (const auto& header: headers) {
-            for (const auto& behind: cxx_sources_for_header(header)) {
-                if (behind.compare(0, ctx.src_prefix.size(),
-                                   ctx.src_prefix) != 0)
+            for (const auto& found: cxx_sources_for_header(header)) {
+                if (found.compare(0, ctx.src_prefix.size(),
+                                  ctx.src_prefix) != 0)
                     continue;
 
-                auto sibling = behind.substr(ctx.src_prefix.size());
-                auto sibling_deps = ctx.deps_of(sibling);
+                auto sibling = found.substr(ctx.src_prefix.size());
+                auto named = ctx.named.find(sibling);
+                auto sibling_deps =
+                    (named != ctx.named.end() && named->second.size() > 0)
+                    ? named->second
+                    : behind.deps_of(sibling);
                 auto g = guard("deps", prefix.rewrite(sibling_deps));
 
                 say("ifndef " + g);
                 say(g + " := 1");
 
-                if (ctx.named.count(sibling) == 0) {
+                if (named == ctx.named.end()) {
                     /* "$(wildcard)" rather than the path, because
                      * the path may stop existing.  A source can be
                      * deleted without anything that reads it
@@ -470,17 +505,17 @@ int main(int argc, const char **argv)
                      * could not work out where it was standing, and
                      * "$(wildcard )" with nothing in it is a wart in
                      * every fragment in the tree for no gain. */
-                    auto by = ctx.pdeps.size() == 0
+                    auto by = behind.pdeps.size() == 0
                         ? std::string()
-                        : " $(wildcard " + ctx.pdeps + ")";
+                        : " $(wildcard " + behind.pdeps + ")";
 
-                    say(sibling_deps + ": $(wildcard " + behind + ") "
-                        + ctx.path + by);
-                    out += "\t" + ctx.at + "echo \"DEPS\t" + sibling
+                    say(sibling_deps + ": $(wildcard " + found + ") "
+                        + behind.path + by);
+                    out += "\t" + behind.at + "echo \"DEPS\t" + sibling
                            + "\"\n";
-                    out += "\t" + ctx.at + "mkdir -p $(dir $@)\n";
-                    out += "\t" + ctx.at + prefix.rewrite(
-                               ctx.pdeps + " --context " + ctx.path
+                    out += "\t" + behind.at + "mkdir -p $(dir $@)\n";
+                    out += "\t" + behind.at + prefix.rewrite(
+                               behind.pdeps + " --context " + behind.path
                                + " --source " + sibling) + "\n";
 
                     /* And "make clean" takes it, the way it takes the

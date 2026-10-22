@@ -1356,16 +1356,14 @@ language_cxx::compile_options(const context::ptr& ctx,
 
 }
 
-makefile::target::ptr
-language_cxx::deps_source(const context::ptr& ctx,
+std::string
+language_cxx::deps_suffix(const context::ptr& ctx,
                           const context::ptr& child,
                           const shared_target& is_shared)
                           const
 {
     auto hash = hash_compile_options(ctx, child);
     auto link = link_dir(ctx);
-    auto obj_prefix =
-        child->obj_dir + "/" + child->unbased(child->src_dir) + "/";
 
     /* A fragment sits beside the object it describes, because that is
      * where somebody looking for it will look.  What it cannot share
@@ -1379,22 +1377,47 @@ language_cxx::deps_source(const context::ptr& ctx,
      * has directories in it and this is one path component.  It was
      * doing that job before by being the directory the fragments sat
      * under; the file has moved and the job hasn't gone away. */
-    auto deps_suffix =
-        "/" + hash + "-" + hash_options({link})
+    return "/" + hash + "-" + hash_options({link})
         + (is_shared == shared_target::TRUE ? "-shared.d" : "-static.d");
+}
 
-    auto source_path = child->src_dir + "/" + child->cmd->data();
-    auto deps_path = obj_prefix + child->cmd->data() + deps_suffix;
+std::string
+language_cxx::deps_path(const context::ptr& ctx,
+                        const context::ptr& child,
+                        const shared_target& is_shared)
+                        const
+{
+    return child->obj_dir + "/" + child->unbased(child->src_dir) + "/"
+        + child->cmd->data() + deps_suffix(ctx, child, is_shared);
+}
 
-    /* One of these per set of compile options rather than per source,
-     * because that is the granularity everything else here has: the
-     * options are hashed into the object's name, so two sources
-     * compiled the same way are two sources with one answer to every
-     * question pdeps asks.  A source found behind a header inherits
-     * the options of whatever led to it, which is why the same file
-     * serves the whole walk below it. */
-    auto context_path = link + "deps-context-" + hash
-                      + project::base_suffix(child->base);
+/* One of these per set of compile options rather than per source,
+ * because that is the granularity everything else here has: the
+ * options are hashed into the object's name, so two sources compiled
+ * the same way are two sources with one answer to every question pdeps
+ * asks. */
+std::string
+language_cxx::deps_context_path(const context::ptr& ctx,
+                                const context::ptr& child)
+                                const
+{
+    return link_dir(ctx) + "deps-context-"
+        + hash_compile_options(ctx, child)
+        + project::base_suffix(child->base);
+}
+
+std::string
+language_cxx::write_deps_context(const context::ptr& ctx,
+                                 const context::ptr& child,
+                                 const shared_target& is_shared)
+                                 const
+{
+    auto hash = hash_compile_options(ctx, child);
+    auto link = link_dir(ctx);
+    auto obj_prefix =
+        child->obj_dir + "/" + child->unbased(child->src_dir) + "/";
+    auto deps_suffix = this->deps_suffix(ctx, child, is_shared);
+    auto context_path = deps_context_path(ctx, child);
 
     auto say = [](const std::string& key, const std::string& value)
         { return key + " " + value + "\n"; };
@@ -1467,10 +1490,33 @@ language_cxx::deps_source(const context::ptr& ctx,
      * pdeps still has to be the one that pulls such a fragment in,
      * even though it is not the one that builds it: where the include
      * sits is what decides where the objects land on the link line,
-     * and that has to be where the walk reached them. */
+     * and that has to be where the walk reached them.
+     *
+     * Each is said with the fragment its rule writes, because a named
+     * source is built the way its own SOURCES line says even when the
+     * walk reaches it through somebody else's header -- and that line
+     * can carry options of its own, which puts its fragment somewhere
+     * pdeps cannot work out from the halves above. */
     for (const auto& sibling: ctx->children)
         if (sibling->type == context_type::SOURCE)
-            out += say("named", sibling->cmd->data());
+            out += say("named", sibling->cmd->data() + " "
+                                + deps_path(ctx, sibling, is_shared));
+
+    /* And where the rest of what the walk finds is described: the
+     * sources behind this one's headers that nobody named are built
+     * with the target's options rather than with this source's (see
+     * behind_header_context()), so their fragments come from the
+     * context for those options.  That is this file whenever this
+     * source has no options of its own, and another file, written
+     * here too, when it does -- nothing else need ever have asked
+     * for one. */
+    {
+        auto plain = ctx->dup(context_type::SOURCE, child->cmd, {});
+        auto plain_path = deps_context_path(ctx, plain);
+        if (plain_path != context_path)
+            write_deps_context(ctx, plain, is_shared);
+        out += say("behind", plain_path);
+    }
 
     for (const auto& opt: compile_options(ctx, child))
         out += say("opt", opt);
@@ -1481,6 +1527,18 @@ language_cxx::deps_source(const context::ptr& ctx,
      * again, whether or not anything changed. */
     file_utils::mkdir_p(link);
     file_utils::write_if_changed(context_path, out);
+    return context_path;
+}
+
+makefile::target::ptr
+language_cxx::deps_source(const context::ptr& ctx,
+                          const context::ptr& child,
+                          const shared_target& is_shared)
+                          const
+{
+    auto source_path = child->src_dir + "/" + child->cmd->data();
+    auto deps_path = this->deps_path(ctx, child, is_shared);
+    auto context_path = write_deps_context(ctx, child, is_shared);
 
     /* Through "$(wildcard)", which is how pdeps names the sources it
      * finds behind a header, and for the same reason: a source that
@@ -1620,10 +1678,18 @@ language_cxx::compile_source(const context::ptr& ctx,
 
         if (ctx->autodeps == true) {
             for (const auto& dep: find_files_for_header(header_dep)) {
+                auto src_prefix = child->src_dir + "/";
+                if (dep.compare(0, src_prefix.size(), src_prefix) != 0)
+                    continue;
+                std::string stripped_dep = dep.substr(src_prefix.size());
+                auto dep_ctx = behind_header_context(ctx,
+                                                     stripped_dep,
+                                                     child->cmd->debug());
+
                 auto dep_out_name =
-                    child->obj_dir
-                    + "/" + child->unbased(dep)
-                    + "/" + hash_compile_options(ctx, child);
+                    dep_ctx->obj_dir
+                    + "/" + dep_ctx->unbased(dep)
+                    + "/" + hash_compile_options(ctx, dep_ctx);
 
                 bool should_process = true;
                 for (const auto& p: processed)
@@ -1632,16 +1698,6 @@ language_cxx::compile_source(const context::ptr& ctx,
                 if (should_process == false)
                     continue;
                 processed.push_back(dep_out_name);
-
-                auto src_prefix = child->src_dir + "/";
-                if (dep.compare(0, src_prefix.size(), src_prefix) != 0)
-                    continue;
-                std::string stripped_dep = dep.substr(src_prefix.size());
-                auto cmd = std::make_shared<command>(command_type::SOURCES,
-                                                     "+=",
-                                                     stripped_dep,
-                                                     child->cmd->debug());
-                auto dep_ctx = child->dup(context_type::SOURCE, cmd, {});
 
                 deps = deps + compile_source(ctx, dep_ctx, processed, is_shared);
             }
@@ -1684,6 +1740,46 @@ language_cxx::compile_source(const context::ptr& ctx,
     };
 
     return deps;
+}
+
+/* A COMPILEOPTS written under a SOURCES is for that one source, and a
+ * source found behind its header is not that source: it is one the
+ * target needs because of what the header promised, and it is the same
+ * source whichever of the target's files happened to read the header
+ * first.  So it is built the way the target builds everything it was
+ * not told anything particular about, which is the target's own
+ * options.
+ *
+ * Inheriting the options of whatever led to it was how this used to
+ * work, and it is wrong in a way that does not stay quiet: two sources
+ * that read one header with different options of their own each want
+ * the source behind it built their way, which is two objects defining
+ * the same symbols on one link line.  Under AUTORECONFIGURE it is
+ * worse, if anything -- a source the Configfile also named has a
+ * fragment rule for one set of options, and the walk asks for the
+ * other.
+ *
+ * The exception is a source the Configfile named outright.  That
+ * already has a SOURCES line saying how it is built, options and all,
+ * and reaching it through a header does not make it a different
+ * source: it is built the way that line says, which is also what lets
+ * the two routes to it come out as one object. */
+context::ptr
+language_cxx::behind_header_context(const context::ptr& ctx,
+                                    const std::string& name,
+                                    const debug_info::ptr& debug)
+                                    const
+{
+    for (const auto& sibling: ctx->children)
+        if (sibling->type == context_type::SOURCE
+            && sibling->cmd->data() == name)
+            return sibling;
+
+    auto cmd = std::make_shared<command>(command_type::SOURCES,
+                                         "+=",
+                                         name,
+                                         debug);
+    return ctx->dup(context_type::SOURCE, cmd, {});
 }
 
 std::vector<std::string> language_cxx::dependencies(

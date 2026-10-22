@@ -331,6 +331,29 @@ protected:
                                       const context::ptr& child,
                                       const shared_target& is_shared) const;
 
+    /* The pieces deps_source() is made of, split out because the
+     * context file it writes has to name other sources' fragments and
+     * other options' context files, spelled exactly the way their own
+     * rules spell them. */
+    std::string deps_suffix(const context::ptr& ctx,
+                            const context::ptr& child,
+                            const shared_target& is_shared) const;
+    std::string deps_path(const context::ptr& ctx,
+                          const context::ptr& child,
+                          const shared_target& is_shared) const;
+    std::string deps_context_path(const context::ptr& ctx,
+                                  const context::ptr& child) const;
+    std::string write_deps_context(const context::ptr& ctx,
+                                   const context::ptr& child,
+                                   const shared_target& is_shared) const;
+
+    /* The context a source found behind a header is built in, which is
+     * the target's rather than that of the source whose header it
+     * was. */
+    context::ptr behind_header_context(const context::ptr& ctx,
+                                       const std::string& name,
+                                       const debug_info::ptr& debug) const;
+
     /* Lists the dependencies of a since source file. */
     std::vector<std::string> dependencies(
         const std::string& filename,
