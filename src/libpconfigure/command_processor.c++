@@ -1473,8 +1473,16 @@ void command_processor::process_one(const command::ptr& cmd)
         set_opts_target(_stack.top());
         _output_contexts.push_back(_stack.top());
 
+        /* What a test of a library is handed, and what its check rule
+         * waits on, is the library -- and a library is built into the
+         * LIBDIR, not the BINDIR the programs go to.  Naming the BINDIR
+         * here makes the rule wait on a file no rule makes, so "make
+         * check" stops with "No rule to make target" before a single
+         * test has run, in this project and in any project that
+         * includes it as a subproject.  This is the same path
+         * project.c++ and the languages build the library at. */
         auto ctx = _stack.top();
-        ctx->test_binary = ctx->bin_dir + "/" + ctx->cmd->data();
+        ctx->test_binary = ctx->lib_dir + "/" + ctx->cmd->data();
 
         return;
     }
