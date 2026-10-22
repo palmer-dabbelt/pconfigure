@@ -108,6 +108,11 @@ namespace makefile {
          * ask. */
         std::vector<std::string> _configfiles;
 
+        /* The ones among them that this build makes itself, which are
+         * written as plain prerequisites rather than through
+         * $(wildcard) -- see write_to_file() for why. */
+        std::vector<std::string> _configfiles_built;
+
     public:
         /* Creates a new "empty" Makefile -- note that this actually
          * contains some about of default targets and such that you
@@ -185,8 +190,11 @@ namespace makefile {
         /* Says that make should write this Makefile again when any of
          * these change.  They are the names a run went looking for
          * Configfile lines in, present or not: a file that shows up
-         * later is one of the ways the answer changes. */
-        void reconfigure_on(const std::vector<std::string>& configfiles);
+         * later is one of the ways the answer changes.  "built" names
+         * the ones a rule in this build produces, which make is to
+         * build before it decides whether to reconfigure. */
+        void reconfigure_on(const std::vector<std::string>& configfiles,
+                            const std::vector<std::string>& built);
 
         /* Writes this makefilie out to a text file. */
         void write_to_file(const std::string& filename);

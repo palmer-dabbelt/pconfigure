@@ -20,6 +20,7 @@
 
 #include "makefile.h++"
 #include "self_path.h++"
+#include <algorithm>
 #include <iostream>
 
 /* Writes one "check-report" rule.  There are four of them -- the quiet
@@ -172,9 +173,11 @@ void makefile::makefile::skip_reconfigure(void)
 }
 
 void makefile::makefile::reconfigure_on(
-    const std::vector<std::string>& configfiles)
+    const std::vector<std::string>& configfiles,
+    const std::vector<std::string>& built)
 {
     _configfiles = configfiles;
+    _configfiles_built = built;
 }
 
 void makefile::makefile::write_to_file(const std::string& filename)
@@ -437,6 +440,21 @@ void makefile::makefile::write_to_file(const std::string& filename)
      * $(wildcard) is expanded afresh on every run, so the day such a
      * file is created it is a prerequisite newer than this Makefile.
      *
+     * Except for a name this build has a rule for, where the second
+     * half is the wrong way round.  A CONFIG_DEPS can name a file a
+     * vendored tree installs -- the llvm-config a Configfile asks for
+     * its flags -- and once that file exists $(wildcard) hands make
+     * the bare name, make finds the rule, and builds the file before
+     * it decides whether to reconfigure.  On a fresh tree the same
+     * $(wildcard) expands to nothing, so make never learns the
+     * configuration is waiting on it: the first make configures
+     * against whatever the Configfile found instead, builds against
+     * that, and only the make after the tool lands gets it right.
+     * Written bare, the fresh tree builds the tool first like every
+     * later one does.  A missing file is not a "No rule to make
+     * target" for these, which is the only thing the $(wildcard) was
+     * there to prevent.
+     *
      * A project that keeps its committed Makefile beside this one
      * says the prerequisites here and leaves the recipe there, where
      * the pconfigure to run is named.  One target with its
@@ -444,8 +462,15 @@ void makefile::makefile::write_to_file(const std::string& filename)
      * be. */
     if (_configfiles.size() > 0) {
         fprintf(file, "%s:", filename.c_str());
-        for (const auto& configfile: _configfiles)
-            fprintf(file, " $(wildcard %s)", configfile.c_str());
+        for (const auto& configfile: _configfiles) {
+            auto built = std::find(_configfiles_built.begin(),
+                                   _configfiles_built.end(),
+                                   configfile) != _configfiles_built.end();
+            if (built)
+                fprintf(file, " %s", configfile.c_str());
+            else
+                fprintf(file, " $(wildcard %s)", configfile.c_str());
+        }
         fprintf(file, "\n");
 
         if (_write_reconfigure == true) {

@@ -1454,7 +1454,33 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
      * a target that stopped being asked for keeps whatever it last
      * built. */
     if (_base.size() == 0 && _processor->autoreconfigure() == true) {
-        out->reconfigure_on(configfiles_read());
+        /* Which of those names a vendored tree in this run installs,
+         * so the Makefile can have make build it before deciding
+         * whether to reconfigure (see makefile::write_to_file()).
+         * Only a vendored tree's outputs, and that is the whole of
+         * the restriction rather than a first cut at it: their rules
+         * read nothing but the tree's own sources and options, so
+         * they can be built while make is still remaking the
+         * makefiles it includes.  Anything pconfigure links is the
+         * other way round -- its object list comes out of pdeps
+         * fragments make has not read yet at that point, which is the
+         * fresh-checkout failure described below for the bootstrapped
+         * tool -- so a CONFIG_DEPS on one of those keeps waiting for
+         * the file to turn up on its own. */
+        auto vendored_output = [&](const std::string& path) -> bool {
+            for (const auto& other: everyone)
+                for (const auto& tree: other->_processor->vendored())
+                    if (tree->vendored() && tree->produces(path))
+                        return true;
+            return false;
+        };
+
+        auto built = std::vector<std::string>();
+        for (const auto& configfile: configfiles_read())
+            if (vendored_output(configfile))
+                built.push_back(configfile);
+
+        out->reconfigure_on(configfiles_read(), built);
 
         /* A project that bootstraps its own pconfigure builds the tool
          * that wrote this Makefile out of the Makefile itself: after
