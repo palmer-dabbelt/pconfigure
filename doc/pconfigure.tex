@@ -108,6 +108,20 @@ the right one.  If \texttt{value} starts and ends with a \texttt{`} character
 then it is executed as a shell out (the syntax here is just like BASH
 and Ruby).
 
+What a shell out prints takes its place in the line, and the line is
+then read exactly as though that had been typed there, gaps and all.
+A shell out that prints nothing is the usual answer from some of them
+(\texttt{pkg-config --cflags} says nothing about a library the compiler
+already finds), so a line whose whole value came from shell outs that
+printed nothing is not treated as a line with its value left off.
+\texttt{COMPILEOPTS}, \texttt{LINKOPTS}, \texttt{CONFIGUREOPTS} and
+\texttt{MAKEOPS} add nothing, and \texttt{CROSS\_COMPILE} is set to
+nothing.  Every other command names something -- a target, a file, a
+directory, a language -- and is an error naming the line, since an empty
+name is not a name: an empty \texttt{LIBDIR} would put every library at
+the root of the filesystem.  The command and its operator are checked
+first either way, so a misspelled command is still reported as one.
+
 A UTF-8 byte order mark at the very start of a \texttt{Configfile},
 which some editors write without being asked, is ignored.  Anywhere
 else in the file those bytes are an error on the line they appear on.
