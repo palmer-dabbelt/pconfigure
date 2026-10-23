@@ -4948,6 +4948,18 @@ A bash ``compiler'', which really just does the following
 \item Marks the output as executable
 \end{itemize}
 
+It is run as
+\begin{verbatim}
+$ pbashc -i $input -o $output [-I dir]... [-D name]...
+\end{verbatim}
+where \texttt{-I} adds a directory to search for included files and
+\texttt{-D} a definition, and each of them may be written either
+glued to what it carries or as a word of its own, the same as the C
+languages take them.  There is exactly one input: a second one, an
+input that is a directory, or a flag with nothing after it is an
+error rather than something to guess at, since each of those used to
+come out as a script with the real program missing from it.
+
 \subsection{\texttt{phc} \label{prog:phc}}
 
 The header ``compiler'', which copies its input to its output and
