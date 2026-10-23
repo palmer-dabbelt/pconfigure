@@ -440,6 +440,11 @@ protected:
      * written under one of these from a line that is quietly ignored
      * into a line that says what to write instead. */
     bool run_by_make(void) const { return false; }
+    std::string instead_of_makeopt(void) const
+    {
+        return "what it was for reaches cargo as its environment, so"
+               " write 'CONFIGUREOPTS += --env NAME=VALUE'";
+    }
 
 protected:
     /* Takes one CONFIGUREOPTS, and answers whether it was one of

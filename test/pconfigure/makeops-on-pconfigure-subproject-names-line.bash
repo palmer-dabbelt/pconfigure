@@ -24,4 +24,9 @@ cat out
 grep -q "MAKEOPS doesn't apply to a pconfigure subproject" out
 grep -q "a/Configfile:2" out
 
+# A plain "no" leaves the reader to work out what a pconfigure
+# project says instead of a make variable, so the refusal says that
+# too.
+grep -q "say what this was for in 'a/b/Configfile', with a COMPILEOPTS" out
+
 exit 0

@@ -484,6 +484,7 @@ refused()
 # There is no make for a variable to go on the command line of.
 refused makeops "MAKEOPS += CC=clang" \
     "MAKEOPS doesn't apply to a meson subproject"
+grep -q "write 'CONFIGUREOPTS += --define NAME=VALUE'" $top/makeops.out
 
 refused no-value "CONFIGUREOPTS += --define tests" \
     "'--define tests' has no value"

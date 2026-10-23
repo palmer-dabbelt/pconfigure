@@ -511,6 +511,14 @@ protected:
      * what the generator will be. */
     bool run_by_make(void) const;
 
+    /* The same advice the refusal at the rules gives, since it is the
+     * same mistake caught from the other side of the --generator. */
+    std::string instead_of_makeopt(void) const
+    {
+        return "a variable this would have set is a cache variable here,"
+               " so write 'CONFIGUREOPTS += --define NAME=VALUE'";
+    }
+
     /* TRUE when the generator writes a Makefile for GNU make to read.
      * Spelled as "ends with 'Unix Makefiles'" so that the extra
      * generators -- "CodeBlocks - Unix Makefiles" and the rest, which

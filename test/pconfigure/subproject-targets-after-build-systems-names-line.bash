@@ -22,4 +22,8 @@ cat out
 grep -q "SUBPROJECT_TARGETS needs a SUBPROJECTS above it" out
 grep -q "a/Configfile:2" out
 
+# And what to do about it, since the fix is a move rather than a
+# deletion: the line was right, just in the wrong place.
+grep -q "move it below the SUBPROJECTS line that names the tree" out
+
 exit 0

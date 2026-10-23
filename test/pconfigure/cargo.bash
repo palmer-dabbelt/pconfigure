@@ -1084,6 +1084,7 @@ refuses()
 # been quietly dropped into a line that says what to write instead.
 refuses makeops "MAKEOPS       += RUSTFLAGS=-g"
 grep -q "MAKEOPS doesn't apply to a cargo subproject" $top/makeops.out
+grep -q "write 'CONFIGUREOPTS += --env NAME=VALUE'" $top/makeops.out
 
 # The escape hatch doesn't get to say the things this build system has
 # already decided, because two answers to one question is a crate that

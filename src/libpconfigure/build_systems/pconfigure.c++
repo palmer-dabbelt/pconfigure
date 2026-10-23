@@ -47,7 +47,10 @@ void build_system_pconfigure::take_configureopt(const std::string& opt)
     error_at_line() << "CONFIGUREOPTS doesn't apply to a pconfigure"
                     << " subproject: '" << opt << "'\n"
                     << "  a pconfigure project is configured by its own"
-                    << " Configfile\n";
+                    << " Configfile, which is read into this run rather"
+                    << " than run with options\n"
+                    << "  say what this was for in '" << base()
+                    << "Configfile' instead\n";
     abort();
 }
 

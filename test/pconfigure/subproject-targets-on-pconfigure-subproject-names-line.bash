@@ -25,4 +25,9 @@ cat out
 grep -q "SUBPROJECT_TARGETS doesn't apply to a pconfigure subproject" out
 grep -q "a/Configfile:4" out
 
+# A file a pconfigure project builds is a target of this Makefile
+# already, so what to write instead is nothing: the refusal says to
+# name it directly and drop the line.
+grep -q "name it where it is needed, and drop this line" out
+
 exit 0

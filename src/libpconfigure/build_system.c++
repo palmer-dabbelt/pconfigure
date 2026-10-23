@@ -79,6 +79,9 @@ void build_system::add_makeopt(const std::string& opt,
                         << " subproject: '" << opt << "'\n"
                         << "  there is no make being run here for a"
                         << " variable to go on the command line of\n";
+        auto instead = instead_of_makeopt();
+        if (instead.size() > 0)
+            std::cerr << "  " << instead << "\n";
         abort();
     }
 
@@ -115,7 +118,9 @@ void build_system::add_subproject_target(const std::string& path,
         error_at_line() << "SUBPROJECT_TARGETS needs a SUBPROJECTS above"
                         << " it: '" << path << "'\n"
                         << "  it names a file that one vendored tree builds,"
-                        << " so it has to say which tree\n";
+                        << " so it has to say which tree\n"
+                        << "  move it below the SUBPROJECTS line that names"
+                        << " the tree that builds it\n";
         abort();
     }
 
@@ -123,7 +128,10 @@ void build_system::add_subproject_target(const std::string& path,
         error_at_line() << "SUBPROJECT_TARGETS doesn't apply to a " << name()
                         << " subproject: '" << path << "'\n"
                         << "  nothing here says the tree has been built, so"
-                        << " there is nothing for this to wait for\n";
+                        << " there is nothing for this to wait for\n"
+                        << "  a file this project's own rules build is a"
+                        << " target already: name it where it is needed,"
+                        << " and drop this line\n";
         abort();
     }
 

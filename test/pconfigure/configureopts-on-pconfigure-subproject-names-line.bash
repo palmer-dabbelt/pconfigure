@@ -28,4 +28,8 @@ cat out
 grep -q "CONFIGUREOPTS doesn't apply to a pconfigure subproject" out
 grep -q "a/Configfile:4" out
 
+# And it says where the option belongs instead, which is the
+# subproject's own Configfile rather than the one that named it.
+grep -q "say what this was for in 'a/b/Configfile' instead" out
+
 exit 0

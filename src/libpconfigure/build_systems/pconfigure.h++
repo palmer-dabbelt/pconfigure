@@ -53,6 +53,16 @@ protected:
     /* Nothing here is run by make: a pconfigure subproject is read
      * into this run, and its rules come out of its own contexts. */
     bool run_by_make(void) const { return false; }
+
+    /* What a variable on a sub-make's command line would have been
+     * for -- a flag, mostly -- is said in the subproject's own
+     * Configfile, which is read into this run like this one is. */
+    std::string instead_of_makeopt(void) const
+    {
+        return "a pconfigure project is configured by its own Configfile,"
+               " so say what this was for in '" + base() + "Configfile',"
+               " with a COMPILEOPTS or a LINKOPTS";
+    }
 };
 
 #endif

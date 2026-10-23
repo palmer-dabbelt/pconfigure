@@ -297,6 +297,14 @@ protected:
      * to refuse a MAKEOPS where it is written. */
     bool run_by_make(void) const { return false; }
 
+    /* And what to write instead, which is the --define that this
+     * file's own comment at the top says a variable becomes. */
+    std::string instead_of_makeopt(void) const
+    {
+        return "a variable the tree would take is an option here, so"
+               " write 'CONFIGUREOPTS += --define NAME=VALUE'";
+    }
+
     /* What meson, and a setup script in its place, reads as a second
      * answer to where the tree installs.  The names only; the
      * refusing is build_system::refuse_second_answer()'s. */

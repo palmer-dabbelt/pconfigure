@@ -328,6 +328,13 @@ protected:
      * what a MAKEOPS has to be true of to mean anything. */
     virtual bool run_by_make(void) const { return true; }
 
+    /* What to write instead of a MAKEOPS, for a build system that
+     * run_by_make() says can't take one.  A refusal that only says
+     * "no" leaves whoever wrote the line to find out on their own
+     * how this tree does say what the variable was for, and every
+     * build system here that isn't run by make has an answer. */
+    virtual std::string instead_of_makeopt(void) const { return ""; }
+
     /* The line whose CONFIGUREOPTS, MAKEOPS or SUBPROJECT_TARGETS is
      * being handled, for a build system that hands part of it on --
      * a "--make-var" is a MAKEOPS, and has to say which line it came

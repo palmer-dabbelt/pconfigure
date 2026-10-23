@@ -1445,6 +1445,7 @@ fi
 cat after.out
 grep -q "MAKEOPS doesn't apply to a cmake subproject: 'MY_VAR=x'" after.out
 grep -q "there is no make being run here" after.out
+grep -q "write 'CONFIGUREOPTS += --define NAME=VALUE'" after.out
 
 # Nothing was written before it gave up, so there is no half-configured
 # project left behind to confuse the next run.
