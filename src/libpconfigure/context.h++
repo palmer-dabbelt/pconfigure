@@ -421,6 +421,13 @@ public:
      * returning TRUE if it matches, and FALSE if it doesn't. */
     bool check_type(const std::vector<context_type>& types);
 
+    /* Whether this is a LIBRARIES whose name asks for a static
+     * archive -- "libfoo.a" -- rather than a shared library.  The
+     * name is the only thing a Configfile has to say it with, and
+     * both the language that builds the archive and the commands that
+     * can't mean anything under one have to read it the same way. */
+    bool is_static_archive(void) const;
+
     /* Converts this context to a string, dumping the whole tree of
      * children out with it. */
     std::string as_tree_string(const std::string prefix = "") const;

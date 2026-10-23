@@ -148,6 +148,12 @@ private:
     };
     shared_target is_shared_target(const context::ptr& ctx) const;
 
+    /* What to run to put an archive together.  It's the same question
+     * as which compiler to run, with the same answer for a cross
+     * build: a toolchain's "ar" carries its prefix like everything
+     * else in it does. */
+    std::string archiver_command(const context::ptr& ctx) const;
+
     /* Passed to target generation functions to indicate if this target should
      * be built for installation, or should be built for local usage. */
     enum class install_target {
@@ -250,6 +256,43 @@ protected:
                     const std::string link_inputs_path);
 
         virtual ~link_target(void) {}
+
+    public:
+        /* target virtual functions */
+        virtual makefile::target::ptr generate_makefile_target(void) const;
+        virtual std::string path(void) const { return _target_path; }
+    };
+
+    /* This sort of target archives a bunch of object files, producing
+     * a static library.  It's a link_target with nearly everything
+     * taken away: an archive has no link line, so there's nowhere for
+     * link options, rpaths or a soname to go, and nothing about it
+     * differs between the copy that gets installed and the one that
+     * gets used in the tree. */
+    class archive_target: public target {
+    private:
+        const std::string _target_path;
+        const std::vector<target::ptr> _objects;
+        const std::vector<std::string> _comments;
+        const context::ptr _ctx;
+        const std::string _archiver_command;
+        const std::string _archiver_pretty;
+
+        /* The same hash of the inputs that a link_target rides on,
+         * for the same reason: an object leaving the archive has to
+         * rebuild it. */
+        const std::string _link_inputs_path;
+
+    public:
+        archive_target(const std::string& target_path,
+                       const std::vector<target::ptr>& objects,
+                       const std::vector<std::string>& comments,
+                       const context::ptr& ctx,
+                       const std::string archiver_command,
+                       const std::string archiver_pretty,
+                       const std::string link_inputs_path);
+
+        virtual ~archive_target(void) {}
 
     public:
         /* target virtual functions */

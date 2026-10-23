@@ -278,6 +278,14 @@ language_cxx::shared_target language_cxx::is_shared_target(const context::ptr& c
     abort();
 }
 
+std::string language_cxx::archiver_command(const context::ptr& ctx) const
+{
+    if (ctx->cross_compile.size() > 0)
+        return ctx->cross_compile + "ar";
+
+    return "${AR}";
+}
+
 /* An option that reaches the command line and isn't in the hash is
  * an option make can't see change: the hash names the directory the
  * output goes in, and a new directory is the only thing that makes the
@@ -945,6 +953,100 @@ language_cxx::link_target::generate_makefile_target(void) const
         _comments);
 }
 
+language_cxx::archive_target::archive_target(const std::string& target_path,
+                                             const std::vector<target::ptr>& objects,
+                                             const std::vector<std::string>& comments,
+                                             const context::ptr& ctx,
+                                             const std::string archiver_command,
+                                             const std::string archiver_pretty,
+                                             const std::string link_inputs_path)
+: _target_path(target_path),
+  _objects(objects),
+  _comments(comments),
+  _ctx(ctx),
+  _archiver_command(archiver_command),
+  _archiver_pretty(archiver_pretty),
+  _link_inputs_path(link_inputs_path)
+{
+}
+
+makefile::target::ptr
+language_cxx::archive_target::generate_makefile_target(void) const
+{
+    auto deps = vector_util::map(_objects,
+                                 [](const target::ptr& t){
+                                    return t->generate_makefile_target();
+                                 });
+    deps.push_back(std::make_shared<makefile::target>(_link_inputs_path));
+
+    /* The same list a link_target would hand the linker, worked out
+     * the same way; see there for why an AUTORECONFIGURE project asks
+     * make for it. */
+    auto object_args = _ctx->autoreconfigure
+        ? std::string("$(filter %.o,$^)")
+        : vector_util::join(vector_util::map(_objects,
+                                             [](const target::ptr& t){
+                                                 return t->path();
+                                             }),
+                            " ");
+
+    /* "ar r" adds to whatever archive is already there rather than
+     * replacing it, so an object that has left the library since the
+     * last build would otherwise stay in it for good, still defining
+     * whatever it used to define.  Starting from nothing every time
+     * is what makes the archive say what the Configfile says now.
+     * The "s" writes the symbol index, without which a linker can't
+     * pull members out of the archive by the symbols they define. */
+    /* An archive remembers each member by the last component of the
+     * path it was added from, and every object pconfigure compiles is
+     * called "<option hash>-shared.o" in a directory named after its
+     * source.  Handed to "ar" as they are, every source built with the
+     * same options becomes a member of the same name: linking still
+     * works, since that goes through the symbol index, but "ar x"
+     * leaves one file standing where there were several, "ar d" on a
+     * name takes whichever comes first, and macOS's ranlib warns about
+     * every archive with more than one source in it.
+     *
+     * So each object is linked into a directory of its own under the
+     * name of the source it came from -- "one.c++.o" -- and archived
+     * from there.  Two sources of the same name in different
+     * directories still can't share one, so the later gets a number.
+     * This happens in the recipe rather than here because under
+     * AUTORECONFIGURE the list of objects is make's, not this
+     * function's, and the directory is gone again once the archive is
+     * written: it's a staging area, not something to keep in step. */
+    auto stage = std::string("$(dir $@)members");
+    auto cmds = std::vector<std::string>{
+        "mkdir -p $(dir $@)",
+        "rm -rf $@ " + stage,
+        "mkdir -p " + stage
+          + " && members="
+          + " && for o in " + object_args + "; do"
+          +     " n=$$(basename $$(dirname $$o));"
+          +     " m=" + stage + "/$$n.o; i=1;"
+          +     " while test -e $$m; do"
+          +         " i=$$(($$i + 1)); m=" + stage + "/$$n-$$i.o;"
+          +     " done;"
+          +     " ln -f $$o $$m 2>/dev/null || cp -f $$o $$m || exit 1;"
+          +     " members=\"$$members $$m\";"
+          + " done"
+          + " && " + _archiver_command + " rcs $@ $$members",
+        "rm -rf " + stage,
+    };
+
+    auto global = std::vector<makefile::global_targets>{
+        makefile::global_targets::CLEAN,
+    };
+
+    return std::make_shared<makefile::target>(
+        _target_path,
+        _archiver_pretty + "\t" + _ctx->cmd->data(),
+        deps,
+        global,
+        cmds,
+        _comments);
+}
+
 language_cxx::compile_target::compile_target(const std::string& target_path,
                                              const std::string& main_source,
                                              const shared_target& shared,
@@ -1240,6 +1342,63 @@ language_cxx::link_objects(const context::ptr& ctx,
      * link line some other way gets one too. */
     auto additional_deps = std::vector<target::ptr>();
 
+    /* A static archive is put together rather than linked, and it is
+     * the same file whether it's headed for the tree or for $PREFIX:
+     * there's no rpath to point anywhere, because an archive is never
+     * loaded at all -- its members are copied into whatever links it.
+     * So both copies come from the one archive.
+     *
+     * The objects are the position-independent ones every other
+     * library is built from, which is what lets an archive be linked
+     * into a shared library as well as into a program, and lets a
+     * source that's in both a "libfoo.a" and a "libfoo.so" compile
+     * once.
+     *
+     * Nothing here reads this library's LINKOPTS or DEPLIBS, because
+     * an archive doesn't record what it needs: whatever links it has
+     * to ask for those itself, the same as with any other static
+     * library.
+     *
+     * Its progress line says LD like any other library's, because
+     * it's this target's link step that it names -- and because a
+     * build log that changed what it calls a library's build along
+     * with what the library is would be two changes at once. */
+    if (ctx->is_static_archive()) {
+        auto archive = std::make_shared<archive_target>(
+            shared_link_dir + "archive",
+            objects,
+            shared_comments + std::vector<std::string>{"archive_target"},
+            ctx,
+            archiver_command(ctx),
+            this->linker_pretty(),
+            link_inputs_path
+        );
+
+        auto cp_local_archive = std::make_shared<cp_target>(
+            bin_dir + "/" + ctx->cmd->data(),
+            ctx->unbased(bin_dir) + "/" + ctx->cmd->data(),
+            archive,
+            language_cxx::install_target::FALSE,
+            shared_comments + std::vector<std::string>{"cp_local_target"}
+        );
+
+        if (ctx->install == false)
+            return {archive, cp_local_archive};
+
+        auto archive_install_path =
+            "$(DESTDIR)/" + ctx->prefix + "/" + ctx->unbased(bin_dir)
+            + "/" + ctx->cmd->data();
+        auto cp_install_archive = std::make_shared<cp_target>(
+            archive_install_path,
+            archive_install_path,
+            archive,
+            language_cxx::install_target::TRUE,
+            shared_comments + std::vector<std::string>{"cp_install_target"}
+        );
+
+        return {archive, cp_install_archive, cp_local_archive};
+    }
+
     /* There's actually two proper targets here: one which generates the link
      * that's targeted for installation, and one that generates the link that's
      * targeted for actual compulation. */
@@ -1531,10 +1690,18 @@ language_cxx::write_deps_context(const context::ptr& ctx,
      * exist is link_objects()' answer, and this has to give the same
      * one: an object that never reached the installed link is a
      * "make install" that installs a program built out of whatever
-     * was lying around. */
-    if (ctx->install == true)
-        out += say("link", link + "install");
-    out += say("link", link + "local");
+     * was lying around.
+     *
+     * A static archive has the one step both of its copies come from,
+     * and an object that is a prerequisite of a link step that doesn't
+     * exist is an object that's built and then archived nowhere. */
+    if (ctx->is_static_archive()) {
+        out += say("link", link + "archive");
+    } else {
+        if (ctx->install == true)
+            out += say("link", link + "install");
+        out += say("link", link + "local");
+    }
 
     /* The sources this target's Configfile named outright, which are
      * the ones whose fragments have a rule in the Makefile already.

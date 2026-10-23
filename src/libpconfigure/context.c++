@@ -254,6 +254,18 @@ bool context::check_type(const std::vector<context_type>& types)
     return false;
 }
 
+bool context::is_static_archive(void) const
+{
+    if (type != context_type::LIBRARY)
+        return false;
+
+    /* Every other name is a shared library, as it always has been --
+     * including the ".dylib" a macOS project spells its own with. */
+    const auto& name = cmd->data();
+    return name.size() > 2
+        && name.compare(name.size() - 2, 2, ".a") == 0;
+}
+
 std::string context::as_tree_string(const std::string prefix) const
 {
     std::stringstream ss;
