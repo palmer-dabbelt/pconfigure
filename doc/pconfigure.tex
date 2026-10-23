@@ -2121,6 +2121,19 @@ things like \texttt{--bin-prefix}, instead binaries are installed to
 \texttt{\$PREFIX/\$BINDIR}.  This keeps things consistant between the
 installed image and the build directory's image.
 
+The prefix has to be an absolute path with no whitespace in it, and a
+\texttt{Configfile} line that writes anything else is an error.  It is
+compiled into every program as \texttt{\_\_PCONFIGURE\_\_PREFIX} and
+\texttt{\_\_PCONFIGURE\_\_LIBEXEC} and linked into installed ones as
+the run-time library search path, so a relative prefix would be looked
+up from whatever directory the program was started in; and it is
+pasted unquoted into compile lines and install recipes, where a space
+splits it in two.  Repeated slashes and a trailing one are dropped, so
+\texttt{/opt/thing/} and \texttt{/opt//thing} mean exactly what
+\texttt{/opt/thing} does; a prefix of \texttt{/} on its own is kept,
+and installs to \texttt{/bin} and \texttt{/lib} rather than
+\texttt{//bin} and \texttt{//lib}.
+
 Note that it's probably not sane to have \texttt{PREFIX} in the middle
 of a \texttt{Configfile}.  See Section~\ref{err::prefix} for more
 information.
