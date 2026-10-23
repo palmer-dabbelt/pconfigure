@@ -616,7 +616,10 @@ there is a directory called \texttt{gone}.
 Calling \texttt{SOURCES} without a target is a fatal error.
 
 Neither may the file's name hold a quote, a space or a shell
-metacharacter; see Section~\ref{odd:quoting}.
+metacharacter; see Section~\ref{odd:quoting}.  A quote, a shell
+metacharacter or one of \texttt{make}'s own (\texttt{\#}, \texttt{:},
+\texttt{=} and the rest) is refused when \pconfigure\ reads the line
+(see Section~\ref{cmd:make-special}).
 
 \subsection{\texttt{TESTS += \$name} \label{cmd:tests}}
 
@@ -4441,6 +4444,60 @@ is a \texttt{TESTS} and a \texttt{SOURCES} wearing one hat, warns once
 about the \texttt{TESTSRC} rather than three times about three
 different names for the same mistake.
 
+\subsection{A name with a character \texttt{make} or the shell reads
+  \label{cmd:make-special}}
+
+\begin{verbatim}
+BINARIES += hello:world
+\end{verbatim}
+
+The name of a target or a source goes onto a \texttt{Makefile} rule
+line exactly as it was written, and into the recipes that build it as
+a bare word.  Some characters mean something of their own in one place
+or the other, so a name holding any of them is a fatal error that
+names the line, rather than a \texttt{Makefile} that \texttt{make}
+can't read or a build that quietly produces a file under a different
+name:
+
+\begin{itemize}
+\item On a rule line, \texttt{make} reads a \texttt{\#} as the start of
+  a comment, a \texttt{:} as the end of the targets, an \texttt{=} as a
+  variable assignment, a \texttt{;} as the start of a recipe, a
+  \texttt{|} as the start of the order-only prerequisites, a
+  \texttt{\$} as an expansion, and \texttt{a(b)} as a member of an
+  archive.
+\item In a recipe, the shell reads a single or double quote as the
+  start of a string that never ends, a \texttt{;}, \texttt{\&} or
+  \texttt{|} as the end of a command, a \texttt{<} or \texttt{>} as a
+  redirection, a parenthesis as a subshell, and a \texttt{\textbackslash}
+  as an escape that disappears from the name.
+\end{itemize}
+
+A backquote never gets this far: \pconfigure\ runs what is between two
+of them as a command when it reads the line.
+
+The list is the characters that were found to break a build, not a
+promise about every other one.  Letters, digits, \texttt{-},
+\texttt{\_}, \texttt{.} and non-ASCII letters are ordinary characters
+to both \texttt{make} and the shell, and a name made of those is safe.
+Other punctuation --- \texttt{\%}, \texttt{*}, \texttt{?},
+\texttt{[} and the like --- isn't refused, because names with them in
+do build today, but only because there is nothing for \texttt{make} or
+the shell to match them against; a name that relies on that is relying
+on luck.
+
+The commands asked are the ones that name something the language
+backends build: \texttt{BINARIES}, \texttt{LIBRARIES},
+\texttt{LIBEXECS}, \texttt{TESTS}, \texttt{TESTSRC},
+\texttt{HEADERS}, \texttt{HEADERSRC} and \texttt{SOURCES}.  A
+\texttt{SUBPROJECTS} and a \texttt{SUBPROJECT\_TARGETS} are not, since
+the vendored build systems quote what they write, and neither is a
+command line: \texttt{COMPILEOPTS += -DX=a:b\#c} means what it says.
+
+Unlike a space, this is not a \texttt{STRICT} warning.  No
+\texttt{Configfile} ever built with one of these in a name, so there is
+nothing old for refusing it to break.
+
 \subsection{\texttt{COMPAT}}
 
 \begin{verbatim}
@@ -4860,8 +4917,11 @@ recipe that names it with
 \end{verbatim}
 which names neither the path nor the \texttt{Configfile} line that
 wrote it.  A \texttt{SOURCES += it's.c++} with no subproject anywhere
-near it fails the same way, so this is about the character rather than
-about any one command.
+near it would fail the same way, so this is about the character rather
+than about any one command --- which is why a quote in the name of a
+target or a source is now refused when the line is read (see
+Section~\ref{cmd:make-special}), and only the directories are left to
+fail later.
 
 The obvious repair --- wrap every path in a recipe in single quotes,
 which is what \pconfigure\ already does to everything a
