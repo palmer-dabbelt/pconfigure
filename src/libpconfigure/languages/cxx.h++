@@ -117,9 +117,21 @@ public:
     /* TRUE when a source with this name is one this language
      * compiles.  It is asked about the sources found behind a header,
      * which nobody named and which therefore don't come with a
-     * language attached: a ".c" sitting next to a header a C++ source
-     * includes is still C, and has to be compiled as C. */
+     * language attached: a ".c++" sitting next to a header a C source
+     * includes is still C++, and has to be compiled as C++. */
     virtual bool owns_source(const std::string& path) const;
+
+    /* TRUE when this language compiles a source with this name that
+     * it finds behind one of its own target's headers, rather than
+     * handing it to the language that owns it.  That is everything it
+     * owns, and for C++ it is C as well: compiling a C library's
+     * sources a second time as C++, into a C++ library whose header
+     * wraps the same declarations in a namespace, is something
+     * projects do on purpose (gitdate.bash) and something a C header
+     * without an 'extern "C"' (multi-language-build.bash) only links
+     * from C++ by.  C can't compile C++, so a ".c++" behind a C
+     * program's header still goes to C++. */
+    virtual bool keeps_source(const std::string& path) const;
 
     /* Virtual methods from language. */
     virtual std::string name(void) const { return "c++"; }
@@ -187,11 +199,13 @@ private:
      * language, because that's how its language was picked.  The ones
      * found behind its headers are whatever the files next to those
      * headers happen to be called, and C and C++ share their headers,
-     * so a C program can reach a ".c++" and a C++ one a ".c".  Each of
-     * those is compiled by the language whose file it is, from
-     * whichever ones the project enabled -- and by the target's own
-     * language when none of them claims it, there being nothing else
-     * to hand it to.
+     * so a C program can reach a ".c++" and a C++ one a ".c".  The
+     * target's own language keeps whatever keeps_source() says it
+     * can compile, which for C++ includes C; anything else is
+     * compiled by the language whose file it is, from whichever ones
+     * the project enabled -- and by the target's own language when
+     * none of them claims it, there being nothing else to hand it
+     * to.
      *
      * Worked out once per target and handed down the whole walk,
      * because the walk crosses languages: the answer has to be the

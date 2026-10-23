@@ -113,9 +113,9 @@ namespace {
 
         /* The context file to switch to for a source found behind a
          * header that another language compiles, by the ending that
-         * says which.  A ".c" behind a header a C++ source reads is
-         * still C, and the compiler, options and object names that
-         * come with that are in C's own one of these.  Asked of the
+         * says which.  A ".c++" behind a header a C program reads is
+         * C++, and the compiler, options and object names that come
+         * with that are in C++'s own one of these.  Asked of the
          * context "behind" names, since that is the one describing
          * the sources nobody named. */
         std::map<std::string, std::string> languages;

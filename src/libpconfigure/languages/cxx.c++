@@ -223,6 +223,12 @@ bool language_cxx::owns_source(const std::string& path) const
     return false;
 }
 
+bool language_cxx::keeps_source(const std::string& path) const
+{
+    return this->owns_source(path)
+        || string_utils::has_extension(path, ".c");
+}
+
 language_cxx::behind_languages
 language_cxx::languages_behind_headers(const context::ptr& ctx) const
 {
@@ -234,11 +240,11 @@ language_cxx::languages_behind_headers(const context::ptr& ctx) const
         auto example = "source" + extension;
 
         /* Every ending belongs to at most one language, so this is
-         * the same answer whatever order LANGUAGES named them in: the
-         * target's own language is only asked first because it's the
-         * one that usually says yes. */
+         * the same answer whatever order LANGUAGES named them in.  The
+         * target's own language is asked first, and more generously:
+         * it keeps what it can compile, not just what it owns. */
         auto owner = static_cast<const language_cxx*>(this);
-        if (this->owns_source(example) == false) {
+        if (this->keeps_source(example) == false) {
             for (const auto& l: ctx->languages) {
                 auto c = dynamic_cast<const language_cxx*>(l.get());
                 if (c == nullptr || c->name() == this->name())
