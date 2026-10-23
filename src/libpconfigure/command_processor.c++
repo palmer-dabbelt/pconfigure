@@ -1111,7 +1111,7 @@ void command_processor::process_one(const command::ptr& cmd)
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
-        _configure_target->add_configureopt(cmd->data());
+        _configure_target->add_configureopt(cmd->data(), cmd->debug());
 
         return;
 
@@ -1127,7 +1127,7 @@ void command_processor::process_one(const command::ptr& cmd)
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
-        _configure_target->add_makeopt(cmd->data());
+        _configure_target->add_makeopt(cmd->data(), cmd->debug());
 
         return;
 
@@ -1143,7 +1143,7 @@ void command_processor::process_one(const command::ptr& cmd)
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
-        _configure_target->add_subproject_target(cmd->data());
+        _configure_target->add_subproject_target(cmd->data(), cmd->debug());
 
         /* A TESTDEPS is resolved where it's written, so one written
          * above this line was read before the tree had been said to

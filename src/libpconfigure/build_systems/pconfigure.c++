@@ -44,10 +44,10 @@ bool build_system_pconfigure::can_build(const std::string& base) const
 
 void build_system_pconfigure::take_configureopt(const std::string& opt)
 {
-    std::cerr << "CONFIGUREOPTS doesn't apply to a pconfigure subproject: '"
-              << opt << "'\n"
-              << "  a pconfigure project is configured by its own"
-              << " Configfile\n";
+    error_at_line() << "CONFIGUREOPTS doesn't apply to a pconfigure"
+                    << " subproject: '" << opt << "'\n"
+                    << "  a pconfigure project is configured by its own"
+                    << " Configfile\n";
     abort();
 }
 

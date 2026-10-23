@@ -22,8 +22,10 @@
 #define BUILD_SYSTEM_HXX
 
 #include "context.h++"
+#include "debug_info.h++"
 #include <libmakefile/target.h++>
 #include <memory>
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -90,6 +92,17 @@ private:
      * the above gets filled in without every build system having to
      * remember to say so. */
     bool _taking_configureopt;
+
+    /* The Configfile line being handled right now, or NULL between
+     * lines.  Everything a CONFIGUREOPTS, a MAKEOPS or a
+     * SUBPROJECT_TARGETS can be refused for is refused from in here
+     * or from a build system's half of it, a long way from the line
+     * that caused it -- and in a build of several projects a refusal
+     * that doesn't say which Configfile it is about is a refusal
+     * about all of them at once.  Kept here rather than passed to
+     * every function that might refuse something, since those
+     * include every take_configureopt() there is. */
+    debug_info::ptr _reading;
 
     /* The files a SUBPROJECT_TARGETS said this tree produces, named
      * relative to the directory it builds into. */
@@ -200,8 +213,13 @@ public:
     /* Handles one CONFIGUREOPTS line, and remembers that it was
      * given.  What an option means is up to the build system it was
      * handed to, so the line is passed on exactly as it was
-     * written. */
-    void add_configureopt(const std::string& opt);
+     * written.
+     *
+     * "line" is the Configfile line it came from, here and in the two
+     * below, so that anything refusing it can say which line that
+     * was: see error_at_line(). */
+    void add_configureopt(const std::string& opt,
+                          const debug_info::ptr& line);
 
     /* Handles one MAKEOPS line, which is a variable to put on the
      * command line of the make that builds this tree.
@@ -212,7 +230,7 @@ public:
      * in it wrong -- while a value that reaches the Makefile
      * untouched lets whoever wrote it say "$(abspath x)" and mean
      * it. */
-    void add_makeopt(const std::string& opt);
+    void add_makeopt(const std::string& opt, const debug_info::ptr& line);
 
     /* Handles one SUBPROJECT_TARGETS line: a file this tree produces,
      * named relative to the directory it builds into.
@@ -223,7 +241,8 @@ public:
      * for the kernel image rather than for the kernel says which file
      * that is, and gets a target it can put in a TESTDEPS or on a
      * link line like any other path. */
-    void add_subproject_target(const std::string& path);
+    void add_subproject_target(const std::string& path,
+                               const debug_info::ptr& line);
 
     /* TRUE when a SUBPROJECT_TARGETS said this tree produces the
      * given path, spelled the way the Makefile spells it.  This is
@@ -299,14 +318,29 @@ protected:
      * kbuild's "--make-var", autotools' the same -- reaches this
      * through add_makeopt() like any other, so a check written here
      * covers both spellings.  What it cannot do is name the option
-     * the Configfile actually wrote, since nothing that gets this far
-     * remembers; an option that wants its own name in the diagnostic
-     * asks where it is read. */
+     * the Configfile actually wrote: error_at_line() says which line
+     * that was, but nothing that gets this far remembers whether the
+     * line spelled it as a MAKEOPS or as an option, so an option that
+     * wants its own name in the diagnostic asks where it is read. */
     virtual void take_makeopt(const std::string&) {}
 
     /* TRUE for a build system that is run by running make, which is
      * what a MAKEOPS has to be true of to mean anything. */
     virtual bool run_by_make(void) const { return true; }
+
+    /* The line whose CONFIGUREOPTS, MAKEOPS or SUBPROJECT_TARGETS is
+     * being handled, for a build system that hands part of it on --
+     * a "--make-var" is a MAKEOPS, and has to say which line it came
+     * from just as much as one written that way. */
+    const debug_info::ptr& reading(void) const { return _reading; }
+
+    /* Starts a fatal error about that line: names it, the way the
+     * rest of pconfigure's fatal errors name theirs, and hands back
+     * the stream for the rest of the sentence.  Says nothing more
+     * than the sentence when no line is being handled, so that a check
+     * which can also be reached from somewhere other than a line still
+     * gets an error rather than a crash. */
+    std::ostream& error_at_line(void) const;
 
     /* The variables a MAKEOPS put on the command line of the make
      * that builds this tree, with a leading space and in the order

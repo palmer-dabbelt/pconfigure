@@ -228,7 +228,7 @@ bool build_system_kconfig::handle_configureopt(const std::string& opt)
          * are.  One list and one order, since two lists would mean an
          * argument about which of them make hears last -- and the
          * last one is the one that wins. */
-        add_makeopt(make_var);
+        add_makeopt(make_var, reading());
         return true;
     }
 

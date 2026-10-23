@@ -40,26 +40,45 @@ build_system::build_system(const std::string& name)
   _makeopts(),
   _makeopt_from_option(),
   _taking_configureopt(false),
+  _reading(NULL),
   _subproject_targets()
 {
 }
 
-void build_system::add_configureopt(const std::string& opt)
+std::ostream& build_system::error_at_line(void) const
+{
+    if (_reading != NULL)
+        std::cerr << std::to_string(_reading) << "\n" << "  error: ";
+
+    return std::cerr;
+}
+
+void build_system::add_configureopt(const std::string& opt,
+                                    const debug_info::ptr& line)
 {
     _configureopts.push_back(opt);
 
+    _reading = line;
     _taking_configureopt = true;
     take_configureopt(opt);
     _taking_configureopt = false;
+    _reading = NULL;
 }
 
-void build_system::add_makeopt(const std::string& opt)
+void build_system::add_makeopt(const std::string& opt,
+                               const debug_info::ptr& line)
 {
+    /* Saved rather than cleared at the end, since a "--make-var" gets
+     * here from inside add_configureopt() and the line it came from
+     * is still the one being read when this returns. */
+    auto outer = _reading;
+    _reading = line;
+
     if (run_by_make() == false) {
-        std::cerr << "MAKEOPS doesn't apply to a " << name()
-                  << " subproject: '" << opt << "'\n"
-                  << "  there is no make being run here for a variable to"
-                  << " go on the command line of\n";
+        error_at_line() << "MAKEOPS doesn't apply to a " << name()
+                        << " subproject: '" << opt << "'\n"
+                        << "  there is no make being run here for a"
+                        << " variable to go on the command line of\n";
         abort();
     }
 
@@ -68,8 +87,9 @@ void build_system::add_makeopt(const std::string& opt)
      * thing entirely and one that would go quietly wrong: the tree
      * would be asked to build a target nobody meant. */
     if (opt.find('=') == std::string::npos) {
-        std::cerr << name() << ": MAKEOPS '" << opt << "' has no value:"
-                  << " it should look like 'MAKEOPS += ARCH=arm64'\n";
+        error_at_line() << name() << ": MAKEOPS '" << opt << "' has no"
+                        << " value: it should look like"
+                        << " 'MAKEOPS += ARCH=arm64'\n";
         abort();
     }
 
@@ -77,28 +97,33 @@ void build_system::add_makeopt(const std::string& opt)
 
     _makeopts.push_back(opt);
     _makeopt_from_option.push_back(_taking_configureopt);
+
+    _reading = outer;
 }
 
-void build_system::add_subproject_target(const std::string& path)
+void build_system::add_subproject_target(const std::string& path,
+                                         const debug_info::ptr& line)
 {
+    _reading = line;
+
     /* A named output is a file in one tree's output directory, so it
      * needs a tree.  A CONFIGUREOPTS written after a BUILD_SYSTEMS
      * means "every subproject built this way", which is a sentence
      * that has no ending here: there is no one directory for the file
      * to be in. */
     if (base().size() == 0) {
-        std::cerr << "SUBPROJECT_TARGETS needs a SUBPROJECTS above it: '"
-                  << path << "'\n"
-                  << "  it names a file that one vendored tree builds,"
-                  << " so it has to say which tree\n";
+        error_at_line() << "SUBPROJECT_TARGETS needs a SUBPROJECTS above"
+                        << " it: '" << path << "'\n"
+                        << "  it names a file that one vendored tree builds,"
+                        << " so it has to say which tree\n";
         abort();
     }
 
     if (build_stamp().size() == 0) {
-        std::cerr << "SUBPROJECT_TARGETS doesn't apply to a " << name()
-                  << " subproject: '" << path << "'\n"
-                  << "  nothing here says the tree has been built, so there"
-                  << " is nothing for this to wait for\n";
+        error_at_line() << "SUBPROJECT_TARGETS doesn't apply to a " << name()
+                        << " subproject: '" << path << "'\n"
+                        << "  nothing here says the tree has been built, so"
+                        << " there is nothing for this to wait for\n";
         abort();
     }
 
@@ -130,6 +155,8 @@ void build_system::add_subproject_target(const std::string& path)
     checked_project_path("SUBPROJECT_TARGETS", path, "bin/tool");
 
     auto normalized = file_utils::normalize_path(path);
+
+    _reading = NULL;
 
     for (const auto& already: _subproject_targets)
         if (already == normalized)
