@@ -506,6 +506,8 @@ TESTSRC     += target-compileopts-reach-header-source.bash
 TESTSRC     += linkopts-library-removed-relinks-binary.bash
 TESTSRC     += subproject-linkopts-library-dir-separate-word.bash
 TESTSRC     += shared-library-and-binary-share-a-source.bash
+TESTSRC     += deplibs-later-library-in-other-libdir.bash
+TESTSRC     += deplibs-later-subproject-library.bash
 
 # The half of pconfigure that a build can run on its own, one source
 # at a time.  It is a BINARY rather than a LIBEXEC because pconfigure
