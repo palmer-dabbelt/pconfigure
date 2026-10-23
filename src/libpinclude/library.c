@@ -182,9 +182,14 @@ static int _pinclude_lines(const char *input,
             define = buffer + strlen("#ifdef ");
             str_chomp(define);
 
+            /* A define can carry a value, "NAME=value", and it
+             * defines NAME all the same -- which is how "#ifndef"
+             * below already read it.  Comparing the whole of it here
+             * made a valued define leave "#ifdef NAME" and
+             * "#ifndef NAME" both false. */
             matched = false;
             for (i = 0; defined[i] != NULL; i++)
-                if (strcmp(define, defined[i]) == 0)
+                if (streqcmp(define, defined[i]) == 0)
                     matched = true;
 
             state_i++;
@@ -749,10 +754,19 @@ void str_chomp(char *str)
         str[strlen(str) - 1] = '\0';
 }
 
+/* Compares a name against a define that may have a value on it.  Only
+ * the part before the "=" is the name, and all of the name has to
+ * match: comparing just as many characters as the define's name has
+ * would say "FANCYX" was defined by "FANCY=yes". */
 int streqcmp(const char *str, const char *eq)
 {
+    size_t len;
+
     if (strstr(eq, "=") == NULL)
         return strcmp(str, eq);
 
-    return strncmp(str, eq, strstr(eq, "=") - eq);
+    len = strstr(eq, "=") - eq;
+    if (strlen(str) != len)
+        return 1;
+    return strncmp(str, eq, len);
 }
