@@ -381,6 +381,23 @@ public:
         return dir;
     }
 
+    /* Where one of this project's directories ends up once installed:
+     * the prefix with the directory, as unbased() spells it, hung off
+     * the end.  This is the one place a directory gets joined onto the
+     * prefix, so that every path built from it -- the install recipes,
+     * the RUNPATH and __PCONFIGURE__LIBEXEC -- agrees on the spelling.
+     * The prefix never ends in a '/' unless it is "/" itself, which is
+     * why that one is special: pasting a '/' after it is how
+     * "PREFIX = /" used to install into "//bin" and link "//lib" in as
+     * the RUNPATH. */
+    std::string installed(const std::string& dir) const
+    {
+        auto relative = unbased(dir);
+        if (prefix.size() > 0 && prefix.back() == '/')
+            return prefix + relative;
+        return prefix + "/" + relative;
+    }
+
     /* The paths a TESTDEPS named, spelled the way the Makefile spells
      * them: relative to where pconfigure ran, with the project this
      * context belongs to already on the front.  Every one of them

@@ -236,7 +236,7 @@ language_pkgconfig::targets(const context::ptr& ctx) const
                         break;
         }
 
-        auto install_path = "$(DESTDIR)/" + ctx->prefix + "/" + ctx->unbased(target);
+        auto install_path = "$(DESTDIR)" + ctx->installed(target);
 
         auto install_commands = std::vector<std::string>{
             "mkdir -p $(dir $@)",

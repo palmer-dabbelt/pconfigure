@@ -805,17 +805,19 @@ static void refuse_operator(const command::ptr& cmd,
 
 /* An absolute PREFIX spelled the one way, so that "/opt/thing/" and
  * "/opt//thing" are the same prefix as "/opt/thing" everywhere it is
- * pasted.  Every use of the prefix appends "/" and a directory to it,
- * which is why a trailing slash matters at all: "/opt/thing/" became
- * "/opt/thing//libexec" in __PCONFIGURE__LIBEXEC and "/opt/thing//lib"
- * in the RUNPATH, strings that compare unequal to the ones a program
- * built from the other spelling sees.
+ * pasted.  A directory is joined onto the prefix with a '/' of its own
+ * (context::installed()), which is why a trailing slash matters at
+ * all: "/opt/thing/" became "/opt/thing//libexec" in
+ * __PCONFIGURE__LIBEXEC and "/opt/thing//lib" in the RUNPATH, strings
+ * that compare unequal to the ones a program built from the other
+ * spelling sees.
  *
  * Only runs of '/' are collapsed and a trailing one dropped.  A ".."
  * is left exactly as written: whether "/opt/link/.." is "/opt" depends
  * on what "link" is on the machine the program is installed on, which
  * nothing here can see.  "/" on its own stays "/", since an empty
- * __PCONFIGURE__PREFIX would be telling the program it lives nowhere. */
+ * __PCONFIGURE__PREFIX would be telling the program it lives nowhere;
+ * context::installed() knows not to put a second '/' after that one. */
 static std::string normalized_prefix(const std::string& written)
 {
     std::string out;
@@ -1833,10 +1835,10 @@ void command_processor::process_one(const command::ptr& cmd)
          * leaves_the_project()'s: an install prefix is legitimately
          * absolute -- "/usr/local" is the default -- and it is spliced
          * into an install recipe unquoted (languages/cxx.c++,
-         * languages/bash.c++, languages/pkgconfig.c++,
-         * languages/implicit_h.c++ all write "$(DESTDIR)/" + prefix +
-         * "/..." raw), which is exactly the shape a semicolon turns
-         * into a second command. */
+         * languages/bash.c++, languages/pkgconfig.c++ and
+         * languages/implicit_h.c++ all paste it after "$(DESTDIR)"
+         * raw), which is exactly the shape a semicolon turns into a
+         * second command. */
         refuse_unsafe_metacharacter(cmd, "PREFIX");
 
         /* Whitespace is refused here rather than warned about the way

@@ -766,7 +766,7 @@ language_cxx::link_target::generate_makefile_target(void) const
         {
             switch (_install) {
             case install_target::TRUE:
-                return {"-Wl,-rpath," + _ctx->prefix + "/" + _ctx->unbased(_ctx->lib_dir)};
+                return {"-Wl,-rpath," + _ctx->installed(_ctx->lib_dir)};
 
             case install_target::FALSE:
             {
@@ -1224,7 +1224,7 @@ language_cxx::link_objects(const context::ptr& ctx,
      * Makefile, we build the "copy" targets that depend on the generated
      * Makefile. */
     auto install_path =
-        "$(DESTDIR)/" + ctx->prefix + "/" + ctx->unbased(bin_dir)
+        "$(DESTDIR)" + ctx->installed(bin_dir)
         + "/" + ctx->cmd->data();
     auto cp_install_target = std::make_shared<cp_target>(
         install_path,
@@ -1341,7 +1341,7 @@ language_cxx::compile_options(const context::ptr& ctx,
             return out;
         };
 
-    auto full_libexec_path = child->prefix + "/" + child->unbased(child->libexec_dir);
+    auto full_libexec_path = child->installed(child->libexec_dir);
 
     return
         filter_compile_opts(this->compile_opts()) +

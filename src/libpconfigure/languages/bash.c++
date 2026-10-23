@@ -160,7 +160,7 @@ language_bash::targets(const context::ptr& ctx) const
         if (ctx->install == false)
             return std::vector<makefile::target::ptr>{bin_target} + tests;
 
-        auto install_path = "$(DESTDIR)/" + ctx->prefix + "/" + ctx->unbased(target);
+        auto install_path = "$(DESTDIR)" + ctx->installed(target);
 
         /* Whatever "make install" writes is something "make uninstall"
          * has to know how to take back out, and the only way it knows
@@ -181,7 +181,7 @@ language_bash::targets(const context::ptr& ctx) const
          * -- and on macOS, one whose code signature the kernel has
          * already checked and remembered against that same file. */
         auto install_commands = std::vector<std::string>{
-            "mkdir -p $(DESTDIR)/" + ctx->prefix + "/" + ctx->unbased(bin_subdir),
+            "mkdir -p $(DESTDIR)" + ctx->installed(bin_subdir),
 #if defined(__gnu_linux__)
             "cp --reflink=auto -f " + target + " $@.tmp",
 #else

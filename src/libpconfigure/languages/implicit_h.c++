@@ -65,7 +65,7 @@ language_implicit_h::targets(const context::ptr& ctx) const
             abort();
         }
 
-        auto install_path = "$(DESTDIR)/" + ctx->prefix + "/" + ctx->unbased(ctx->hdr_dir) + "/" + ctx->cmd->data();
+        auto install_path = "$(DESTDIR)" + ctx->installed(ctx->hdr_dir) + "/" + ctx->cmd->data();
         auto header_path = ctx->hdr_dir + "/" + ctx->cmd->data();
         
         /* On "uninstall" as well as "install", for the reason
