@@ -42,6 +42,13 @@ static bool extensionless(const std::string& path)
 
 bool language_h::can_process(const context::ptr& ctx) const
 {
+    /* What this writes is BASH's targets() run on the headers, so a
+     * LIBRARIES built out of nothing but headers is no more something
+     * it can make than it is something BASH can: claiming it gets as
+     * far as targets() and aborts there, without naming the line. */
+    if (language_bash::targets_handle(ctx) == false)
+        return false;
+
     /* The headers phc knows what to do with are C and C++ headers, so
      * which names those go by is the C++ language's to say. */
     if (language::all_sources_match(ctx, cxx_header_extensions()))
