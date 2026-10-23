@@ -2674,13 +2674,17 @@ and nobody ever writes down that the two go together.  Every source
 that exists is built, so a project keeping both a \texttt{foo.c} and a
 \texttt{foo.c++} next to \texttt{foo.h} gets both.
 
-What is found is compiled as whatever its own name says, not as
-whatever the target that found it is written in: a \texttt{.c} behind
-a header a C++ program reads is compiled as C, with C's compiler and
-the options given to C, and a \texttt{.c++} behind a C program's
-header as C++.  That takes both languages being in the project's
-\texttt{LANGUAGES}; a file whose language isn't is compiled by the
-target's own, there being nothing else to hand it to.  The order of
+What is found is compiled by the target's own language when that
+language can compile it, and otherwise as whatever its own name says.
+C++ can compile C, so a \texttt{.c} behind a header a C++ program
+reads is compiled as C++, with C++'s compiler and options: that is
+what lets one C source be built a second time into a C++ library
+whose header wraps the same declarations in a namespace.  C can't
+compile C++, so a \texttt{.c++} behind a C program's header is
+compiled as C++, with C++'s compiler and the options given to C++.
+That takes C++ being in the project's \texttt{LANGUAGES}; when it
+isn't, the target's own language compiles the file, there being
+nothing else to hand it to.  The order of
 the \texttt{LANGUAGES} lines has nothing to do with it, because no
 other language claims these endings: SWIG is built on C++, but only
 its \texttt{.i} files are its own.  The target is
