@@ -198,6 +198,7 @@ TESTSRC     += tek.bash
 TESTSRC     += bash-deps.bash
 TESTSRC     += bash-heredoc-deps.bash
 TESTSRC     += bash-comment-deps.bash
+TESTSRC     += bash-compileopts-two-word-include-dir-and-define.bash
 TESTSRC     += bash-binary-test.bash
 TESTSRC     += c-cxx.bash
 TESTSRC     += c-binary-cxx-source-behind-header-compiled-as-cxx.bash

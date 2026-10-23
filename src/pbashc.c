@@ -82,13 +82,38 @@ int main(int argc, char **argv)
     dirs_count = 0;
     defs_count = 0;
 
+    /* "-I" and "-D" take their argument either stuck on or as the
+     * next word, the way a compiler does, since COMPILEOPTS is written
+     * by people who write them for compilers.  Only the stuck-on
+     * spelling used to be read: a "-I inc" added an empty directory
+     * and then took "inc" for the script to compile, which wrote out
+     * a script that was a shebang and nothing else and said it had
+     * worked.
+     *
+     * Neither list can be longer than the arguments are, so that is
+     * how much room they get rather than counting them first. */
+    dirs = malloc(sizeof(*dirs) * argc);
+    defs = malloc(sizeof(*defs) * argc);
+
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-o") == 0)
             last = argv[i];
-        else if (strncmp(argv[i], "-I", 2) == 0)
-            dirs_count++;
-        else if (strncmp(argv[i], "-D", 2) == 0)
-            defs_count++;
+        else if (strncmp(argv[i], "-I", 2) == 0 || strncmp(argv[i], "-D", 2) == 0) {
+            char **list = (argv[i][1] == 'I') ? dirs : defs;
+            int *count = (argv[i][1] == 'I') ? &dirs_count : &defs_count;
+            char *arg = argv[i] + 2;
+
+            if (*arg == '\0') {
+                if (i + 1 >= argc) {
+                    fprintf(stderr, "'%s' needs an argument after it\n", argv[i]);
+                    exit(1);
+                }
+                arg = argv[++i];
+            }
+
+            list[*count] = arg;
+            (*count)++;
+        }
         else if (last == NULL)
             input = argv[i];
         else if (strcmp(last, "-o") == 0) {
@@ -96,25 +121,7 @@ int main(int argc, char **argv)
             last = NULL;
         }
     }
-
-    dirs = malloc(sizeof(*dirs) * (dirs_count + 1));
-    dirs_count = 0;
-    for (i = 1; i < argc; i++) {
-        if (strncmp(argv[i], "-I", 2) == 0) {
-            dirs[dirs_count] = argv[i] + 2;
-            dirs_count++;
-        }
-    }
     dirs[dirs_count] = NULL;
-
-    defs = malloc(sizeof(*defs) * (defs_count + 1));
-    defs_count = 0;
-    for (i = 1; i < argc; i++) {
-        if (strncmp(argv[i], "-D", 2) == 0) {
-            defs[defs_count] = argv[i] + 2;
-            defs_count++;
-        }
-    }
     defs[defs_count] = NULL;
 
     if ((input == NULL) || (output == NULL)) {
