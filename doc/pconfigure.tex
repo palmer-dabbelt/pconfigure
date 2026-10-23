@@ -4912,6 +4912,21 @@ A bash ``compiler'', which really just does the following
   \pconfigure\ follows the same rule when it works out what a script
   depends on, so the files it writes down as dependencies are the ones
   that actually get pasted in.
+\item Reads the \texttt{-I} and \texttt{-D} in the target's
+  \texttt{COMPILEOPTS}, with the argument either stuck on or as the
+  next word.  A \texttt{-I} adds a directory an \texttt{\#include} is
+  looked for in, after the including file's own.  A \texttt{-D}
+  defines a name for \texttt{\#ifdef} and \texttt{\#ifndef}, which
+  decide which \texttt{\#include}s are pasted in --- every other line
+  is a comment to BASH and goes out as it came in.
+  \texttt{-DNAME=value} defines \texttt{NAME} just as
+  \texttt{-DNAME} does, and also replaces \texttt{NAME} with
+  \texttt{value} wherever it appears in the output.  These two are
+  the only flags it knows: a \texttt{-isystem}, say, is not a
+  directory it searches.  \pconfigure\ reads the same flags the same
+  way when it works out what a script depends on, so a file found
+  only through a \texttt{-I}, or included only under a defined name,
+  is one whose edits rebuild the script.
 \item Leaves a heredoc's body alone.  The lines between a
   \texttt{<<EOF} and the \texttt{EOF} that ends it are text the script
   writes out rather than script, so a C file written that way keeps
