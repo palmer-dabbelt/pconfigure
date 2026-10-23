@@ -911,6 +911,19 @@ vendored tree into place from elsewhere in the same checkout is a real
 thing to do --- and a path that does not resolve at all is left to
 whoever reads the \texttt{Configfile} that is not there.
 
+An absolute path is refused, since it names the same directory
+however the project is read and so is never relative to the
+\texttt{Configfile} that wrote it.  Climbing out, on the other hand,
+is judged against the project \pconfigure\ was run in rather than
+the one whose \texttt{Configfile} has the line.  That is what lets a
+wrapper project name the tree it wraps when the tree is checked out
+beside it: a \texttt{SUBPROJECTS += ../tree} in \texttt{wrap} names
+the top's \texttt{tree} when \pconfigure\ runs at the top, and is
+accepted there.  Run inside \texttt{wrap} the same line names a
+directory beside the checkout and is refused, so a project laid out
+that way is configured from the top.  A path that wanders and comes
+back, like \texttt{x/../b}, is fine either way.
+
 How it gets built is worked out from what is in the directory, the
 same way the language that builds a source file is worked out from
 what the file is called.  A directory with a \texttt{Configfile} in it
