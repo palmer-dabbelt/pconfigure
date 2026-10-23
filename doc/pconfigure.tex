@@ -498,15 +498,45 @@ differences: the resulting output binary is stored to
 \texttt{\$LIBDIR} instead of \texttt{\$BINDIR} and a library is built
 instead of a stand-alone binary.
 
-Some amount of automatic detection is done in order to decide if a
-shared or a static object should be built.  The hurestic is as
-follows: if \$name ends in the canonical shared object extension on
-Linux for the selected language (\texttt{*.so} on Linux, for example)
-then a shared library will be used, if \$name ends in the canonical
-static archive extension on Linux for the selected language
-(\texttt{*.a} on Linux, for example) then a static archive will be
-used, otherwise a fatal error will be throw.  This mechanism exists to
-allow for cross-platform portability of \texttt{Configfile}s.
+Whether a shared library or a static archive is built is decided by
+\$name alone.  A name ending in \texttt{.a} builds a static archive;
+any other name builds a shared library, whether that's the
+\texttt{.so} of Linux or the \texttt{.dylib} of macOS.  Either is
+found by a \texttt{DEPLIBS} the same way, through the \texttt{-l} it
+puts on the link line, so a program linking against a static archive
+carries the archive's code from then on and never looks for it again.
+
+An archive is put together by \texttt{\$\{AR\}} rather than by the
+linker.  That's \texttt{make}'s own variable, so it's \texttt{ar}
+unless the environment or \texttt{make}'s command line says otherwise
+-- \texttt{make AR=llvm-ar} is how to switch to LLVM's -- and under a
+\texttt{CROSS\_COMPILE} it's the \texttt{ar} that prefix names
+instead, the same way the compiler is (see
+Section~\ref{cmd:cross_compile}).  Each member is named after the
+source it was compiled from, \texttt{one.c.o} for \texttt{one.c}, so
+\texttt{ar t} and \texttt{ar x} see one member per source; two sources
+with the same file name in different directories get a number on the
+second.
+
+An archive is built from the same position-independent objects a
+shared library is, so it can be linked into a shared library as well
+as into a program.  What it can't do is remember what it needs, so a
+\texttt{DEPLIBS}, \texttt{LINKOPTS} or \texttt{FRAMEWORKS} written
+under one is a fatal error, which names the line and the targets it
+belongs on instead: whatever links the archive has to ask for those
+libraries itself.  A \texttt{LINKER} written under one is a fatal
+error too, since no linker ever runs for an archive; it belongs on
+the targets that link the archive's code.
+
+\begin{verbatim}
+LIBRARIES += libsub.a
+SOURCES   += sub.c
+
+BINARIES  += app
+DEPLIBS   += sub
+DEPLIBS   += m
+SOURCES   += main.c
+\end{verbatim}
 
 Note that \pconfigure\ will automatically determine the necessary
 compiler flags to build shared objects on your platform.  For example,
@@ -827,7 +857,11 @@ how your language interprets these argumuents.
 For most languages (those that use standard compile and link
 semantics), setting \texttt{LINKOPTS} for a source won't do anything,
 you should instead set it on the target that source will be linked
-into.
+into.  Setting it on a static archive is a fatal error, for the same
+reason: an archive isn't linked either (see
+Section~\ref{cmd:libraries}).  A \texttt{LINKOPTS} written above every
+target is still fine in a project that builds one, since it's meant
+for everything else that gets linked.
 
 \subsection{\texttt{ENTITLEMENTS = \$plist} \label{cmd:entitlements}}
 
@@ -1396,6 +1430,9 @@ and nothing more: the \texttt{Makefile} dependency on
 \texttt{lib\$libname.so} comes from the \texttt{-l} itself, so a
 library that reaches the link line some other way -- from
 \texttt{LINKOPTS}, or from \texttt{ppkg-config} -- gets one too.
+
+A \texttt{DEPLIBS} written under a static archive is a fatal error,
+since an archive is never linked; see Section~\ref{cmd:libraries}.
 
 \subsection{\texttt{TESTDEPS += \$path} \label{cmd:testdeps}}
 
@@ -2052,7 +2089,8 @@ configured for one machine and then for another without being edited.
 
 What a prefix means is up to the language: \texttt{c} and \texttt{c++}
 run \texttt{\$prefix gcc} and \texttt{\$prefix g++} in place of
-\texttt{\$\{CC\}} and \texttt{\$\{CXX\}}, a vendored \texttt{kconfig}
+\texttt{\$\{CC\}} and \texttt{\$\{CXX\}}, and \texttt{\$prefix ar} in
+place of \texttt{\$\{AR\}} for a static archive, a vendored \texttt{kconfig}
 subproject is handed \texttt{CROSS\_COMPILE=\$prefix} on its
 sub-\texttt{make}'s command line (see Section~\ref{buildsys:kconfig}),
 and a language with no notion of a toolchain ignores it.  A target
@@ -2094,7 +2132,10 @@ fighting over one.
 
 \texttt{LINKER} is just like \texttt{COMPILER}, but it sets the
 command used to link instead of the command used to compile.  See
-Section~\ref{cmd:compiler}.
+Section~\ref{cmd:compiler}.  Setting it on a static archive is a
+fatal error, since an archive is put together by \texttt{ar} rather
+than linked (see Section~\ref{cmd:libraries}); one written above
+every target is still fine in a project that builds one.
 
 \subsection{\texttt{PHC = \$path} \label{cmd:phc}}
 
