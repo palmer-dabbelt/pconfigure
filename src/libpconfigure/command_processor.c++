@@ -1148,7 +1148,16 @@ void command_processor::process_one(const command::ptr& cmd)
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
-        refuse_target_leaving_project(cmd);
+        /* A HEADERSRC is handled as this HEADERS and then a SOURCES,
+         * and its SOURCES half asks the same leaves_the_project()
+         * question and refuses in the words of the line as written.
+         * Asking it here as well would get there first and refuse a
+         * HEADERSRC as a HEADERS, sending whoever reads it looking
+         * for a line that isn't in the Configfile; nothing between
+         * here and that SOURCES half writes anything, so letting it
+         * past costs nothing. */
+        if (cmd->written_as() != command_type::HEADERSRC)
+            refuse_target_leaving_project(cmd);
 
         clear_until({context_type::DEFAULT}, cmd);
         dup_tos_and_push(context_type::HEADER, cmd);
