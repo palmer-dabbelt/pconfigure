@@ -152,7 +152,14 @@ cxx_include_dirs(const std::vector<std::string>& opts)
 std::vector<std::string>
 cxx_defines(const std::vector<std::string>& opts)
 {
-    return flag_arguments(opts, std::vector<std::string>{"-D"});
+    /* pinclude wants the names that are defined, and "-DNAME=value"
+     * defines NAME every bit as much as "-DNAME" does.  Handed the
+     * whole of "NAME=value" it would look for a macro by that name,
+     * which no #ifdef has ever asked about. */
+    auto out = std::vector<std::string>();
+    for (const auto& define: flag_arguments(opts, std::vector<std::string>{"-D"}))
+        out.push_back(define.substr(0, define.find('=')));
+    return out;
 }
 
 const std::vector<std::string>& cxx_source_extensions(void)
@@ -1684,20 +1691,26 @@ std::vector<std::string> language_cxx::dependencies(
     const shared_target& is_shared __attribute__((unused)),
     const std::vector<std::string>& compile_opts) const
 {
+    return cxx_headers_read_by(filename, compile_opts);
+}
+
+std::vector<std::string>
+cxx_headers_read_by(const std::string& source,
+                    const std::vector<std::string>& compile_opts)
+{
     auto defined = cxx_defines(compile_opts);
     auto include_dirs = cxx_include_dirs(compile_opts);
 
-    std::vector<std::string> all_files;
-    pinclude::list(filename,
+    auto out = std::vector<std::string>();
+    pinclude::list(source,
                    include_dirs,
                    defined,
                    [&](std::string s) {
-                       all_files.push_back(s);
+                       out.push_back(s);
                        return 0;
                    },
                    true);
-
-    return all_files;
+    return out;
 }
 
 static std::vector<std::string> link_dirs(const std::vector<std::string>& args)

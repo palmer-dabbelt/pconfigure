@@ -69,6 +69,20 @@ cxx_include_dirs(const std::vector<std::string>& opts);
 std::vector<std::string>
 cxx_defines(const std::vector<std::string>& opts);
 
+/* The headers a source reads when it is compiled with the given
+ * options, which comes down to the include path and the defines those
+ * options would hand the preprocessor.
+ *
+ * This is asked in two places -- by pconfigure when it walks the
+ * sources itself, and by pdeps when make does the walking under
+ * AUTORECONFIGURE -- and it used to be answered by two copies of the
+ * same loop.  Each copy got the same things wrong in the same way, so
+ * the fix had to be made twice; now it only has to be made here, and
+ * the two can't come to disagree about which headers a source reads. */
+std::vector<std::string>
+cxx_headers_read_by(const std::string& source,
+                    const std::vector<std::string>& compile_opts);
+
 /* C++ is probably the best supported of the pconfigure language
  * implementations, as it's the one that pconfigure itself is written
  * in. */

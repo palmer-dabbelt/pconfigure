@@ -45,7 +45,6 @@
 #include <libpconfigure/context_file.h++>
 #include <libpconfigure/file_utils.h++>
 #include <libpconfigure/languages/cxx.h++>
-#include <pinclude.h++>
 #include <cstdint>
 #include <fstream>
 #include <functional>
@@ -273,25 +272,13 @@ namespace {
     }
 
     /* The headers this source reads, which is the same question
-     * language_cxx asks and asked the same way: the include path and
-     * the defines come back out of the command line it would have
-     * been compiled with. */
+     * language_cxx asks and is answered by the same function: the
+     * include path and the defines come back out of the command line
+     * it would have been compiled with. */
     std::vector<std::string> headers_of(const deps_context& ctx,
                                         const std::string& source)
     {
-        auto defined = cxx_defines(ctx.opts);
-        auto include_dirs = cxx_include_dirs(ctx.opts);
-
-        auto out = std::vector<std::string>();
-        pinclude::list(source,
-                       include_dirs,
-                       defined,
-                       [&](std::string s) {
-                           out.push_back(s);
-                           return 0;
-                       },
-                       true);
-        return out;
+        return cxx_headers_read_by(source, ctx.opts);
     }
 
     /* The rule that runs this makes the directory too, since make
