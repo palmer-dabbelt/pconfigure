@@ -833,6 +833,58 @@ static std::string normalized_prefix(const std::string& written)
     return out;
 }
 
+/* Refuses a command that says how a static archive is linked.  An
+ * archive is never linked -- "ar" copies objects into it and that is
+ * all -- so a LINKER on a "libfoo.a" names a linker that never runs,
+ * and since the format has nowhere to write down that its members need
+ * some other library, a DEPLIBS or a LINKOPTS on one would be read by
+ * nothing either.  They used to be read: before LIBRARIES built
+ * archives, "libfoo.a" was a shared object wearing an archive's name,
+ * linked by its LINKER and recording its dependencies the way any
+ * shared object does, so whatever linked it got them for free.
+ * Accepting the line now and dropping it would turn that into
+ * undefined references in some other target's link, or a link done by
+ * a different linker than the Configfile asked for, far from the line
+ * that stopped working -- so it stops here instead and says where the
+ * line has to go. */
+static void refuse_under_static_archive(const command::ptr& cmd,
+                                        const context::ptr& tos,
+                                        const std::string& command_name)
+{
+    if (tos->is_static_archive() == false)
+        return;
+
+    /* "libsub.a" is what the Configfile wrote, "sub" is what a DEPLIBS
+     * of it says, and "libsub.so" is the same library built shared. */
+    const auto& archive = tos->cmd->data();
+    auto stem = archive.substr(0, archive.size() - 2);
+    auto deplib = stem.compare(0, 3, "lib") == 0 ? stem.substr(3) : stem;
+
+    /* A LINKER isn't something an archive could have recorded, it's
+     * the program that would have made one, so it gets its own reason
+     * -- but the same place to go, since the programs that link the
+     * archive are the ones that run a linker over its code. */
+    bool linker = command_name == "LINKER";
+
+    std::cerr << std::to_string(cmd->debug()) << "\n"
+              << "  error: " << command_name << " under '"
+              << archive << "', which is a static archive\n"
+              << "  an archive is put together by ar rather than linked,"
+              << (linker
+                  ? " and no linker ever runs for it"
+                  : " and has no way to record what it needs")
+              << ", so nothing would ever read this\n"
+              << "  write '" << command_name << " " << cmd->operation()
+              << " " << cmd->data() << "' under each BINARIES or"
+              << " LIBRARIES that has a 'DEPLIBS += "
+              << deplib << "', or name the"
+              << " library '" << stem + ".so"
+              << (linker
+                  ? "' to build a shared one that this links\n"
+                  : "' to build a shared one that records it itself\n");
+    abort();
+}
+
 void command_processor::process(const command::ptr& cmd)
 {
     /* Said here rather than inside the switch because TESTSRC and
@@ -1410,6 +1462,8 @@ void command_processor::process_one(const command::ptr& cmd)
             abort();
         }
 
+        refuse_under_static_archive(cmd, _stack.top(), "DEPLIBS");
+
         _stack.top()->dep_libs.push_back(cmd->data());
 
         return;
@@ -1516,6 +1570,7 @@ void command_processor::process_one(const command::ptr& cmd)
          * the same way an ENTITLEMENTS path reaches codesign's --
          * same hazard, same refusal. */
         refuse_unsafe_metacharacter(cmd, "FRAMEWORKS");
+        refuse_under_static_archive(cmd, tos, "FRAMEWORKS");
 
         tos->add_framework(cmd->data());
 
@@ -1763,6 +1818,13 @@ void command_processor::process_one(const command::ptr& cmd)
             goto bad_op_eq;
 
         check_opts_target(cmd);
+
+        /* As with LINKOPTS, only when it lands on the archive itself:
+         * one above every target is the language's linker, and still
+         * meant for everything that does get linked. */
+        if (_opts_target == _stack.top())
+            refuse_under_static_archive(cmd, _stack.top(), "LINKER");
+
         _opts_target->set_linker(cmd->data());
 
         return;
@@ -1790,6 +1852,13 @@ void command_processor::process_one(const command::ptr& cmd)
                 " nothing ever reads it",
                 "move it above the SOURCES, onto the target the file gets"
                 " linked into");
+
+        /* Only when the option is landing on the archive itself: a
+         * LINKOPTS above every LIBRARIES is a language-wide default,
+         * and one an archive doesn't use is still meant for every
+         * program next to it. */
+        if (_opts_target == _stack.top())
+            refuse_under_static_archive(cmd, _stack.top(), "LINKOPTS");
 
         _opts_target->add_linkopt(cmd->data());
 

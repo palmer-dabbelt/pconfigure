@@ -1355,9 +1355,11 @@ language_cxx::link_objects(const context::ptr& ctx,
      * once.
      *
      * Nothing here reads this library's LINKOPTS or DEPLIBS, because
-     * an archive doesn't record what it needs: whatever links it has
-     * to ask for those itself, the same as with any other static
-     * library.
+     * an archive doesn't record what it needs.  A Configfile that
+     * writes one directly under a "libfoo.a" was refused when the
+     * line was read, which is where saying so can point at it;
+     * anything left on the context is a language-wide default, and
+     * belongs to whatever links the archive rather than to it.
      *
      * Its progress line says LD like any other library's, because
      * it's this target's link step that it names -- and because a
