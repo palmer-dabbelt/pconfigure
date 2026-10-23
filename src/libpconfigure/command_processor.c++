@@ -203,6 +203,78 @@ static bool names_a_path(const command_type& type)
     return false;
 }
 
+/* Which commands can be given nothing by backticks that printed
+ * nothing.  The lists of options can: each line adds its words to
+ * the list, and adding none is what "pkg-config --cflags" asks for
+ * when a library needs no flags.  CROSS_COMPILE can, because set to
+ * nothing is how a target takes back a cross toolchain it inherited.
+ *
+ * Nothing else can.  Everything else names something -- a target, a
+ * file, a directory, a language, a library -- and a name that is
+ * nothing is not a name: an empty LIBDIR makes every library path
+ * absolute, and an empty BINARIES would leave the SOURCES under it
+ * on whatever binary came before.  Those are the same lines that are
+ * refused when the value is left off by hand. */
+static bool can_be_given_nothing(const command_type& type)
+{
+    switch (type) {
+    case command_type::COMPILEOPTS:
+    case command_type::CONFIGUREOPTS:
+    case command_type::CROSS_COMPILE:
+    case command_type::LINKOPTS:
+    case command_type::MAKEOPS:
+        return true;
+
+    case command_type::ABRT_IS_FAIL:
+    case command_type::AUTODEPS:
+    case command_type::AUTORECONFIGURE:
+    case command_type::BINARIES:
+    case command_type::BOOTSTRAP:
+    case command_type::BUILD_SYSTEMS:
+    case command_type::COMPAT:
+    case command_type::COMPILER:
+    case command_type::CONFIG:
+    case command_type::CONFIG_DEPS:
+    case command_type::DEBUG:
+    case command_type::DEFAULT_TEST_SUITE:
+    case command_type::DEPLIBS:
+    case command_type::DEPTESTS:
+    case command_type::ENTITLEMENTS:
+    case command_type::FRAMEWORKS:
+    case command_type::GENERATE:
+    case command_type::HDRDIR:
+    case command_type::HEADERS:
+    case command_type::HEADERSRC:
+    case command_type::HELP:
+    case command_type::INCLUDE_TEST_SUITES:
+    case command_type::LANGUAGES:
+    case command_type::LIBDIR:
+    case command_type::LIBEXECS:
+    case command_type::LIBRARIES:
+    case command_type::LINKER:
+    case command_type::PHC:
+    case command_type::PHONY:
+    case command_type::PREFIX:
+    case command_type::SOURCES:
+    case command_type::SRCDIR:
+    case command_type::SRCPATH:
+    case command_type::STRICT:
+    case command_type::SUBPROJECTS:
+    case command_type::SUBPROJECT_TARGETS:
+    case command_type::TESTDEPS:
+    case command_type::TESTEXECS:
+    case command_type::TESTS:
+    case command_type::TESTSRC:
+    case command_type::TEST_SUITES:
+    case command_type::TGENERATE:
+    case command_type::VERBOSE:
+    case command_type::VERSION:
+        return false;
+    }
+
+    return false;
+}
+
 /* Which commands take a name in brackets.  The name says which test
  * suite a test joins, so the lines that write a test are the ones
  * with somewhere to put one -- everything else names a thing there is
@@ -910,6 +982,28 @@ void command_processor::process(const command::ptr& cmd)
         abort();
     }
 
+    /* Asked after the command has been read and its brackets
+     * checked, so that a misspelled command is reported as one rather
+     * than as a value that went missing.  The operator is left to
+     * process_one(), which is the only place that knows it: a list of
+     * options given nothing still has to be given it with a '+='. */
+    if (cmd->printed_nothing() == true
+        && can_be_given_nothing(cmd->type()) == false) {
+        std::cerr << std::to_string(cmd->debug()) << "\n"
+                  << "  error: the command in backticks printed nothing,"
+                  << " which leaves " << std::to_string(cmd->type())
+                  << " with no value\n"
+                  << "  " << std::to_string(cmd->type()) << " can't be"
+                  << " given nothing, however that comes about: only"
+                  << " CROSS_COMPILE and the lists of options"
+                  << " (COMPILEOPTS, LINKOPTS, CONFIGUREOPTS, MAKEOPS)"
+                  << " can\n"
+                  << "  make the command print a value"
+                  << " (\"`cmd || echo default`\"), write the value out,"
+                  << " or remove the line\n";
+        abort();
+    }
+
     /* PREFIX names a path too, but a space in one is refused outright
      * by process_one() -- see the comment there for why that one has
      * no compatibility to keep -- and a warning just ahead of the
@@ -1285,6 +1379,13 @@ void command_processor::process_one(const command::ptr& cmd)
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
+        /* Backticks that printed nothing add nothing, and an empty
+         * word in the list would be one more gap in a command line.
+         * It's skipped only after the checks above, which are about
+         * the line as written and hold whatever its value came to. */
+        if (cmd->printed_nothing() == true)
+            return;
+
         check_opts_target(cmd);
         _opts_target->add_compileopt(cmd->data());
 
@@ -1353,6 +1454,10 @@ void command_processor::process_one(const command::ptr& cmd)
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
 
+        /* Adds nothing, for COMPILEOPTS's reason. */
+        if (cmd->printed_nothing() == true)
+            return;
+
         _configure_target->add_configureopt(cmd->data(), cmd->debug());
 
         return;
@@ -1368,6 +1473,10 @@ void command_processor::process_one(const command::ptr& cmd)
 
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
+
+        /* Adds nothing, for COMPILEOPTS's reason. */
+        if (cmd->printed_nothing() == true)
+            return;
 
         _configure_target->add_makeopt(cmd->data(), cmd->debug());
 
@@ -1835,6 +1944,10 @@ void command_processor::process_one(const command::ptr& cmd)
 
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
+
+        /* Adds nothing, for COMPILEOPTS's reason. */
+        if (cmd->printed_nothing() == true)
+            return;
 
         check_opts_target(cmd);
 

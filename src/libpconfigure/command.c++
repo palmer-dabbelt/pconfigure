@@ -26,14 +26,16 @@ command::command(const command_type& type,
                  const std::string& op,
                  const std::string& data,
                  const debug_info::ptr& debug_info,
-                 const std::string& qualifier)
+                 const std::string& qualifier,
+                 bool printed_nothing)
     : _type(type),
       _op(op),
       _data(data),
       _debug_info(debug_info),
       _needs_data(false),
       _qualifier(qualifier),
-      _written_as(type)
+      _written_as(type),
+      _printed_nothing(printed_nothing)
 {
 }
 
@@ -47,7 +49,8 @@ command::command(const command_type& type,
       _debug_info(debug_info),
       _needs_data(true),
       _qualifier(qualifier),
-      _written_as(type)
+      _written_as(type),
+      _printed_nothing(false)
 {
 }
 
@@ -64,7 +67,8 @@ command::ptr command::with_type(const command_type& type)
             this->_op,
             this->_data,
             this->_debug_info,
-            this->_qualifier);
+            this->_qualifier,
+            this->_printed_nothing);
 
     out->_written_as = this->_written_as;
     return out;
@@ -77,11 +81,13 @@ command::ptr command::with_data(const std::string& data)
         this->_op,
         data,
         this->_debug_info,
-        this->_qualifier);
+        this->_qualifier,
+        this->_printed_nothing);
 }
 
 command::ptr command::parse(const std::string& str,
-                            const debug_info::ptr& d)
+                            const debug_info::ptr& d,
+                            bool printed_nothing)
 {
     if (str == "--verbose")
         return std::make_shared<command>(command_type::VERBOSE, "=", "true", d);
@@ -122,7 +128,16 @@ command::ptr command::parse(const std::string& str,
                        std::to_string(command_type::CROSS_COMPILE).c_str())
             == 0);
 
-    if (split.size() < 3 && sets_nothing == false) {
+    /* The other way to end up with no value is for backticks to have
+     * printed nothing, which the caller knows about and this doesn't.
+     * That line is let through as a command with an empty value, so
+     * that the name and operator are checked the same way as they are
+     * for any other line, and the command processor can say whether
+     * this command can be given nothing.  Turning it away here would
+     * report a misspelled command as a missing value. */
+    auto given_nothing = (split.size() == 2) && printed_nothing;
+
+    if (split.size() < 3 && sets_nothing == false && given_nothing == false) {
         std::cerr << "split_char() returned " << split.size() << "\n"
                   << "  original string: '" << str << "'\n";
         return NULL;
@@ -168,13 +183,14 @@ command::ptr command::parse(const std::string& str,
             abort();
         }
     }
-    auto arg = sets_nothing
+    auto arg = (sets_nothing || given_nothing)
         ? std::string()
         : std::string(str, split[0].size() + split[1].size() + 2);
 
     try {
         auto cmd = check_command_type(cmdstr);
-        return std::make_shared<command>(cmd, op, arg, d, qualifier);
+        return std::make_shared<command>(cmd, op, arg, d, qualifier,
+                                         given_nothing);
     } catch (const char *e) {
         std::cerr << "Unable to parse command: '" << e << "'\n";
         return NULL;

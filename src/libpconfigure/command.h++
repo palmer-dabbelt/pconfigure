@@ -55,12 +55,21 @@ private:
      * it on the copy after building it. */
     command_type _written_as;
 
+    /* TRUE for a line whose value was written as backticks that
+     * printed nothing, which left it with no value at all.  That is
+     * not the same line as one written without a value, which is
+     * refused as unfinished before it gets this far: whether a command
+     * can be given nothing is a question about the command, and only
+     * the command processor knows which ones can. */
+    const bool _printed_nothing;
+
 public:
     command(const command_type& type,
             const std::string& op,
             const std::string& data,
             const debug_info::ptr& debug_info,
-            const std::string& qualifier = "");
+            const std::string& qualifier = "",
+            bool printed_nothing = false);
     command(const command_type& type,
             const std::string& op,
             const debug_info::ptr& debug_info,
@@ -73,6 +82,7 @@ public:
     const debug_info::ptr& debug(void) const { return _debug_info; }
     const std::string& qualifier(void) const { return _qualifier; }
     command_type written_as(void) const { return _written_as; }
+    bool printed_nothing(void) const { return _printed_nothing; }
 
 public:
     ptr consume_extra_arguments(int& i, int argc, const char **argv);
@@ -97,7 +107,8 @@ public:
     /* Converts a command string (as stored in the Configfile or as a
      * command-line argument) into an actual command object that's a
      * whole lot safer. */
-    static ptr parse(const std::string& str, const debug_info::ptr& d);
+    static ptr parse(const std::string& str, const debug_info::ptr& d,
+                     bool printed_nothing = false);
 };
 
 #endif

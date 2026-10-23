@@ -274,25 +274,51 @@ command::ptr parse_line(const configfile_line& line)
     if (text[0] == '#')
         return NULL;
 
-    text = execute(text);
+    /* What the backticks printed -- or didn't -- is part of the line
+     * now, so the line is tidied again and read the same way as one
+     * somebody typed out.  A command that printed nothing otherwise
+     * leaves the gaps either side of it behind as two spaces, and
+     * "SOURCES += `true` main.c" names a source called " main.c". */
+    auto typed = text;
+    text = string_utils::clean_white(execute(text));
 
     /* A line that was nothing but a command which printed nothing is
      * a line with nothing left in it. */
     if (text.size() == 0)
         return NULL;
 
+    /* A line whose command and operator were written out, but whose
+     * whole value came from backticks that printed nothing, is not
+     * the same line as one typed without a value, and isn't refused
+     * as unfinished here: adding nothing to a list of options is a
+     * legal thing for a command to ask for, and the usual answer from
+     * "pkg-config --cflags" for a library the compiler already finds.
+     * Which commands can be given nothing is for the command processor
+     * to say, once the command itself has been checked.
+     *
+     * Everything said about such a line quotes it as it was written:
+     * what it expanded to has no value in it, and pointing at a line
+     * nobody typed would send them looking for the wrong mistake. */
+    auto words = string_utils::split_char(text, " ");
+    auto typed_words = string_utils::split_char(typed, " ");
+    auto printed_nothing = (words.size() == 2)
+        && (typed_words.size() > 2)
+        && (typed_words[0] == words[0])
+        && (typed_words[1] == words[1]);
+    auto shown = printed_nothing ? typed : text;
+
     auto debug = std::make_shared<debug_info>(line.filename,
                                               line.number,
-                                              text);
+                                              shown);
 
-    auto cmd = command::parse(text, debug);
+    auto cmd = command::parse(text, debug, printed_nothing);
     if (cmd == NULL) {
         std::cerr << "Unable to parse "
                   << line.filename
                   << ":"
                   << line.number
                   << ": '"
-                  << text
+                  << shown
                   << "'\n";
 
         abort();
