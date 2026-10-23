@@ -25,6 +25,7 @@
 #include <pinclude.h++>
 #include <assert.h>
 #include <iostream>
+#include <sstream>
 
 language_bash* language_bash::clone(void) const
 {
@@ -121,7 +122,7 @@ language_bash::targets(const context::ptr& ctx) const
                 auto path = child->src_dir + "/" + child->cmd->data();
                 sources.push_back(std::make_shared<makefile::target>(path));
                 if (ctx->autodeps == true)
-                    deps = deps + dependencies(path);
+                    deps = deps + dependencies(path, this->clopts(ctx));
             }
 
             /* A test is a child of the thing it tests, and the project
@@ -345,12 +346,68 @@ language_bash::targets(const context::ptr& ctx) const
     abort();
 }
 
-std::vector<makefile::target::ptr> language_bash::dependencies(const std::string& path) const
+/* Every argument of "flag" on a pbashc command line, in either of the
+ * two spellings pbashc reads: stuck on, or the word after the flag
+ * when it stands alone.
+ *
+ * This is pbashc's reading rather than a compiler's, which is why it
+ * isn't cxx_include_dirs(): pbashc knows "-I" and nothing else, and a
+ * "-isystem" that this counted as a directory would be one the script
+ * was never searched in.
+ *
+ * A line of COMPILEOPTS is a piece of a command line rather than one
+ * word of it -- "-I inc" and "-Wall -Iinc" are each one line -- and
+ * the shell is what splits it before pbashc sees it, so it is split
+ * the same way here first. */
+static std::vector<std::string>
+pbashc_flag_arguments(const std::vector<std::string>& opts,
+                      const std::string& flag)
 {
+    auto words = std::vector<std::string>();
+    for (const auto& opt: opts) {
+        std::istringstream ss(opt);
+        std::string word;
+        while (ss >> word)
+            words.push_back(word);
+    }
+
+    auto out = std::vector<std::string>();
+    for (size_t i = 0; i < words.size(); ++i) {
+        if (words[i].compare(0, flag.size(), flag) != 0)
+            continue;
+
+        if (words[i].size() > flag.size())
+            out.push_back(words[i].substr(flag.size()));
+        else if (i + 1 < words.size())
+            out.push_back(words[++i]);
+    }
+    return out;
+}
+
+std::vector<makefile::target::ptr>
+language_bash::dependencies(const std::string& path,
+                            const std::vector<std::string>& opts) const
+{
+    /* pbashc is run with the target's options, and it searches the
+     * "-I" directories for an "#include" and reads the "-D" names in
+     * an "#ifdef".  The list of what a script reads has to be found
+     * the same way, or a helper that only those options lead to is
+     * pasted into the script and then left off its prerequisites, so
+     * that editing it never rebuilds the script.
+     *
+     * pinclude wants the names that are defined, and "-DNAME=value"
+     * defines NAME, which is how pbashc reads it too. */
+    auto include_dirs = pbashc_flag_arguments(opts, "-I");
+    auto defined = std::vector<std::string>();
+    for (const auto& define: pbashc_flag_arguments(opts, "-D"))
+        defined.push_back(define.substr(0, define.find('=')));
+
     std::vector<makefile::target::ptr> out;
     /* A shell script's # is a comment leader, so nothing but the bare
      * "#include" that pbashc expands may be read as a directive here. */
     pinclude::list(path,
+                   include_dirs,
+                   defined,
                    [&](std::string p) {
                        auto t = std::make_shared<makefile::target>(p);
                        out.push_back(t);

@@ -50,8 +50,12 @@ public:
     virtual std::string compiler_pretty(void) const { return "BASH"; }
 
     /* Lists all the dependencies of a bash-like file -- these can be any sort
-     * of makefile target because they might have dependencies themselves. */
-    virtual std::vector<makefile::target::ptr> dependencies(const std::string& path) const;
+     * of makefile target because they might have dependencies themselves.
+     * The options are the ones the compiler is run with, since its "-I"
+     * and "-D" decide which files an "#include" reads. */
+    virtual std::vector<makefile::target::ptr>
+    dependencies(const std::string& path,
+                 const std::vector<std::string>& opts) const;
 
 protected:
     /* Whether targets() below has anything to write for this kind of
