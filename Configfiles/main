@@ -384,6 +384,7 @@ TESTSRC     += configfile-hash-in-source-name.bash
 TESTSRC     += configfile-hash-in-binary-name.bash
 TESTSRC     += configfile-shell-metachars-in-binary-name.bash
 TESTSRC     += prefix-relative-refused.bash
+TESTSRC     += prefix-with-space-refused.bash
 TESTSRC     += bootstrap.bash
 TESTSRC     += bootstrap-quiet.bash
 TESTSRC     += reconfigure.bash

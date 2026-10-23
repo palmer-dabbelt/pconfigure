@@ -828,7 +828,12 @@ void command_processor::process(const command::ptr& cmd)
         abort();
     }
 
+    /* PREFIX names a path too, but a space in one is refused outright
+     * by process_one() -- see the comment there for why that one has
+     * no compatibility to keep -- and a warning just ahead of the
+     * error that supersedes it would only be noise. */
     if (names_a_path(cmd->type()) == true
+        && cmd->type() != command_type::PREFIX
         && cmd->data().find(' ') != std::string::npos) {
         _stack.top()->strictness.complain(
             strict_since::v0_13(),
@@ -1805,6 +1810,30 @@ void command_processor::process_one(const command::ptr& cmd)
          * "/..." raw), which is exactly the shape a semicolon turns
          * into a second command. */
         refuse_unsafe_metacharacter(cmd, "PREFIX");
+
+        /* Whitespace is refused here rather than warned about the way
+         * every other path's is (see process()).  The warning exists
+         * for old projects that wrote a space and got away with it,
+         * and nothing ever got away with one in a PREFIX: it is pasted
+         * unquoted into every compile line as -D__PCONFIGURE__PREFIX
+         * and into every install and uninstall recipe, so the compiler
+         * is handed half a path and a stray file name, and "make
+         * uninstall" removes a directory named after the first half.
+         * There's no build to keep working. */
+        if (cmd->data().find_first_of(" \t\v\f\r") != std::string::npos) {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: PREFIX has whitespace in it: '"
+                      << cmd->data() << "'\n"
+                      << "  the prefix reaches every compile line and"
+                      << " every install recipe unquoted, where a space"
+                      << " splits it into two words: the compiler is"
+                      << " handed half a path and a stray file name, and"
+                      << " 'make uninstall' removes a directory named"
+                      << " after the first half\n"
+                      << "  install to a directory without whitespace in"
+                      << " its name, like 'PREFIX = /opt/my-thing'\n";
+            abort();
+        }
 
         /* An install prefix is an absolute path by definition: it is
          * where the installed program finds itself, compiled into it
