@@ -1824,6 +1824,39 @@ void command_processor::process_one(const command::ptr& cmd)
 
         refuse_unsafe_metacharacter(cmd, "SUBPROJECTS");
 
+        /* An absolute path is asked about on the text as written,
+         * before this project's base goes on the front, because
+         * gluing the base on is what hides it.  At the top the base
+         * is empty and "/home/me/src/a" sails through to be written
+         * into the Makefile's include line and variable names, which
+         * is this machine's checkout and nobody else's.  Inside a
+         * subproject "a/" + "/b" normalizes to "a/b", so the line
+         * quietly means a directory of a's from above and the root
+         * of the filesystem's "b" from inside "a".  Neither reading
+         * is a directory relative to the Configfile, which is what a
+         * SUBPROJECTS is documented to name.
+         *
+         * Only this one spelling is taken from leaves_the_project()'s
+         * list.  Climbing out is still judged against the resolved
+         * path below, and deliberately so: a wrapper project whose
+         * Configfile says "SUBPROJECTS += ../tree" about a tree
+         * checked out beside it is how a vendored build gets wrapped,
+         * and from the top that names a directory the top owns. */
+        if (cmd->data().size() > 0 && cmd->data()[0] == '/') {
+            std::cerr << "SUBPROJECTS can't name an absolute path: '"
+                      << std::to_string(cmd->debug())
+                      << "'\n"
+                      << "  an absolute path names the same directory"
+                      << " however this project is read, so the"
+                      << " Makefile written from it only works in this"
+                      << " checkout on this machine -- and inside a"
+                      << " subproject it is read as relative to that"
+                      << " subproject instead\n"
+                      << "  write it relative to the Configfile that"
+                      << " names it, like 'SUBPROJECTS += vendor/sub'\n";
+            abort();
+        }
+
         clear_until({context_type::DEFAULT}, cmd);
 
         /* A project that moved its source root can't also root
@@ -1851,11 +1884,32 @@ void command_processor::process_one(const command::ptr& cmd)
 
         /* Everything here names files relative to where pconfigure
          * ran, and a Makefile written outside that tree would be
-         * talking about a directory this build doesn't own. */
+         * talking about a directory this build doesn't own.
+         *
+         * Which project that is depends on where pconfigure ran, and
+         * this is the one rule here that is asked of the resolved
+         * path on purpose.  A wrapper's "../tree" names the top's
+         * "tree" when the top is read, which is fine, and names a
+         * directory beside the checkout when pconfigure is run inside
+         * the wrapper, which isn't.  So the same line is accepted
+         * from above and refused from inside, and the refusal says
+         * which project it was judged against and where to run
+         * pconfigure instead, since "outside the project" alone reads
+         * as a complaint about a line that works everywhere else. */
         if (path.compare(0, 3, "../") == 0) {
             std::cerr << "SUBPROJECTS can't reach outside the project: '"
                       << std::to_string(cmd->debug())
-                      << "'\n";
+                      << "'\n"
+                      << "  '" << cmd->data() << "' resolves to '"
+                      << path << "', which climbs out of the project"
+                      << " pconfigure was run in\n"
+                      << "  a SUBPROJECTS may name a directory anywhere"
+                      << " under the top of the run, so if this"
+                      << " Configfile belongs to a subproject whose tree"
+                      << " sits beside it, run pconfigure from the project"
+                      << " that has both; otherwise check the tree out"
+                      << " under this one, like 'SUBPROJECTS +="
+                      << " vendor/sub'\n";
             abort();
         }
 
