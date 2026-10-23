@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <pinclude.h>
 
 #ifndef SHEBANG_PREFIX
@@ -64,7 +65,6 @@ static char *replace(const char *line, const char *pair);
 int main(int argc, char **argv)
 {
     char *input, *output;
-    char *last;
     char **dirs;
     char **defs;
     int dirs_count;
@@ -75,50 +75,76 @@ int main(int argc, char **argv)
     char *chmod;
     int chmod_size;
     int ret;
+    struct stat input_stat;
 
     input = NULL;
     output = NULL;
-    last = NULL;
+
+    /* Every flag that takes something takes at most one word, so
+     * there can't be more of either than there are words. */
+    dirs = malloc(sizeof(*dirs) * argc);
+    defs = malloc(sizeof(*defs) * argc);
     dirs_count = 0;
     defs_count = 0;
 
-    /* "-I" and "-D" take their argument either stuck on or as the
-     * next word, the way a compiler does, since COMPILEOPTS is written
-     * by people who write them for compilers.  Only the stuck-on
-     * spelling used to be read: a "-I inc" added an empty directory
-     * and then took "inc" for the script to compile, which wrote out
-     * a script that was a shebang and nothing else and said it had
-     * worked.
+    /* "-I" and "-D" are taken both glued to what they carry and as a
+     * word of their own, because that is how the C languages take
+     * them and a COMPILEOPTS is written once for whichever language
+     * reads it.  Only the glued spelling used to be understood here:
+     * "-I inc" came out as an empty search directory and an "inc"
+     * that, being a bare word, quietly became the input.  A directory
+     * opens and reads as nothing, so the result was a shebang and an
+     * empty script, and a pbashc that exited zero.
      *
-     * Neither list can be longer than the arguments are, so that is
-     * how much room they get rather than counting them first. */
-    dirs = malloc(sizeof(*dirs) * argc);
-    defs = malloc(sizeof(*defs) * argc);
-
+     * "-i" is how pconfigure names the input.  It used to work only
+     * by accident -- "-i" was a bare word, so it was the input until
+     * the real one came along and replaced it -- and now that a
+     * second input is refused rather than taken it has to be known
+     * for what it is. */
     for (i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-o") == 0)
-            last = argv[i];
-        else if (strncmp(argv[i], "-I", 2) == 0 || strncmp(argv[i], "-D", 2) == 0) {
-            char **list = (argv[i][1] == 'I') ? dirs : defs;
-            int *count = (argv[i][1] == 'I') ? &dirs_count : &defs_count;
-            char *arg = argv[i] + 2;
+        const char *flag;
+        const char *value;
 
-            if (*arg == '\0') {
-                if (i + 1 >= argc) {
-                    fprintf(stderr, "'%s' needs an argument after it\n", argv[i]);
-                    exit(1);
-                }
-                arg = argv[++i];
+        flag = NULL;
+        value = NULL;
+        if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "-i") == 0
+            || strcmp(argv[i], "-I") == 0 || strcmp(argv[i], "-D") == 0) {
+            flag = argv[i];
+            if (i + 1 >= argc) {
+                fprintf(stderr, "'%s' needs something after it\n", flag);
+                exit(1);
             }
-
-            list[*count] = arg;
-            (*count)++;
+            value = argv[++i];
+        } else if (strncmp(argv[i], "-I", 2) == 0
+                   || strncmp(argv[i], "-D", 2) == 0) {
+            flag = argv[i];
+            value = argv[i] + 2;
         }
-        else if (last == NULL)
-            input = argv[i];
-        else if (strcmp(last, "-o") == 0) {
-            output = argv[i];
-            last = NULL;
+
+        if (flag == NULL || strcmp(flag, "-i") == 0) {
+            /* There is one input and it is the whole program, so a
+             * second one is a mistake rather than a replacement: it
+             * is almost always a flag pbashc doesn't know, or the
+             * second half of one it read as a whole, and taking the
+             * last of them threw the real input away without a word
+             * about it. */
+            const char *word = (flag == NULL) ? argv[i] : value;
+            if (input != NULL) {
+                fprintf(stderr,
+                        "two input files, '%s' and '%s': pbashc compiles "
+                        "one file into one program\n"
+                        "  a search directory is '-I dir' or '-Idir', and "
+                        "a definition '-D name' or '-Dname'\n",
+                        input, word);
+                exit(1);
+            }
+            input = (char *)word;
+        } else if (strcmp(flag, "-o") == 0) {
+            output = (char *)value;
+        } else if (strncmp(flag, "-I", 2) == 0) {
+            dirs[dirs_count++] = (char *)value;
+        } else {
+            defs[defs_count++] = (char *)value;
         }
     }
     dirs[dirs_count] = NULL;
@@ -127,6 +153,19 @@ int main(int argc, char **argv)
     if ((input == NULL) || (output == NULL)) {
         fprintf(stderr, "needs 2 arguments\ninput '%s'\noutput '%s'\n",
                 input, output);
+        exit(1);
+    }
+
+    /* fopen() is quite happy to open a directory, and reading one
+     * gives back nothing at all, so a directory handed over as the
+     * input compiled to an empty script and succeeded.  That is
+     * never what anybody meant. */
+    if (stat(input, &input_stat) == 0 && S_ISDIR(input_stat.st_mode)) {
+        fprintf(stderr,
+                "input '%s' is a directory rather than a file to compile\n"
+                "  if it is meant to be searched for includes, write "
+                "'-I %s'\n",
+                input, input);
         exit(1);
     }
 

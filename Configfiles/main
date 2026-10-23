@@ -106,6 +106,7 @@ TESTSRC     += missing-include.bash
 TESTSRC     += heredoc.bash
 TESTSRC     += tempdir.bash
 TESTSRC     += replaces-output.bash
+TESTSRC     += arguments.bash
 
 BINARIES    += pperlc
 DEPLIBS     += pinclude
@@ -203,6 +204,9 @@ TESTSRC     += bash-ifdef-sees-define-with-value.bash
 TESTSRC     += bash-deps-follow-compileopts-include-dirs.bash
 TESTSRC     += bash-deps-follow-compileopts-defines.bash
 TESTSRC     += bash-binary-test.bash
+TESTSRC     += bash-compileopts-include-dir-separate-word.bash
+TESTSRC     += bash-compileopts-define-separate-word.bash
+TESTSRC     += bash-compileopts-stray-word-refused.bash
 TESTSRC     += c-cxx.bash
 TESTSRC     += c-binary-cxx-source-behind-header-compiled-as-cxx.bash
 TESTSRC     += cxx-binary-c-source-behind-header-compiled-as-cxx.bash
