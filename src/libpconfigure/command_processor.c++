@@ -1796,7 +1796,7 @@ void command_processor::process_one(const command::ptr& cmd)
         if (cmd->check_operation("=") != true)
             goto bad_op_eq;
 
-        /* Only the metacharacter check, and deliberately not
+        /* The metacharacter check, and deliberately not
          * leaves_the_project()'s: an install prefix is legitimately
          * absolute -- "/usr/local" is the default -- and it is spliced
          * into an install recipe unquoted (languages/cxx.c++,
@@ -1805,6 +1805,40 @@ void command_processor::process_one(const command::ptr& cmd)
          * "/..." raw), which is exactly the shape a semicolon turns
          * into a second command. */
         refuse_unsafe_metacharacter(cmd, "PREFIX");
+
+        /* An install prefix is an absolute path by definition: it is
+         * where the installed program finds itself, compiled into it
+         * as __PCONFIGURE__PREFIX and __PCONFIGURE__LIBEXEC and linked
+         * into it as the RUNPATH its libraries come from.  A relative
+         * one is pasted into the install recipes after $(DESTDIR) as
+         * though it were absolute, while the program is told it lives
+         * at "opt/thing" and looks for its libraries in "opt/thing/lib"
+         * underneath whatever directory it happens to be run from --
+         * which is a program that only starts from /, and one that
+         * loads libraries out of the current directory when it does.
+         * Nobody meant that, so the line is refused where it was
+         * written rather than built.
+         *
+         * The suggestion is a fixed example rather than the value with
+         * a '/' stuck on the front: what "~/foo", "./install" or
+         * "../x" were relative to isn't anything this can know, and
+         * "/~/foo" or "/../x" would be pointing somebody at a
+         * directory they never meant just as confidently. */
+        if (cmd->data().size() == 0 || cmd->data()[0] != '/') {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: PREFIX isn't an absolute path: '"
+                      << cmd->data() << "'\n"
+                      << "  the prefix is compiled into the program as"
+                      << " where it was installed, and linked into it as"
+                      << " where its libraries are, so a relative one"
+                      << " is read from whatever directory the program"
+                      << " is run from rather than from the one it was"
+                      << " installed into\n"
+                      << "  write the whole path to the directory it"
+                      << " installs into, starting with a '/', like"
+                      << " 'PREFIX = /opt/thing'\n";
+            abort();
+        }
 
         tos->prefix = cmd->data();
 
