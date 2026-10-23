@@ -803,6 +803,34 @@ static void refuse_operator(const command::ptr& cmd,
               << cmd->data() << "'\n";
 }
 
+/* An absolute PREFIX spelled the one way, so that "/opt/thing/" and
+ * "/opt//thing" are the same prefix as "/opt/thing" everywhere it is
+ * pasted.  Every use of the prefix appends "/" and a directory to it,
+ * which is why a trailing slash matters at all: "/opt/thing/" became
+ * "/opt/thing//libexec" in __PCONFIGURE__LIBEXEC and "/opt/thing//lib"
+ * in the RUNPATH, strings that compare unequal to the ones a program
+ * built from the other spelling sees.
+ *
+ * Only runs of '/' are collapsed and a trailing one dropped.  A ".."
+ * is left exactly as written: whether "/opt/link/.." is "/opt" depends
+ * on what "link" is on the machine the program is installed on, which
+ * nothing here can see.  "/" on its own stays "/", since an empty
+ * __PCONFIGURE__PREFIX would be telling the program it lives nowhere. */
+static std::string normalized_prefix(const std::string& written)
+{
+    std::string out;
+    for (const auto& c: written) {
+        if (c == '/' && out.size() > 0 && out.back() == '/')
+            continue;
+        out += c;
+    }
+
+    if (out.size() > 1 && out.back() == '/')
+        out.pop_back();
+
+    return out;
+}
+
 void command_processor::process(const command::ptr& cmd)
 {
     /* Said here rather than inside the switch because TESTSRC and
@@ -1869,7 +1897,7 @@ void command_processor::process_one(const command::ptr& cmd)
             abort();
         }
 
-        tos->prefix = cmd->data();
+        tos->prefix = normalized_prefix(cmd->data());
 
         return;
 
