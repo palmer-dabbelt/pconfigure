@@ -54,6 +54,31 @@ bool language_bash::can_process(const context::ptr& ctx) const
     abort();
 }
 
+bool language_bash::targets_handle(const context::ptr& ctx)
+{
+    switch (ctx->type) {
+    case context_type::DEFAULT:
+    case context_type::LIBRARY:
+    case context_type::GENERATE:
+    case context_type::PHONY:
+        return false;
+
+    /* A SOURCE is never built on its own, but it is asked about: the
+     * answer for one is the answer BASH's own can_process() gives,
+     * which is yes. */
+    case context_type::HEADER:
+    case context_type::BINARY:
+    case context_type::SOURCE:
+    case context_type::TEST:
+        return true;
+    }
+
+    std::cerr << "Internal error: bad context type "
+              << std::to_string(ctx->type)
+              << "\n";
+    abort();
+}
+
 /* The paths in the recipes below are bare words, for the reason
  * written out over language_cxx::compile_source(): a name holding a
  * quote, a space or a shell metacharacter does not build anywhere in

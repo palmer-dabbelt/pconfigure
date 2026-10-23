@@ -53,6 +53,18 @@ public:
      * of makefile target because they might have dependencies themselves. */
     virtual std::vector<makefile::target::ptr> dependencies(const std::string& path) const;
 
+protected:
+    /* Whether targets() below has anything to write for this kind of
+     * context.  Every BASH-like language builds through it, so a child
+     * that answers can_process() on the file names alone has to ask
+     * this too: otherwise a LIBRARIES or GENERATE whose sources happen
+     * to have its extension is claimed, and the first anyone hears of
+     * it is targets() giving up halfway through writing the Makefile,
+     * instead of the "no language" error that names the Configfile
+     * line.  BASH itself is narrower still -- it doesn't take HEADERS,
+     * which are the whole point of language_h. */
+    static bool targets_handle(const context::ptr& ctx);
+
 public:
     /* Virtual methods from language. */
     virtual std::string name(void) const { return "bash"; }

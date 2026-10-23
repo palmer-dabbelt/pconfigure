@@ -31,6 +31,15 @@ language_perl* language_perl::clone(void) const
 
 bool language_perl::can_process(const context::ptr& ctx) const
 {
+    /* A ".pl" is a perl script whatever it was listed under, but the
+     * only things this can make out of one are the things BASH can
+     * make out of a ".bash": a script, a test, or a copy installed
+     * among the headers.  Claiming a LIBRARIES just because its
+     * sources are perl would get as far as targets() and abort there,
+     * with no word of which Configfile line asked for it. */
+    if (language_bash::targets_handle(ctx) == false)
+        return false;
+
     return language::all_sources_match(ctx, {".pl"});
 }
 
