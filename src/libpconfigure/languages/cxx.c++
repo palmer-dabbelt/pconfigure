@@ -35,6 +35,7 @@
 #include <string.h>
 #include <algorithm>
 #include <cstdint>
+#include <cstdlib>
 #include <functional>
 #include <iostream>
 #include <set>
@@ -130,6 +131,55 @@ split_flag(const std::string& word, const std::vector<std::string>& flags)
         if (word.compare(0, flag.size(), flag) == 0)
             return std::make_pair(flag, word.substr(flag.size()));
     return std::make_pair(std::string(), std::string());
+}
+
+/* What follows "flag" in a word as it was written, quoting and all,
+ * where the word's unquoted text starts with "flag".  This walks the
+ * word the way shell_unescape() does until it has gone past the
+ * flag's characters, and gives back the rest.  A quote that opened
+ * before the flag and is still open after it is opened again on the
+ * front of what comes back, so '-Iinc' gives 'inc' and not inc', and
+ * whatever the quoting was there for -- a space, or a "$$VAR" that
+ * double quotes leave for the shell to expand -- reaches the shell the
+ * way it was written. */
+static std::string
+written_argument(const std::string& word, const std::string& flag)
+{
+    auto quote = '\0';
+    size_t seen = 0;
+    size_t i = 0;
+    while (i < word.size() && seen < flag.size()) {
+        if (quote == '\'') {
+            if (word[i] != '\'')
+                seen++;
+            else
+                quote = '\0';
+        } else if (quote == '"') {
+            if (word[i] == '"')
+                quote = '\0';
+            else {
+                if (word[i] == '\\' && i + 1 < word.size()
+                    && std::string("$`\"\\").find(word[i+1]) != std::string::npos)
+                    i++;
+                seen++;
+            }
+        } else if (word[i] == '\'' || word[i] == '"') {
+            quote = word[i];
+        } else {
+            if (word[i] == '\\' && i + 1 < word.size())
+                i++;
+            seen++;
+        }
+        i++;
+    }
+
+    /* A quote that closes right where the flag does would only come
+     * back as an empty pair on the front, so it is left off. */
+    if (quote != '\0' && i < word.size() && word[i] == quote)
+        return word.substr(i + 1);
+    if (quote != '\0')
+        return std::string(1, quote) + word.substr(i);
+    return word.substr(i);
 }
 
 pinclude::search_path
@@ -1883,17 +1933,77 @@ language_cxx::compile_options(const context::ptr& ctx,
                 for (const auto& word: string_utils::shell_words(opt))
                     words.push_back(word);
 
+            /* A word is matched and rerooted as the text it stands
+             * for, the way the header scan reads it, and not as it was
+             * written.  Written '-Iinc' or -I"/opt/inc", the word
+             * starts with a quote where the flag or the directory
+             * does, and taken as written the first was never seen as
+             * an include directory at all -- the compiler looked for
+             * inc/ at the top of the tree while the scan looked in the
+             * subproject -- and the second got the subproject's
+             * directory put on the front of an absolute path.
+             *
+             * What goes back to the shell, though, is the argument the
+             * way it was written, with only the flag taken out of it
+             * and the subproject's directory put on its front.  Both
+             * kinds of rerooting do nothing more than that, so the
+             * text it stands for comes out as the rerooted text.  The
+             * quoting stays the writer's: -I"$$INC" has to go on
+             * leaving $INC for the shell to expand, which spelling the
+             * argument again in quotes of pconfigure's own would stop.
+             * The flag goes back bare, and a quote that opened before
+             * it opens again after it, because the rewriting that
+             * respells the subproject's directory for a build run from
+             * inside it only finds that directory at the start of a
+             * word or right after "-I".
+             *
+             * "stuck" is whether the argument goes back on the end of
+             * the flag rather than as a word of its own, and the flag
+             * is empty for the word after a flag that stands alone. */
+            using reroot_fn = std::function<std::string(const std::string&)>;
+            auto respelled = [&](const std::string& opt,
+                                 const std::string& flag,
+                                 const std::string& text,
+                                 const reroot_fn& with,
+                                 bool stuck) {
+                auto rerooted = with(text);
+                if (rerooted.size() < text.size()
+                    || rerooted.compare(rerooted.size() - text.size(),
+                                        text.size(), text) != 0) {
+                    std::cerr << "INTERNAL ERROR: rerooting \"" << text
+                              << "\" gave \"" << rerooted
+                              << "\", which doesn't end in it\n";
+                    abort();
+                }
+
+                auto prefix = rerooted.substr(0, rerooted.size() - text.size());
+                auto argument = prefix + (flag.size() == 0
+                                          ? opt
+                                          : written_argument(opt, flag));
+
+                auto words = std::vector<std::string>();
+                if (stuck == true)
+                    words.push_back(flag + argument);
+                else {
+                    if (flag.size() > 0)
+                        words.push_back(flag);
+                    words.push_back(argument);
+                }
+                return words;
+            };
+
             /* What the word after a flag that stands alone is
              * rerooted with, or nothing when the last word was no
              * such flag. */
             auto out = std::vector<std::string>();
-            auto pending = std::function<std::string(const std::string&)>();
+            auto pending = reroot_fn();
             for (const auto& opt: words) {
-                auto split = split_flag(opt, include_flags());
-                auto forced = split_forced_include(opt);
+                auto word = string_utils::shell_unescape(opt);
+                auto split = split_flag(word, include_flags());
+                auto forced = split_forced_include(word);
 
                 if (pending != nullptr) {
-                    out.push_back(pending(opt));
+                    out = out + respelled(opt, "", word, pending, false);
                     pending = nullptr;
                 } else if (forced.first.size() > 0 && forced.second.size() == 0) {
                     out.push_back(opt);
@@ -1901,13 +2011,13 @@ language_cxx::compile_options(const context::ptr& ctx,
                 } else if (forced.first.size() > 0) {
                     /* Two words for the reason given for "-isystem"
                      * below. */
-                    out.push_back(forced.first);
-                    out.push_back(reroot_file(forced.second));
+                    out = out + respelled(opt, forced.first, forced.second,
+                                          reroot_file, false);
                 } else if (split.first.size() > 0 && split.second.size() == 0) {
                     out.push_back(opt);
                     pending = reroot;
                 } else if (split.first == "-I") {
-                    out.push_back("-I" + reroot(split.second));
+                    out = out + respelled(opt, "-I", split.second, reroot, true);
                 } else if (split.first.size() > 0) {
                     /* Given back as two words rather than as the one
                      * it came in.  Both mean the same to the compiler,
@@ -1920,8 +2030,8 @@ language_cxx::compile_options(const context::ptr& ctx,
                      * naming the subproject from the top of the tree,
                      * which from inside it is a directory that isn't
                      * there. */
-                    out.push_back(split.first);
-                    out.push_back(reroot(split.second));
+                    out = out + respelled(opt, split.first, split.second,
+                                          reroot, false);
                 } else if (opt == "-std=c++11") {
 #if (defined(__GNUC__) && !defined(__clang__) && (__GNUC__ == 4) && (__GNUC_MINOR__ <= 6))
                     std::cerr << "INFO: gcc-4.6 and older don't support c++11, falling back to c++0x\n";
