@@ -2069,8 +2069,11 @@ saying so.
 The other files a configure leaves in an object directory for the
 build to read are a different case, and not only an
 \texttt{AUTORECONFIGURE} one: the record of what goes into each link,
-the context files \texttt{pdeps} works from, and the options a
-vendored tree was configured with.  The \texttt{Makefile} knows what
+the command each script, compiled test and header copy was last made
+with --- which is what rebuilds one when its options or its
+\texttt{SOURCES} change, since its name does not --- the context files
+\texttt{pdeps} works from, and the options a vendored tree was
+configured with.  The \texttt{Makefile} knows what
 each of them says, so it has a rule that writes a missing one back
 exactly as the configure wrote it, without running \pconfigure.
 Deleting the object directory of the project \pconfigure\ ran in, or
