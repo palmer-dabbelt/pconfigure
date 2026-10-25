@@ -40,7 +40,13 @@ bool language_perl::can_process(const context::ptr& ctx) const
     if (language_bash::targets_handle(ctx) == false)
         return false;
 
-    return language::all_sources_match(ctx, {".pl"});
+    return language::all_sources_match(ctx, source_extensions());
+}
+
+const std::vector<std::string>& language_perl::source_extensions(void)
+{
+    static const std::vector<std::string> extensions = {".pl"};
+    return extensions;
 }
 
 static void install_perl(void) __attribute__((constructor));

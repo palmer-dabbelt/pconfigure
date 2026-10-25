@@ -46,6 +46,10 @@ public:
     virtual pinclude::syntax script_syntax(void) const
         { return pinclude::syntax::PERL; }
 
+    /* The suffixes perl claims a source by, kept as a list for the
+     * same reason as BASH's: language_bash::syntax_of() asks it. */
+    static const std::vector<std::string>& source_extensions(void);
+
     /* Virtual methods from language. */
     virtual std::string name(void) const { return "perl"; }
     virtual language_perl* clone(void) const;

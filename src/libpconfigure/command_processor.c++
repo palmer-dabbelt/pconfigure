@@ -21,6 +21,7 @@
 #include "command_processor.h++"
 #include "commands.h++"
 #include "file_utils.h++"
+#include "languages/bash.h++"
 #include "languages/gen_proc.h++"
 #include "languages/implicit_h.h++"
 #include "languages/phony.h++"
@@ -3123,16 +3124,14 @@ void command_processor::process_directives(const std::string& path,
         [](std::string) { return 0; },
         true,
 
-        /* The strict reading of what counts as a directive: a '#' in
-         * the first column with the word written against it.  A
-         * "#pconfigure" is a line pconfigure reads rather than one
-         * the compiler does, and that spelling is the one that means
-         * the same thing whatever the test is written in -- it's what
-         * a shell script has to use, since a '#' anywhere else on a
-         * line of shell is a comment, and it's the only way a C file
-         * could write one that its own compiler wouldn't choke on
-         * first. */
-        pinclude::syntax::SHELL,
+        /* A C test is still C, and a "#pconfigure" or an "#include"
+         * inside one of its comments is commented out the way its
+         * compiler sees it, so only a script -- a test written in BASH
+         * or in perl -- is read line for line the way pbashc and
+         * pperlc read it.  The suffix is what decides it because it is
+         * what those languages claim a source by, and this runs before
+         * the source's context exists to be offered to them. */
+        language_bash::syntax_of(path),
 
         [&](const pinclude::directive& directive) {
             /* The directive can be reached through an "#include"
@@ -3248,7 +3247,20 @@ void command_processor::process_directives(const std::string& path,
          * to the expression reader, which aborts naming neither the
          * file nor the line.  A C test's "#if" is the compiler's
          * business and is read as one. */
-        script
+        script,
+
+        /* The strict reading of what counts as a directive: a '#' in
+         * the first column with the word written against it.  A
+         * "#pconfigure" is a line pconfigure reads rather than one
+         * the compiler does, and that spelling is the one that means
+         * the same thing whatever the test is written in -- it's what
+         * a shell script has to use, since a '#' anywhere else on a
+         * line of shell is a comment, and it's the only way a C file
+         * could write one that its own compiler wouldn't choke on
+         * first.  That spelling is all a C test shares with a script,
+         * though: the language above still decides how its lines are
+         * read. */
+        true
     );
 }
 

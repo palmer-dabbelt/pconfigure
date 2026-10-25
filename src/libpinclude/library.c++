@@ -34,7 +34,8 @@ int pinclude::list(std::string filename,
                    bool skip_missing_files,
                    pinclude::syntax language,
                    pinclude::directive_callback on_directive,
-                   bool refuse_if)
+                   bool refuse_if,
+                   bool strict_directives)
 {
     std::unordered_set<std::string> define_set;
     for (const auto& define: defines)
@@ -47,7 +48,8 @@ int pinclude::list(std::string filename,
                 skip_missing_files,
                 language,
                 on_directive,
-                refuse_if);
+                refuse_if,
+                strict_directives);
 }
 
 /* OUTPUT and ELSE are the two halves of a conditional whose
@@ -149,7 +151,8 @@ int list_overwrite_defines(std::string filename,
                            bool skip_missing_files,
                            pinclude::syntax language,
                            const pinclude::directive_callback& on_directive,
-                           bool refuse_if);
+                           bool refuse_if,
+                           bool strict_directives);
 
 int pinclude::list(std::string filename,
                    std::vector<std::string> include_dirs_without_cwd,
@@ -158,7 +161,8 @@ int pinclude::list(std::string filename,
                    bool skip_missing_files,
                    pinclude::syntax language,
                    pinclude::directive_callback on_directive,
-                   bool refuse_if)
+                   bool refuse_if,
+                   bool strict_directives)
 {
     return list_overwrite_defines(
         filename,
@@ -168,7 +172,8 @@ int pinclude::list(std::string filename,
         skip_missing_files,
         language,
         on_directive,
-        refuse_if
+        refuse_if,
+        strict_directives
     );
 }
 
@@ -179,11 +184,15 @@ int list_overwrite_defines(std::string filename,
                            bool skip_missing_files,
                            pinclude::syntax language,
                            const pinclude::directive_callback& on_directive,
-                           bool refuse_if)
+                           bool refuse_if,
+                           bool strict_directives)
 {
     /* Every script is read the strict way, which is the question
-     * check_line() asks. */
-    auto bare_directives = language != pinclude::syntax::C;
+     * check_line() asks, and so is a C file whose caller asked for it
+     * -- a C test's "#pconfigure" lines, which are spelled the script
+     * way even though the rest of the file is read as C. */
+    auto bare_directives = language != pinclude::syntax::C
+        || strict_directives == true;
 
     std::ifstream file(filename);
     std::string line;
@@ -271,13 +280,27 @@ int list_overwrite_defines(std::string filename,
      * a C comment out of anything. */
     static const auto next_logical_line = [](std::ifstream& file, std::string& out,
                                              std::string& raw,
-                                             int& comment, int& lineno) {
+                                             int& comment, int& lineno,
+                                             pinclude::syntax language) {
         std::string line;
         if (!std::getline(file, line))
             return false;
         out = line;
         raw = line;
         lineno++;
+
+        /* Everything below is how the C preprocessor reads a line:
+         * backslash-newline splicing first, then comments.  None of
+         * that is how a shell reads one.  The "/" and "*" that end a
+         * glob like 'ls "$HOME"/' plus "*" open no comment, and a
+         * backslash at the end of a "#" comment or of a line in a
+         * quoted heredoc's body doesn't pull the next line up into
+         * it.  Read that way, a script's later "#include"s are
+         * blanked or swallowed here, pbashc pastes them in anyway,
+         * and the file it pasted is one make doesn't know the script
+         * depends on, so editing it never rebuilds the script. */
+        if (language != pinclude::syntax::C)
+            return true;
 
         /* An empty line has no last character, and asking for one
          * indexes off the front of the string.  Blank lines turn up in
@@ -339,7 +362,7 @@ int list_overwrite_defines(std::string filename,
      * keyword is still a mistake worth stopping for, and in C there
      * is no '#' comment for it to be. */
     const auto only_shell_comment = [&](const std::string& rest) {
-        return bare_directives == true
+        return language != pinclude::syntax::C
             && rest.size() > 0
             && rest[0] == '#';
     };
@@ -353,7 +376,7 @@ int list_overwrite_defines(std::string filename,
     std::vector<heredoc> heredocs;
     auto in_data = false;
     std::string raw;
-    while (next_logical_line(file, line, raw, comment, lineno)) {
+    while (next_logical_line(file, line, raw, comment, lineno, language)) {
         /* Below a Perl script's "__DATA__" or "__END__" is data the
          * script reads, or nothing at all, and never script -- so an
          * "#include" there is no file the script reads, for the same
@@ -370,10 +393,13 @@ int list_overwrite_defines(std::string filename,
          * changes, and it disagrees with pbashc, which leaves the
          * same line alone.
          *
-         * Only for a script: heredocs are a thing scripts have, and
-         * "bare_directives" is already the question of whether this
-         * is reading one. */
-        if (bare_directives == true) {
+         * Only for a script: heredocs are a thing scripts have.  A C
+         * file's "<<" is a shift, and in C++ it is far more often a
+         * stream insertion -- 'std::cout << "x"' reads as a heredoc
+         * ending at a line that says "x", which hides every line
+         * after it.  The strict directive spelling isn't the question
+         * to ask here, since a C test is read with that too. */
+        if (language != pinclude::syntax::C) {
             if (heredocs.empty() == false) {
                 if (closes_heredoc(line, heredocs.front()) == true)
                     heredocs.erase(heredocs.begin());
@@ -605,7 +631,8 @@ int list_overwrite_defines(std::string filename,
                     skip_missing_files,
                     language,
                     on_directive,
-                    refuse_if
+                    refuse_if,
+                    strict_directives
                 );
                 if (rout != 0) {
                     std::cerr << "Early out no longer supported in pinclude::list\n";

@@ -53,21 +53,30 @@ namespace pinclude {
      * expanded, since that is how they are found. */
     typedef std::function<void(const directive&)> directive_callback;
 
-    /* What a file is written in, which decides what counts as a
-     * directive and which lines can't be one whatever they look
-     * like.
+    /* What a file is written in, which decides how its lines are
+     * read, what counts as a directive and which lines can't be one
+     * whatever they look like.
      *
-     * C is the relaxed reading, where a directive may be indented
-     * and may have space between its '#' and its name -- this tree's
-     * own sources indent a "# ifdef" inside a conditional.  A script
-     * gets the stricter one: a '#' in the first column with the
-     * keyword written against it, and nothing else, since anywhere
-     * else a '#' starts a comment.  A script also carries text that
-     * isn't script at all, a heredoc's body, and what that looks
-     * like is where the two scripting languages part: Perl writes
-     * an indented heredoc as "<<~", which to the shell is a heredoc
-     * ending at "~", and Perl ends the script itself at a
-     * "__DATA__" or "__END__" line. */
+     * C is read the way its preprocessor reads it: a backslash at the
+     * end of a line pulls the next one up onto it, comments are
+     * blanked out, and a directive may be indented and may have space
+     * between its '#' and its name -- this tree's own sources indent
+     * a "# ifdef" inside a conditional.
+     *
+     * A script has none of that.  A shell reads a line as the line it
+     * is, a "/" and a "*" next to each other are a glob and not a
+     * comment, and a backslash at the end of a '#' comment pulls
+     * nothing up into it.  A directive is a '#' in the first column
+     * with the keyword written against it, and nothing else, since
+     * anywhere else a '#' starts a comment.  That is how pbashc and
+     * pperlc read one, and the files pinclude finds have to be the
+     * files they paste in, or a script is left depending on one make
+     * was never told about.  A script also carries text that isn't
+     * script at all, a heredoc's body, and what that looks like is
+     * where the two scripting languages part: Perl writes an indented
+     * heredoc as "<<~", which to the shell is a heredoc ending at
+     * "~", and Perl ends the script itself at a "__DATA__" or
+     * "__END__" line. */
     enum class syntax {
         C,
         SHELL,
@@ -82,6 +91,13 @@ namespace pinclude {
      *
      * language says which of the readings above to use, and is C
      * unless the caller knows better.
+     *
+     * strict_directives asks for a script's spelling of a directive in
+     * a file that is otherwise read as C.  That is a question about
+     * what a directive looks like and not about how the rest of the
+     * file is read: a C test is read for its "#pconfigure" lines with
+     * the strict spelling, but it is still C, and still has its
+     * comments blanked out and its continuations joined first.
      *
      * on_directive is handed every "#pconfigure" line found on the way
      * through, and defaults to nothing at all for the callers that
@@ -101,7 +117,8 @@ namespace pinclude {
              bool skip_missing_files,
              syntax language = syntax::C,
              directive_callback on_directive = {},
-             bool refuse_if = false);
+             bool refuse_if = false,
+             bool strict_directives = false);
 
     int list(std::string filename,
              std::vector<std::string> include_dirs,
@@ -110,7 +127,8 @@ namespace pinclude {
              bool skip_missing_files,
              syntax language = syntax::C,
              directive_callback on_directive = {},
-             bool refuse_if = false);
+             bool refuse_if = false,
+             bool strict_directives = false);
 
     static inline
     int list(std::string filename,
@@ -118,7 +136,8 @@ namespace pinclude {
              bool skip_missing_files,
              syntax language = syntax::C,
              directive_callback on_directive = {},
-             bool refuse_if = false)
+             bool refuse_if = false,
+             bool strict_directives = false)
     {
         return list(filename,
                     std::vector<std::string>{},
@@ -127,7 +146,8 @@ namespace pinclude {
                     skip_missing_files,
                     language,
                     on_directive,
-                    refuse_if
+                    refuse_if,
+                    strict_directives
                 );
     }
 }

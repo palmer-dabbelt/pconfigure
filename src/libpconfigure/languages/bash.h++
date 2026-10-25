@@ -92,6 +92,24 @@ protected:
     static bool targets_handle(const context::ptr& ctx);
 
 public:
+    /* The suffixes a source has to end in for BASH to claim it.  It is
+     * a list of its own rather than a literal in can_process() because
+     * one other question turns on it: whether a file is read as a
+     * script, line for line the way pbashc reads it, or as C.  The
+     * test-directive scan asks that before the source's context exists
+     * to be offered to the languages, and syntax_of() below is how. */
+    static const std::vector<std::string>& source_extensions(void);
+
+    /* How a source at this path is read: as the script one of the
+     * BASH-like languages claims it to be, or as C when none of them
+     * does.  It asks every one of them (BASH and perl both), since a
+     * '#' starts a comment in each and none of them has C's comments
+     * or backslash-newlines, and the answer is the syntax rather than
+     * a yes or no because the two still part over heredocs and Perl's
+     * "__DATA__". */
+    static pinclude::syntax syntax_of(const std::string& path);
+
+public:
     /* Virtual methods from language. */
     virtual std::string name(void) const { return "bash"; }
     virtual language_bash* clone(void) const;

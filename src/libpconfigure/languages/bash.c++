@@ -19,6 +19,7 @@
  */
 
 #include "bash.h++"
+#include "perl.h++"
 #include "../language_list.h++"
 #include "../pick_language.h++"
 #include "../file_utils.h++"
@@ -53,13 +54,32 @@ bool language_bash::can_process(const context::ptr& ctx) const
     case context_type::BINARY:
     case context_type::SOURCE:
     case context_type::TEST:
-    return language::all_sources_match(ctx, {".bash"});
+    return language::all_sources_match(ctx, source_extensions());
     }
 
     std::cerr << "Internal error: bad context type "
               << std::to_string(ctx->type)
               << "\n";
     abort();
+}
+
+const std::vector<std::string>& language_bash::source_extensions(void)
+{
+    static const std::vector<std::string> extensions = {".bash"};
+    return extensions;
+}
+
+pinclude::syntax language_bash::syntax_of(const std::string& path)
+{
+    for (const auto& extension: language_bash::source_extensions())
+        if (string_utils::has_extension(path, extension))
+            return pinclude::syntax::SHELL;
+
+    for (const auto& extension: language_perl::source_extensions())
+        if (string_utils::has_extension(path, extension))
+            return pinclude::syntax::PERL;
+
+    return pinclude::syntax::C;
 }
 
 bool language_bash::targets_handle(const context::ptr& ctx)
@@ -565,11 +585,12 @@ language_bash::dependencies(const std::string& path,
     std::vector<makefile::target::ptr> out;
     /* A script's # is a comment leader, so nothing but the bare
      * "#include" that pbashc expands may be read as a directive here,
-     * and what is text rather than script depends on which language
-     * the script is written in.  And an "#if" is refused, because
-     * pbashc refuses it in either language: a scan that worked one
-     * out could leave off a file pbashc would have pasted in, or list
-     * one it would have stopped at. */
+     * the lines are read the way pbashc reads them rather than the
+     * way a C preprocessor would, and what is text rather than script
+     * depends on which language the script is written in.  And an
+     * "#if" is refused, because pbashc refuses it in either language:
+     * a scan that worked one out could leave off a file pbashc would
+     * have pasted in, or list one it would have stopped at. */
     pinclude::list(path,
                    include_dirs,
                    defined,
