@@ -124,7 +124,7 @@ language_phony::targets(const context::ptr& ctx) const
         }
 
         auto language = pick_language(ctx->languages, child);
-        for (const auto& target: language->targets(child->without_clopts()))
+        for (const auto& target: language->targets(child->without_clopts(ctx)))
             out.push_back(target);
     }
 

@@ -597,7 +597,7 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
                             if (l->name() == this->name())
                                 return child;
 
-                            return child->without_clopts();
+                            return child->without_clopts(ctx);
                         }();
                     tests = tests + l->targets(filtered_child);
                     break;

@@ -295,7 +295,7 @@ language_bash::targets(const context::ptr& ctx) const
                         if (l->name() == this->name())
                             return child;
 
-                        return child->without_clopts();
+                        return child->without_clopts(ctx);
                     }();
                 tests = tests + l->targets(filtered_child);
             }

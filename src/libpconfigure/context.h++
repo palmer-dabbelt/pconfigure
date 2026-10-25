@@ -344,12 +344,26 @@ public:
             const std::vector<ptr>& children)
             const;
 
-    /* Duplicates this context, dropping the compile and link options. */
-    ptr without_clopts(void) const
+    /* Duplicates this context, dropping the compile and link options
+     * it took from "above", the target it was opened under.
+     *
+     * Those were said to that target's language, and this context is
+     * about to be built by a different one.  What was written under
+     * this context itself is its own, though, and is kept: a TESTSRC
+     * that says "COMPILEOPTS += -DTESTING" underneath it means it for
+     * the test, in the test's language.
+     *
+     * The dropping goes all the way down rather than stopping here,
+     * because the sources under this context were copied from it, and
+     * so from "above", before anyone knew which language would build
+     * them -- and a source is where a compile line reads its options
+     * from.  Clearing them here alone left a C test of a C++ program
+     * compiled with the program's flags, and a C++ test of a "-std=c99
+     * -Werror" C program refused by its own compiler. */
+    ptr without_clopts(const ptr& above) const
     {
         auto o = this->dup();
-        o->compile_opts = std::vector<std::string>();
-        o->link_opts = std::vector<std::string>();
+        o->drop_inherited_clopts(above->compile_opts, above->link_opts);
 
         /* Whatever was said about how to build this target was said
          * to a different language than the one that's about to build
@@ -358,6 +372,40 @@ public:
          * much as for the options it was going to be handed. */
         o->drop_toolchain();
         return o;
+    }
+
+    /* Takes the leading options this context and everything under it
+     * share with the ones given, which is how a context inherited
+     * them: each is a copy of the one it was opened under, made with
+     * that one's options as they stood, and anything written under
+     * it since went on the end.  Comparing rather than counting means
+     * an option that isn't actually shared is never taken.  Copies
+     * are made on the way down, as drop_toolchain() does, so the
+     * contexts this was copied from are left exactly as they were. */
+    void drop_inherited_clopts(const std::vector<std::string>& compile,
+                               const std::vector<std::string>& link)
+    {
+        compile_opts = without_prefix(compile_opts, compile);
+        link_opts = without_prefix(link_opts, link);
+
+        auto dropped = std::vector<ptr>();
+        for (const auto& child: children) {
+            auto copy = child->dup();
+            copy->drop_inherited_clopts(compile, link);
+            dropped.push_back(copy);
+        }
+        children = dropped;
+    }
+
+    static std::vector<std::string>
+    without_prefix(const std::vector<std::string>& opts,
+                   const std::vector<std::string>& prefix)
+    {
+        size_t shared = 0;
+        while (shared < opts.size() && shared < prefix.size()
+               && opts[shared] == prefix[shared])
+            shared++;
+        return std::vector<std::string>(opts.begin() + shared, opts.end());
     }
 
     /* Forgets which toolchain builds this context, and everything
