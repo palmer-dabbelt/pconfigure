@@ -4929,7 +4929,9 @@ A bash ``compiler'', which really just does the following
   is a comment to BASH and goes out as it came in.
   \texttt{-DNAME=value} defines \texttt{NAME} just as
   \texttt{-DNAME} does, and also replaces \texttt{NAME} with
-  \texttt{value} wherever it appears in the output.  These two are
+  \texttt{value} wherever it appears in the output, taking the
+  occurrences left to right without overlap: under
+  \texttt{-DXX=y}, \texttt{XXX} comes out as \texttt{yX}.  These two are
   the only flags it knows: a \texttt{-isystem}, say, is not a
   directory it searches.  \pconfigure\ reads the same flags the same
   way when it works out what a script depends on, so a file found
