@@ -929,6 +929,16 @@ the subproject's own directory gets that directory put on the front;
 one that doesn't is left to be found along the include path by the
 name it was written with.
 
+A header is named by the path it reaches rather than by how the
+include and the directory it was found through spelled it, just as a
+source is: \texttt{"extra.h"} and \texttt{"./extra.h"}, or a header
+found through \texttt{-Isrc/lib}, \texttt{-Isrc/lib/} or
+\texttt{-I./src/lib}, are the one header, and the source behind it is
+built and linked once.  A \texttt{..} that climbs out of the project
+is kept, so a header reached with \texttt{"../../shared/shared.h"}
+is still found where it is, and a change to it still rebuilds what
+includes it.
+
 \subsection{\texttt{LINKOPTS += \$opt}}
 
 \texttt{LINKOPTS} is just like \texttt{COMPILEOPTS}, but it sets
