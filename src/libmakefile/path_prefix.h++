@@ -170,6 +170,20 @@ namespace makefile {
          * pconfigure's own tools -- from being mangled by a project
          * that happens to be called "sub". */
         std::string rewrite(const std::string& line) const;
+
+        /* Strips this project's directory off the paths in a line
+         * that names them, leaving the line as it would read had
+         * pconfigure been run inside the project rather than above
+         * it.  Paths are found exactly the way rewrite() finds them,
+         * so whatever rewrite() would have pointed at the variable is
+         * what loses its directory here; other projects' paths are
+         * left alone, since a run inside this project has no way to
+         * name them at all.
+         *
+         * Unlike rewrite() this works whether or not anything
+         * includes the Makefile: it is for text that never reaches
+         * one, like the lines an object's name is hashed from. */
+        std::string unbased(const std::string& line) const;
     };
 }
 

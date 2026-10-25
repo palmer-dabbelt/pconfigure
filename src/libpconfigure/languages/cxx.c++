@@ -19,6 +19,7 @@
  */
 
 #include "cxx.h++"
+#include <libmakefile/path_prefix.h++>
 #include <libmakefile/self_path.h++>
 #include "../language_list.h++"
 #include "../vector_util.h++"
@@ -367,7 +368,7 @@ std::string language_cxx::archiver_command(const context::ptr& ctx) const
  * program that looked for its libraries under the old one. */
 std::string language_cxx::hash_link_options(const context::ptr& ctx) const
 {
-    return hash_options(
+    return hash_options(unbased_options(ctx,
         std::vector<std::string>{this->linker_command(ctx)}
         + this->clopts()
         + ctx->clopts()
@@ -376,7 +377,7 @@ std::string language_cxx::hash_link_options(const context::ptr& ctx) const
             "prefix:" + ctx->prefix,
             "lib_dir:" + ctx->lib_dir,
         }
-    );
+    ));
 }
 
 /* The same goes for an object, so this hashes the compile line
@@ -389,10 +390,10 @@ std::string language_cxx::hash_compile_options(const context::ptr& ctx,
                                                const context::ptr& child)
                                                const
 {
-    return hash_options(
+    return hash_options(unbased_options(ctx,
         std::vector<std::string>{this->compiler_command(child)}
         + compile_options(ctx, child)
-    );
+    ));
 }
 
 /* The link options pconfigure adds on top of what the Configfile
@@ -425,6 +426,39 @@ std::vector<std::string>
 language_cxx::added_link_options(const context::ptr& ctx) const
 {
     return lib_dir_link_options(ctx) + dep_lib_link_options(ctx);
+}
+
+/* An object or a link is hashed as the project itself would spell
+ * its line, with the project's own directory taken back off every
+ * path.  A subproject is configured from the top of a run and
+ * configured on its own, and the manual promises the two share what
+ * they build: they agree on where each object goes, and only the
+ * hash was left to tell them apart.  From the top, though, every path
+ * on the line starts with the subproject's directory -- "-c
+ * sub/src/tool.c", "-Isub/include", "-Lsub/lib" -- and from inside it
+ * doesn't, so hashing the line as it stood named one object two ways.
+ * Each side then found the other's object missing and built its own,
+ * and an edit to one source was compiled, linked and copied into
+ * place twice, once by each.
+ *
+ * Nothing that tells two objects apart is lost by this.  Every
+ * project's objects are under that project's own object directory,
+ * so the directory taken off here is one the object's path still
+ * carries.
+ *
+ * This is for what the two runs are meant to share, and only that.
+ * The dependency fragments beside an object are deliberately one per
+ * run -- each names its paths from where its own make stands -- so
+ * the hash that tells those apart goes on hashing the spelling as it
+ * is. */
+std::vector<std::string>
+language_cxx::unbased_options(const context::ptr& ctx,
+                              const std::vector<std::string>& opts) const
+{
+    auto prefix = makefile::path_prefix(ctx->base, "");
+    return vector_util::map(opts, [&](const std::string& opt) {
+        return prefix.unbased(opt);
+    });
 }
 
 std::string language_cxx::hash_options(const std::vector<std::string>& opts) const
@@ -1384,7 +1418,11 @@ language_cxx::link_objects(const context::ptr& ctx,
             link_inputs.push_back(child->src_dir + "/" + child->cmd->data());
 
     auto link_inputs_path = shared_link_dir + "link-inputs";
-    auto link_inputs_hash = this->hash_options(link_inputs);
+    /* Spelled the way the project spells them, for the same reason
+     * the link directory's name is: both runs write this file into
+     * that one directory, and two spellings of the same list would
+     * have each configure look like a changed link to the other. */
+    auto link_inputs_hash = this->hash_options(unbased_options(ctx, link_inputs));
     if (file_utils::write_configure_output(link_inputs_path,
                                            link_inputs_hash) == false) {
         std::cerr << "can't write '" << link_inputs_path << "': "
