@@ -23,6 +23,7 @@
 #include "file_utils.h++"
 #include "pick_language.h++"
 #include "string_utils.h++"
+#include "languages/gen_proc.h++"
 #include <libmakefile/self_path.h++>
 #include <sys/stat.h>
 #include <cctype>
@@ -339,6 +340,8 @@ void project::generate_targets(void)
      * LIBDIR between two LIBRARIES lines makes two libraries with one
      * name and two homes, which is a thing somebody meant. */
     auto by_output = std::map<std::string, context::ptr>();
+    auto scratch_claims = std::map<std::string,
+                                   std::pair<context::ptr, std::string>>();
 
     /* A GENERATE writes its output while its targets are being worked
      * out, and a source's targets are worked out by scanning it for
@@ -358,6 +361,12 @@ void project::generate_targets(void)
     for (const auto& context: _processor->output_contexts()) {
         if (context->check_type({context_type::GENERATE}) == false)
             continue;
+
+        /* Before this GENERATE's generator runs rather than after: a
+         * name that collides with another GENERATE's scratch file is
+         * refused, and a refused line should not have already had its
+         * generator write through the other's temporary first. */
+        check_generate_names(context, scratch_claims);
 
         auto language = pick_language(context->languages, context);
         generated[context] = language->targets(context);
@@ -2030,6 +2039,77 @@ void project::check_target_shape(const context::ptr& ctx,
             " and if the two disagree at all the build stops here");
 
     seen[output] = ctx;
+}
+
+void project::check_generate_names(
+    const context::ptr& ctx,
+    std::map<std::string, std::pair<context::ptr, std::string>>& claimed)
+{
+    if (ctx->check_type({context_type::GENERATE}) == false)
+        return;
+
+    /* A GENERATE does not just write its output: it writes the output
+     * through a temporary beside it, and keeps a dependency fragment
+     * and a record of the recipe that wrote the fragment beside it too,
+     * all named after the output.  Nothing stops a second GENERATE's
+     * output from having one of those names, and when one does, two
+     * rules own one file.
+     *
+     * Neither way round is something that can be made to work.  An
+     * output named after another's fragment is two different rules for
+     * one target, which used to stop pconfigure dead with no message at
+     * all; an output named after another's temporary is moved or
+     * deleted by every regeneration of the other, so with -j2 every
+     * other build ended with it missing and the next make made it
+     * again.  Moving the scratch files somewhere no output can be named
+     * was the alternative, and it was not taken: the fragment's path
+     * is in every Makefile already written and in every tree already
+     * built, and a collision this rare is better answered with a
+     * sentence than with a new layout everybody has to migrate to.
+     *
+     * The paths are compared normalized, so that "./gen.h.d" is caught
+     * as surely as "gen.h.d", and it is the later of the two lines that
+     * is refused whichever of them owns the scratch file -- the only
+     * order a reader can predict without knowing which name is which. */
+    auto output = ctx->gen_dir + "/" + ctx->cmd->data();
+
+    auto mine = std::vector<std::pair<std::string, std::string>>{
+        {output, "the output"}
+    };
+    for (const auto& scratch: language_gen_proc::scratch_files(output))
+        mine.push_back(scratch);
+
+    for (const auto& path: mine) {
+        auto key = file_utils::normalize_path(path.first);
+        auto found = claimed.find(key);
+        if (found == claimed.end())
+            continue;
+
+        /* One path in the same role for both lines means one output
+         * asked for twice, however it was spelled, and that comes out
+         * as one set of identical rules.  Whether that deserves a word
+         * is somebody else's question, and not the collision this is
+         * about. */
+        if (found->second.second == path.second)
+            continue;
+
+        std::cerr << std::to_string(ctx->cmd->debug()) << "\n"
+                  << "  error: '" << key << "' is "
+                  << path.second << " of this GENERATE, and it is already "
+                  << found->second.second << " of the GENERATE on "
+                  << std::to_string(found->second.first->cmd->debug())
+                  << "\n"
+                  << "  a GENERATE keeps '<name>.tmp', '<name>.d',"
+                  << " '<name>.d.raw', '<name>.d.tmp' and"
+                  << " '<name>.d-context' beside its output, so rename one"
+                  << " of the two outputs so that neither is the other's"
+                  << " name with one of those on the end\n";
+        abort();
+    }
+
+    for (const auto& path: mine)
+        claimed[file_utils::normalize_path(path.first)]
+            = std::make_pair(ctx, path.second);
 }
 
 void project::write_check_stamp(void) const

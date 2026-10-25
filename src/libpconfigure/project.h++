@@ -363,6 +363,17 @@ private:
     static void check_target_shape(const context::ptr& ctx,
                                    std::map<std::string, context::ptr>& seen);
 
+    /* Refuses a GENERATE whose output is one of the files another
+     * GENERATE keeps beside its own -- the temporary its output is
+     * written through, its dependency fragment and that fragment's
+     * leftovers -- or whose own such files are another GENERATE's
+     * output.  "claimed" maps each of those paths to the line that
+     * claimed it and what the path is to that line. */
+    static void check_generate_names(
+        const context::ptr& ctx,
+        std::map<std::string,
+                 std::pair<context::ptr, std::string>>& claimed);
+
     /* Every test this project runs, by the name of the target that
      * runs it -- which is what a DEPTESTS resolves to, and what a
      * suite's rule hangs its tests off.
