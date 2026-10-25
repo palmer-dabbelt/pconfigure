@@ -21,11 +21,18 @@
 #include "bash.h++"
 #include "../language_list.h++"
 #include "../pick_language.h++"
+#include "../file_utils.h++"
 #include "../string_utils.h++"
 #include <pinclude.h++>
 #include <assert.h>
 #include <iostream>
 #include <sstream>
+
+/* The options pbashc is run with, split into words and with the
+ * project's own "-I" directories said from the top of the tree. */
+static std::vector<std::string>
+pbashc_options(const std::vector<std::string>& opts,
+               const std::string& base);
 
 language_bash* language_bash::clone(void) const
 {
@@ -114,6 +121,13 @@ language_bash::targets(const context::ptr& ctx) const
 
         auto short_cmd = this->compiler_pretty() + "\t" + ctx->cmd->data();
 
+        /* pbashc runs from the top of the tree, and so does the
+         * search for what a script reads, so both are given the
+         * options with a subproject's include directories rerooted
+         * onto it -- the one list, so that they can't disagree about
+         * where a helper is. */
+        auto opts = pbashc_options(this->clopts(ctx), ctx->src_path);
+
         auto sources = std::vector<makefile::target::ptr>();
         auto deps = std::vector<makefile::target::ptr>();
         auto tests = std::vector<makefile::target::ptr>();
@@ -122,7 +136,7 @@ language_bash::targets(const context::ptr& ctx) const
                 auto path = child->src_dir + "/" + child->cmd->data();
                 sources.push_back(std::make_shared<makefile::target>(path));
                 if (ctx->autodeps == true)
-                    deps = deps + dependencies(path, this->clopts(ctx));
+                    deps = deps + dependencies(path, opts);
             }
 
             /* A test is a child of the thing it tests, and the project
@@ -157,7 +171,7 @@ language_bash::targets(const context::ptr& ctx) const
                    + " -o "
                    + target;
 
-        for (const auto& str: this->clopts(ctx))
+        for (const auto& str: opts)
             command += " " + str;
 
         auto bin_subdir = target.substr(0, target.find_last_of("/"));
@@ -380,6 +394,45 @@ pbashc_flag_arguments(const std::vector<std::string>& opts,
             out.push_back(words[i].substr(flag.size()));
         else if (i + 1 < words.size())
             out.push_back(words[++i]);
+    }
+    return out;
+}
+
+/* A subproject's "-I inc" means the inc/ beside its Configfile, and
+ * pbashc is run from the top of the tree, where "inc" is some other
+ * directory or none at all.  C has always had the subproject's
+ * directory put on the front of it, and this does the same for the
+ * one flag pbashc searches with, in either of the spellings
+ * pbashc_flag_arguments() reads.  Each is given back spelled the way
+ * it came in, since the Makefile's own rewriting of the subproject's
+ * directory -- for a build run from inside it -- finds a path at the
+ * start of a word or straight after "-I", and both spellings put it
+ * in one of those places.
+ *
+ * Only "-I" is touched.  A "-D" is a name rather than a path, and
+ * pbashc reads nothing else as a directory. */
+static std::vector<std::string>
+pbashc_options(const std::vector<std::string>& opts,
+               const std::string& base)
+{
+    auto out = std::vector<std::string>();
+    auto pending = false;
+    for (const auto& opt: opts) {
+        std::istringstream ss(opt);
+        std::string word;
+        while (ss >> word) {
+            if (pending == true) {
+                out.push_back(file_utils::reroot(base, word));
+                pending = false;
+            } else if (word == "-I") {
+                out.push_back(word);
+                pending = true;
+            } else if (word.compare(0, 2, "-I") == 0) {
+                out.push_back("-I" + file_utils::reroot(base, word.substr(2)));
+            } else {
+                out.push_back(word);
+            }
+        }
     }
     return out;
 }
