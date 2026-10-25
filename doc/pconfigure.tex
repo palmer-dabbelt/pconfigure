@@ -146,6 +146,9 @@ naming the line too.
 A UTF-8 byte order mark at the very start of a \texttt{Configfile},
 which some editors write without being asked, is ignored.  Anywhere
 else in the file those bytes are an error on the line they appear on.
+So is a NUL byte anywhere in a line, which usually means the file was
+saved as UTF-16; both rules apply to what an executable
+\texttt{Configfile} prints as well.
 
 By default, the following configuration files are loaded in this order
 \begin{verbatim}
