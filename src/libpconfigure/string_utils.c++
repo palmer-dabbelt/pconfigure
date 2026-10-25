@@ -19,42 +19,47 @@
  */
 
 #include "string_utils.h++"
-#include <cstring>
+#include <cctype>
 #include <iostream>
 #include <sstream>
 using namespace string_utils;
 
 std::string string_utils::clean_white(const std::string& in)
 {
-    char *dup = strdup(in.c_str());
+    /* One pass over the string, by its size.  Every Configfile line
+     * comes through here more than once, and lines may be as long as
+     * their author made them, so this has to cost no more than
+     * reading the line does: asking strlen() for the length on every
+     * character, as this used to, made a line of a couple of
+     * megabytes take minutes.  Going by size() rather than looking
+     * for a terminator also means a NUL is just another character
+     * here, rather than the place the line silently ends -- whether a
+     * NUL belongs in a line at all is for whoever reads the line to
+     * decide, not for the code that tidies its spaces.
+     *
+     * Leading white space is dropped by starting as though the last
+     * character were white, and each run after that becomes a single
+     * space, which can leave one trailing space for the end to trim.
+     * isspace() is only defined for values an unsigned char can hold,
+     * so a byte with its top bit set has to be widened as one rather
+     * than sign-extended. */
+    auto out = std::string();
+    out.reserve(in.size());
 
-    size_t oi = 0;
-    bool white = true;
-    for (size_t ii = 0; ii < strlen(in.c_str()); ++ii) {
+    auto white = true;
+    for (const auto& c: in) {
         auto was_white = white;
-        white = isspace(in.c_str()[ii]);
+        white = isspace(static_cast<unsigned char>(c));
 
         if (white && was_white)
             continue;
 
-        dup[oi] = white ? ' ' : in.c_str()[ii];
-        oi++;
+        out += white ? ' ' : c;
     }
-    dup[oi] = '\0';
 
-    /* If the string is of 0 length then there's nothing left to do
-     * here, so just don't worry about it any more. */
-    if (strlen(dup) == 0)
-        goto valid;
+    if (!out.empty() && out.back() == ' ')
+        out.pop_back();
 
-    /* That last loop can leave a single trailing white space, check
-     * for that and remove it here. */
-    if (isspace(dup[strlen(dup)-1]))
-        dup[strlen(dup)-1] = '\0';
-
-valid:
-    std::string out = dup;
-    free(dup);
     return out;
 }
 

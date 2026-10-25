@@ -599,6 +599,7 @@ TESTSRC     += cdpath-srcpath-executable-configfile-reads-own-tree.bash
 TESTSRC     += configfile-unreadable-refused.bash
 TESTSRC     += configfiles-main-directory-refused.bash
 TESTSRC     += configfile-long-line-later-line-numbers.bash
+TESTSRC     += configfile-long-whitespace-run-configures-quickly.bash
 TESTSRC     += configfile-backtick-multiline-compileopts.bash
 TESTSRC     += configfile-backtick-multiline-linkopts.bash
 TESTSRC     += configfile-path-escapes.bash
