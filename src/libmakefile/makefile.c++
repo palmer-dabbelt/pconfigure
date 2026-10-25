@@ -282,11 +282,12 @@ void makefile::makefile::write_to_file(const std::string& filename)
      * middle of the source tree and the uninstall ran "rm -f" on both
      * halves.  Nothing says so -- it just goes somewhere else.
      *
-     * DESTDIR is only ever said on make's command line, long after
-     * pconfigure ran, so this is the only place it can be checked.
-     * Escaping it into the target names isn't on offer: make has no
-     * quoting that survives being expanded out of a variable into a
-     * rule, and "$@" in the recipes would come out unquoted anyway.
+     * DESTDIR comes from make's command line or the environment,
+     * long after pconfigure ran, so this is the only place it can be
+     * checked.  Escaping it into the target names isn't on offer:
+     * make has no quoting that survives being expanded out of a
+     * variable into a rule, and "$@" in the recipes would come out
+     * unquoted anyway.
      * Not naming the installed files as targets would trade away
      * installs that only copy what changed for a corner case with a
      * one-line workaround, which is what the error says to do: a
@@ -296,10 +297,11 @@ void makefile::makefile::write_to_file(const std::string& filename)
      * It is checked whatever is being built rather than only for
      * "install": the split rules are in this Makefile as soon as it
      * is read, and a goal like "dir//usr/local/bin/x" reaches them
-     * without the word "install" ever being said.  The "x"s on either side catch a
-     * DESTDIR that is nothing but a trailing or leading space, which
-     * splits just the same.  A subproject's Makefile carries the same
-     * check, and the first one read is the one that stops make. */
+     * without the word "install" ever being said.  The "x"s on
+     * either side catch a DESTDIR that is nothing but a trailing or
+     * leading space, which splits just the same.  A subproject's
+     * Makefile carries the same check, and the first one read is the
+     * one that stops make. */
     fprintf(file, "ifneq ($(word 2,x$(DESTDIR)x),)\n");
     fprintf(file, "$(error DESTDIR=\"$(DESTDIR)\" has whitespace in it,"
                   " and make splits the installed files' target names"
