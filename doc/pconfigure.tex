@@ -2675,17 +2675,24 @@ program, and a \texttt{TESTDEPS} found in one would have to land on
 every test of the target, which is what writing it in the
 \texttt{Configfile} already does.
 
-In practice that means the tests written in \texttt{bash} (see
-Section~\ref{lang:bash}).  The \texttt{\#} has to be in the first
-column with \texttt{pconfigure} written against it, which is the one
-spelling a shell script can use --- a \texttt{\#} anywhere else on a
-line of shell starts a comment --- and it is not a line a C compiler
-would accept at all.
+In practice that means the tests written in \texttt{bash} or
+\texttt{perl} (see Section~\ref{lang:bash}).  The \texttt{\#} has to
+be in the first column with \texttt{pconfigure} written against it,
+which is the one spelling a shell script can use --- a \texttt{\#}
+anywhere else on a line of shell starts a comment --- and it is not a
+line a C compiler would accept at all.
 
 That last point is worth writing down, because it is also how a
 directive gets written by accident.  A note about \pconfigure\ at the
 top of a test, with no space after the \texttt{\#}, is a directive;
 \pconfigure\ says so, and says to put the space in.
+
+A test whose source BASH or Perl claims is read for its directives
+the way \texttt{pbashc} and \texttt{pperlc} read it, a line at a
+time with none of C's comments or backslash-newlines, so a glob ending
+in \texttt{/*} or Perl's \texttt{//} hides nothing below it.  Any
+other test is read as C, and a directive inside one of its comments is
+commented out like the rest of the comment.
 
 A directive is read whether or not \texttt{AUTODEPS} (see
 Section~\ref{cmd:autodeps}) is on.  \texttt{AUTODEPS} turns off the
@@ -5041,6 +5048,17 @@ A bash ``compiler'', which really just does the following
   \pconfigure\ follows the same rule when it works out what a script
   depends on, so the files it writes down as dependencies are the ones
   that actually get pasted in.
+
+  Every line is read as the line it is, which is how BASH reads it:
+  a trailing backslash does not join it to the next one, and a
+  \texttt{/*} or \texttt{//} is not a comment.  A glob like
+  \texttt{ls dir/*}, a comment ending in a Windows path's backslash,
+  or a heredoc line ending in one leaves the \texttt{\#include}s
+  below it as they were.  \pconfigure\ reads a script the same way
+  when it looks for its dependencies and, for a test written in BASH
+  or Perl, its \texttt{\#pconfigure} lines (see
+  Section~\ref{directive}); a test written in C or C++ is still read
+  as C, so a directive inside one of its comments is commented out.
 \item Reads the \texttt{-I} and \texttt{-D} in the target's
   \texttt{COMPILEOPTS}, with the argument either stuck on or as the
   next word.  A \texttt{-I} adds a directory an \texttt{\#include} is
