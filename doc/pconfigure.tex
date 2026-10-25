@@ -943,9 +943,13 @@ underscore, so those pairs would share one.  \pconfigure\ refuses
 the pair, naming both \texttt{SUBPROJECTS} lines; rename one of the
 directories.
 
-It may not be the project itself, it may not climb out of the project,
-and it may not be inside an object directory.  The last of those is
-the other end of the sentence that lets a vendored tree install into
+It may not be the project itself or any directory that contains it,
+it may not climb out of the project, and it may not be inside an object
+directory.  A \texttt{SUBPROJECTS += ..} in a subproject names the
+project that pulled it in, which would make the two each other's
+subproject, so it is refused whether \pconfigure\ runs at the top or
+inside the subproject.  The rule about object directories is the
+other end of the sentence that lets a vendored tree install into
 an object directory (Section~\ref{buildsys:prefix}): \pconfigure\
 owns every byte under one, and \texttt{make distclean} is an
 \texttt{rm -rf} of it rather than anything finer --- so a tree
