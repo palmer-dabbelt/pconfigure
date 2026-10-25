@@ -695,6 +695,11 @@ void makefile::makefile::write_to_file(const std::string& filename)
      * target" for these, which is the only thing the $(wildcard) was
      * there to prevent.
      *
+     * The names are whatever a CONFIG_DEPS said, so they are spelled
+     * for where they land: a "cost$1.txt" handed to $(wildcard) as
+     * written is looked for as "cost.txt", comes to nothing, and the
+     * file is silently not watched at all.
+     *
      * A project that keeps its committed Makefile beside this one
      * says the prerequisites here and leaves the recipe there, where
      * the pconfigure to run is named.  One target with its
@@ -707,9 +712,10 @@ void makefile::makefile::write_to_file(const std::string& filename)
                                    _configfiles_built.end(),
                                    configfile) != _configfiles_built.end();
             if (built)
-                fprintf(file, " %s", configfile.c_str());
+                fprintf(file, " %s", prerequisite(configfile).c_str());
             else
-                fprintf(file, " $(wildcard %s)", configfile.c_str());
+                fprintf(file, " $(wildcard %s)",
+                        function_argument(configfile).c_str());
         }
         fprintf(file, "\n");
 
