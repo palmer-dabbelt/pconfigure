@@ -2355,8 +2355,10 @@ file may be named too, though it is less interesting: a file can
 already say that it changed, while nothing but a directory can say
 that something appeared next to it.
 
-The path is relative to the project whose \texttt{Configfile} the line
-was in, the same as a \texttt{CONFIG}, and it goes through the same
+A relative path is relative to the project whose \texttt{Configfile}
+the line was in, the same as a \texttt{CONFIG}.  An absolute path ---
+a tool or a \texttt{pkg-config} file outside the tree --- is watched
+exactly where it names.  Either way it goes through the same
 \texttt{\$(wildcard)} as every other name in that rule --- so naming
 something that does not exist yet is allowed rather than fatal, and it
 is noticed the day it appears.  It is not read: everything else in that
