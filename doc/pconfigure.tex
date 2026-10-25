@@ -514,6 +514,12 @@ running that one by hand.  A project that pins its own with
 \texttt{BOOTSTRAP} (Section~\ref{cmd:bootstrap}) runs the one it
 builds instead.
 
+That path, and the paths of the helper tools beside it, go into the
+\texttt{Makefile} quoted as a single shell word, with any \texttt{\$}
+doubled for \texttt{make}.  A \pconfigure\ installed under a directory
+whose name has a space or a \texttt{\$} in it therefore builds,
+checks and reconfigures like one installed anywhere else.
+
 A project that asked for \texttt{AUTORECONFIGURE}
 (Section~\ref{cmd:autoreconfigure}) still needs this.  What that moves
 into the build is which headers a source reads; what a
