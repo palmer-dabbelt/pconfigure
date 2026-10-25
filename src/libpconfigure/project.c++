@@ -2199,11 +2199,17 @@ void project::check_target_shape(const context::ptr& ctx,
      * complaint that names neither line.  Saying so here is worth it
      * for the second case alone, since it's the one where the only
      * other thing anybody gets is "Mismatched recipe for targets with
-     * same name". */
+     * same name".
+     *
+     * Judged on the path normalized, because that is what decides
+     * whether two names are one file.  The target's own name already
+     * arrives that way from command_processor, but the directory it
+     * lands in is whatever a LIBDIR said, and "lib" and "./lib" are as
+     * much one place as "main" and "./main" are. */
     auto dir = ctx->check_type({context_type::LIBRARY})
         ? ctx->lib_dir
         : ctx->bin_dir;
-    auto output = dir + "/" + ctx->cmd->data();
+    auto output = file_utils::normalize_path(dir + "/" + ctx->cmd->data());
 
     auto found = seen.find(output);
     if (found != seen.end())

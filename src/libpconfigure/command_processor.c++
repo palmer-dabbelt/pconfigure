@@ -533,6 +533,78 @@ static void refuse_target_leaving_project(const command::ptr& cmd)
     abort();
 }
 
+/* Returns "cmd", a BINARIES, LIBEXECS, TESTEXECS or LIBRARIES, named
+ * by the file it builds rather than by the text that named it, and
+ * refuses one whose name is a directory rather than a file.
+ *
+ * A target's name is pasted onto its output directory to say where it
+ * lands, onto the object directory to say where it is linked, and
+ * into the duplicate check in project.c++ to say whether two lines
+ * build one thing -- and as written, each of those got a different
+ * answer from the kernel than from make.  "main" and "./main" were two
+ * make targets for one bin/main, so two lines with different sources
+ * slipped past the duplicate check and two rules raced to write the
+ * same file.  "main/" pasted onto bin/ named a file inside a directory
+ * of that name, and the copy into place ended in an "mv" of a file
+ * onto itself.  Normalizing once, here, means every one of those
+ * places is handed the same name, the way a SOURCES or a GENERATE
+ * already is.
+ *
+ * A trailing slash is dropped rather than refused.  It adds nothing
+ * a target's name could mean -- pconfigure is the one making the
+ * output, so there is no directory there to be talking about -- and
+ * it is what a tab-completion leaves behind, so there is an obvious
+ * thing that was meant.
+ *
+ * A name whose last component is "." or ".." is another matter.
+ * ".", "tools/." and "tools/main/.." are the output directory, or a
+ * directory in it, by the only reading the text has: there is no file
+ * in there to build, and dropping the last component to make one up
+ * would be guessing.  Asked of the text as written, since normalizing
+ * turns "tools/." and "tools/main/.." alike into "tools", which reads
+ * like any other name.  The ".." that climb out of the project never
+ * get this far, since refuse_target_leaving_project() has already
+ * refused them.
+ *
+ * Normalized only after refuse_target_leaving_project() has had its
+ * look, since normalizing can take apart what it looks for:
+ * "$(X)/../main" is just "main" once the ".." has eaten the
+ * expansion. */
+static command::ptr normalized_target(const command::ptr& cmd)
+{
+    auto written = cmd->data();
+    while (written.size() > 1 && written[written.size() - 1] == '/')
+        written.erase(written.size() - 1);
+
+    auto name = file_utils::normalize_path(written);
+
+    auto last = written.rfind('/');
+    auto tail = last == std::string::npos
+        ? written
+        : written.substr(last + 1);
+
+    if (tail == "." || tail == ".." || name == "." || name.size() == 0) {
+        auto command_name = std::to_string(cmd->type());
+        auto example = cmd->type() == command_type::LIBRARIES
+            ? std::string("libmain.so")
+            : std::string("main");
+
+        std::cerr << std::to_string(cmd->debug()) << "\n"
+                  << "  error: " << command_name << " names a directory"
+                  << " rather than a file: '" << cmd->data() << "'\n"
+                  << "  a target's name is the file it builds, pasted"
+                  << " onto the directory it lands in, and this one"
+                  << " comes out as that directory itself or one inside"
+                  << " it -- there is nothing there make could build\n"
+                  << "  name the file, like '" << command_name << " += "
+                  << example << "' or '" << command_name << " += tools/"
+                  << example << "'\n";
+        abort();
+    }
+
+    return cmd->with_data(name);
+}
+
 /* Refuses "cmd", a SUBPROJECTS or a BOOTSTRAP naming the tree at
  * "path", when that tree sits somewhere this build's "make distclean"
  * would either remove or reach out of: inside the object directory
@@ -1271,9 +1343,10 @@ void command_processor::process_one(const command::ptr& cmd)
             goto bad_op_pluseq;
 
         refuse_target_leaving_project(cmd);
+        auto target = normalized_target(cmd);
 
         clear_until({context_type::DEFAULT}, cmd);
-        dup_tos_and_push(context_type::BINARY, cmd);
+        dup_tos_and_push(context_type::BINARY, target);
 
         set_opts_target(_stack.top());
         _output_contexts.push_back(_stack.top());
@@ -2016,9 +2089,10 @@ void command_processor::process_one(const command::ptr& cmd)
             goto bad_op_pluseq;
 
         refuse_target_leaving_project(cmd);
+        auto target = normalized_target(cmd);
 
         clear_until({context_type::DEFAULT}, cmd);
-        dup_tos_and_push(context_type::BINARY, cmd);
+        dup_tos_and_push(context_type::BINARY, target);
 
         auto ctx = _stack.top();
         if (cmd->type() == command_type::TESTEXECS) {
@@ -2044,9 +2118,10 @@ void command_processor::process_one(const command::ptr& cmd)
             goto bad_op_pluseq;
 
         refuse_target_leaving_project(cmd);
+        auto target = normalized_target(cmd);
 
         clear_until({context_type::DEFAULT}, cmd);
-        dup_tos_and_push(context_type::LIBRARY, cmd);
+        dup_tos_and_push(context_type::LIBRARY, target);
 
         set_opts_target(_stack.top());
         _output_contexts.push_back(_stack.top());
