@@ -2488,6 +2488,11 @@ the user to keep this dependency list complete and to ensure that all
 these dependencies are eventually handled by \pconfigure.  Everything
 it prints is named relative to the project the script belongs to,
 which is also the directory it was run from.
+Whitespace separates paths, as it does in a \texttt{make} prerequisite
+list, so a line may name several of them and a blank line names none.
+Each relative path is rooted in the script's project one at a time,
+and an absolute path is left as written, so a script declares the same
+inputs whether its project is built on its own or as a subproject.
 
 A line whose first character is a \texttt{?} names an \emph{optional}
 dependency: an input the script reads when it is there and does without
