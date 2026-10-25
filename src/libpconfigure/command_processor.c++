@@ -1685,7 +1685,15 @@ void command_processor::process_one(const command::ptr& cmd)
 
         return;
 
+    /* A TGENERATE is a GENERATE whose script lives with the tests
+     * rather than with the sources: a generator that exists only to
+     * build a fixture for the tests belongs next to them.  Everything
+     * else -- the checks on the name, what gets written where, how the
+     * script is run -- is the same, so it is the same code, and the
+     * only question asked of which one was written is where to look
+     * for the script. */
     case command_type::GENERATE:
+    case command_type::TGENERATE:
     {
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
@@ -1699,10 +1707,12 @@ void command_processor::process_one(const command::ptr& cmd)
             auto leaves = leaves_the_project(cmd->data());
             if (leaves.size() > 0) {
                 std::cerr << std::to_string(cmd->debug()) << "\n"
-                          << "  error: GENERATE names a file outside this"
+                          << "  error: " << std::to_string(cmd->type())
+                          << " names a file outside this"
                           << " project: " << leaves << "\n"
-                          << "  write it inside the project, like"
-                          << " 'GENERATE += gen.h'\n";
+                          << "  write it inside the project, like '"
+                          << std::to_string(cmd->type())
+                          << " += gen.h'\n";
                 abort();
             }
         }
@@ -1710,7 +1720,7 @@ void command_processor::process_one(const command::ptr& cmd)
         /* After the escape check above, for the same reason LIBDIR
          * asks after its own: a value with both a '$' and a '(' keeps
          * the more specific "make expansion" answer. */
-        refuse_unsafe_metacharacter(cmd, "GENERATE");
+        refuse_unsafe_metacharacter(cmd, std::to_string(cmd->type()));
 
         /* Named by the path it reaches, the way a SOURCES is and for
          * a sharper version of the same reason: the name is pasted
@@ -1728,6 +1738,17 @@ void command_processor::process_one(const command::ptr& cmd)
 
         clear_until({context_type::DEFAULT}, cmd);
         dup_tos_and_push(context_type::GENERATE, generated);
+
+        /* The script is found as the context's source directory with
+         * the name and ".proc" on the end, so pointing that at the
+         * test directory is all a TGENERATE needs.  It is set here,
+         * before the script's SOURCES is pushed, so that the script
+         * inherits it too; and it is the project's test directory
+         * rather than "test", so a subproject's TGENERATE finds the
+         * script in its own tree.  Nothing else reads a GENERATE's
+         * source directory: what it writes goes in gen_dir. */
+        if (cmd->type() == command_type::TGENERATE)
+            _stack.top()->src_dir = _stack.top()->test_dir;
 
         set_opts_target(_stack.top());
         _output_contexts.push_back(_stack.top());
@@ -2829,9 +2850,6 @@ void command_processor::process_one(const command::ptr& cmd)
         process_one(cmd->with_type(command_type::SOURCES));
         return;
     }
-
-    case command_type::TGENERATE:
-        goto unimplemented;
 
     /* These two look like they take a value and don't: writing one
      * at all turns the thing on, and "= false" turns it on just as
