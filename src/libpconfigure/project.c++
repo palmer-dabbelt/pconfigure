@@ -202,9 +202,47 @@ void project::process_line(const ptr& self,
         if (base.size() == 0)
             break;
 
+        /* Copied out rather than kept, since the root context goes
+         * on changing under the lines below and what is wanted later
+         * is what the subproject was handed now. */
+        auto handed_prefix = processor->root_context()->prefix;
+        auto handed_cross_compile = processor->root_context()->cross_compile;
+
         auto child = read(base, processor, asked_by, seen);
-        if (child != NULL)
-            self->_children.push_back(child);
+        if (child == NULL)
+            continue;
+        self->_children.push_back(child);
+
+        /* Told back once the subproject and everything under it has
+         * been read all the way through, since any of their
+         * Configfiles may have given a library a PREFIX or a
+         * CROSS_COMPILE of its own.  Only a library still on what was
+         * handed down is one a line below here could have reached by
+         * being written above instead; a subproject that only groups
+         * others, or whose libraries all say where they go, is left
+         * out of it.  Each Configfile on the way down has already
+         * been held to this same rule, so a library that agrees with
+         * what this subproject was handed got it from here -- or says
+         * the same thing itself, which splits from a later line just
+         * as surely. */
+        auto prefix_library = context::ptr(NULL);
+        auto cross_compile_library = context::ptr(NULL);
+        for (const auto& descendant: flatten(child)) {
+            for (const auto& ctx: descendant->processor()->output_contexts()) {
+                if (ctx->check_type({context_type::LIBRARY}) == false)
+                    continue;
+                if (prefix_library == NULL && ctx->prefix == handed_prefix)
+                    prefix_library = ctx;
+                if (cross_compile_library == NULL
+                    && ctx->cross_compile == handed_cross_compile)
+                    cross_compile_library = ctx;
+            }
+        }
+
+        processor->subproject_was_read(child->base(),
+                                       handed_prefix, prefix_library,
+                                       handed_cross_compile,
+                                       cross_compile_library);
     }
 }
 

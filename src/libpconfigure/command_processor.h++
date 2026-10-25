@@ -108,6 +108,26 @@ private:
      * is only whether anything was read under the old answer. */
     bool _read_a_subproject;
 
+    /* Every pconfigure subproject read so far, with what it was
+     * handed and which of its libraries still use that.  A PREFIX or
+     * CROSS_COMPILE below a subproject is a mistake only when the
+     * line would have reached something there had it been written
+     * above it, and the something that matters is a library: that is
+     * what a program here links, and what it then has to find at run
+     * time.  So what is kept is a library from the subproject or from
+     * anything under it whose prefix, and one whose toolchain, is
+     * still the one the subproject was handed -- or NULL when none
+     * is, because every library there was given its own, or because
+     * there are no libraries at all. */
+    struct read_subproject {
+        std::string base;
+        std::string prefix;
+        context::ptr prefix_library;
+        std::string cross_compile;
+        context::ptr cross_compile_library;
+    };
+    std::vector<read_subproject> _read_subprojects;
+
     /* The vendored pconfigure source a BOOTSTRAP named, spelled the
      * way every other directory in a run is: ending with a '/', and
      * empty when nothing said.  The command is kept alongside it
@@ -313,6 +333,17 @@ public:
      * "asked_by" is set to the SUBPROJECTS (or BOOTSTRAP) line that
      * named it. */
     std::string take_pending_subproject(command::ptr& asked_by);
+
+    /* Says that the subproject at "base", one of those handed out
+     * above, has been read all the way through.  It was handed
+     * "prefix" and "cross_compile", and the two libraries are the
+     * ones from it or from under it that still use each of those, or
+     * NULL (see _read_subprojects). */
+    void subproject_was_read(const std::string& base,
+                             const std::string& prefix,
+                             const context::ptr& prefix_library,
+                             const std::string& cross_compile,
+                             const context::ptr& cross_compile_library);
 
     /* Hands back a CONFIG command whose Configfile hasn't been read
      * yet, or NULL once there aren't any left.  Its data is the

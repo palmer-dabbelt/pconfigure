@@ -53,6 +53,7 @@ command_processor::command_processor(
       _autoreconfigure(false),
       _autoreconfigure_cmd(NULL),
       _read_a_subproject(false),
+      _read_subprojects(),
       _default_test_suite(),
       _default_test_suite_cmd(NULL),
       _abrt_is_fail(false),
@@ -1243,6 +1244,54 @@ void command_processor::process(const command::ptr& cmd)
     process_one(cmd);
 }
 
+/* A subproject is read at the point its line appears, and is handed
+ * the root context as it stands then -- its PREFIX and its
+ * CROSS_COMPILE among the rest.  A line below that point which changes
+ * one of those changes it for this project and not for the trees
+ * already read, and nothing would say so: the build would just come
+ * out split down the middle, a program installed or built one way and
+ * the library it links the other.  The callers have each found a
+ * library under a subproject that really does disagree with what the
+ * line asks for; this says which one and where it was asked for,
+ * since it can be several subprojects down from the one this
+ * Configfile named, why that matters, and where the line belongs
+ * instead.
+ *
+ * The other way out -- the subproject saying the same thing in its
+ * own Configfile -- is named too, since a tree that does that is
+ * exactly the one that isn't refused. */
+static void refuse_split_from_subproject(const command::ptr& cmd,
+                                         const std::string& base,
+                                         const context::ptr& library,
+                                         const std::string& theirs,
+                                         const std::string& why)
+{
+    auto name = base.substr(0, base.size() - 1);
+    std::cerr << std::to_string(cmd->debug()) << "\n"
+              << "  error: the subproject '" << name << "' was already"
+              << " read, and its library '" << library->cmd->data()
+              << "' " << theirs << "\n"
+              << "  that library was asked for at "
+              << std::to_string(library->cmd->debug()) << "\n"
+              << "  " << why << "\n"
+              << "  set " << std::to_string(cmd->type()) << " at the top"
+              << " of this Configfile, above the first SUBPROJECTS or"
+              << " BOOTSTRAP line, so the subprojects are read with it --"
+              << " or say the same " << std::to_string(cmd->type())
+              << " in '" << name << "' itself\n";
+    abort();
+}
+
+/* How a CROSS_COMPILE reads in a sentence.  An empty one is a toolchain
+ * too -- the one that builds for this machine -- but quoting it as ''
+ * says nothing. */
+static std::string built_with(const std::string& cross_compile)
+{
+    if (cross_compile.empty())
+        return "built for this machine";
+    return "built with the '" + cross_compile + "' toolchain";
+}
+
 void command_processor::process_one(const command::ptr& cmd)
 {
     auto tos = _stack.top();
@@ -1768,6 +1817,42 @@ void command_processor::process_one(const command::ptr& cmd)
     case command_type::CROSS_COMPILE:
         if (cmd->check_operation("=") == false)
             goto bad_op_eq;
+
+        /* Only the root context is inherited, so at the top of a
+         * Configfile, below a tree that was already read, a
+         * CROSS_COMPILE would build that tree's libraries for one
+         * machine and the programs here that link them for another.
+         * It is judged by the libraries, at any depth under the
+         * subproject, that are still on the toolchain it was handed
+         * (see project::process_line()): a subproject that names a
+         * toolchain for every library itself, or that only groups
+         * others which do, is built the same wherever this line goes.
+         * Saying again what the subproject was handed is left alone,
+         * the way AUTORECONFIGURE leaves it.
+         *
+         * Under a target it is that target's own business, and is
+         * deliberately not asked about: building one program with
+         * another toolchain is what the line is for there -- a tool
+         * the build runs on this machine, in the middle of a cross
+         * build -- and a program that does go on to link a subproject
+         * built with the other toolchain is stopped by the linker,
+         * which can't put the two together.  A PREFIX has no such
+         * backstop, which is why it is asked about at every scope. */
+        if (_stack.top() == _root) {
+            for (const auto& read: _read_subprojects) {
+                if (read.cross_compile_library == NULL
+                    || read.cross_compile == cmd->data())
+                    continue;
+
+                refuse_split_from_subproject(cmd, read.base,
+                    read.cross_compile_library,
+                    "is " + built_with(read.cross_compile),
+                    "a subproject keeps the CROSS_COMPILE it was read"
+                    " with, so this project would be "
+                    + built_with(cmd->data())
+                    + " and linked against a library that wasn't");
+            }
+        }
 
         _stack.top()->cross_compile = cmd->data();
 
@@ -2411,7 +2496,54 @@ void command_processor::process_one(const command::ptr& cmd)
             abort();
         }
 
-        tos->prefix = normalized_prefix(cmd->data());
+        /* Asked after the value itself has been checked, so that a
+         * prefix which is wrong on its own is told what is wrong with
+         * it rather than where to move it.  The comparison is of the
+         * normalized spelling, since "/opt/top/" below a tree read
+         * under "/opt/top" changes nothing.
+         *
+         * A subproject's library installs under the prefix of the
+         * scope it was written in, while a program here is linked
+         * with a run-time search path under the prefix of the scope
+         * it was written in.  A PREFIX that moves the program but not
+         * the library leaves the installed program looking for it in
+         * a directory it was never installed into, and nothing finds
+         * that out until it is run from there.
+         *
+         * What is compared is where the libraries really install,
+         * not the subproject's top-level PREFIX: only a library at
+         * any depth under it that is still on the prefix the
+         * subproject was handed (see project::process_line()) is one
+         * this line splits from.  A subproject that installs nothing,
+         * that only groups others, or whose libraries were each given
+         * a PREFIX of their own installs the same wherever this line
+         * goes, so it holds nothing against it.
+         *
+         * That is as true of a PREFIX under a BINARIES as of one at
+         * the top, so this is asked at every scope.  Which binaries
+         * would really have been hurt -- the ones that link something
+         * from the subproject, through LINKOPTS or DEPLIBS or through
+         * another library -- isn't something this line can know, and
+         * a target that wants a different prefix from the subprojects
+         * can still have one by being written above them. */
+        {
+            auto prefix = normalized_prefix(cmd->data());
+            for (const auto& read: _read_subprojects) {
+                if (read.prefix_library == NULL || read.prefix == prefix)
+                    continue;
+
+                refuse_split_from_subproject(cmd, read.base,
+                    read.prefix_library,
+                    "installs into '" + read.prefix + "'",
+                    "a subproject keeps the PREFIX it was read with,"
+                    " so the programs this line covers would install"
+                    " into '" + prefix + "' and look for their"
+                    " libraries there, where that one is never"
+                    " installed");
+            }
+
+            tos->prefix = prefix;
+        }
 
         return;
 
@@ -3558,6 +3690,18 @@ std::string command_processor::take_pending_subproject(command::ptr& asked_by)
      * changing it too late. */
     _read_a_subproject = true;
     return out;
+}
+
+void command_processor::subproject_was_read(
+    const std::string& base,
+    const std::string& prefix,
+    const context::ptr& prefix_library,
+    const std::string& cross_compile,
+    const context::ptr& cross_compile_library)
+{
+    _read_subprojects.push_back(read_subproject{
+            base, prefix, prefix_library,
+            cross_compile, cross_compile_library});
 }
 
 command::ptr command_processor::take_pending_config(void)
