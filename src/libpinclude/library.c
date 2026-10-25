@@ -93,6 +93,9 @@ static bool is_directive(const char *line, const char *directive);
 
 static bool reads_as_directive(const char *line);
 
+static char *directive_argument(char *line,
+                                const char *directive);
+
 static bool ends_perl_script(const char *line);
 
 static bool includable(const char *path);
@@ -131,6 +134,7 @@ static int _pinclude_lines(const char *input,
     int heredocs_open;
     bool in_heredoc;
     bool in_data;
+    const char *include;
 
 #ifdef DEBUG_LIBPINCLUDE_DEFINE
     fprintf(stderr, "input: '%s'\n", input);
@@ -248,7 +252,13 @@ static int _pinclude_lines(const char *input,
             char *define;
             bool matched;
 
-            define = buffer + strlen("#ifdef ");
+            /* The name is whatever comes after all the blanks, not
+             * after the first one: the scan skips every one of them,
+             * so "#ifdef  NAME" asked it about NAME while this
+             * compared " NAME" against the -D's and never matched --
+             * the two then disagreed about which includes the script
+             * was made of. */
+            define = directive_argument(buffer, "#ifdef");
             str_chomp(define);
 
             /* A define can carry a value, "NAME=value", and it
@@ -276,7 +286,7 @@ static int _pinclude_lines(const char *input,
             char *define;
             bool matched;
 
-            define = buffer + strlen("#ifndef ");
+            define = directive_argument(buffer, "#ifndef");
             str_chomp(define);
 
             matched = false;
@@ -393,24 +403,27 @@ static int _pinclude_lines(const char *input,
          * that isn't taken is one whose body never arrives. */
         open_heredocs(buffer, lineno, heredocs, &heredocs_open, language);
 
-        /* Here's a hack: treat <> includes just like "" includes.
+        /* Finally attempt to recursively enumerate the #include
+         * files.
          *
-         * Both spellings mean the same thing here, unlike in C: what
+         * Any number of blanks may come between the keyword and the
+         * name, or none at all, since a quote ends the keyword as
+         * well as a space does.  That is how the scan reads an
+         * include, and every line starting "#include" was already
+         * kept out of the output above: matching only the spelling
+         * with exactly one space dropped '#include  "x"',
+         * '#include<TAB>"x"' and '#include"x"' without pasting
+         * anything in their place, so the script came out with a
+         * file missing that make had been told it was made of.
+         *
+         * Both "" and <> are treated the same here, unlike in C: what
          * this expands is scripts, and a script's includes are all
          * files belonging to whoever wrote it.  Several of the tests
-         * in this tree write their harness the angled way. */
-        if (strncmp(buffer, "#include <", strlen("#include <")) == 0) {
-            buffer[strlen("#include <") - 1] = '"';
-            strstr(buffer, ">")[0] = '"';
-
-#ifdef DEBUG_LIBPINCLUDE_INCLUDE
-            fprintf(stderr, "include -> %s", buffer);
-#endif
-        }
-
-        /* Finally attempt to recursively enumerate the #include
-         * files. */
-        if (strncmp(buffer, "#include \"", strlen("#include \"")) == 0) {
+         * in this tree write their harness the angled way.  Anything
+         * else after the keyword is a computed include, which the
+         * scan passes over as well, and pastes nothing. */
+        include = directive_argument(buffer, "#include");
+        if (include != NULL && (include[0] == '"' || include[0] == '<')) {
             size_t slash_max;
 
             char *full_path;
@@ -434,9 +447,9 @@ static int _pinclude_lines(const char *input,
              * from the end instead means the last line of a file that
              * doesn't end in a newline comes out one character
              * short. */
-            filename = strdup(buffer + strlen("#include \""));
+            filename = strdup(include + 1);
             {
-                char *close = strchr(filename, '"');
+                char *close = strchr(filename, include[0] == '<' ? '>' : '"');
                 if (close != NULL)
                     *close = '\0';
                 else
@@ -1179,6 +1192,23 @@ bool is_directive(const char *line, const char *directive)
         return false;
 
     return true;
+}
+
+/* Where DIRECTIVE's argument starts in LINE, past every blank between
+ * the two, or NULL when LINE isn't that directive at all.  The scan
+ * skips the same blanks before it reads the name, and the name has to
+ * come out the same in both places for the two to agree about which
+ * files a script reads. */
+char *directive_argument(char *line, const char *directive)
+{
+    if (is_directive(line, directive) == false)
+        return NULL;
+
+    line += strlen(directive);
+    while (*line == ' ' || *line == '\t')
+        line++;
+
+    return line;
 }
 
 bool reads_as_directive(const char *line)
