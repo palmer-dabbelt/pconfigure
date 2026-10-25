@@ -1942,6 +1942,17 @@ happens has changed.  That is deliberate, and it is what makes this
 something you can turn on for an existing project without reading the
 diff of what it builds.
 
+A \texttt{BASH} or \texttt{perl} script is followed the same way.  The
+files it \texttt{\#include}s are pasted into it by \texttt{pbashc} or
+\texttt{pperlc}, so they are what it depends on, and the build works
+them out by reading the script the way the compiler does: a script
+that starts including a file is rebuilt when that file changes, and
+one that stops including a file can have the file deleted without
+\texttt{make} stopping on it.  \texttt{HEADERS} copied by
+\texttt{phc} are the exception, and keep the list \pconfigure\ found:
+\texttt{phc} installs a header as it stands, so nothing it includes
+is part of what it installs.
+
 \begin{verbatim}
 AUTORECONFIGURE  = true
 
@@ -2780,7 +2791,9 @@ This uses \texttt{pbashc}, a dummy BASH compiler to build BASH code.
 See Section~\ref{prog:pbashc} for more information.  BASH parses
 \texttt{pbashc} \texttt{\#include} directives to discover a list of
 implicit dependencies, searching the \texttt{-I} directories in its
-\texttt{COMPILEOPTS} the way \texttt{pbashc} does.  A relative one a
+\texttt{COMPILEOPTS} the way \texttt{pbashc} does.  Under
+\texttt{AUTORECONFIGURE} that list is worked out by the build rather
+than by \pconfigure\ (see Section~\ref{cmd:autoreconfigure}).  A relative one a
 subproject names is written from that subproject's own directory and
 gets the subproject's directory put on the front, just as it does for
 C (see Section~\ref{cmd:compileopts}).  A test written in BASH is also the one place a
