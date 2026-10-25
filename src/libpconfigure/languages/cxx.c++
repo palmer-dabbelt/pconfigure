@@ -33,6 +33,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
+#include <algorithm>
 #include <cstdint>
 #include <functional>
 #include <iostream>
@@ -218,10 +219,43 @@ cxx_defines(const std::vector<std::string>& opts)
     /* pinclude wants the names that are defined, and "-DNAME=value"
      * defines NAME every bit as much as "-DNAME" does.  Handed the
      * whole of "NAME=value" it would look for a macro by that name,
-     * which no #ifdef has ever asked about. */
+     * which no #ifdef has ever asked about.
+     *
+     * A "-U" takes a name away again, and the compiler reads the two
+     * in the order they're written: "-DTRACE -UTRACE" leaves TRACE
+     * undefined and "-UTRACE -DTRACE" leaves it defined.  That's how
+     * a target cancels a define its language's COMPILEOPTS gave every
+     * target, since the target's options come after the language's.
+     * Reading only the "-D"s kept such a name defined, so the scan
+     * followed the "#ifdef"s the compiler skips and missed the
+     * "#ifndef"s it takes -- listing headers that are never read,
+     * linking in the sources behind them, and leaving out the ones
+     * that are.  So the two are walked together, in order, each
+     * spelling of each as flag_arguments() would take it. */
     auto out = std::vector<std::string>();
-    for (const auto& define: flag_arguments(opts, std::vector<std::string>{"-D"}))
-        out.push_back(define.substr(0, define.find('=')));
+    auto pending = std::string();
+    auto apply = [&](const std::string& flag, const std::string& arg) {
+        auto name = string_utils::shell_unescape(arg);
+        name = name.substr(0, name.find('='));
+        out.erase(std::remove(out.begin(), out.end(), name), out.end());
+        if (flag == "-D")
+            out.push_back(name);
+    };
+    for (const auto& opt: opts) {
+        if (pending.size() > 0) {
+            apply(pending, opt);
+            pending = "";
+            continue;
+        }
+
+        auto split = split_flag(opt, std::vector<std::string>{"-D", "-U"});
+        if (split.first.size() == 0)
+            continue;
+        if (split.second.size() == 0)
+            pending = split.first;
+        else
+            apply(split.first, split.second);
+    }
     return out;
 }
 
