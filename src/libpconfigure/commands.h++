@@ -31,6 +31,12 @@
  * Configfiles are read from). */
 std::vector<command::ptr> commands(int argc, const char **argv);
 
+/* The words commands() was given, every one after the program's own
+ * name and in the order they came.  This is what a Makefile hands
+ * back to the pconfigure it runs to rewrite itself, so that a tree
+ * configured with options is reconfigured with them. */
+const std::vector<std::string>& command_line_read(void);
+
 /* A line of a Configfile, exactly as it was written.
  *
  * Lines are handed out rather than commands because turning one into

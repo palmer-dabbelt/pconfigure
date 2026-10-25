@@ -568,9 +568,13 @@ fi
 # text a Configfile would carry.  "Exactly the same as putting
 # CROSS_COMPILE = <prefix> at the top of the first file that gets
 # read" is a strong claim, so it's checked as one: the two runs write
-# the same Makefile, byte for byte.
+# the same Makefile, byte for byte, except for the line that records
+# the words each run was given so a reconfigure can repeat them -- the
+# words differ, and that line is the only place they are allowed to.
 $PTEST_BINARY $PCONFIGURE_ARGS "CROSS_COMPILE = faketc-"
-diff -u flag.mk Makefile
+grep -v '^PCONFIGURE_ARGS ?= ' flag.mk > flag.cmp
+grep -v '^PCONFIGURE_ARGS ?= ' Makefile > config.cmp
+diff -u flag.cmp config.cmp
 
 make $MAKE_ARGS
 ./bin/tool

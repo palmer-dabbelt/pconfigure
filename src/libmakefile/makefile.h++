@@ -102,6 +102,15 @@ namespace makefile {
          * to build. */
         bool _write_reconfigure;
 
+        /* What PCONFIGURE_ARGS is when nobody says otherwise, already
+         * spelled for the right-hand side of a make assignment, and
+         * whether anybody gave one at all.  Only the Makefile of the
+         * project pconfigure was run in has an answer: the options
+         * were given there, and a path in one of them means something
+         * from there and nowhere else. */
+        std::string _pconfigure_args;
+        bool _record_pconfigure_args;
+
         /* The files this Makefile was written out of, if it is meant
          * to be rebuilt when they change.  Empty means nobody asked,
          * which is what every Makefile did before there was a way to
@@ -186,6 +195,18 @@ namespace makefile {
          * so this Makefile shouldn't: two recipes for the one name
          * would be make picking one of them quietly. */
         void skip_reconfigure(void);
+
+        /* Says what every rule in this Makefile that runs pconfigure
+         * passes it unless make is told otherwise, which is the
+         * options the run that wrote it was given.  "args" is the
+         * right-hand side of a make assignment, so the caller has
+         * already dealt with both the shell's quoting and make's.
+         *
+         * This is said even by a Makefile that skips its own
+         * reconfigure rule, because the rule that skipped it is in a
+         * Makefile that includes this one, and reads the variable
+         * from here. */
+        void rerun_with(const std::string& args);
 
         /* Says that make should write this Makefile again when any of
          * these change.  They are the names a run went looking for

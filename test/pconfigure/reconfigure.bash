@@ -80,8 +80,21 @@ grep -q "^bin/third:" Makefile
 make $MAKE_ARGS
 test -e bin/third
 
-# And with the options left off again it goes back to what the
-# Configfile alone says, since that is all pconfigure was told.
+# Asked again without them, it runs the way it was last run: the
+# Makefile remembers the options it was written with, so a tree that
+# was configured with an extra Configfile stays configured with it.
+make $MAKE_ARGS reconfigure
+grep -q "^bin/third:" Makefile
+
+# And told in so many words that there are none, it goes back to what
+# the Configfile alone says, since that is all pconfigure was told.
+make $MAKE_ARGS reconfigure PCONFIGURE_ARGS=
+if grep -q "^bin/third:" Makefile
+then
+    exit 1
+fi
+
+# Which is now what it remembers.
 make $MAKE_ARGS reconfigure
 if grep -q "^bin/third:" Makefile
 then

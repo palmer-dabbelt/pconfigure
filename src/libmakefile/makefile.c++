@@ -103,7 +103,9 @@ makefile::makefile::makefile(bool verbose,
 : _verbose(verbose),
   _obj_dir(obj_dir),
   _prefix(prefix),
-  _write_reconfigure(true)
+  _write_reconfigure(true),
+  _pconfigure_args(),
+  _record_pconfigure_args(false)
 {
 }
 
@@ -170,6 +172,12 @@ void makefile::makefile::set_default_test_suite(const std::string& name)
 void makefile::makefile::skip_reconfigure(void)
 {
     _write_reconfigure = false;
+}
+
+void makefile::makefile::rerun_with(const std::string& args)
+{
+    _pconfigure_args = args;
+    _record_pconfigure_args = true;
 }
 
 void makefile::makefile::reconfigure_on(
@@ -474,9 +482,30 @@ void makefile::makefile::write_to_file(const std::string& filename)
      * expects "make reconfigure" in an old tree to pick it up now has
      * to say so.  PCONFIGURE_ARGS is not the place for it, but running
      * the pconfigure they mean is, and that is what everyone who has
-     * no installed copy at all had to do already. */
+     * no installed copy at all had to do already.
+     *
+     * Run with the options that were given the last time, unless make
+     * is given others.  This used to be nothing unless make was given
+     * some, which made every rule below that runs pconfigure on its
+     * own -- the Makefile's, under AUTORECONFIGURE, and the one that
+     * puts back a subproject's deleted Makefile -- a run of a bare
+     * pconfigure in a tree somebody had configured otherwise.  A
+     * comment added to a Configfile was enough to take a --config's
+     * targets out of the build, quieten a --verbose one, put a
+     * --cross-compile one back on the host's compiler, and leave a
+     * --srcpath build directory with a Makefile that built nothing,
+     * none of which anybody had asked for.  "make reconfigure" gets
+     * the same default for the same reason: a configure script that
+     * forgets how it was run every time it runs is one somebody has
+     * to remember for it.  "PCONFIGURE_ARGS=" with nothing after it
+     * is how to ask for the bare run, and still works because "?="
+     * gives way to anything make was told. */
+    if (_write_reconfigure == true || _record_pconfigure_args == true)
+        fprintf(file, "PCONFIGURE_ARGS ?=%s%s\n\n",
+                _pconfigure_args.size() > 0 ? " " : "",
+                _pconfigure_args.c_str());
+
     if (_write_reconfigure == true) {
-        fprintf(file, "PCONFIGURE_ARGS ?=\n\n");
         fprintf(file, ".PHONY: reconfigure\n");
         fprintf(file, "reconfigure:\n");
         fprintf(file, "\t%secho \"PCONFIGURE\"\n", q);

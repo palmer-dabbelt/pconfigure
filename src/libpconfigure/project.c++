@@ -1511,6 +1511,67 @@ makefile::target::ptr project::distclean_target(const std::vector<ptr>& projects
     );
 }
 
+/* The options this run was given, spelled as the right-hand side of a
+ * make assignment whose value a recipe then hands to a shell.  Two
+ * languages read it on the way, so each word is quoted for both: the
+ * shell's quoting and make's '$' come from echoed(), since what is
+ * being kept is what was typed and not what a variable holds by the
+ * time make gets to it, and the '#' that would end the assignment as
+ * a comment is escaped here.  make reads a run of backslashes in
+ * front of a '#' as escapes of each other, so those are doubled
+ * first to come out the other side as they went in.
+ *
+ * A word with nothing in it that either language would read is left
+ * as it is, which is nearly every word anybody types and keeps the
+ * line legible to somebody reading the Makefile to find out how the
+ * tree was configured. */
+static std::string rerun_args(void)
+{
+    auto out = std::string();
+    for (const auto& arg: command_line_read()) {
+        /* A make assignment is one line, and no escaping makes a
+         * newline part of one.  Refused rather than dropped, because
+         * a reconfigure with the word missing or split is a
+         * different configure from the one that was asked for, and
+         * nothing would say so. */
+        if (arg.find('\n') != std::string::npos) {
+            std::cerr << "Command-line option '" << arg
+                      << "' has a newline in it\n"
+                      << "  the Makefile records how pconfigure was run,"
+                      << " so that the build can run it the same way"
+                      << " again, and a make variable cannot hold a"
+                      << " newline\n"
+                      << "  give the option without the newline\n";
+            abort();
+        }
+
+        auto plain = arg.size() > 0;
+        for (const auto& c: arg)
+            if (isalnum(c) == 0 && strchr("-_./=+,:@%", c) == NULL)
+                plain = false;
+
+        auto spelled = plain ? arg : string_utils::echoed(arg);
+
+        auto escaped = std::string();
+        auto backslashes = std::string();
+        for (const auto& c: spelled) {
+            if (c == '\\') {
+                backslashes += c;
+                continue;
+            }
+            if (c == '#')
+                escaped += backslashes + backslashes + "\\#";
+            else
+                escaped += backslashes + c;
+            backslashes.clear();
+        }
+        escaped += backslashes;
+
+        out += (out.size() > 0 ? " " : "") + escaped;
+    }
+    return out;
+}
+
 void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
                              const std::vector<ptr>& aggregated,
                              const std::vector<ptr>& everyone) const
@@ -1614,6 +1675,15 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
      * recipes for the one name. */
     if (_processor->bootstrap().size() > 0)
         out->skip_reconfigure();
+
+    /* The project pconfigure was run in is the one that was given the
+     * options, and so the one that remembers them.  A subproject's
+     * Makefile keeps the empty default it always had: the options
+     * that configured the tree above it are relative to the tree
+     * above it -- a --srcpath, a --config naming one of its
+     * Configfiles -- and mean something else from inside. */
+    if (_base.size() == 0)
+        out->rerun_with(rerun_args());
 
     /* Under AUTORECONFIGURE the build is what keeps itself current,
      * and a Configfile is the one input to it that nothing was
@@ -2097,7 +2167,6 @@ void project::write_bootstrap_makefile(void) const
 
     out += "PCONFIGURE_SRCPATH  = " + srcpath + "\n";
     out += "PCONFIGURE          = $(PCONFIGURE_SRCPATH)bin/pconfigure\n";
-    out += "PCONFIGURE_ARGS    ?=\n";
     out += "\n";
     out += "# make remakes what it includes before it reads it, so"
            " this is where the\n";
@@ -2105,6 +2174,24 @@ void project::write_bootstrap_makefile(void) const
            " \"all\", is what a\n";
     out += "# \"make\" with nothing after it means.\n";
     out += "include Makefile.pconfigure\n";
+    out += "\n";
+    /* After the include and not before it, which is the whole of what
+     * this line has to get right.  Makefile.pconfigure says which
+     * options the tree was configured with, and every run of
+     * pconfigure below hands those back -- the one AUTORECONFIGURE
+     * sets off most of all, which comes from a make nobody gave any
+     * options to.  Said first, this line made the variable empty
+     * before that file was read, and the "?=" there found it already
+     * set: a tree whose first make was given "--config debug" lost it
+     * the first time a Configfile changed. */
+    out += "# Makefile.pconfigure says which options this tree was"
+           " configured with, so\n";
+    out += "# that running pconfigure again runs it the same way."
+           "  This is only for the\n";
+    out += "# first make, which has no Makefile.pconfigure yet: give"
+           " PCONFIGURE_ARGS to\n";
+    out += "# make to configure with options, then or later.\n";
+    out += "PCONFIGURE_ARGS    ?=\n";
     out += "\n";
     out += "# Written when it isn't there, and left alone once it is."
            "  What a Makefile\n";

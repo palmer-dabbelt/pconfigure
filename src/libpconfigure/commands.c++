@@ -135,9 +135,23 @@ void add_pkgconfig_dep(const std::string& path)
 static std::string execute(std::string line);
 static std::string replace_all(std::string haystack, std::string needle, std::string new_needle);
 
+static std::vector<std::string> command_line;
+
+const std::vector<std::string>& command_line_read(void)
+{
+    return command_line;
+}
+
 std::vector<command::ptr> commands(int argc, const char **argv)
 {
     std::vector<command::ptr> out;
+
+    /* Every word, kept exactly as it was typed rather than as it was
+     * understood, because what it is kept for is running pconfigure
+     * again: the words that mean the same thing tomorrow are the ones
+     * that were given today, and an option this run read one way is
+     * an option the next run gets to read for itself. */
+    command_line.assign(argv + 1, argv + argc);
 
     for (auto i = 1; i < argc; ++i) {
         /* FIXME: This doesn't fit into the regular argument parsing framework,
