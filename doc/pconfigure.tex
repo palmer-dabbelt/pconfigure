@@ -2868,6 +2868,23 @@ files that implement those headers, which are then recursively added.
 C and C++ share their headers, so what is found next to one can be
 either (see Section~\ref{lang:cxx}).
 
+The directives are read the way the compiler reads them, including the
+ones it only warns about.  An \texttt{\#ifdef} or \texttt{\#ifndef}
+asks about the identifier it starts with, so \texttt{\#ifdef
+VERBOSE(x)} is a question about \texttt{VERBOSE}, and anything written
+after an \texttt{\#else} or \texttt{\#endif} is passed over.  A
+computed include, \texttt{\#include NAME} with \texttt{NAME} a macro
+naming the header, is passed over too: what the scan keeps is which
+names are defined, not what they are defined as, so it has no way of
+knowing which header that is.  That costs two things.  The header is
+not a prerequisite of the object, so an edit to it alone rebuilds
+nothing.  And the source that implements it is never found, since that
+is found through the header, so unless something else brings it in the
+project configures without complaint and then fails to link.  Including
+the header by name as well, somewhere the scan reads, fixes both.
+Listing the source behind it in \texttt{SOURCES} fixes only the link:
+the header is still not a prerequisite.
+
 A source is C when it is called \texttt{.c}.
 
 C supports linking against C.
