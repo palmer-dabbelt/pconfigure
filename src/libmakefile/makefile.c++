@@ -333,6 +333,23 @@ void makefile::makefile::write_to_file(const std::string& filename)
 
     fprintf(file, "SHELL=/bin/bash\n\n");
 
+    /* make hands its own environment to every recipe, and a CDPATH
+     * from the shell make was started in turns the recipes' relative
+     * cds -- into a subproject to run its GENERATE script, into a
+     * vendored tree to bootstrap or configure it -- into lookups
+     * along that path.  The cd can then land in some other directory
+     * of the same name, and when it uses an entry at all it prints
+     * where it went, which for a GENERATE is the first line of the
+     * file being generated.  Keeping it out of the recipes is what
+     * pconfigure does for its own shells too, and why is said at the
+     * top of main() in pconfigure++.c++.
+     *
+     * unexport rather than an empty assignment, so that what a
+     * recipe sees is the variable not being there at all -- which is
+     * what a shell that was never given one sees -- and so that it is
+     * not passed down into the builds of vendored trees either. */
+    fprintf(file, "unexport CDPATH\n\n");
+
     /* GNU make ships pattern rules that build a program out of a
      * source file sitting next to it, and they fire on any
      * prerequisite that has no rule of its own.  A generated Makefile

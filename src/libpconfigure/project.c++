@@ -2457,6 +2457,20 @@ void project::write_bootstrap_makefile(void) const
     out += ".SUFFIXES:\n";
     out += "\n";
 
+    /* The same "unexport CDPATH" as makefile::write_to_file(), and
+     * needed here for the same reason the cancellations above are:
+     * the rules below run before Makefile.pconfigure has been read.
+     * Their "cd $(PCONFIGURE_SRCPATH)" is the BOOTSTRAP line as the
+     * Configfile spelled it, which is relative, and under a CDPATH
+     * with another checkout of the same project on it a fresh build
+     * would bootstrap the pconfigure over there instead. */
+    out += "# A CDPATH from the shell make was started in would send"
+           " the cd into the\n";
+    out += "# vendored tree below to any other directory of the same"
+           " name along it.\n";
+    out += "unexport CDPATH\n";
+    out += "\n";
+
     out += "PCONFIGURE_SRCPATH  = " + srcpath + "\n";
     out += "PCONFIGURE          = $(PCONFIGURE_SRCPATH)bin/pconfigure\n";
     out += "\n";

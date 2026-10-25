@@ -24,6 +24,7 @@
 #include "version.h"
 #include <libmakefile/implied_deps.h++>
 #include <algorithm>
+#include <cstdlib>
 #include <iostream>
 #include <map>
 #include <set>
@@ -89,6 +90,30 @@ static void check_something_to_read(const command_processor::ptr& processor,
 
 int main(int argc, const char **argv)
 {
+    /* Every shell pconfigure starts while it configures -- the one
+     * that runs an executable Configfile, the one that runs a
+     * GENERATE script for its --deps, the one behind a backtick --
+     * gets a "cd" somewhere in it, either pconfigure's own or the
+     * script's, and nearly always to a relative path.  A relative cd
+     * is the case CDPATH applies to.  Plenty of people export one
+     * from their shell's rc file, and bash honours it in scripts as
+     * well as at a prompt, so the cd looks its directory up along
+     * CDPATH first: where an entry holds a directory of the same name
+     * it goes there instead of the one meant, and wherever it used an
+     * entry at all it prints the directory it arrived in on stdout.
+     * stdout is exactly what pconfigure is reading, so that line
+     * became the first line of a subproject's Configfile, or a
+     * prerequisite of a generated file.
+     *
+     * Dropped here, once, rather than with a "CDPATH=" in front of
+     * each cd, because the cds that matter are not all pconfigure's
+     * to spell: a Configfile that is a program does its own.  Nothing
+     * pconfigure runs has a use for it -- CDPATH is a convenience for
+     * typing at a prompt, and autoconf's configure scripts unset it
+     * first thing for the same reason.  The Makefiles keep it from
+     * the recipes in the same way; see makefile::write_to_file(). */
+    unsetenv("CDPATH");
+
     auto processor = std::make_shared<command_processor>();
 
     auto given = commands(argc, argv);
