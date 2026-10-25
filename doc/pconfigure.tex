@@ -1370,6 +1370,18 @@ that comes off the front, so both of them ask for
 directory would each be running somebody else's build system over the
 other one's files, with nothing anywhere saying so.
 
+A vendored tree belongs to exactly one project in the run.  Two
+\texttt{SUBPROJECTS} lines in one \texttt{Configfile} that name the
+same tree are the same tree, and a \texttt{CONFIGUREOPTS} after the
+second lands on it.  The same tree named by two different projects is
+a fatal error that points at both lines: say a subproject \texttt{a}
+has \texttt{SUBPROJECTS += k} and the top also has
+\texttt{SUBPROJECTS += a/k}.  Each project builds what it vendors into
+its own object directory, from rules in its own \texttt{Makefile}, so
+there is no one build the second line could be talking about.  Keep
+whichever line should own the tree and put the tree's
+\texttt{CONFIGUREOPTS} and \texttt{SUBPROJECT\_TARGETS} under it.
+
 Unlike a \texttt{pconfigure} subproject, a vendored tree is built with
 a recursive \texttt{make}.  There is no way to fold somebody else's
 build system into this one's dependency graph, so the rule that
