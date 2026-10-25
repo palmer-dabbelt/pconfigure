@@ -331,6 +331,16 @@ private:
     static std::map<std::string, std::string>
     distclean_dirs(const std::vector<ptr>& projects);
 
+    /* The files "make distclean" removes one at a time, because they
+     * are output that lands in a directory which isn't: the headers a
+     * HEADERS with a SOURCES under it copies into the include
+     * directory, where a HEADERS with nothing under it reads one that
+     * somebody wrote.  Each is mapped to the include directory it was
+     * copied into, which is as far up as distclean may go tidying away
+     * the directories the copy needed. */
+    static std::map<std::string, std::string>
+    distclean_files(const std::vector<ptr>& projects);
+
     /* Writes down where the test results this project is responsible
      * for end up, so that "ptest" run on its own can find them.  The
      * Makefile knows this already -- it's the same list its report

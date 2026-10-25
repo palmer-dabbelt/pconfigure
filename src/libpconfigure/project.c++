@@ -26,6 +26,7 @@
 #include "languages/gen_proc.h++"
 #include <libmakefile/self_path.h++>
 #include <sys/stat.h>
+#include <algorithm>
 #include <cctype>
 #include <cerrno>
 #include <cstdio>
@@ -1512,7 +1513,15 @@ project::distclean_dirs(const std::vector<ptr>& projects)
          * builds nothing of its own has no "bin" or "lib" here: there
          * is nothing of its in either for distclean to take. */
         for (const auto& context: project->_processor->output_contexts()) {
-            add(context->bin_dir, "where binaries go");
+            /* A HEADERS builds into the include directory, but the
+             * include directory isn't output: a HEADERS with nothing
+             * under it installs a header straight out of there, one
+             * somebody wrote and nothing in the build can write
+             * again.  So it's left off, and what a HEADERS does copy
+             * in there is taken back by name instead -- see
+             * distclean_files(). */
+            if (context->type != context_type::HEADER)
+                add(context->bin_dir, "where binaries go");
             add(context->check_dir, "where test results go");
             add(context->lib_dir, "where libraries go");
             add(context->obj_dir, "the object directory");
@@ -1522,9 +1531,36 @@ project::distclean_dirs(const std::vector<ptr>& projects)
     return dirs;
 }
 
+std::map<std::string, std::string>
+project::distclean_files(const std::vector<ptr>& projects)
+{
+    auto files = std::map<std::string, std::string>();
+
+    for (const auto& project: projects) {
+        for (const auto& context: project->_processor->output_contexts()) {
+            if (context->type != context_type::HEADER)
+                continue;
+
+            /* One with nothing under it is the hand-written header
+             * itself, read where it is and never copied anywhere but
+             * the install prefix.  One with a SOURCES under it is a
+             * copy, and lands exactly where languages/bash.c++ puts
+             * every BASH-like target. */
+            if (context->children.size() == 0)
+                continue;
+
+            files.emplace(context->bin_dir + "/" + context->cmd->data(),
+                          context->bin_dir);
+        }
+    }
+
+    return files;
+}
+
 makefile::target::ptr project::distclean_target(const std::vector<ptr>& projects) const
 {
     auto dirs = distclean_dirs(projects);
+    auto files = distclean_files(projects);
     auto makefiles = std::vector<std::string>();
     for (const auto& project: projects)
         makefiles.push_back(project->makefile_path());
@@ -1556,6 +1592,36 @@ makefile::target::ptr project::distclean_target(const std::vector<ptr>& projects
         commands.push_back("rm -rf " + string_utils::quoted(pair.first));
     for (const auto& path: makefiles)
         commands.push_back("rm -rf " + string_utils::quoted(path));
+
+    /* The header copies go one name at a time, and then so do the
+     * directories the copies needed -- "HEADERSRC += lib/x.h" makes
+     * "include/lib" as well as the file -- deepest first, up to and
+     * including the include directory itself.  Each of those is an
+     * "rmdir", which only ever removes a directory that's empty: one
+     * that still holds a hand-written header is left exactly as it
+     * was, and one that held nothing but copies was the build's to
+     * begin with.  It fails, harmlessly and on purpose, for each
+     * directory that isn't empty or was never made, which is why it
+     * is told to be quiet about it. */
+    auto made = std::set<std::string>();
+    for (const auto& pair: files) {
+        commands.push_back("rm -f " + string_utils::quoted(pair.first));
+
+        auto dir = pair.first;
+        while (dir.size() > pair.second.size()) {
+            dir = dir.substr(0, dir.find_last_of('/'));
+            made.insert(dir);
+        }
+    }
+
+    auto deepest_first = std::vector<std::string>(made.begin(), made.end());
+    std::stable_sort(deepest_first.begin(), deepest_first.end(),
+                     [](const std::string& a, const std::string& b) {
+                         return a.size() > b.size();
+                     });
+    for (const auto& dir: deepest_first)
+        commands.push_back("rmdir " + string_utils::quoted(dir)
+                           + " 2>/dev/null || true");
 
     return std::make_shared<makefile::target>(
         "distclean",
