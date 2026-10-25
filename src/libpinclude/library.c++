@@ -249,6 +249,14 @@ int list_overwrite_defines(std::string filename,
     };
 
     static const auto strip_dd = [](std::string in) {
+        /* An empty name has no ".." to take out, and isn't a path
+         * that is all "..", which is what it would otherwise be taken
+         * for.  pinclude run with no file at all asks for one: there
+         * is nothing to read, so the list is empty, and the spelling
+         * the scan keeps it under while reading it is empty too. */
+        if (in.empty())
+            return in;
+
         auto insplit = split(in, "/");
         auto leading_dotdot = [&]() {
             for (size_t i = 0; i < insplit.size(); ++i)
