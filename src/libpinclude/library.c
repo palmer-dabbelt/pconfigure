@@ -1056,6 +1056,25 @@ static char *read_heredoc_delim(const char *line, size_t *i)
     return out;
 }
 
+/* Whether what follows a Perl "<<" (and any "~") is a terminator,
+ * which is a quoted string with or without blanks before it or a word
+ * written right against the "<<".  A backslash in that place is the
+ * old spelling of single quotes, and still a heredoc. */
+static bool perl_heredoc_follows(const char *rest)
+{
+    size_t i;
+
+    if (isalnum((unsigned char)rest[0]) || rest[0] == '_'
+        || rest[0] == '\\')
+        return true;
+
+    i = 0;
+    while (rest[i] != '\0' && isspace((unsigned char)rest[i]))
+        i++;
+
+    return rest[i] == '"' || rest[i] == '\'' || rest[i] == '`';
+}
+
 void open_heredocs(const char *line, size_t lineno,
                    struct heredoc *open, int *count,
                    enum pinclude_language language)
@@ -1151,6 +1170,20 @@ void open_heredocs(const char *line, size_t lineno,
             && line[i] == '~') {
             strip_blanks = true;
             i++;
+        }
+
+        /* Perl reads a terminator in fewer places than the shell does.
+         * A quoted one may have blanks before it, but an unquoted one
+         * has to be written right against the "<<", and has to be a
+         * word: "1 << 4" is a shift, and so is "$x <<= 2" with its
+         * "=".  Reading either with the shell's rule opens a heredoc
+         * that no line ends, and every include after it is lost.  The
+         * character after the "<<" is looked at again, as the one
+         * after a delimiter is. */
+        if (language == PINCLUDE_PERL
+            && perl_heredoc_follows(line + i) == false) {
+            i--;
+            continue;
         }
 
         while (line[i] != '\0' && isspace((unsigned char)line[i]))

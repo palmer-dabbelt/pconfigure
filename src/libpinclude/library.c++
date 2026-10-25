@@ -1186,6 +1186,24 @@ static std::string read_heredoc_delim(const std::string& line, size_t& i)
     return out;
 }
 
+/* Whether what follows a Perl "<<" (and any "~") at "i" is a
+ * terminator, which is a quoted string with or without blanks before
+ * it or a word written right against the "<<".  A backslash in that
+ * place is the old spelling of single quotes, and still a heredoc. */
+static bool perl_heredoc_follows(const std::string& line, size_t i)
+{
+    if (i < line.size()
+        && (isalnum((unsigned char)line[i]) || line[i] == '_'
+            || line[i] == '\\'))
+        return true;
+
+    while (i < line.size() && isspace((unsigned char)line[i]))
+        ++i;
+
+    return i < line.size()
+        && (line[i] == '"' || line[i] == '\'' || line[i] == '`');
+}
+
 /* Adds the heredocs a line opens to the ones still waiting for a
  * body, in the order those bodies arrive.
  *
@@ -1274,6 +1292,20 @@ void open_heredocs(const std::string& line, std::vector<heredoc>& open,
             && i < line.size() && line[i] == '~') {
             strip_blanks = true;
             ++i;
+        }
+
+        /* Perl reads a terminator in fewer places than the shell does.
+         * A quoted one may have blanks before it, but an unquoted one
+         * has to be written right against the "<<", and has to be a
+         * word: "1 << 4" is a shift, and so is "$x <<= 2" with its
+         * "=".  Reading either with the shell's rule opens a heredoc
+         * that no line ends, and every include after it is lost.  The
+         * character after the "<<" is looked at again, as the one
+         * after a delimiter is. */
+        if (language == pinclude::syntax::PERL
+            && perl_heredoc_follows(line, i) == false) {
+            --i;
+            continue;
         }
 
         while (i < line.size() && isspace((unsigned char)line[i]))
