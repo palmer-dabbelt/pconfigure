@@ -5059,6 +5059,19 @@ A bash ``compiler'', which really just does the following
   or Perl, its \texttt{\#pconfigure} lines (see
   Section~\ref{directive}); a test written in C or C++ is still read
   as C, so a directive inside one of its comments is commented out.
+
+  Each file is pasted in at most once: an \texttt{\#include} of a
+  file that is already in the output is skipped, so two helpers that
+  include each other are fine, and each comes out once.  \pconfigure\
+  doesn't keep the same list when it works out what a script depends
+  on, or which headers a C or C++ source reads.  It only refuses to
+  follow an \texttt{\#include} back into a file it is still in the
+  middle of reading, which is enough to get it out of a cycle like
+  that one, or of two headers guarded by \texttt{\#pragma once} that
+  include each other.  A file reached again some other way is read
+  again, since a header with no guard can include something different
+  the second time; for a script that can mean a dependency listed
+  twice, but never one left out.
 \item Reads the \texttt{-I} and \texttt{-D} in the target's
   \texttt{COMPILEOPTS}, with the argument either stuck on or as the
   next word.  A \texttt{-I} adds a directory an \texttt{\#include} is
