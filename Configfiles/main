@@ -532,6 +532,7 @@ TESTSRC     += cmdline-debug-not-recorded-for-reconfigure.bash
 TESTSRC     += cmdline-help-lists-cross-compile.bash
 TESTSRC     += cmdline-unknown-option-no-parser-internals.bash
 TESTSRC     += cmdline-unknown-option-counts-arguments-like-the-rest.bash
+TESTSRC     += cmdline-help-ignores-paths-it-would-read.bash
 TESTSRC     += strict.bash
 TESTSRC     += strict-opts-target.bash
 TESTSRC     += strict-lint.bash
