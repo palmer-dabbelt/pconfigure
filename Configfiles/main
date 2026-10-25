@@ -761,6 +761,7 @@ TESTSRC     += parent-makeflags-no-builtin-variables-rebuilds-c.bash
 TESTSRC     += configfile-wrong-operator-names-line.bash
 TESTSRC     += configfile-wrong-operator-in-config-names-file.bash
 TESTSRC     += configfile-minus-equals-names-line.bash
+TESTSRC     += configfile-make-style-operators-refused-with-rewrite.bash
 TESTSRC     += configfile-form-feed-and-vertical-tab-are-whitespace.bash
 TESTSRC     += configfile-carriage-return-only-line-endings-refused.bash
 TESTSRC     += deplibs-without-target-names-line.bash
