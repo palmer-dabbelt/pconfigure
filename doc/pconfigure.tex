@@ -668,6 +668,16 @@ are all fatal errors, since each would build, install and later remove
 a file somewhere nothing in this build owns.  The same holds for every
 variant below and for \texttt{HEADERS}.
 
+For \texttt{BINARIES} and the variants below that build something,
+\$name is also normalized before it is used, so the spelling doesn't
+change which file it is: \texttt{./main} and \texttt{main} are one
+target, and two lines that name it from different sources are caught
+as the same target asked for twice.  A trailing \texttt{/} is dropped,
+so \texttt{main/} builds \texttt{\$BINDIR/main}.  A name that is a
+directory rather than a file -- \texttt{.}, \texttt{tools/.} or
+\texttt{tools/main/..} -- is a fatal error, since there is nothing there
+to build.
+
 \subsection{\texttt{LIBRARIES += \$name} \label{cmd:libraries}}
 
 Largely the same as \texttt{BINARIES += \$name} with two major
