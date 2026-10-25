@@ -408,11 +408,28 @@ int list_overwrite_defines(std::string filename,
             if (state_stack.top() != state::OUTPUT)
                 return;
 
+            /* The name ends at its closing quote or '>', which is not
+             * the same as at the end of the line.  A C file's comments
+             * are blanked out before it gets here, but a script's are
+             * not, and pbashc stops at the closing quote and pastes the
+             * file in no matter what follows it on the line -- so
+             *   #include "helper.bash" # the shared helper
+             * is an include of helper.bash, and the scan has to read it
+             * as the same file the script is built from.  A name with
+             * nothing to close it runs to the end of the line, which is
+             * what pbashc does with one as well. */
+            auto delimited = [&](char close) {
+                auto end = rest.find(close, 1);
+                if (end == std::string::npos)
+                    return rest.substr(1);
+                return rest.substr(1, end - 1);
+            };
+
             auto rest_path = [&]() {
                 if (rest[0] == '<')
-                    return rest.substr(1, rest.size() - 2);
+                    return delimited('>');
                 if (rest[0] == '"')
-                    return rest.substr(1, rest.size() - 2);
+                    return delimited('"');
 
                 std::cerr << "Unable to parse line " << line << "\n";
                 std::cerr << "  Unknown include format, expected < or \"" << "\n";
@@ -658,12 +675,11 @@ static void check_line(const std::string& line, const std::string& pp, const std
     while (i < line.size() && isspace(line[i]))
         i++;
 
-    /* By the time a line gets here its comments have already been
-     * blanked out, so looking for the start of one finds nothing and
-     * what a trailing comment leaves behind is whitespace.  That has to
-     * go: the include parser reads the last character of what it's
-     * handed as the closing quote, and trailing space makes it read a
-     * quote that is still in the middle of the string. */
+    /* By the time a line of C gets here its comments have already
+     * been blanked out, so what a trailing comment leaves behind is
+     * whitespace.  None of the directives has a use for it, and an
+     * include whose name is never closed runs to the end of the line,
+     * where it would otherwise end up as part of the name. */
     auto end = line.size();
     while (end > i && isspace(line[end - 1]))
         end--;
