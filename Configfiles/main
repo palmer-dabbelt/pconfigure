@@ -964,6 +964,7 @@ TESTSRC     += sources-same-basename-different-dirs.bash
 TESTSRC     += unicode-and-dashed-file-names.bash
 TESTSRC     += nested-binary-install-and-rpath.bash
 TESTSRC     += subproject-moved-libdir-nested-binary-runs-in-tree.bash
+TESTSRC     += prefix-above-subprojects-installs-both-into-one-prefix.bash
 TESTSRC     += prefix-custom-install-layout.bash
 TESTSRC     += subproject-two-spellings-distclean.bash
 TESTSRC     += project-path-with-space-builds-and-reconfigures.bash
