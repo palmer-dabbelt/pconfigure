@@ -1069,12 +1069,16 @@ void command_processor::process(const command::ptr& cmd)
         abort();
     }
 
-    /* PREFIX names a path too, but a space in one is refused outright
-     * by process_one() -- see the comment there for why that one has
-     * no compatibility to keep -- and a warning just ahead of the
-     * error that supersedes it would only be noise. */
+    /* PREFIX and SRCPATH name paths too, but a space in either is
+     * refused outright by process_one() -- see the comments there for
+     * why neither has any compatibility to keep -- and a warning just
+     * ahead of the error that supersedes it would only be noise.  For
+     * SRCPATH it would be worse than noise: "write one SRCPATH line
+     * per file" is advice about a list of files, and a SRCPATH is one
+     * directory. */
     if (names_a_path(cmd->type()) == true
         && cmd->type() != command_type::PREFIX
+        && cmd->type() != command_type::SRCPATH
         && cmd->data().find(' ') != std::string::npos) {
         _stack.top()->strictness.complain(
             strict_since::v0_13(),
@@ -3078,6 +3082,34 @@ void command_processor::process_one(const command::ptr& cmd)
                 "say it once, at the top of the project, and remember that"
                 " '--srcpath' on the command line has already said it");
         _given_srcpath = true;
+
+        /* Whitespace is refused here rather than warned about the way
+         * a space in most other paths is (see process()), for the
+         * reason PREFIX's is: there was never a build that worked to
+         * keep working.  The source root goes on the front of every
+         * source, header and Configfile path the Makefile names, as a
+         * target or a prerequisite as often as in a recipe, and make
+         * splits those on whitespace however they're quoted -- so
+         * every rule comes out naming half the tree and make stops on
+         * "No rule to make target" for the first half.  Escaping it
+         * would mean a different escape for every place a path lands
+         * in a Makefile, and that's a great deal of machinery for a
+         * directory that can be renamed, or reached through a symlink
+         * that has no space in it. */
+        if (cmd->data().find_first_of(" \t\v\f\r") != std::string::npos) {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: the source tree's path has whitespace"
+                      << " in it: '" << cmd->data() << "'\n"
+                      << "  SRCPATH (or '--srcpath') goes on the front of"
+                      << " every source path the Makefile names, and make"
+                      << " splits those on whitespace into two targets, so"
+                      << " nothing in the tree could be built\n"
+                      << "  name the source tree by a path without"
+                      << " whitespace in it -- rename the directory, or"
+                      << " make a symlink to it whose own name has none"
+                      << " and name the symlink\n";
+            abort();
+        }
 
         auto path = _base + cmd->data();
         tos->src_dir = path + "/" + tos->src_dir.substr(_base.size());

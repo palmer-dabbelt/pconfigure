@@ -344,6 +344,7 @@ TESTSRC     += srcpath-objects-stay-in-build-directory.bash
 TESTSRC     += srcpath-missing-directory-refused.bash
 TESTSRC     += srcpath-naming-a-file-refused.bash
 TESTSRC     += srcpath-configfile-missing-directory-refused.bash
+TESTSRC     += srcpath-with-space-refused.bash
 TESTSRC     += palmer-scripts.bash
 TESTSRC     += headersrc.bash
 TESTSRC     += putil.bash
