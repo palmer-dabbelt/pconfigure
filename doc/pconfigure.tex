@@ -849,8 +849,9 @@ An \texttt{\$opt} is a piece of a command line, and it is read as the
 words the shell will split it into, so one line can carry several
 flags.  An include directory a subproject names is written from that
 subproject's own directory: the relative directory of a \texttt{-I},
-\texttt{-isystem}, \texttt{-iquote} or \texttt{-idirafter}, with the
-directory stuck on or as the next word, gets the subproject's
+\texttt{-isystem}, \texttt{-iquote}, \texttt{-idirafter} or clang's
+\texttt{-isystem-after}, with the directory stuck on or as the next
+word, gets the subproject's
 directory put on the front.  Those same directories are where
 \pconfigure\ looks for the headers a source reads, so editing a header
 found in any of them rebuilds what was compiled against it.
