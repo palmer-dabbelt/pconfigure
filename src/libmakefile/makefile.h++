@@ -198,6 +198,23 @@ namespace makefile {
 
         /* Writes this makefilie out to a text file. */
         void write_to_file(const std::string& filename);
+
+        /* What each "make check" stamp in this Makefile stands for:
+         * the file, named the way pconfigure sees it rather than the
+         * way make will, and what it ought to say.  The stamp rules
+         * that write_to_file() writes wait on these files, so it is
+         * up to whoever wrote the Makefile to write them as well --
+         * and to write each one only when what it says has changed,
+         * since its timestamp is the whole of what make reads. */
+        std::vector<std::pair<std::string, std::string>>
+        check_scopes(void) const;
+
+    private:
+        /* The pieces of a check_scopes() entry, shared with the rules
+         * that wait on them so the two can't come to disagree. */
+        std::string check_scope_path(const std::string& suite) const;
+        std::string check_dirs_args(void) const;
+        std::vector<std::string> check_stamp_deps(void) const;
     };
 }
 

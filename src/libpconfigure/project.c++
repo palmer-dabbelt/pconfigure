@@ -1832,6 +1832,7 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
     write_bootstrap_makefile();
     write_check_dirs(aggregated);
     write_check_stamp();
+    write_check_scopes(*out);
     write_configureopts();
 }
 
@@ -1921,6 +1922,21 @@ void project::write_check_stamp(void) const
                 root->unbased(root->obj_dir + "/check-all-done").c_str());
 
     fclose(file);
+}
+
+void project::write_check_scopes(const makefile::makefile& out) const
+{
+    for (const auto& scope: out.check_scopes()) {
+        if (file_utils::write_if_changed(scope.first, scope.second))
+            continue;
+
+        std::cerr << "can't write '" << scope.first << "': "
+                  << strerror(errno) << "\n"
+                  << "  this is where the tests a \"make check\" covers get"
+                  << " written down,\n"
+                  << "  and make needs it to know when that has changed\n";
+        abort();
+    }
 }
 
 std::string project::base_suffix(const std::string& base)

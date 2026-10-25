@@ -331,6 +331,13 @@ private:
      * "make check" actually builds. */
     void write_check_stamp(void) const;
 
+    /* Writes down which test results each of the Makefile's "make
+     * check" stamps stands for, in the files those stamps wait on
+     * (see makefile::check_scopes()).  Only a file whose contents
+     * changed is written, since a file rewritten on every configure
+     * would have every "make check" score everything again. */
+    void write_check_scopes(const makefile::makefile& out) const;
+
     /* Writes the Makefile that a BOOTSTRAP project commits, which is
      * the one make is actually run at.
      *

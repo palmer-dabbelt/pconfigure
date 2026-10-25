@@ -386,7 +386,30 @@ void makefile::makefile::write_to_file(const std::string& filename)
 
     /* The stamp is named after this project's object directory, so
      * every project has its own and a parent's waits on its
-     * children's. */
+     * children's.
+     *
+     * It also waits on the file that says what it stands for (see
+     * check_scopes()), and that is the half that isn't about time.
+     * Every other prerequisite here is a test result, and a result is
+     * older than the stamp whenever the test ran before the stamp
+     * was last written -- which is true of a test that just moved into
+     * the set as much as of one that was always there.  A failing test
+     * moved into a suite, an INCLUDE_TEST_SUITES that pulls one in, a
+     * subproject that was tested on its own before it was vendored:
+     * each is a stamp whose prerequisites are all older than it, so
+     * make called it current and "make check" said there was nothing
+     * to do while "make report" over the same set, built fresh, listed
+     * the failure.  Which results are in the set is something only the
+     * Configfiles say, and this file is where that gets a timestamp.
+     *
+     * The empty rule is for a scope file that isn't there, which is a
+     * tree somebody cleared out by hand: make takes a file with no
+     * rule and no file as remade, so the stamp is too, and the next
+     * report scores everything rather than stopping on "No rule to
+     * make target". */
+    auto all_scope = _prefix.rewrite(check_scope_path(""));
+    fprintf(file, "%s:\n", all_scope.c_str());
+    fprintf(file, "%s: %s\n", stamp.c_str(), all_scope.c_str());
     fprintf(file, "%s:", stamp.c_str());
     for (const auto& check_stamp: _check_stamps)
         fprintf(file, " %s", _prefix.rewrite(check_stamp).c_str());
@@ -412,10 +435,7 @@ void makefile::makefile::write_to_file(const std::string& filename)
      * ask.  It's said per directory rather than once for the whole
      * ptest run, since a parent's report covers projects that gave
      * different answers. */
-    auto check_dirs = std::string();
-    for (const auto& dir: _check_dirs)
-        check_dirs += (dir.second ? " --abrt-is-fail-dir " : " --check-dir ")
-                    + _prefix.rewrite(dir.first);
+    auto check_dirs = check_dirs_args();
 
     write_report_rule(file, quiet_report, stamp, q, ptest, true, check_dirs);
     write_report_rule(file, report, stamp, q, ptest, false, check_dirs);
@@ -542,6 +562,12 @@ void makefile::makefile::write_to_file(const std::string& filename)
         for (const auto& result: suite.second)
             results += " --check-result " + _prefix.rewrite(result);
 
+        /* The same scope file as the project-wide stamp has, for the
+         * same reason: a suite is exactly the set a Configfile edit
+         * can change without touching any result in it. */
+        auto suite_scope = _prefix.rewrite(check_scope_path(suite.first));
+        fprintf(file, "%s:\n", suite_scope.c_str());
+        fprintf(file, "%s: %s\n", suite_stamp.c_str(), suite_scope.c_str());
         fprintf(file, "%s:", suite_stamp.c_str());
         for (const auto& result: suite.second)
             fprintf(file, " %s", _prefix.rewrite(result).c_str());
@@ -574,4 +600,64 @@ void makefile::makefile::write_to_file(const std::string& filename)
         fprintf(file, "endif\n\n");
 
     fclose(file);
+}
+
+std::vector<std::pair<std::string, std::string>>
+makefile::makefile::check_scopes(void) const
+{
+    /* What a report reads is the ptest command line its rule runs,
+     * and what the stamp waits on is its list of prerequisites, so
+     * those are what a scope says.  A change to either is a change to
+     * what "make check" is about; a change to neither -- a reconfigure
+     * that comes out the same, a comment in a Configfile -- leaves the
+     * file alone, and with it every result that is still current. */
+    auto out = std::vector<std::pair<std::string, std::string>>();
+
+    auto all = "ptest" + check_dirs_args() + "\n";
+    for (const auto& dep: check_stamp_deps())
+        all += dep + "\n";
+    out.push_back(std::make_pair(check_scope_path(""), all));
+
+    for (const auto& suite: _test_suites) {
+        auto scope = "ptest" + check_dirs_args() + " --check-suite "
+                   + suite.first + "\n";
+        for (const auto& result: suite.second)
+            scope += _prefix.rewrite(result) + "\n";
+        out.push_back(std::make_pair(check_scope_path(suite.first), scope));
+    }
+
+    return out;
+}
+
+std::string makefile::makefile::check_scope_path(const std::string& suite) const
+{
+    /* "check-suite-" for the same reason as the suite's stamp: a suite
+     * may be called "all". */
+    if (suite.size() == 0)
+        return _obj_dir + "/check-all-scope";
+    return _obj_dir + "/check-suite-" + suite + "-scope";
+}
+
+std::string makefile::makefile::check_dirs_args(void) const
+{
+    auto out = std::string();
+    for (const auto& dir: _check_dirs)
+        out += (dir.second ? " --abrt-is-fail-dir " : " --check-dir ")
+             + _prefix.rewrite(dir.first);
+    return out;
+}
+
+std::vector<std::string> makefile::makefile::check_stamp_deps(void) const
+{
+    /* The same prerequisites target::write_to_file() and the stamp
+     * rule hang off "check-all-done" between them, spelled the way
+     * they come out in the Makefile. */
+    auto out = std::vector<std::string>();
+    for (const auto& list: {&_targets, &_standalone_targets})
+        for (const auto& target: *list)
+            if (target->has_global_target(global_targets::CHECK))
+                out.push_back(_prefix.rewrite(target->name()));
+    for (const auto& stamp: _check_stamps)
+        out.push_back(_prefix.rewrite(stamp));
+    return out;
 }
