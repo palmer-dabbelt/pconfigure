@@ -46,6 +46,11 @@ public:
         { return ctx->phc; }
     virtual std::string compiler_pretty(void) const { return "H"; }
     virtual std::vector<makefile::target::ptr> targets(const context::ptr& ctx) const;
+    virtual std::string one_source_noun(void) const { return "header"; }
+    virtual std::string
+    second_source_advice(const context::ptr& first,
+                         const context::ptr& second,
+                         const std::string& spelling) const;
 
     /* Virtual methods from language. */
     virtual std::string name(void) const { return "h"; }

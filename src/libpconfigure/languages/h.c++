@@ -117,6 +117,25 @@ language_h::targets(const context::ptr& ctx) const
     return bash_targets;
 }
 
+/* phc is a "cp": the header that's installed is the one file, byte for
+ * byte, with its "#include"s left for whoever reads it to resolve.  So
+ * the advice BASH gives -- include the second from the first -- would
+ * install a header pointing at one that was never installed beside it.
+ * The second needs to be installed itself, which is a target of its
+ * own. */
+std::string
+language_h::second_source_advice(const context::ptr& first,
+                                 const context::ptr& second,
+                                 const std::string& spelling
+                                     __attribute__((unused))) const
+{
+    return "  give " + second->cmd->data()
+         + " a HEADERS of its own instead: phc installs "
+         + first->cmd->data()
+         + " exactly as it is, and " + second->cmd->data()
+         + " would never be installed at all\n";
+}
+
 static void install_h(void) __attribute__((constructor));
 void install_h(void)
 {

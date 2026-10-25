@@ -65,6 +65,20 @@ public:
     dependencies(const std::string& path,
                  const std::vector<std::string>& opts) const;
 
+    /* A target here is made from exactly one SOURCES, and a second one
+     * is refused by targets().  What the refusal calls the target and
+     * what it says to write instead depend on what the compiler does
+     * with that one file: pbashc and pperlc expand its "#include"s, so
+     * the second file belongs in the first, while phc copies a header
+     * as it stands and the second one needs a HEADERS of its own.
+     * "first" and "second" are the SOURCES contexts, and "spelling" is
+     * the name the first would have to "#include" the second by. */
+    virtual std::string one_source_noun(void) const { return "script"; }
+    virtual std::string
+    second_source_advice(const context::ptr& first,
+                         const context::ptr& second,
+                         const std::string& spelling) const;
+
 protected:
     /* Whether targets() below has anything to write for this kind of
      * context.  Every BASH-like language builds through it, so a child

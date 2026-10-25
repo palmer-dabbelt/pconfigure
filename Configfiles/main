@@ -514,6 +514,10 @@ TESTSRC     += unknown-language-names-the-line.bash
 TESTSRC     += perl-library-names-the-line.bash
 TESTSRC     += perl-shebang-options-kept.bash
 TESTSRC     += perl-test-compiled-by-pperlc-runs-against-script.bash
+TESTSRC     += bash-second-source-refused-with-line.bash
+TESTSRC     += bash-second-source-advice-builds-from-subdirectory.bash
+TESTSRC     += bash-same-source-twice-says-delete-line.bash
+TESTSRC     += headers-second-source-refused-not-included.bash
 TESTSRC     += header-only-library-names-the-line.bash
 
 # Incremental-rebuild behavior, one dependency type per test, the

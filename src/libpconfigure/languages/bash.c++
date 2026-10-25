@@ -87,6 +87,67 @@ bool language_bash::targets_handle(const context::ptr& ctx)
     abort();
 }
 
+/* The path components of a name, with "." and empty components dropped
+ * and each ".." taking the component before it off where there is one.
+ * This is only spelling: nothing is looked up on disk, so a symlink
+ * followed by ".." is taken at its word. */
+static std::vector<std::string> path_components(const std::string& path)
+{
+    auto out = std::vector<std::string>();
+    std::stringstream ss(path);
+    std::string c;
+    while (std::getline(ss, c, '/')) {
+        if (c.empty() || c == ".")
+            continue;
+
+        if (c == ".." && out.size() > 0 && out.back() != "..") {
+            out.pop_back();
+            continue;
+        }
+
+        out.push_back(c);
+    }
+    return out;
+}
+
+/* How the file at "from" would have to "#include" the one at "to".
+ * pinclude looks a quoted include up in the directory of the file
+ * doing the including before anywhere else, so the name is the one
+ * that leads from that directory to the other file -- which is not the
+ * name written in the Configfile once the sources are in a
+ * subdirectory: "SOURCES += lib/b.bash" is reached from lib/a.bash as
+ * "b.bash", and "lib/b.bash" there is looked for in lib/lib/. */
+static std::string include_spelling(const std::string& from,
+                                    const std::string& to)
+{
+    auto f = path_components(from);
+    auto t = path_components(to);
+    if (f.size() > 0)
+        f.pop_back();
+
+    size_t common = 0;
+    while (common < f.size() && common + 1 < t.size() && f[common] == t[common])
+        common++;
+
+    auto out = std::string();
+    for (size_t i = common; i < f.size(); ++i)
+        out += "../";
+    for (size_t i = common; i < t.size(); ++i)
+        out += t[i] + (i + 1 < t.size() ? "/" : "");
+    return out;
+}
+
+std::string
+language_bash::second_source_advice(const context::ptr& first,
+                                    const context::ptr& second,
+                                    const std::string& spelling) const
+{
+    return "  write '#include \"" + spelling + "\"' in "
+         + first->cmd->data()
+         + " instead of a second SOURCES, or give "
+         + second->cmd->data() + " a target of its own\n";
+}
+
 /* The paths in the recipes below are bare words, for the reason
  * written out over language_cxx::compile_source(): a name holding a
  * quote, a space or a shell metacharacter does not build anywhere in
@@ -131,8 +192,47 @@ language_bash::targets(const context::ptr& ctx) const
         auto sources = std::vector<makefile::target::ptr>();
         auto deps = std::vector<makefile::target::ptr>();
         auto tests = std::vector<makefile::target::ptr>();
+        context::ptr first = NULL;
         for (const auto& child: ctx->children) {
+            /* The compiler is handed one input with "-i" and that file
+             * is the whole output, so a second SOURCES has nowhere to
+             * go.  It used to be made a prerequisite anyway and then
+             * never handed over: an output that rebuilt every time the
+             * file changed and never had a line of it inside.
+             *
+             * The same file named twice gets a message of its own.  It
+             * did no harm before, but the advice below would have it
+             * include itself, and all there is to do is delete the
+             * line. */
+            if (child->type == context_type::SOURCE && first != NULL) {
+                auto first_path = first->src_dir + "/" + first->cmd->data();
+                auto path = child->src_dir + "/" + child->cmd->data();
+                auto where = first->cmd->debug()->filename() + ":"
+                    + std::to_string(first->cmd->debug()->line_number());
+
+                std::cerr << std::to_string(child->cmd->debug()) << "\n";
+                if (path_components(path) == path_components(first_path)) {
+                    std::cerr << "  error: '" << child->cmd->data()
+                              << "' is already the SOURCES of '"
+                              << ctx->cmd->data() << "', from "
+                              << where << "\n"
+                              << "  delete this line\n";
+                    abort();
+                }
+
+                std::cerr << "  error: '" << ctx->cmd->data()
+                          << "' is one " << this->one_source_noun()
+                          << " made from one source, and it already has '"
+                          << first->cmd->data() << "' from "
+                          << where << "\n"
+                          << this->second_source_advice(
+                                 first, child,
+                                 include_spelling(first_path, path));
+                abort();
+            }
+
             if (child->type == context_type::SOURCE) {
+                first = child;
                 auto path = child->src_dir + "/" + child->cmd->data();
                 sources.push_back(std::make_shared<makefile::target>(path));
                 if (ctx->autodeps == true)
