@@ -2601,10 +2601,18 @@ refused, at whichever of the two lines comes second, naming the other.
 A name that merely ends the same way --- \texttt{rules.d} with no
 \texttt{rules} beside it --- is fine.
 
-\subsection{\texttt{TGENERATE += \$script}}
+\subsection{\texttt{TGENERATE += \$name}}
 
-Exactly the same as generate, but runs \texttt{test/\$script}
-instead of running \texttt{\$SRCDIR/\$script}.
+Exactly the same as \texttt{GENERATE}, but runs
+\texttt{test/\$name.proc} instead of \texttt{\$SRCDIR/\$name.proc}:
+a generator that exists only to build a fixture for the tests can live
+next to them rather than among the program's sources.  The
+\texttt{test} directory is the one of the project the line is in, so a
+\texttt{TGENERATE} in a subproject looks in that subproject's
+\texttt{test}.  Everything else is \texttt{GENERATE}'s: where the output
+is written, the two calling formats, and that the script is run from
+the top of its project --- so the paths its \texttt{--deps} prints and
+the files it reads are spelled from there, \texttt{test/} included.
 
 \section{Source File Directives \label{directive}}
 
