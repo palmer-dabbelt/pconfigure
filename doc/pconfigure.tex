@@ -730,7 +730,10 @@ not to trust, arrived at without anything having gone visibly wrong.
 A test is also given \texttt{\$PTEST\_TMPDIR}, an empty directory of
 its own that is removed once the test finishes.  Anything the test
 writes belongs there: the working directory is shared with every other
-test in the build, and with the build itself.
+test in the build, and with the build itself.  It is removed even if
+the test left parts of it read-only, as a Go module cache or a git
+object store will, and whether it could be removed has no bearing on
+the test's result.
 
 What the test left in there is what gets collected: \texttt{\$CHECKDIR}
 holds one tarball per test, and a test's own is the contents of its
