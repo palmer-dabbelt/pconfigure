@@ -512,8 +512,24 @@ fi
 # "/home/me/my" and of a relative "tmp/..." -- neither of which is the
 # directory this made, and the first of which is somebody's.  Single
 # quotes leave the expansion to when the trap runs, where it is quoted.
+#
+# Removing it has to cope with whatever the test left there, and that
+# includes directories nobody can write to: Go's module cache, a git
+# object store, a tarball unpacked with the modes it recorded.  A plain
+# "rm -rf" can't empty those, so it fails and the directory stays in
+# the system temp for good.  Giving ourselves permission back first is
+# enough -- this is our directory, made by the mktemp above, so nothing
+# in it belongs to anybody else.  Read and search as well as write,
+# because a directory chmod can't look into is one it can't fix either.
 tmpdir=`mktemp -d -t ptest-wrapper.XXXXXXXXXX`
-trap 'rm -rf "$tmpdir"' EXIT
+remove_tmpdir() {
+    if test -d "$tmpdir"
+    then
+        chmod -R u+rwX "$tmpdir" 2>/dev/null
+        rm -rf "$tmpdir"
+    fi
+}
+trap 'remove_tmpdir' EXIT
 
 # A test that builds anything runs a make of its own, and it must not
 # inherit this one's flags.  make puts them in the environment of every
@@ -565,4 +581,17 @@ fi
 shopt -s dotglob
 printf '%s\0' * | tar -c --null -T - > "$out"
 
-rm -rf "$tmpdir"
+# By here the result is written, and the test has finished whether or
+# not its directory can be removed.  Letting the cleanup's status become
+# ptest's would fail the check target of a test that ran, and that is
+# worse than noisy: make stops before the report, but the result is
+# already on disk, so the next "make check" finds it up to date and is
+# green without ever saying the first one wasn't.  A directory that
+# still can't be removed is worth a word on stderr, but it is not the
+# test's result.
+remove_tmpdir
+if test -d "$tmpdir"
+then
+    echo "ptest: unable to remove the test's own directory $tmpdir" >&2
+fi
+exit 0

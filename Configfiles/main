@@ -334,6 +334,7 @@ TESTSRC     += vendored-file-name-with-space.bash
 TESTSRC     += check-in-project-path-with-space.bash
 TESTSRC     += check-c-test-in-project-path-with-space.bash
 TESTSRC     += check-with-tmpdir-with-space.bash
+TESTSRC     += check-test-leaving-readonly-dir-still-finishes.bash
 TESTSRC     += cxx-extensions.bash
 TESTSRC     += cross-compile.bash
 TESTSRC     += compiler-linker.bash
