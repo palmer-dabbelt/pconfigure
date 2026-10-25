@@ -531,6 +531,7 @@ TESTSRC     += generate-identical-output-does-not-cascade.bash
 TESTSRC     += generate-failed-generate-leaves-no-target.bash
 TESTSRC     += generate-recipe-change-rederives-fragment.bash
 TESTSRC     += generator-binary-change-regenerates.bash
+TESTSRC     += generate-dot-slash-name-rebuilds-consumers.bash
 TESTSRC     += compileopts-change-recompiles-objects.bash
 TESTSRC     += prefix-change-recompiles-prefix-macro.bash
 TESTSRC     += prefix-change-relinks-installed-rpath.bash

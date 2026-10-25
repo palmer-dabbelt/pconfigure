@@ -1712,8 +1712,22 @@ void command_processor::process_one(const command::ptr& cmd)
          * the more specific "make expansion" answer. */
         refuse_unsafe_metacharacter(cmd, "GENERATE");
 
+        /* Named by the path it reaches, the way a SOURCES is and for
+         * a sharper version of the same reason: the name is pasted
+         * onto the generated-file directory to name the rule's target,
+         * while a consumer that includes the header reaches it by the
+         * path pinclude found, which has no "./" in it.  Spelled as
+         * written, "./gen.h" gave make a rule for obj/proc/./gen.h and
+         * an object depending on obj/proc/gen.h -- one file to the
+         * kernel, two to make -- so nothing joined the generator to
+         * what read its output, and a parallel build happily compiled
+         * against the header before regenerating it.  Normalized only
+         * after both checks above, since normalizing can take apart
+         * what they look for. */
+        auto generated = cmd->with_data(file_utils::normalize_path(cmd->data()));
+
         clear_until({context_type::DEFAULT}, cmd);
-        dup_tos_and_push(context_type::GENERATE, cmd);
+        dup_tos_and_push(context_type::GENERATE, generated);
 
         set_opts_target(_stack.top());
         _output_contexts.push_back(_stack.top());
@@ -1722,7 +1736,7 @@ void command_processor::process_one(const command::ptr& cmd)
                          std::make_shared<command>(
                              cmd->type(),
                              "+=",
-                             cmd->data() + ".proc",
+                             generated->data() + ".proc",
                              cmd->debug()
                              )
             );
