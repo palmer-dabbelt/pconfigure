@@ -94,6 +94,8 @@ static bool is_directory(const char *path);
 
 static void looked_in(const char *dir, const char *filename);
 
+static bool at_eof(FILE *file);
+
 static int _pinclude_lines(const char *input,
                            pinclude_callback_t per_include,
                            void *include_priv, pinclude_lineback_t per_line,
@@ -160,6 +162,21 @@ static int _pinclude_lines(const char *input,
             if (in_heredoc == true || strncmp(buffer, "#include", 8) != 0) {
                 if ((err = per_line(buffer, line_priv)) != 0) {
                     return err;
+                }
+
+                /* The last line of a file needn't end in a newline,
+                 * but whatever comes after this file in the output --
+                 * the next line of the file that included it -- has
+                 * to start a line of its own rather than being glued
+                 * onto this one, so the end of the file ends the line.
+                 * Checking for the end of the file rather than just
+                 * for a missing newline is what keeps a line too long
+                 * for the buffer, which arrives in pieces that have
+                 * no newline either, in one piece. */
+                if (strchr(buffer, '\n') == NULL && at_eof(infile) == true) {
+                    if ((err = per_line("\n", line_priv)) != 0) {
+                        return err;
+                    }
                 }
             }
         }
@@ -859,4 +876,21 @@ int streqcmp(const char *str, const char *eq)
     if (strlen(str) != len)
         return 1;
     return strncmp(str, eq, len);
+}
+
+bool at_eof(FILE *file)
+{
+    int c;
+
+    /* fgets() stops at the end of the buffer as readily as at the end
+     * of the file, and when a line exactly fills the buffer it hasn't
+     * yet tried to read past the end to find out which it was, so
+     * feof() can't be trusted to say.  Looking at the next character
+     * can. */
+    c = getc(file);
+    if (c == EOF)
+        return true;
+
+    ungetc(c, file);
+    return false;
 }
