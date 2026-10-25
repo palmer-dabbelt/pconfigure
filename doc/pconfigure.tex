@@ -445,6 +445,11 @@ options at all:
 $ make reconfigure PCONFIGURE_ARGS=
 \end{verbatim}
 
+\texttt{--debug} is the one option left out of that record (see
+Section~\ref{cl:debug}): it asks this run of \pconfigure\ to explain
+itself, and a reconfigure that make starts later, perhaps from the
+middle of a build, has not been asked to.
+
 The options are recorded in the \texttt{Makefile} of the project
 \pconfigure\ was run in, and only there.  A path in one of them is a
 path from that directory, so a subproject's own \texttt{Makefile}
