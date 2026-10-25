@@ -38,7 +38,22 @@ language::ptr pick_language(const language_list::ptr& languages,
                      }
         );
 
-    if (valid_languages.size() >= 2) {
+    /* A language that decides by the names of a target's sources says
+     * yes to a target with none, since every name it was given
+     * matched.  So a tie over a target with no sources is not a
+     * question of which language it's written in -- it's written in
+     * none of them -- and warning about it pointed at the LANGUAGES
+     * lines when what's wrong is the target.  The targets where that
+     * matters get a warning of their own that says so, naming the
+     * line ("has nothing to build", in project.c++), and that is
+     * the one worth reading. */
+    auto has_sources = false;
+    for (const auto& child: context->children)
+        if (child->check_type({context_type::SOURCE,
+                               context_type::HEADER,}) == true)
+            has_sources = true;
+
+    if (valid_languages.size() >= 2 && has_sources == true) {
         if (valid_languages[0]->priority() == valid_languages[1]->priority()) {
             std::cerr << "WARNING: Multiple valid languages for\n  "
                       << std::to_string(context->cmd->debug())
