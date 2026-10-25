@@ -1702,6 +1702,16 @@ makefile::target::ptr project::distclean_target(const std::vector<ptr>& projects
         commands.push_back("rmdir " + string_utils::quoted(dir)
                            + " 2>/dev/null || true");
 
+    /* "distclean" is a name, like every other goal the Makefile
+     * answers to, and has to be said to be one.  Otherwise a file
+     * called "distclean" at the top of the tree -- notes, a script,
+     * the output of an earlier "make distclean > distclean" -- is an
+     * up-to-date target with no prerequisites, and make answers
+     * "'distclean' is up to date" and removes nothing at all, with an
+     * exit status of 0 to say it went fine.  The other global goals
+     * get their .PHONY lines in makefile::write_to_file(); this one
+     * carries its own because it is a rule built here rather than a
+     * goal every Makefile has. */
     return std::make_shared<makefile::target>(
         "distclean",
         "DISTCLEAN",
@@ -1709,7 +1719,7 @@ makefile::target::ptr project::distclean_target(const std::vector<ptr>& projects
         std::vector<makefile::global_targets>{},
         commands,
         std::vector<std::string>{"distclean"}
-    );
+    )->as_phony();
 }
 
 /* The options this run was given, spelled as the right-hand side of a

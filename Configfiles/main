@@ -408,6 +408,7 @@ TESTSRC     += distclean-keeps-hand-written-installed-header.bash
 TESTSRC     += distclean-keeps-subproject-hand-written-header.bash
 TESTSRC     += distclean-removes-headersrc-copies-by-name.bash
 TESTSRC     += distclean-removes-include-holding-only-copies.bash
+TESTSRC     += distclean-runs-beside-file-named-distclean.bash
 TESTSRC     += subproject-deps-from-inside.bash
 TESTSRC     += subproject-deps-from-inside-nested.bash
 TESTSRC     += subproject-deps-from-inside-only.bash
