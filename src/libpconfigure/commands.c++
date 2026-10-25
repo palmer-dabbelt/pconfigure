@@ -25,7 +25,9 @@
 #include <libmakefile/self_path.h++>
 #include <unistd.h>
 #include <fcntl.h>
+#include <cerrno>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <regex>
 #include <sstream>
@@ -492,13 +494,50 @@ std::string execute(std::string line, const debug_info::ptr& where)
              * before it's cleaned, so the breaks are there to be
              * turned into spaces like any other white space. */
             auto f = popen(command_str.c_str(), "r");
+            if (f == NULL) {
+                std::cerr << std::to_string(where) << "\n"
+                          << "  error: the command in backticks, '"
+                          << command.str() << "', could not be started: "
+                          << strerror(errno) << "\n";
+                abort();
+            }
             std::string output;
             for (const auto& l: file_utils::readlines(f))
                 output += l;
             executed << string_utils::clean_white(output);
-            auto exitcode = pclose(f);
-            if (exitcode != 0)
-                std::cerr << "'" << command_str << "': " << std::to_string(exitcode) << "\n";
+
+            /* A command that fails stops the run.  This is how a
+             * Configfile asks whether a package is installed --
+             * "pkg-config --cflags foo" exits non-zero and prints
+             * nothing on stdout when foo isn't there -- and carrying
+             * on used to write a Makefile with that line's flags
+             * quietly missing, so the person found out at compile
+             * time from a missing header with nothing pointing back
+             * here.  A required dependency that isn't there is the
+             * one thing configuring is for finding out.
+             *
+             * The command's own stderr has already been passed
+             * through, so this says which line ran it and how it
+             * ended -- as an exit status, not the wait status pclose()
+             * returns, which shifts the code left by eight and turns
+             * "exit 1" into "256".  The command is quoted as it was
+             * typed rather than with ppkg-config's path and
+             * PKG_CONFIG_PATH spliced in, since that is what the
+             * person will go looking for. */
+            auto status = pclose(f);
+            if (status != 0) {
+                std::cerr << std::to_string(where) << "\n"
+                          << "  error: the command in backticks, '"
+                          << command.str() << "', "
+                          << file_utils::describe_wait_status(status) << "\n"
+                          << "  a failing command stops configuring, rather"
+                          << " than leaving this line without what it"
+                          << " would have printed\n"
+                          << "  if it is allowed to fail, say so in the"
+                          << " command: pass --optional to ppkg-config, or"
+                          << " end it with '|| true'\n";
+                abort();
+            }
 
             /* The closing backtick ends the command and nothing else:
              * what comes after it is the rest of the line, which is
