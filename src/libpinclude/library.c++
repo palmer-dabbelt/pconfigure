@@ -269,58 +269,66 @@ int list_overwrite_defines(std::string filename,
             state_stack.push(resolved ? state::OUTPUT : state::ELSE);
     };
 
-    static const auto split = [](std::string str, std::string delim) {
-        std::vector<size_t> slashes;
-        {
-            size_t i = 0;
-            while (i < str.size() && i != std::string::npos) {
-                slashes.push_back(i == 0 ? 0 : i + 1);
-                i = str.find_first_of(delim, i + 1);
-            }
-            slashes.push_back(str.size() + 1);
-        }
-
-        std::vector<std::string> out;
-        for (size_t i = 0; i < slashes.size() - 1; ++i)
-            out.push_back(str.substr(slashes[i], slashes[i+1] - slashes[i] - 1));
-        return out;
-    };
-
+    /* The one spelling a path is listed under, however the include
+     * and the directory it was found through spelled it.  A header's
+     * name is what the source behind it is found from and what the
+     * scan remembers it by, so two spellings of one file are two
+     * headers: "./extra.h" beside "extra.h", or "-Isrc/lib/" glued
+     * onto a name as "src/lib//extra.h", had the source behind it
+     * compiled and linked once per spelling, and "-I./src/lib" gave
+     * a source under "./src/" that was never taken for one of the
+     * project's at all.  So "." and empty components go, and each
+     * ".." takes off the directory before it.
+     *
+     * A ".." with nothing left before it to take off climbs out of
+     * wherever the path started, and stays: "../extra.h" from the
+     * top of the tree, or "src/../../shared/shared.h" out of the
+     * project altogether, is a file the compiler finds there, and
+     * the path to it has to keep saying so.  Above the root of an
+     * absolute path there is nowhere further to go, so a ".." there
+     * is the root again, as it is to the kernel.
+     *
+     * An empty name has nothing to take out of it.  pinclude run
+     * with no file at all asks for one: there is nothing to read,
+     * so the list is empty, and the spelling the scan keeps it under
+     * while reading it is empty too. */
     static const auto strip_dd = [](std::string in) {
-        /* An empty name has no ".." to take out, and isn't a path
-         * that is all "..", which is what it would otherwise be taken
-         * for.  pinclude run with no file at all asks for one: there
-         * is nothing to read, so the list is empty, and the spelling
-         * the scan keeps it under while reading it is empty too. */
         if (in.empty())
             return in;
 
-        auto insplit = split(in, "/");
-        auto leading_dotdot = [&]() {
-            for (size_t i = 0; i < insplit.size(); ++i)
-                if (insplit[i] != "..")
-                    return i;
-
-            std::cerr << "path is all ..\n";
-            abort();
-            return (size_t)-1;
-        }();
+        bool absolute = in[0] == '/';
 
         std::vector<std::string> out;
-        for (size_t i = leading_dotdot; i < insplit.size(); ++i) {
-            if (insplit[i] == "..")
-                out.erase(out.end() - 1);
-            else
-                out.push_back(insplit[i]);
+        size_t start = 0;
+        while (start <= in.size()) {
+            auto end = in.find('/', start);
+            if (end == std::string::npos)
+                end = in.size();
+            auto component = in.substr(start, end - start);
+            start = end + 1;
+
+            if (component.empty() || component == ".")
+                continue;
+
+            if (component == "..") {
+                if (!out.empty() && out.back() != "..")
+                    out.pop_back();
+                else if (!absolute)
+                    out.push_back(component);
+                continue;
+            }
+
+            out.push_back(component);
         }
 
-        std::string ostr = leading_dotdot == 0 ? "" : "..";
-        for (size_t i = 1; i < leading_dotdot; ++i)
-            ostr = ostr + "/..";
-        ostr = ostr + ((ostr.size() == 0) ? "" : "/") + ((out.size() == 0) ? "" : out[0]);
-        for (size_t i = 1; i < out.size(); ++i)
-            ostr = ostr + "/" + out[i];
+        std::string ostr = absolute ? "/" : "";
+        for (size_t i = 0; i < out.size(); ++i)
+            ostr = ostr + ((i == 0) ? "" : "/") + out[i];
 
+        /* Every component cancelled out: the path is the directory it
+         * started from, which still needs a name to be a path. */
+        if (ostr.empty())
+            return std::string(".");
         return ostr;
     };
 
