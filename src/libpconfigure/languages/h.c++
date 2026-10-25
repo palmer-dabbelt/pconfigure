@@ -23,6 +23,7 @@
 #include "../language_list.h++"
 #include "../file_utils.h++"
 #include <assert.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <iostream>
 
@@ -95,6 +96,32 @@ bool language_h::can_process(const context::ptr& ctx) const
     return true;
 }
 
+/* Whether make would call "target" out of date because of "dep": the
+ * dependency is there and was written after the target was.  Down to
+ * the nanosecond where the system says, since that is how make
+ * compares them, and a reconfigure run in the same second as the copy
+ * it is judging is exactly what an AUTORECONFIGURE build does.  A
+ * dependency that isn't there is no reason here: whether it can be
+ * made is make's question, and the copy below would only fail. */
+static bool newer_than(const std::string& dep, const std::string& target)
+{
+    struct stat d, t;
+    if (stat(dep.c_str(), &d) != 0 || stat(target.c_str(), &t) != 0)
+        return false;
+
+#if defined(__APPLE__)
+    auto dm = d.st_mtimespec;
+    auto tm = t.st_mtimespec;
+#else
+    auto dm = d.st_mtim;
+    auto tm = t.st_mtim;
+#endif
+
+    if (dm.tv_sec != tm.tv_sec)
+        return dm.tv_sec > tm.tv_sec;
+    return dm.tv_nsec > tm.tv_nsec;
+}
+
 std::vector<makefile::target::ptr>
 language_h::targets(const context::ptr& ctx) const
 {
@@ -119,7 +146,18 @@ language_h::targets(const context::ptr& ctx) const
         if (t->name() != header)
             continue;
 
-        if (access(header.c_str(), R_OK) == 0)
+        /* It used to be copied only when there was no copy, which left
+         * a copy of a SOURCES the Configfile had since been pointed
+         * away from sitting in the include directory until make got
+         * around to it.  The rule names the recipe as a prerequisite,
+         * and BASH's targets() has just rewritten that if the source or
+         * the options moved, so asking the rule's own question -- is
+         * anything it names newer than the copy -- is what catches
+         * that, and what leaves a copy that is up to date alone. */
+        auto stale = access(header.c_str(), R_OK) != 0;
+        for (const auto& dep: t->deps())
+            stale = stale || newer_than(dep->name(), header);
+        if (stale == false)
             continue;
 
         /* A header whose input isn't there yet has nothing to copy

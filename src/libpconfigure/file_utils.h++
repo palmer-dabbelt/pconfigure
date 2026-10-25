@@ -176,6 +176,19 @@ namespace file_utils {
     bool write_if_changed(const std::string& path,
                           const std::string& contents);
 
+    /* Gives "path" the mtime "like" has, so that make, which only
+     * ever asks whether a prerequisite is newer than its target,
+     * finds no reason in "path" to rebuild "like".  Nothing is done
+     * when "like" isn't there: a target that doesn't exist is built
+     * whatever its prerequisites say.  False, with errno set, only
+     * when "like" is there and "path" could not be changed.
+     *
+     * This is for a record written for the first time beside an
+     * output that already exists -- one built before the record was
+     * kept at all -- where the record being new says only that it
+     * wasn't kept before, not that what it records has changed. */
+    bool no_newer_than(const std::string& path, const std::string& like);
+
     /* write_if_changed(), for a file the build names and nothing in
      * the build makes: one pconfigure writes at configure time for a
      * rule to read or to hang off of, such as the hash of what goes

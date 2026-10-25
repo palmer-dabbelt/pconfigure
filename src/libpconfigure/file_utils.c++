@@ -24,6 +24,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
@@ -345,6 +346,30 @@ bool file_utils::write_if_changed(const std::string& path,
         || fwrite(contents.data(), 1, contents.size(), out) == contents.size();
 
     return fclose(out) == 0 && wrote;
+}
+
+bool file_utils::no_newer_than(const std::string& path,
+                               const std::string& like)
+{
+    struct stat buf;
+    if (stat(like.c_str(), &buf) != 0)
+        return true;
+
+    /* The whole timestamp rather than its seconds, since make
+     * compares them down to the nanosecond where the system keeps
+     * them, and a record backdated to the second before its output
+     * is still a record newer than nothing.  The access time is left
+     * as it is: nothing here asks about it. */
+    struct timespec times[2];
+    times[0].tv_sec = 0;
+    times[0].tv_nsec = UTIME_OMIT;
+#if defined(__APPLE__)
+    times[1] = buf.st_mtimespec;
+#else
+    times[1] = buf.st_mtim;
+#endif
+
+    return utimensat(AT_FDCWD, path.c_str(), times, 0) == 0;
 }
 
 /* One list for the whole run rather than one per project, because
