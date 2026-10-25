@@ -1236,11 +1236,16 @@ and binaries they build are shared rather than duplicated.
 
 Everything else a configure writes for a build to read is named the
 same way and for the same reason: the fragments that say what a source
-includes, and the files that tell \texttt{pdeps} and
-\texttt{psubdeps} what to ask.  Two runs describing one tree from two
-distances are two answers, and a file they shared would hold whichever
-of them ran last --- which the other build would then read as a set of
-paths measured from somewhere it is not standing.
+includes, the files that tell \texttt{pdeps} and
+\texttt{psubdeps} what to ask, and the record of the command that
+built a script, a test or a \texttt{.pc} file, which is how a changed
+option gets one of those built again.  Two runs describing one tree
+from two distances are two answers, and a file they shared would hold
+whichever of them ran last --- which the other build would then read
+as a set of paths measured from somewhere it is not standing, or, for
+a record of a command, as that command having changed, so that
+configuring one run rebuilt the other's scripts and ran its tests
+again.
 
 A tree configured by an older \pconfigure\ has a \texttt{Makefile} at
 the top of each of its subprojects that the parent wrote, from back
