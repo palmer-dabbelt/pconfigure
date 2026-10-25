@@ -190,7 +190,7 @@ fi
 # ... and it says which line it was that asked for this, since the
 # STRICT is usually somewhere the person reading the error isn't
 # looking.
-grep -q "'STRICT = v0.13' is what makes this an error" strict.out
+grep -q "'STRICT = v0.13' at \./Configfile:1 is what makes this an error" strict.out
 
 # Nothing was written.  A Makefile built out of a Configfile that was
 # refused is a Makefile that builds the thing that was refused.

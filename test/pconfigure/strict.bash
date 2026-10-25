@@ -104,7 +104,7 @@ grep -q "^  error: COMPAT is read and then thrown away" promote.out
 # names the version that did.  Somebody whose build has just started
 # failing needs to be pointed at the line they wrote, not at a line
 # they might write.
-grep -q "^  ('STRICT = v0.13' is what makes this an error)\$" promote.out
+grep -q "^  ('STRICT = v0.13' at \./Configfile:1 is what makes this an error)\$" promote.out
 
 # Nothing was written, which is the assertion that matters most in
 # this file.  A run that complains and then leaves a Makefile behind
@@ -140,7 +140,7 @@ fi
 cat cmdline.out
 
 grep -q "^  error: COMPAT is read and then thrown away" cmdline.out
-grep -q "^  ('STRICT = v0.13' is what makes this an error)\$" cmdline.out
+grep -q "^  ('--strict v0.13' on the command line is what makes this an error)\$" cmdline.out
 test ! -e cmdline/Makefile
 
 ##############################################################################
@@ -186,7 +186,7 @@ EOF
     # than "all three promoted": it says the three spellings became
     # one version, rather than three versions that each happen to be
     # at least v0.13.
-    grep -q "^  ('STRICT = v0.13' is what makes this an error)\$" spell.out
+    grep -q "^  ('STRICT = v0.13' at \./Configfile:1 is what makes this an error)\$" spell.out
 done
 
 # A version in between two releases is understood and is still older
@@ -285,7 +285,7 @@ test ! -e future/Makefile
 # the one the warning was added in, since the question that line
 # answers is "why did this fail", and the answer is a line somebody
 # wrote.
-grep -q "^  ('STRICT = v1.0' is what makes this an error)\$" future.out
+grep -q "^  ('STRICT = v1.0' at \./Configfile:1 is what makes this an error)\$" future.out
 
 ##############################################################################
 # Garbage                                                                    #
@@ -379,6 +379,11 @@ cat inherit.out
 # travelled down, the diagnostic did not travel back up.
 grep -q "^sub/Configfile:3 'COMPAT = 2.0'\$" inherit.out
 grep -q "^  error: COMPAT is read and then thrown away" inherit.out
+
+# What made it an error is the parent's STRICT, though, and that's
+# named by the parent's file and line: the subproject's Configfile has
+# no STRICT in it for anybody to find.
+grep -q "^  ('STRICT = v0.13' at \./Configfile:1 is what makes this an error)\$" inherit.out
 
 # And neither end of the build got written out.  A subproject that
 # failed leaves the whole thing unconfigured, since a top-level

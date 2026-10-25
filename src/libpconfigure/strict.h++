@@ -54,13 +54,22 @@ private:
     unsigned _minor;
     unsigned _patch;
 
+    /* Where this strictness was asked for, which is what an error it
+     * caused points back at: either a STRICT line in some Configfile
+     * or a --strict on the command line, and the two are spelled
+     * differently enough that naming the wrong one sends the reader
+     * looking for a line that isn't there.  NULL for the default and
+     * for the versions warnings are tagged with, neither of which was
+     * written down anywhere. */
+    debug_info::ptr _set_by;
+
 public:
     /* The default strictness, which is the oldest one anybody can
      * ask for. */
     strict(void);
 
     strict(unsigned major, unsigned minor, unsigned patch)
-    : _major(major), _minor(minor), _patch(patch)
+    : _major(major), _minor(minor), _patch(patch), _set_by(nullptr)
     {}
 
 public:
@@ -73,7 +82,12 @@ public:
      *
      * Anything older than the default is the default.  There was
      * never a pconfigure that behaved differently, so asking for one
-     * is asking for the oldest behaviour there is. */
+     * is asking for the oldest behaviour there is.
+     *
+     * The result remembers "d", so a strictness that's copied along
+     * -- into a subproject, say -- still knows which line asked for
+     * it, and one that's replaced by a later STRICT knows the later
+     * line instead. */
     static strict parse(const std::string& str, const debug_info::ptr& d);
 
     /* Spelled the way it's written in a Configfile. */
@@ -93,7 +107,11 @@ public:
      * a STRICT has to reach for this to become an error.  "what" says
      * what happened, and "instead" says what to write -- both are
      * required, because a warning that only says "no" leaves whoever
-     * reads it exactly where they started. */
+     * reads it exactly where they started.
+     *
+     * An error also says what made it one, spelled the way it was
+     * written and pointing at where: the Configfile line for a
+     * STRICT, or the command line for a --strict. */
     void complain(const strict& since,
                   const debug_info::ptr& where,
                   const std::string& what,

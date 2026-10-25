@@ -30,7 +30,8 @@ static const auto oldest = strict(0, 12, 0);
 strict::strict(void)
 : _major(0),
   _minor(12),
-  _patch(0)
+  _patch(0),
+  _set_by(nullptr)
 {
 }
 
@@ -107,8 +108,9 @@ strict strict::parse(const std::string& str, const debug_info::ptr& d)
      * starts at is asking for the oldest behaviour there is, which is
      * what that version already means. */
     if (out.at_least(oldest) == false)
-        return oldest;
+        out = oldest;
 
+    out._set_by = d;
     return out;
 }
 
@@ -146,9 +148,27 @@ void strict::complain(const strict& since,
               << "  " << (fatal ? "error" : "warning") << ": " << what << "\n"
               << "  " << instead << "\n";
 
+    /* The line that did the promoting is named the way it was
+     * written, since that's the line whoever is reading this has to
+     * go and change: a "--strict v0.13" given to the command line has
+     * no STRICT line in any file to find, and a STRICT line has to be
+     * found among however many Configfiles a project has.  The
+     * version itself is the normalized one, so that "0.13" and
+     * "v0.13.0" read back as the release they name. */
     if (fatal == true) {
-        std::cerr << "  ('STRICT = " << to_string()
-                  << "' is what makes this an error)\n";
+        if (_set_by != nullptr && _set_by->from_command_line()) {
+            std::cerr << "  ('--strict " << to_string()
+                      << "' on the command line"
+                      << " is what makes this an error)\n";
+        } else if (_set_by != nullptr) {
+            std::cerr << "  ('STRICT = " << to_string()
+                      << "' at " << _set_by->filename()
+                      << ":" << _set_by->line_number()
+                      << " is what makes this an error)\n";
+        } else {
+            std::cerr << "  ('STRICT = " << to_string()
+                      << "' is what makes this an error)\n";
+        }
         abort();
     }
 
