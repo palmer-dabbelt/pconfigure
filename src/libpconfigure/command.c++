@@ -120,6 +120,228 @@ command::ptr command::parse(const std::string& str,
 
     auto split = string_utils::split_char(str, " ");
 
+    /* What's left of the line once the first few words are taken off
+     * it, which is what a corrected line gets built from below.  The
+     * line has already been tidied to one space between words, so the
+     * words and the spaces after them add up to where the rest
+     * starts. */
+    auto rest_after = [&](size_t words) {
+        size_t offset = 0;
+        for (size_t i = 0; i < words && i < split.size(); ++i)
+            offset += split[i].size() + 1;
+        return offset < str.size() ? std::string(str, offset) : std::string();
+    };
+
+    /* Text that starts with an operator is split into the operator and
+     * whatever was run up against it, joined to the rest of the line,
+     * so that the two refusals below can tell an operator that only
+     * wanted a space round it from text that isn't an operator at
+     * all.  '+=' is tried first because '=' would match its second
+     * half.  Anything that doesn't start with one comes back with no
+     * operator and is left alone, and so does an operator with more
+     * of an operator after it: "=+" or "+==" is a garbled operator
+     * rather than one with a value starting with '+' or '=', and
+     * giving the line back spaced out would only be guessing. */
+    struct operator_split { std::string op; std::string value; };
+    auto split_operator = [](const std::string& text,
+                             const std::string& rest) {
+        operator_split out;
+        for (auto op : {std::string("+="), std::string("=")}) {
+            if (text.compare(0, op.size(), op) == 0) {
+                if (text.find_first_of("+=", op.size()) == op.size())
+                    return out;
+                out.op = op;
+                out.value = text.substr(op.size());
+                break;
+            }
+        }
+        if (out.op.size() > 0 && rest.size() > 0)
+            out.value = out.value.size() > 0 ? out.value + " " + rest : rest;
+        return out;
+    };
+
+    /* A ']' that is there but isn't last closed the name and then
+     * kept going, so what's wrong is whatever follows it.  Calling
+     * that a name that never closes would send whoever reads it
+     * looking for a ']' that's right in front of them.
+     *
+     * This is looked at before the line is counted, because the
+     * likeliest thing to find after the ']' is the operator, run up
+     * against it -- and "TESTSRC[net]+= t.bash" is then only two words
+     * long, which would otherwise be turned away as a line that
+     * couldn't be parsed at all. */
+    if (split.size() > 0) {
+        auto word = split[0];
+        auto open = word.find('[');
+        auto close = (open == std::string::npos)
+            ? std::string::npos
+            : word.find(']', open);
+        if (close != std::string::npos && close != word.size() - 1) {
+            auto named = word.substr(0, close + 1);
+            auto trailing = word.substr(close + 1);
+            auto rest = rest_after(1);
+
+            /* A word that starts with the '[' has the name in front
+             * of the command rather than after it, and what follows
+             * the ']' is the command itself.  Telling that line to end
+             * the word at the ']' would leave it with no command on it
+             * at all, so it gets told to put the name the other side.
+             * The whole line only comes back when the command is all
+             * that follows the ']' and the rest of the line is an
+             * operator with a value: moving the name is then the only
+             * change it needs. */
+            if (open == 0) {
+                auto command = trailing.substr(0,
+                                               trailing.find_first_of("+="));
+                auto moved = command + named;
+                auto after = split_operator(split.size() > 1 ? split[1]
+                                                             : std::string(),
+                                            rest_after(2));
+                std::cerr << std::to_string(d) << "\n"
+                          << "  error: '" << word << "' has its name"
+                          << " in brackets before the command\n"
+                          << "  the name goes after the command it"
+                          << " belongs to, against it with no space"
+                          << " before the '['\n";
+                if (command == trailing && split.size() > 1
+                    && after.op == split[1] && after.value.size() > 0) {
+                    std::cerr << "  write '" << moved << " " << after.op
+                              << " " << after.value << "'\n";
+                } else if (command.size() > 0) {
+                    std::cerr << "  write '" << moved << "', then the"
+                              << " operator, then the value, with a"
+                              << " space between each\n";
+                } else {
+                    std::cerr << "  write the command, then '" << named
+                              << "', then the operator\n";
+                }
+                abort();
+            }
+
+            std::cerr << std::to_string(d) << "\n"
+                      << "  error: '" << word << "' has '" << trailing
+                      << "' after the ']' that closes its name\n"
+                      << "  a command that carries a name ends at the"
+                      << " ']', and the operator comes after a space\n";
+
+            /* The commonest thing after the ']' is the operator, run
+             * up against the name and sometimes against the value too.
+             * Either way it only wants a space each side, and with a
+             * value after it the line can be given back whole.
+             * Without a value the spaced-out line would be one more
+             * line that can't be read, so that one is pointed at
+             * instead.
+             *
+             * Text that has no '=' in it at all may well be the end of
+             * a name typed past its ']', and is the only case where
+             * moving it into the brackets is a fix worth suggesting:
+             * an '=' in the name would be the operator and the value
+             * swallowed into it. */
+            auto after = split_operator(trailing, rest);
+            if (after.op.size() > 0 && after.value.size() > 0) {
+                std::cerr << "  the operator needs a space on each side"
+                          << " of it\n"
+                          << "  write '" << named << " " << after.op
+                          << " " << after.value << "'\n";
+            } else if (after.op.size() > 0) {
+                std::cerr << "  write '" << named << " " << after.op
+                          << "' with a space before the '" << after.op
+                          << "', and what it's given after it\n";
+            } else if (trailing.find('=') == std::string::npos) {
+                std::cerr << "  write '" << named << "' with nothing"
+                          << " after the ']', moving '" << trailing
+                          << "' inside the brackets if it was part of"
+                          << " the name\n";
+            } else {
+                std::cerr << "  write '" << named << "', then a space,"
+                          << " then the operator with a space on each"
+                          << " side of it, then the value\n";
+            }
+            abort();
+        }
+    }
+
+    /* A space before the '[' is an easy slip, and it moves the name
+     * into the operator's place: "TESTSRC [net] += t.bash" is a
+     * TESTSRC whose operator is "[net]" and whose value is
+     * "+= t.bash".  Left to be read that way, the line is warned about
+     * as a file with a space in its name and then refused for having
+     * an '=' in it, which is advice about a file the line doesn't
+     * have.  No operator starts with a '[', so one that does is
+     * refused here whatever the command looks like: a command that
+     * already carries a name and then has a second one after it is
+     * just as far from having an operator. */
+    if (split.size() > 1 && split[1].size() > 0 && split[1][0] == '[') {
+        auto word = split[1];
+        auto close = word.find(']');
+        auto has_name = split[0].find('[') != std::string::npos;
+
+        std::cerr << std::to_string(d) << "\n"
+                  << "  error: '" << word << "' is where the operator"
+                  << " goes, and no operator starts with a '['\n";
+
+        if (has_name) {
+            std::cerr << "  '" << split[0] << "' already carries a name,"
+                      << " and a command carries at most one: the"
+                      << " operator comes straight after it\n";
+            abort();
+        }
+
+        if (close == std::string::npos || close == 1
+            || word.find('[', 1) < close) {
+            std::cerr << "  a name in brackets goes against the command,"
+                      << " with no space before the '[', and is closed"
+                      << " by a ']' before the operator\n";
+            abort();
+        }
+
+        /* Here the name is whole and was only written apart from its
+         * command.  The operator is either run up against the ']' or
+         * is the next word along, perhaps with the value run up
+         * against it in turn.  When it is one of the two there are and
+         * has a value after it, putting the spaces where they go
+         * leaves a line shaped the way a command is, so that's what is
+         * given back.  Anything else is a second mistake, and a
+         * rewrite that fixed the first would only be handing that one
+         * back to be found next. */
+        auto named = split[0] + word.substr(0, close + 1);
+        auto after = word.substr(close + 1);
+        auto found = after.size() > 0
+            ? split_operator(after, rest_after(2))
+            : split_operator(split.size() > 2 ? split[2] : std::string(),
+                             rest_after(3));
+        auto whole_word = after.size() > 0
+            ? std::string()
+            : (split.size() > 2 ? split[2] : std::string());
+
+        std::cerr << "  the name is part of the command, so it goes"
+                  << " against it with no space before the '['\n";
+        if (found.op.size() > 0 && found.value.size() > 0) {
+            std::cerr << "  write '" << named << " " << found.op << " "
+                      << found.value << "'\n";
+        } else if (found.op.size() > 0) {
+            std::cerr << "  nothing comes after the '" << found.op
+                      << "': write '" << named << " " << found.op
+                      << "' and then the value\n";
+        } else if (after.size() > 0) {
+            std::cerr << "  '" << after << "' after the ']' is not an"
+                      << " operator: write '" << named << "', then a"
+                      << " space, then the operator\n";
+        } else if (whole_word.size() == 0) {
+            std::cerr << "  nothing comes after it: write '" << named
+                      << "', then the operator, then the value\n";
+        } else if (whole_word.find('=') == std::string::npos) {
+            std::cerr << "  there is no operator after it either:"
+                      << " write '" << named << "', then '+=' or '=',"
+                      << " then the value\n";
+        } else {
+            std::cerr << "  write '" << named << "', and after it an"
+                      << " operator that is '+=' or '=' with a value"
+                      << " after that\n";
+        }
+        abort();
+    }
+
     /* A command that sets something to nothing is written with the
      * value left off, since there's no way to write an empty word.
      * That's the only way to take back something a project was given
