@@ -441,15 +441,21 @@ static int _pinclude_lines(const char *input,
 #endif
         }
 
+        /* What this line opens, which is what the lines after it are
+         * the body of.  Asked whatever the #ifdef state is: a branch
+         * that isn't taken still has its lines read, a heredoc's body
+         * among them, and only its includes are left out.  Opening
+         * heredocs only in taken branches read the body of one that
+         * wasn't as directives, so an "#if 0" written into a C file
+         * was refused and a lone "#endif" closed the "#ifdef" around
+         * the heredoc -- but only when the name wasn't defined, while
+         * pconfigure's scan of the same script opens the heredoc
+         * either way and had already said the script was fine. */
+        open_heredocs(buffer, lineno, heredocs, &heredocs_open, language);
+
         /* If we're #ifdef'd out then skip the line. */
         if (state[state_i] == false)
             continue;
-
-        /* What this line opens, which is what the lines after it are
-         * the body of.  Asked after the line has been let through the
-         * #ifdef state above, since a heredoc written in a branch
-         * that isn't taken is one whose body never arrives. */
-        open_heredocs(buffer, lineno, heredocs, &heredocs_open, language);
 
         /* Finally attempt to recursively enumerate the #include
          * files.
