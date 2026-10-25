@@ -52,6 +52,40 @@ static std::string absolute_base(const std::string& base)
     return out;
 }
 
+/* Text to be pasted in as the replacement half of the
+ * 's^pattern^replacement^g' the .pc is run through, inside the
+ * single quotes that hand it to sed.
+ *
+ * Every character sed gives a meaning to there has to be spelled so
+ * it means itself: a '&' is "whatever matched", so a checkout under
+ * "R&D" used to come out naming ".../R@@pconfigure_prefix@@D"; a '^'
+ * is the delimiter, so one under "v1^2" ended the replacement early
+ * and sed refused the whole expression, leaving no .pc at all; and a
+ * backslash escapes whatever follows it.  The single quotes are the
+ * shell's, and a quote in the text has to step outside them to be
+ * written at all. */
+static std::string sed_replacement(const std::string& text)
+{
+    auto out = std::string();
+    for (const auto& c: text) {
+        switch (c) {
+        case '\\':
+        case '&':
+        case '^':
+            out += '\\';
+            out += c;
+            break;
+        case '\'':
+            out += "'\\''";
+            break;
+        default:
+            out += c;
+            break;
+        }
+    }
+    return out;
+}
+
 language_pkgconfig* language_pkgconfig::clone(void) const
 {
     return new language_pkgconfig(this->list_compile_opts(),
@@ -250,9 +284,14 @@ language_pkgconfig::targets(const context::ptr& ctx) const
                     + " made from' >&2; exit 1";
 
             command += "cat " + sources[0]->name();
-            command += " | sed 's^@@pconfigure_prefix@@^" + prefix + "^g'";
-            command += " | sed 's^@@pconfigure_libdir@@^" + ctx->unbased(ctx->lib_dir) + "^g'";
-            command += " | sed 's^@@pconfigure_hdrdir@@^" + ctx->unbased(ctx->hdr_dir) + "^g'";
+            auto replace = [&](const std::string& name,
+                               const std::string& value) {
+                return " | sed 's^@@pconfigure_" + name + "@@^"
+                    + sed_replacement(value) + "^g'";
+            };
+            command += replace("prefix", prefix);
+            command += replace("libdir", ctx->unbased(ctx->lib_dir));
+            command += replace("hdrdir", ctx->unbased(ctx->hdr_dir));
             for (const auto& str: this->clopts(ctx)) {
                 if (strncmp(str.c_str(), "-S", 2) == 0)
                     command += " | sed \"`cat " + argument(sed_file(str)) + "`\"";
