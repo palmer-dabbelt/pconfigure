@@ -426,7 +426,19 @@ std::string execute(std::string line)
     bool in_command = false;
     for (const auto& c: line) {
         if (in_command == true && c == '`') {
-            auto command_str = replace_all(command.str(), "ppkg-config", ppkg_config_command());
+            /* The ppkg-config goes in as one quoted word, because
+             * it is a path and the text around it is about to be
+             * handed to a shell.  The Configfile only ever wrote the
+             * one word "ppkg-config"; whatever directory the answer
+             * lives in is a fact about where the tools were put,
+             * which is nothing the Configfile could have quoted for.
+             * Pasted in bare, a pconfigure installed under "my
+             * tools/bin" -- or a "--ppkg-config" naming one there --
+             * had the shell run "/x/my" instead, the backtick expand
+             * to nothing, and the consumer configured quietly
+             * without the flags it asked for. */
+            auto command_str = replace_all(command.str(), "ppkg-config",
+                                           string_utils::quoted(ppkg_config_command()));
 
             /* A pkg-config that this build produces itself comes
              * first, so that a project linking against a subproject
@@ -438,7 +450,14 @@ std::string execute(std::string line)
                 for (const auto& dir: pkgconfig_path)
                     path += dir + ":";
 
-                command_str = "PKG_CONFIG_PATH=" + path + "$PKG_CONFIG_PATH "
+                /* Quoted for the same reason as the ppkg-config
+                 * above: these directories are paths, not shell.  The
+                 * caller's own $PKG_CONFIG_PATH stays outside the
+                 * quotes so that it is still expanded, and needs none
+                 * of its own because the right-hand side of an
+                 * assignment is never split into words. */
+                command_str = "PKG_CONFIG_PATH=" + string_utils::quoted(path)
+                              + "$PKG_CONFIG_PATH "
                               + command_str;
 
                 /* The PKG_CONFIG_PATH above says this command gets its
