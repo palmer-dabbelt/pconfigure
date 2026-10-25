@@ -24,6 +24,7 @@
 #include <stack>
 #include <iostream>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 int pinclude::list(std::string filename,
@@ -482,14 +483,32 @@ int list_overwrite_defines(std::string filename,
                 abort();
             }();
 
+            /* A directory is readable, so access() alone lets one
+             * stand in for an include that shares its name.  It is
+             * never the file the include means -- pbashc pastes in a
+             * directory as nothing at all -- and as a prerequisite it
+             * has make watching the wrong thing, so it is passed over
+             * like a name that isn't there and the search goes on to
+             * the next place the file might be. */
+            auto includable = [](const std::string& path) {
+                if (access(path.c_str(), R_OK) != 0)
+                    return false;
+
+                struct stat st;
+                if (stat(path.c_str(), &st) != 0)
+                    return false;
+
+                return !S_ISDIR(st.st_mode);
+            };
+
             auto full_path = [&]() {
                 auto cwd_relative = get_relative_cwd(filename) + rest_path;
-                if (access(cwd_relative.c_str(), R_OK) == 0)
+                if (includable(cwd_relative))
                     return option<std::string>(strip_dd(cwd_relative));
 
                 for (const auto& dir: include_dirs) {
                     auto check = dir + "/" + rest_path;
-                    if (access(check.c_str(), R_OK) == 0)
+                    if (includable(check))
                         return option<std::string>(strip_dd(check));
                 }
 

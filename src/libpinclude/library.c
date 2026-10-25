@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #ifndef LINE_MAX
@@ -86,6 +87,12 @@ static bool closes_heredoc(const char *line, const struct heredoc *open);
 static bool reads_as_directive(const char *line);
 
 static bool is_directive(const char *line, const char *directive);
+
+static bool includable(const char *path);
+
+static bool is_directory(const char *path);
+
+static void looked_in(const char *dir, const char *filename);
 
 static int _pinclude_lines(const char *input,
                            pinclude_callback_t per_include,
@@ -356,7 +363,7 @@ static int _pinclude_lines(const char *input,
 
             found = false;
 
-            if (access(full_path, R_OK) == 0) {
+            if (includable(full_path) == true) {
                 for (i = 0; i < FILE_MAX; i++) {
                     if (included[i] != NULL)
                         continue;
@@ -408,7 +415,7 @@ static int _pinclude_lines(const char *input,
                         && strcmp(full_path, included[fi]) == 0)
                         goto skip_file;
 
-                if (access(full_path, R_OK) == 0) {
+                if (includable(full_path) == true) {
                     /* A separate index from the one this loop is
                      * walking: they were the same variable, which
                      * only worked because control left immediately. */
@@ -459,7 +466,7 @@ static int _pinclude_lines(const char *input,
 
                 fprintf(stderr, "%s:%zu: can't find '%s'\n",
                         input, lineno, filename);
-                fprintf(stderr, "  looked in '%s'\n", dir_path);
+                looked_in(dir_path, filename);
                 for (i = 0; include_dirs[i] != NULL; i++) {
                     /* The file's own directory is often on the list
                      * as well, and saying it twice reads like two
@@ -467,7 +474,7 @@ static int _pinclude_lines(const char *input,
                     if (strcmp(include_dirs[i], dir_path) == 0)
                         continue;
 
-                    fprintf(stderr, "  looked in '%s'\n", include_dirs[i]);
+                    looked_in(include_dirs[i], filename);
                 }
                 fprintf(stderr,
                         "  check the spelling, or add a '-I' for the"
@@ -589,6 +596,53 @@ int pinclude_lines(const char *filename,
             free(included[i]);
 
     return err;
+}
+
+/* Whether an "#include" may be satisfied by PATH.  Being readable is
+ * not enough: access() says yes to a directory, fopen() opens one,
+ * and fgets() then reads nothing from it, so a directory that shared
+ * an include's name used to be pasted in as an empty file -- a script
+ * with a piece silently missing and an exit status of zero.  A
+ * directory is never the file an include means, so it is passed over
+ * just as a name that isn't there is, and the search carries on to
+ * the next place it might be. */
+static bool includable(const char *path)
+{
+    if (access(path, R_OK) != 0)
+        return false;
+
+    return is_directory(path) == false;
+}
+
+static bool is_directory(const char *path)
+{
+    struct stat st;
+
+    if (stat(path, &st) != 0)
+        return false;
+
+    return S_ISDIR(st.st_mode);
+}
+
+/* One line of the list of places an include that couldn't be found
+ * was looked for.  A directory by the right name is called out: from
+ * where the person who wrote the include is standing the name plainly
+ * exists, so "can't find" alone reads as though the search were
+ * broken rather than as the include naming the wrong thing. */
+static void looked_in(const char *dir, const char *filename)
+{
+    char *path;
+
+    if (asprintf(&path, "%s/%s", dir, filename) < 0)
+        abort();
+
+    if (is_directory(path) == true)
+        fprintf(stderr, "  looked in '%s', where '%s' is a directory"
+                " rather than a file\n", dir, path);
+    else
+        fprintf(stderr, "  looked in '%s'\n", dir);
+
+    free(path);
 }
 
 /* TRUE for a character that ends a word on a shell command line,
