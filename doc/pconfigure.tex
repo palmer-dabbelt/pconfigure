@@ -3158,6 +3158,13 @@ say --- shows the backslashes too.  Characters only \texttt{sed} cares
 about, such as \texttt{\&} and \texttt{\^{}}, are passed through as
 themselves.
 
+The prefix, the options and the template are all part of how a
+\texttt{.pc} is built, so changing any of them in the
+\texttt{Configfile} rebuilds it on the next \texttt{make}, and the
+next \texttt{make install} replaces the installed copy, the same as
+editing the template or a \texttt{-S} script does.  A reconfigure
+that changes none of them rebuilds nothing.
+
 pkgconfig supports linking against pkgconfig.
 
 \subsection{\texttt{scala}: Scala \label{lang:scala}}
