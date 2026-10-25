@@ -844,6 +844,7 @@ TESTSRC     += autoreconfigure-clean-then-generator-binary-header-in-order.bash
 TESTSRC     += autoreconfigure-clean-then-headersrc-below-consumer-tracked.bash
 TESTSRC     += vendored-objdir-deleted-rebuilds.bash
 TESTSRC     += objdir-deleted-context-restored-byte-for-byte.bash
+TESTSRC     += objdir-deleted-context-percent-backslash-restored.bash
 TESTSRC     += objdir-deleted-large-context-restored.bash
 TESTSRC     += link-order-stable-across-relinks.bash
 TESTSRC     += sources-dot-slash-duplicate-links-once.bash
