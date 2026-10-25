@@ -21,6 +21,7 @@
 #include "h.h++"
 #include "cxx.h++"
 #include "../language_list.h++"
+#include "../file_utils.h++"
 #include <assert.h>
 #include <unistd.h>
 #include <iostream>
@@ -99,17 +100,58 @@ language_h::targets(const context::ptr& ctx) const
 {
     auto bash_targets = language_bash::targets(ctx);
 
+    /* The header is copied into place now, as well as by make, so that
+     * whatever includes it can be scanned for its dependencies while
+     * pconfigure is still running -- a header that isn't in the include
+     * directory yet is one that scan can't follow.
+     *
+     * Only the copy itself is run.  What BASH hands back holds the
+     * install rule and, for every TESTSRC under the HEADERS, that
+     * test's check target too, and those are make recipes: "$(dir $@)"
+     * means something to make and is a command substitution to a
+     * shell.  Running them all used to make a mkdir of whatever "dir"
+     * listed, and abort.  The copy is picked out by name rather than by
+     * where it sits in the list, so that a change to the order BASH
+     * returns things in can't quietly turn this back into running a
+     * test. */
+    auto header = ctx->bin_dir + "/" + ctx->cmd->data();
     for (const auto& t: bash_targets) {
-        if (t->has_global_target(makefile::global_targets::INSTALL))
+        if (t->name() != header)
             continue;
 
-        auto o = t->name();
-        if (access(o.c_str(), R_OK) != 0) {
-            for (const auto& cmd: t->cmds()) {
-                if (system(cmd.c_str()) != 0) {
-                    std::cerr << "system(\"" << cmd << "\") failed" << std::endl;
-                    abort();
-                }
+        if (access(header.c_str(), R_OK) == 0)
+            continue;
+
+        /* A header whose input isn't there yet has nothing to copy
+         * early, and that is not configure's to refuse: the input may
+         * be on its way, and a missing SOURCES under a BINARY is left
+         * for make to report in the same way.  make has the input as a
+         * prerequisite of this same copy, so it says which file it
+         * couldn't find, and builds the header once that file turns
+         * up, without a reconfigure.  This used to run the copy anyway,
+         * so "cp" said "cannot stat" and pconfigure aborted on a
+         * system() it named without naming the line. */
+        auto ready = true;
+        for (const auto& dep: t->deps())
+            if (access(dep->name().c_str(), R_OK) != 0)
+                ready = false;
+        if (ready == false)
+            continue;
+
+        for (const auto& cmd: t->cmds()) {
+            auto status = system(cmd.c_str());
+            if (status != 0) {
+                std::cerr << std::to_string(ctx->cmd->debug()) << "\n"
+                          << "  error: '" << cmd << "' "
+                          << file_utils::describe_wait_status(status)
+                          << "\n"
+                          << "  pconfigure copies " << ctx->cmd->data()
+                          << " to " << header << " while it configures,"
+                          << " so that what includes it can be scanned,"
+                          << " and that copy has to succeed: check that "
+                          << ctx->bin_dir << " is a directory pconfigure"
+                          << " can write\n";
+                abort();
             }
         }
     }
