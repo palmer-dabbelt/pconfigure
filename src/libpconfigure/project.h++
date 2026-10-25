@@ -56,6 +56,13 @@ private:
     std::vector<makefile::target::ptr> _targets;
     std::map<std::string, makefile::target::ptr> _by_name;
 
+    /* The Configfile line each of those targets came out of, by the
+     * target's name.  A target doesn't know where it came from, and a
+     * clash between two projects is only found once every project has
+     * been read, a long way from the context that knew.  Targets that
+     * came from no line at all -- a vendored tree's -- aren't here. */
+    std::map<std::string, debug_info::ptr> _written_by;
+
     std::vector<makefile::capability> _provided;
     std::vector<makefile::capability> _needed;
 
@@ -139,6 +146,10 @@ public:
     const command_processor::ptr& processor(void) const { return _processor; }
     const std::vector<makefile::target::ptr>& targets(void) const
         { return _targets; }
+    /* The line that asked for the target called "name", or NULL when
+     * no one line did. */
+    debug_info::ptr written_by(const std::string& name) const;
+
     const std::vector<makefile::capability>& provided(void) const
         { return _provided; }
     const std::vector<makefile::capability>& needed(void) const

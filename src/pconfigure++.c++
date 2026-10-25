@@ -173,21 +173,52 @@ int main(int argc, const char **argv)
     auto provided = std::vector<makefile::capability>();
     auto needed = std::vector<makefile::capability>();
     auto owner = std::map<std::string, std::string>();
+    auto owner_project = std::map<std::string, project::ptr>();
+    auto name = [](const project::ptr& p) -> std::string
+        {
+            return p->base().size() > 0 ? p->base() : "./";
+        };
+    auto where = [&](const project::ptr& p, const std::string& path)
+        -> std::string
+        {
+            auto line = p->written_by(path);
+            if (line == NULL)
+                return "'" + name(p) + "' builds it without a Configfile"
+                    " line that asks for it";
+            return "'" + name(p) + "' asks for it on "
+                + std::to_string(line);
+        };
     for (const auto& project: projects) {
         for (const auto& target: project->targets()) {
             /* Two projects that build the same path would be two
              * recipes for one target, and make would quietly pick
              * one.  The paths that can collide are the ones that
              * aren't rooted in a project -- where a file gets
-             * installed to, most of all. */
+             * installed to, most of all.
+             *
+             * Both lines get named, since either of them is the one
+             * somebody might want to change, and the project
+             * pconfigure was run in gets called "./" rather than by
+             * its empty base: "built by both '' and 'sub/'" reads as
+             * though one of the two had no name at all. */
             auto found = owner.find(target->name());
             if (found != owner.end() && found->second != project->base()) {
-                std::cerr << "'" << target->name() << "' is built by both '"
-                          << found->second << "' and '" << project->base()
-                          << "'\n";
+                const auto& first = owner_project[target->name()];
+                auto line = project->written_by(target->name());
+                if (line != NULL)
+                    std::cerr << std::to_string(line) << "\n";
+                std::cerr << "  error: '" << target->name()
+                          << "' is built by both '" << name(first)
+                          << "' and '" << name(project) << "'\n"
+                          << "  " << where(first, target->name()) << "\n"
+                          << "  " << where(project, target->name()) << "\n"
+                          << "  two rules for one file leave make to pick"
+                          << " one of them, and the other is lost\n"
+                          << "  give one of the two a different name\n";
                 abort();
             }
             owner[target->name()] = project->base();
+            owner_project[target->name()] = project;
 
             targets.push_back(target);
         }

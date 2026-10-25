@@ -299,6 +299,14 @@ std::vector<project::ptr> project::flatten(const ptr& root)
     return out;
 }
 
+debug_info::ptr project::written_by(const std::string& name) const
+{
+    auto found = _written_by.find(name);
+    if (found == _written_by.end())
+        return NULL;
+    return found->second;
+}
+
 void project::generate_targets(void)
 {
     /* Which directories this project actually puts a library in.
@@ -480,6 +488,8 @@ void project::generate_targets(void)
                 abort();
             }
             _by_name[target->name()] = target;
+            if (_written_by.find(target->name()) == _written_by.end())
+                _written_by[target->name()] = context->cmd->debug();
 
             /* Only the language that wrote this recipe knows how to
              * read it, so it's the one that says what this target
