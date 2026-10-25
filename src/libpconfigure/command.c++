@@ -137,11 +137,13 @@ command::ptr command::parse(const std::string& str,
      * report a misspelled command as a missing value. */
     auto given_nothing = (split.size() == 2) && printed_nothing;
 
-    if (split.size() < 3 && sets_nothing == false && given_nothing == false) {
-        std::cerr << "split_char() returned " << split.size() << "\n"
-                  << "  original string: '" << str << "'\n";
+    /* Too few words to be a command is said nothing about here: every
+     * caller already says it couldn't parse the line, naming where the
+     * line came from, which is something only the caller knows.  What
+     * used to be printed first was how many pieces the split found,
+     * which is about this function rather than about what was typed. */
+    if (split.size() < 3 && sets_nothing == false && given_nothing == false)
         return NULL;
-    }
 
     auto cmdstr = split[0];
     auto op = split[1];

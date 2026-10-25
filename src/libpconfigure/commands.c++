@@ -183,11 +183,25 @@ std::vector<command::ptr> commands(int argc, const char **argv)
 
         auto cmd = command::parse(argv[i], debug);
         if (cmd == NULL) {
+            /* Counted the way the debug_info above counts it, from
+             * the first word after the program's name, so that this
+             * and every other complaint about the command line ("args:1
+             * '--strict'") give the same word the same number.
+             *
+             * A word that isn't one of the options is read as a
+             * Configfile line, which is why both are named: somebody
+             * who mistyped an option wants the list of options, and
+             * somebody who meant a line wants to know how one is
+             * written. */
             std::cerr << "Unable to parse command-line option "
-                      << (i - 1)
+                      << i
                       << ": '"
                       << argv[i]
-                      << "'\n";
+                      << "'\n"
+                      << "  it isn't one of the options"
+                      << " 'pconfigure --help' lists, and a word that"
+                      << " isn't an option is read as a Configfile line,"
+                      << " which goes in as one quoted word: pconfigure 'LANGUAGES += c'\n";
 
             abort();
         }
