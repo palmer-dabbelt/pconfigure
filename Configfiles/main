@@ -513,6 +513,7 @@ TESTSRC     += makeflags.bash
 TESTSRC     += check-test-does-not-inherit-make-flags.bash
 TESTSRC     += cmdline-args.bash
 TESTSRC     += cmdline-debug-not-recorded-for-reconfigure.bash
+TESTSRC     += cmdline-help-lists-cross-compile.bash
 TESTSRC     += cmdline-unknown-option-no-parser-internals.bash
 TESTSRC     += cmdline-unknown-option-counts-arguments-like-the-rest.bash
 TESTSRC     += strict.bash
