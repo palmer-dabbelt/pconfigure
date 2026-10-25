@@ -62,6 +62,10 @@ struct heredoc {
      * what a "<<-" asks for. */
     bool strip_tabs;
 
+    /* Whether it may be indented with any blanks at all, which is
+     * what Perl's "<<~" asks for. */
+    bool strip_blanks;
+
     /* The line the "<<" was written on, so that a heredoc which turns
      * out never to end can be pointed at. */
     size_t lineno;
@@ -706,7 +710,7 @@ static bool ends_shell_word(char c)
 
 void open_heredocs(const char *line, size_t lineno,
                    struct heredoc *open, int *count,
-                   enum pinclude_language language __attribute__((unused)))
+                   enum pinclude_language language)
 {
     size_t i;
     char quoted;
@@ -716,6 +720,7 @@ void open_heredocs(const char *line, size_t lineno,
     for (i = 0; line[i] != '\0'; i++) {
         size_t start;
         bool strip_tabs;
+        bool strip_blanks;
         char delim_quote;
 
         /* Quoting is followed only so that a "<<" written inside a
@@ -779,6 +784,17 @@ void open_heredocs(const char *line, size_t lineno,
             i++;
         }
 
+        /* Perl's "<<~" is the same idea with any blanks rather than
+         * tabs alone.  It is Perl's only: to the shell a "~" is just
+         * the first letter of the delimiter, and a shell script that
+         * ends its heredoc at "~EOT" has to keep doing so. */
+        strip_blanks = false;
+        if (language == PINCLUDE_PERL && strip_tabs == false
+            && line[i] == '~') {
+            strip_blanks = true;
+            i++;
+        }
+
         while (line[i] != '\0' && isspace((unsigned char)line[i]))
             i++;
 
@@ -812,6 +828,7 @@ void open_heredocs(const char *line, size_t lineno,
 
         open[*count].delim = strndup(line + start, i - start);
         open[*count].strip_tabs = strip_tabs;
+        open[*count].strip_blanks = strip_blanks;
         open[*count].lineno = lineno;
         open[*count].swallowed = NULL;
         open[*count].swallowed_lineno = 0;
@@ -829,6 +846,11 @@ bool closes_heredoc(const char *line, const struct heredoc *open)
      * and the line that ends it is one of those. */
     if (open->strip_tabs == true)
         while (line[i] == '\t')
+            i++;
+
+    /* A "<<~" ends at its delimiter however that line is indented. */
+    if (open->strip_blanks == true)
+        while (line[i] == ' ' || line[i] == '\t')
             i++;
 
     if (strncmp(line + i, open->delim, strlen(open->delim)) != 0)

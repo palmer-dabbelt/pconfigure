@@ -87,6 +87,10 @@ struct heredoc {
     /* Whether that line is allowed to be indented with tabs, which is
      * what a "<<-" asks for. */
     bool strip_tabs;
+
+    /* Whether it may be indented with any blanks at all, which is
+     * what Perl's "<<~" asks for. */
+    bool strip_blanks;
 };
 
 static void open_heredocs(const std::string& line,
@@ -337,7 +341,7 @@ int list_overwrite_defines(std::string filename,
          * changes, and it disagrees with pbashc, which leaves the
          * same line alone.
          *
-         * Only for a script: heredocs are a thing shells have, and
+         * Only for a script: heredocs are a thing scripts have, and
          * "bare_directives" is already the question of whether this
          * is reading one. */
         if (bare_directives == true) {
@@ -580,7 +584,7 @@ static bool ends_shell_word(char c)
  * agree about where a body starts and ends, or the file make is told
  * about is not the file that gets compiled. */
 void open_heredocs(const std::string& line, std::vector<heredoc>& open,
-                   pinclude::syntax language __attribute__((unused)))
+                   pinclude::syntax language)
 {
     char quoted = '\0';
 
@@ -643,6 +647,17 @@ void open_heredocs(const std::string& line, std::vector<heredoc>& open,
             ++i;
         }
 
+        /* Perl's "<<~" is the same idea with any blanks rather than
+         * tabs alone.  It is Perl's only: to the shell a "~" is just
+         * the first letter of the delimiter, and a shell script that
+         * ends its heredoc at "~EOT" has to keep doing so. */
+        auto strip_blanks = false;
+        if (language == pinclude::syntax::PERL && strip_tabs == false
+            && i < line.size() && line[i] == '~') {
+            strip_blanks = true;
+            ++i;
+        }
+
         while (i < line.size() && isspace((unsigned char)line[i]))
             ++i;
 
@@ -668,7 +683,11 @@ void open_heredocs(const std::string& line, std::vector<heredoc>& open,
         if (i == start)
             continue;
 
-        open.push_back(heredoc{line.substr(start, i - start), strip_tabs});
+        open.push_back(heredoc{
+            line.substr(start, i - start),
+            strip_tabs,
+            strip_blanks
+        });
     }
 }
 
@@ -680,6 +699,12 @@ bool closes_heredoc(const std::string& line, const heredoc& open)
      * and the line that ends it is one of those. */
     if (open.strip_tabs == true)
         while (begin < line.size() && line[begin] == '\t')
+            ++begin;
+
+    /* A "<<~" ends at its delimiter however that line is indented. */
+    if (open.strip_blanks == true)
+        while (begin < line.size()
+               && (line[begin] == ' ' || line[begin] == '\t'))
             ++begin;
 
     auto end = line.size();
