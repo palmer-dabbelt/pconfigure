@@ -686,6 +686,19 @@ static bool names_a_make_target(const command_type& type)
     case command_type::TESTSRC:
         return true;
 
+    /* Less obviously names than the ones above, but just as much on
+     * the left of a rule: a TESTEXECS is built and linked exactly as
+     * a BINARIES is, a PHONY is nothing but a target name (on its own
+     * rule and on the .PHONY line), and a GENERATE or a TGENERATE is
+     * the file a rule writes.  A '$' in a PHONY is the worst of the
+     * lot, since make expands it every time it reads the Makefile --
+     * "make -n" included -- so a "$(shell ...)" in one runs. */
+    case command_type::TESTEXECS:
+    case command_type::PHONY:
+    case command_type::GENERATE:
+    case command_type::TGENERATE:
+        return true;
+
     default:
         return false;
     }
