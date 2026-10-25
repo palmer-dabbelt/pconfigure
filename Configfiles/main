@@ -508,6 +508,7 @@ TESTSRC     += deplibs-after-sources-names-the-line.bash
 TESTSRC     += unknown-language-names-the-line.bash
 TESTSRC     += perl-library-names-the-line.bash
 TESTSRC     += perl-shebang-options-kept.bash
+TESTSRC     += perl-test-compiled-by-pperlc-runs-against-script.bash
 TESTSRC     += header-only-library-names-the-line.bash
 
 # Incremental-rebuild behavior, one dependency type per test, the
