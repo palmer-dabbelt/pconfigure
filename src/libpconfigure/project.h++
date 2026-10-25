@@ -433,6 +433,11 @@ private:
         std::map<std::string,
                  std::pair<context::ptr, std::string>>& claimed);
 
+    /* Refuses a HEADERS that copies a SOURCES into the include
+     * directory when the copy would land on a file that isn't one:
+     * the source itself, or a header nothing in this build made. */
+    static void check_header_copy(const context::ptr& ctx);
+
     /* Every test this project runs, by the name of the target that
      * runs it -- which is what a DEPTESTS resolves to, and what a
      * suite's rule hangs its tests off.

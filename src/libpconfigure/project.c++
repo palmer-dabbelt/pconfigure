@@ -26,6 +26,7 @@
 #include "languages/gen_proc.h++"
 #include <libmakefile/self_path.h++>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <algorithm>
 #include <cctype>
 #include <cerrno>
@@ -542,6 +543,8 @@ void project::generate_targets(void)
     for (const auto& context: _processor->output_contexts()) {
         if (context->check_type({context_type::HEADER}) == false)
             continue;
+
+        check_header_copy(context);
 
         auto language = pick_language(context->languages, context);
         generated[context] = language->targets(context);
@@ -2491,6 +2494,150 @@ void project::check_generate_names(
     for (const auto& path: mine)
         claimed[file_utils::normalize_path(path.first)]
             = std::make_pair(ctx, path.second);
+}
+
+/* The whole of a file, or nothing when it can't be read: the one
+ * question asked of it below is whether it says the same as another,
+ * and a file that can't be read doesn't. */
+static bool read_whole_file(const std::string& path, std::string& out)
+{
+    auto file = fopen(path.c_str(), "rb");
+    if (file == NULL)
+        return false;
+
+    out.clear();
+    char buffer[4096];
+    size_t got;
+    while ((got = fread(buffer, 1, sizeof(buffer), file)) > 0)
+        out.append(buffer, got);
+
+    auto ok = ferror(file) == 0;
+    fclose(file);
+    return ok;
+}
+
+void project::check_header_copy(const context::ptr& ctx)
+{
+    if (ctx->check_type({context_type::HEADER}) == false)
+        return;
+
+    context::ptr source = NULL;
+    for (const auto& child: ctx->children)
+        if (child->type == context_type::SOURCE) {
+            source = child;
+            break;
+        }
+
+    /* A HEADERS with nothing under it reads the header out of the
+     * include directory where somebody put it, and copies nothing
+     * there; it is the spelling this refusal points at, not one it is
+     * about. */
+    if (source == NULL)
+        return;
+
+    auto copy = file_utils::normalize_path(ctx->bin_dir + "/"
+                                           + ctx->cmd->data());
+    auto from = file_utils::normalize_path(source->src_dir + "/"
+                                           + source->cmd->data());
+
+    /* The copy is build output twice over: it is written over whenever
+     * the source is newer, while configuring as well as by make, and
+     * "make distclean" removes it by name -- see distclean_files().
+     * Both are right about a file this build made and wrong about any
+     * other, and the other there is to be wrong about is one a source
+     * directory and an include directory can share.  With "SRCDIR =
+     * include" a HEADERSRC's source and its copy are one path: make
+     * drops the rule as a circular dependency on every run, and
+     * distclean deletes the only copy of the header there is.
+     *
+     * Compared as the same file on disk as well as by name, so that a
+     * symbolic link between the two directories is caught along with
+     * the plain spelling. */
+    struct stat cs, fs;
+    auto same = copy == from;
+    if (same == false
+        && stat(copy.c_str(), &cs) == 0 && stat(from.c_str(), &fs) == 0)
+        same = cs.st_dev == fs.st_dev && cs.st_ino == fs.st_ino;
+
+    auto written = std::to_string(ctx->cmd->written_as());
+    auto headersrc = ctx->cmd->written_as() == command_type::HEADERSRC;
+    auto instead = headersrc
+        ? std::string("write 'HEADERS += ") + ctx->cmd->data()
+              + "' instead, with no SOURCES under it,"
+        : std::string("delete the SOURCES under it,");
+
+    if (same == true) {
+        std::cerr << std::to_string(ctx->cmd->debug()) << "\n"
+                  << "  error: this " << written << " copies '" << from
+                  << "' onto itself: its source directory and the include"
+                  << " directory are the same place\n"
+                  << "  make drops a rule whose target is its own"
+                  << " source, and 'make distclean' removes the copies"
+                  << " a HEADERS makes -- which here is the header"
+                  << " itself\n"
+                  << "  " << instead << " to install the header from"
+                  << " where it already is\n";
+        abort();
+    }
+
+    /* Nothing there, nothing to lose. */
+    if (access(copy.c_str(), F_OK) != 0)
+        return;
+
+    /* Something there is either a copy this build made earlier or a
+     * header somebody wrote, and only the second is a problem: this
+     * configure would write over it if the source is newer, make would
+     * leave it alone and compile against it if it isn't, and distclean
+     * deletes it either way.
+     *
+     * A copy is known by one of two things.  Every configure that
+     * wrote the rule also wrote the record of its recipe in the object
+     * directory, and "make clean", which is what takes the copy away,
+     * takes the record with it -- see language_bash::targets() -- so
+     * a record that is there vouches for a copy that is there.  That
+     * is not proof against a copy deleted by hand with the record left
+     * behind, and then a header written in its place; but "make clean"
+     * is how a build tree is emptied, and it used to leave the record,
+     * so that a header written after it was vouched for and then
+     * deleted by distclean.
+     *
+     * A copy whose record is gone -- an object directory deleted by
+     * hand, an OBJDIR moved, a tree configured by a pconfigure from
+     * before records were kept -- still says exactly what its source
+     * says, since phc copies byte for byte.  What is left is a file
+     * with no record that says something else, and that is refused
+     * even though it could be a copy whose record was lost and whose
+     * source was edited since: telling the two apart would take
+     * knowing what the file was before the edit, and the cost of the
+     * wrong guess is one rm on one side and a lost header on the
+     * other.  So the message owns up to both, and says which rm. */
+    auto record = language::recipe_record_path(ctx, copy);
+    if (access(record.c_str(), F_OK) == 0)
+        return;
+
+    auto copy_says = std::string();
+    auto from_says = std::string();
+    if (read_whole_file(copy, copy_says) && read_whole_file(from, from_says)
+        && copy_says == from_says)
+        return;
+
+    std::cerr << std::to_string(ctx->cmd->debug()) << "\n"
+              << "  error: '" << copy << "' is already there, and this "
+              << written << " would make it a copy of '" << from << "'\n"
+              << "  there is no record that this build made it, and it"
+              << " doesn't say what '" << from << "' says: it is either"
+              << " a header somebody wrote or an old copy whose record"
+              << " was lost, as when the object directory is deleted"
+              << " after '" << from << "' was edited\n"
+              << "  the copy is build output: it is written over whenever"
+              << " '" << from << "' is newer, and 'make distclean'"
+              << " removes it\n"
+              << "  if '" << copy << "' is the header to install, "
+              << instead << " to install it from where it is; if '"
+              << from << "' is, delete '" << copy << "', or move it out"
+              << " of the way if it holds anything worth keeping, and"
+              << " configure again\n";
+    abort();
 }
 
 void project::write_check_stamp(void) const

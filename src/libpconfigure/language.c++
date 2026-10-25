@@ -121,16 +121,23 @@ bool language::all_sources_match(const context::ptr& ctx,
  * in the other's next make, with nothing about either having changed.
  * The top of a run gets no suffix at all, so a project configured only
  * on its own keeps the name it always had. */
+std::string
+language::recipe_record_path(const context::ptr& ctx,
+                             const std::string& output)
+{
+    auto name = file_utils::inside(output, ctx->obj_dir)
+        ? output.substr(ctx->obj_dir.size() + 1)
+        : ctx->unbased(output);
+    return ctx->obj_dir + "/" + name + ".recipe-inputs"
+        + project::base_suffix(ctx->base);
+}
+
 makefile::target::ptr
 language::recipe_record(const context::ptr& ctx,
                         const std::string& output,
                         const std::vector<std::string>& commands)
 {
-    auto name = file_utils::inside(output, ctx->obj_dir)
-        ? output.substr(ctx->obj_dir.size() + 1)
-        : ctx->unbased(output);
-    auto recipe_path = ctx->obj_dir + "/" + name + ".recipe-inputs"
-        + project::base_suffix(ctx->base);
+    auto recipe_path = recipe_record_path(ctx, output);
     auto recipe = std::string();
     for (const auto& line: commands)
         recipe += line + "\n";

@@ -206,6 +206,15 @@ public:
     const std::vector<std::string>& list_link_opts(void) const
         { return _link_opts; }
 
+public:
+    /* Where recipe_record() keeps the record for "output", without
+     * writing anything there.  A record that is there is the sign that
+     * some earlier configure of this project wrote the rule that makes
+     * "output", which is a question asked about a file before
+     * deciding whether this build may write over it. */
+    static std::string recipe_record_path(const context::ptr& ctx,
+                                          const std::string& output);
+
 protected:
     /* Returns TRUE if every source that's a direct child of the given
      * context is named with one of the given extensions.  A language

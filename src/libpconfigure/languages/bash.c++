@@ -345,6 +345,21 @@ language_bash::targets(const context::ptr& ctx) const
                                                              commands,
                                                              comment);
 
+        /* A header's record is also how a later configure tells the
+         * copy this rule makes from a header somebody wrote into the
+         * include directory by hand, which is one the copy must not
+         * land on -- see project::check_header_copy().  So "make
+         * clean" takes the record along with the copy.  Left behind,
+         * it went on vouching for whatever was written at that path
+         * after the clean, and a hand-written header was accepted,
+         * compiled against in place of the SOURCES, and then deleted
+         * by distclean.  Nothing is lost by it: the Makefile writes a
+         * record back when one is missing, and the copy it describes
+         * is gone and gets made again anyway. */
+        if (ctx->type == context_type::HEADER)
+            bin_target = bin_target->with_clean_extra(
+                recipe_inputs[0]->name());
+
         /* Targets that are never installed (TESTEXECs) just get built in
          * place, there's no install rule to go along with them. */
         if (ctx->install == false)
