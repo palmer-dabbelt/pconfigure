@@ -3125,6 +3125,14 @@ arguments the way the shell would split it.
 Note that one \texttt{sed} process is run for each argument provided
 as a compile option.
 
+Each \texttt{.pc} --- in the tree, and under the prefix for
+\texttt{make install} --- is built up in files beside its target and
+only moved into place once every \texttt{sed} has worked.  A rule
+whose \texttt{sed} fails leaves no \texttt{.pc} behind, empty or
+otherwise, and none of those intermediate files either, so the next
+\texttt{make} tries again rather than taking a leftover file for a
+finished one.
+
 The template is the target's one \texttt{SOURCES}; a \texttt{-S}
 script is only ever run over it, never used in its place.  A second
 \texttt{SOURCES} is a fatal error naming its line, since a
