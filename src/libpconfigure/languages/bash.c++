@@ -433,7 +433,21 @@ language_bash::targets(const context::ptr& ctx) const
          * writes through the file that's already there, so a program
          * something has open is a program that changes underneath it
          * -- and on macOS, one whose code signature the kernel has
-         * already checked and remembered against that same file. */
+         * already checked and remembered against that same file.
+         *
+         * The copy is given a fixed mode before it's renamed into
+         * place, the ones "install -m 644" and "install -m 755" give.
+         * A "cp" carries over the build tree's mode, which is whatever
+         * the builder's umask said: a tree built under "umask 077"
+         * installed a header nobody else could read and a script
+         * nobody else could run, since a script has to be read to be
+         * run.  The build tree's copy keeps the builder's mode -- that
+         * one is theirs -- and only what lands under the prefix, which
+         * is for everyone, is changed. */
+        auto install_mode = (ctx->type == context_type::HEADER)
+                            ? std::string("0644")
+                            : std::string("0755");
+
         auto install_commands = std::vector<std::string>{
             "mkdir -p $(DESTDIR)" + ctx->installed(bin_subdir),
 #if defined(__gnu_linux__)
@@ -441,6 +455,7 @@ language_bash::targets(const context::ptr& ctx) const
 #else
             "cp -f " + target + " $@.tmp",
 #endif
+            "chmod " + install_mode + " $@.tmp",
             "mv -f $@.tmp $@"
         };
 

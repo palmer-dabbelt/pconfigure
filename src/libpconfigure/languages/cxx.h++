@@ -366,6 +366,12 @@ protected:
         const std::string _pretty_path;
         const target::ptr _source;
         const install_target _install;
+
+        /* The mode an installed copy is given, as "install -m" would
+         * take it: "0755" for what gets run or loaded, "0644" for a
+         * static archive, which is only ever read.  A copy into the
+         * build tree keeps whatever mode it was made with. */
+        const std::string _install_mode;
         const std::vector<std::string> _comments;
 
     public:
@@ -373,6 +379,7 @@ protected:
                   const std::string& pretty_path,
                   const target::ptr& source,
                   const install_target& install,
+                  const std::string& install_mode,
                   const std::vector<std::string> comments);
 
         virtual ~cp_target(void) {}

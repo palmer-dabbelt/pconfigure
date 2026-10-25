@@ -1215,11 +1215,13 @@ language_cxx::cp_target::cp_target(const std::string& target_path,
                                    const std::string& pretty_path,
                                    const target::ptr& source,
                                    const install_target& install,
+                                   const std::string& install_mode,
                                    const std::vector<std::string> comments)
 : _target_path(target_path),
   _pretty_path(pretty_path),
   _source(source),
   _install(install),
+  _install_mode(install_mode),
   _comments(comments)
 {
 }
@@ -1249,8 +1251,22 @@ language_cxx::cp_target::generate_makefile_target(void) const
 #else
         "cp -f " + _source->path() + " $@.tmp",
 #endif
-        "mv -f $@.tmp $@"
     };
+
+    /* An installed copy gets a fixed mode before it's renamed into
+     * place, as it would from "install -m".  A "cp" carries over the
+     * mode of what it copies, which is whatever the builder's umask
+     * left it with: a program or a shared library only came out 0755
+     * because its install flavour happens to be linked during the
+     * install, under that umask instead, and a static archive -- which
+     * has the one flavour, made during the build -- went in under
+     * "umask 077" as a file nobody else could link against.  The build
+     * tree's copy is the builder's, and keeps the mode it was made
+     * with. */
+    if (_install == install_target::TRUE)
+        cmds.push_back("chmod " + _install_mode + " $@.tmp");
+
+    cmds.push_back("mv -f $@.tmp $@");
 
     auto global = [&]()
         {
@@ -1476,6 +1492,7 @@ language_cxx::link_objects(const context::ptr& ctx,
             ctx->unbased(bin_dir) + "/" + ctx->cmd->data(),
             archive,
             language_cxx::install_target::FALSE,
+            "0644",
             shared_comments + std::vector<std::string>{"cp_local_target"}
         );
 
@@ -1495,6 +1512,7 @@ language_cxx::link_objects(const context::ptr& ctx,
             archive_install_path,
             archive,
             language_cxx::install_target::TRUE,
+            "0644",
             shared_comments + std::vector<std::string>{"cp_install_target"}
         );
 
@@ -1543,6 +1561,7 @@ language_cxx::link_objects(const context::ptr& ctx,
         install_path,
         install_target,
         language_cxx::install_target::TRUE,
+        "0755",
         shared_comments + std::vector<std::string>{"cp_install_target"}
     );
 
@@ -1551,6 +1570,7 @@ language_cxx::link_objects(const context::ptr& ctx,
         ctx->unbased(bin_dir) + "/" + ctx->cmd->data(),
         local_target,
         language_cxx::install_target::FALSE,
+        "0755",
         shared_comments + std::vector<std::string>{"cp_local_target"}
     );
 

@@ -98,10 +98,20 @@ language_implicit_h::targets(const context::ptr& ctx) const
          * for bash scripts and has no business reading a C header:
          * every "#include" in one is a directive to pbashc rather
          * than a line of the file, so what got installed was the
-         * header with all of its includes taken out of it. */
+         * header with all of its includes taken out of it.
+         *
+         * phc is a "cp", and copies the mode along with the header,
+         * so the installed one is then given the mode "install -m
+         * 644" would, for the reason languages/bash.c++ gives: a
+         * header written under "umask 077" otherwise goes in under
+         * the prefix readable by nobody but whoever wrote it.  It's
+         * done here rather than in phc because phc makes the build
+         * tree's copies of headers too, and those are the builder's
+         * to keep at whatever mode their umask gave them. */
         auto install_commands = std::vector<std::string>{
             "mkdir -p $(dir $@)",
-            ctx->phc + " -i " + header_path + " -o " + install_path
+            ctx->phc + " -i " + header_path + " -o " + install_path,
+            "chmod 0644 " + install_path
         };
 
         auto header_target = std::make_shared<makefile::target>(header_path);
