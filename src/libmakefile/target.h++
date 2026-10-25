@@ -131,6 +131,19 @@ namespace makefile {
      * and a string comparison, since it currently does string compare but I
      * might have to extend it. */
     bool same_recipe(const target::ptr& a, const target::ptr& b);
+
+    /* A path somebody else chose -- a file a GENERATE script printed,
+     * a TESTDEPS, a CONFIG_DEPS -- spelled so that make reads it back
+     * as that path when it lands bare among a rule's prerequisites.
+     * The name of anything this Makefile builds never needs it, since
+     * names with a '#' or a '$' are refused at the Configfile line;
+     * this is for the files that are only ever read. */
+    std::string prerequisite(const std::string& path);
+
+    /* The same path spelled for the inside of a function call on a
+     * rule line, "$(wildcard ...)" and the like, where make reads
+     * less of it specially than it does bare. */
+    std::string function_argument(const std::string& path);
 }
 
 #endif

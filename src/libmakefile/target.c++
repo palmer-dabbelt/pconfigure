@@ -209,3 +209,56 @@ bool makefile::same_recipe(const target::ptr& a, const target::ptr& b)
 
     return true;
 }
+
+/* make reads two characters on a rule line as its own wherever they
+ * sit in a word: a '#' starts a comment that runs to the end of the
+ * line, taking the rest of this path and every prerequisite after it,
+ * and a '$' starts an expansion, so "cost$1.txt" is "cost" followed by
+ * whatever the variable "1" holds.  Either way make goes looking for a
+ * file nobody named and stops on "No rule to make target".
+ *
+ * A '$' is written "$$" and a '#' "\#", which are the spellings make
+ * has for each.  A backslash is only special to make in front of a
+ * '#', where a run of them is read as escapes of each other, so the
+ * backslashes in front of a '#' are doubled first -- the same thing
+ * the rerun arguments do, for the same reason -- and the path comes
+ * out the other side as it went in.  Every other character is left as
+ * it is: whitespace, a ':' and a '%' are their own problems, and
+ * nothing this is used for has met them. */
+std::string makefile::prerequisite(const std::string& path)
+{
+    auto out = std::string();
+    auto backslashes = std::string();
+    for (const auto& c: path) {
+        if (c == '\\') {
+            backslashes += c;
+            continue;
+        }
+        if (c == '#')
+            out += backslashes + backslashes + "\\#";
+        else if (c == '$')
+            out += backslashes + "$$";
+        else
+            out += backslashes + c;
+        backslashes.clear();
+    }
+    out += backslashes;
+    return out;
+}
+
+/* Inside a function call make does not end the line at a '#', so one
+ * there is an ordinary character and is left alone: "\#" would
+ * reach $(wildcard) as a glob with a backslash in it, which matches
+ * the file only by the grace of the glob's own escaping.  A '$' is
+ * still an expansion there, so it is still doubled. */
+std::string makefile::function_argument(const std::string& path)
+{
+    auto out = std::string();
+    for (const auto& c: path) {
+        if (c == '$')
+            out += "$$";
+        else
+            out += c;
+    }
+    return out;
+}

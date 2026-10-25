@@ -481,19 +481,28 @@ language_gen_proc::targets(const context::ptr& ctx) const
              * line naming several paths keeps them inside the one
              * filter, the way the fragment below spells it, since
              * $(wildcard) takes a list as readily as a single
-             * pattern. */
+             * pattern.
+             *
+             * Each path is whatever the script printed, so it is
+             * spelled for where it lands, which the two kinds of line
+             * do differently: a mandatory path lands bare on the rule
+             * line, where a '#' cuts it short and a '$' expands, and
+             * an optional one lands inside the filter's function
+             * calls, where only the '$' does. */
             auto paths = dep_paths(line);
             if (optional_dep(line) == true) {
                 auto joined = std::string();
                 for (const auto& path: paths)
-                    joined += (joined.size() == 0 ? "" : " ") + path;
+                    joined += (joined.size() == 0 ? "" : " ")
+                            + makefile::function_argument(path);
                 sources.push_back(
                     std::make_shared<makefile::target>(
                         present_only(joined, "$")));
             } else {
                 for (const auto& path: paths)
                     sources.push_back(
-                        std::make_shared<makefile::target>(path));
+                        std::make_shared<makefile::target>(
+                            makefile::prerequisite(path)));
             }
         }
 
@@ -791,7 +800,7 @@ language_gen_proc::targets(const context::ptr& ctx) const
         for (const auto& dir: watched)
             dep_deps.push_back(
                 std::make_shared<makefile::target>(
-                    present_only(dir, "$")));
+                    present_only(makefile::function_argument(dir), "$")));
 
         auto variable = ctx->base.size() == 0
             ? std::string()
@@ -867,6 +876,24 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * pattern it did not mean, while a greedy ".*" already reaches
          * the end of the line and asks make for nothing. */
         auto dep_sed = std::string();
+
+        /* What the script printed is spelled for make before anything
+         * else touches it, the way makefile::prerequisite() spells it
+         * for the snapshot above: a '$' doubled, and a '#' escaped
+         * with its leading backslashes doubled, on an ordinary line
+         * only -- an optional line's paths land inside function
+         * calls, where a '#' is an ordinary character.  First,
+         * because every expression after this one writes make syntax
+         * of its own onto the line -- the subproject's variable, the
+         * filter's "$(" -- and escaping after them would escape that
+         * too.
+         *
+         * In the recipe's own spelling, so doubled once more for the
+         * '$': "\$$" is a sed pattern for a dollar and "$$$$" is a
+         * replacement of two of them, once make has expanded the
+         * recipe. */
+        dep_sed += "-e 's|\\$$|$$$$|g' ";
+        dep_sed += "-e '/^?/!s|\\(\\\\*\\)#|\\1\\1\\\\#|g' ";
 
         /* A subproject roots each path a line names, the way
          * dep_paths() above does for the snapshot, and the two have to
