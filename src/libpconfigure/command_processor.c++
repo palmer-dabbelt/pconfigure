@@ -2798,19 +2798,6 @@ void command_processor::process_one(const command::ptr& cmd)
             abort();
         }
 
-        /* Asked of the normalized path, which is the one that becomes
-         * the subproject's directory in every recipe it gets: the
-         * "./" of a "./-dep" is gone by then, so it is no way around
-         * this, and the only spelling that works is a directory with
-         * another name.  A subproject's "../-dep" lands here too, since
-         * from the top that is a "-dep" all the same. */
-        refuse_leading_dash(cmd, path,
-                            "check the tree out under a name that doesn't"
-                            " start with a '-', like 'SUBPROJECTS +="
-                            " vendor/dep' -- a './' in front doesn't help,"
-                            " since the directory is normalized before"
-                            " any path is built from it");
-
         /* A directory that contains this project is the same mistake
          * one step removed: "SUBPROJECTS += .." in "a" names the
          * project that pulled "a" in, and a subproject that pulls its
@@ -2967,6 +2954,28 @@ void command_processor::process_one(const command::ptr& cmd)
                 std::cerr << "  " << available->name() << "\n";
             abort();
         }
+
+        /* Asked of the normalized path, which is the one that becomes
+         * the subproject's directory in every recipe it gets: the
+         * "./" of a "./-dep" is gone by then, so it is no way around
+         * this, and the only spelling that works is a directory with
+         * another name.  A subproject's "../-dep" lands here too, since
+         * from the top that is a "-dep" all the same.
+         *
+         * Only a pconfigure subproject is asked.  A vendored tree's
+         * directory reaches its recipes only as the argument of a
+         * "$(MAKE) -C", which takes the next word whatever it looks
+         * like, and everything it builds lands under an object
+         * directory named from the top -- so a tree checked out as
+         * "-k" builds, and always has. */
+        if (picked->vendored() == false)
+            refuse_leading_dash(cmd, path,
+                                "check the tree out under a name that"
+                                " doesn't start with a '-', like"
+                                " 'SUBPROJECTS += vendor/dep' -- a './'"
+                                " in front doesn't help, since the"
+                                " directory is normalized before any"
+                                " path is built from it");
 
         /* A tree that two Configfiles both ask for is one tree, and
          * only gets built once. */
