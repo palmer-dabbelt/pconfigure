@@ -30,13 +30,46 @@ int main(int argc, const char **argv)
     std::unordered_set<std::string> defs;
     std::string input;
 
+    /* "-I" and "-D" are taken both glued to what they carry and as a
+     * word of their own, because that is how a compiler takes them,
+     * and how pconfigure and pbashc read the same flags out of a
+     * COMPILEOPTS.  Only the glued spelling used to be understood
+     * here: "-I inc" came out as a search directory with an empty
+     * name and an "inc" that, being a bare word, became the file to
+     * read until the real one came along and replaced it, so every
+     * header in "inc" was looked for at the root instead.
+     *
+     * The scan tracks which names are defined rather than what they
+     * are defined as, and "-DNAME=value" defines NAME every bit as
+     * much as "-DNAME" does.  Kept whole, "NAME=value" was a macro no
+     * "#ifdef" has ever asked about, and whatever it guarded was left
+     * off the list. */
     for (int i = 1; i < argc; ++i) {
-        if (strncmp(argv[i], "-I", 2) == 0)
-            dirs.push_back(argv[i] + 2);
-        else if (strncmp(argv[i], "-D", 2) == 0)
-            defs.insert(argv[i] + 2);
-        else
+        std::string flag;
+        std::string value;
+
+        if (strcmp(argv[i], "-I") == 0 || strcmp(argv[i], "-D") == 0) {
+            flag = argv[i];
+            if (i + 1 >= argc) {
+                std::cerr << "'" << flag << "' needs something after it\n"
+                          << "  a search directory is '-I dir' or '-Idir', "
+                          << "and a definition '-D name' or '-Dname'\n";
+                return 1;
+            }
+            value = argv[++i];
+        } else if (strncmp(argv[i], "-I", 2) == 0
+                   || strncmp(argv[i], "-D", 2) == 0) {
+            flag = std::string(argv[i], 2);
+            value = argv[i] + 2;
+        } else {
             input = argv[i];
+            continue;
+        }
+
+        if (flag == "-I")
+            dirs.push_back(value);
+        else
+            defs.insert(value.substr(0, value.find('=')));
     }
 
     return pinclude::list(
