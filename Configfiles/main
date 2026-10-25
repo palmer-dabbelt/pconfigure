@@ -372,6 +372,7 @@ TESTSRC     += library-testsrc-waits-on-library.bash
 TESTSRC     += library-testsrc-follows-libdir.bash
 TESTSRC     += subproject-library-testsrc-aggregate-check.bash
 TESTSRC     += srcdir.bash
+TESTSRC     += srcdir-slash-spellings-build-and-link-once.bash
 TESTSRC     += cflags.bash
 TESTSRC     += testexec.bash
 TESTSRC     += implied-deps.bash
