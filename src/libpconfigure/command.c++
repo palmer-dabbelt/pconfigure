@@ -218,11 +218,19 @@ command::ptr command::consume_extra_arguments(int& i, int argc,
     if (i + 1 >= argc)
         return nullptr;
 
+    /* The location is widened to take in the value, since that's what
+     * anything complaining about this command will be complaining
+     * about: a bad "--strict v9x" quoted as just "--strict" points at
+     * the one word on the line that was right. */
+    auto value = std::string(argv[++i]);
+    auto debug = this->_debug_info->with_line(
+        this->_debug_info->line() + " " + value);
+
     return std::make_shared<command>(
         this->_type,
         this->_op,
-        argv[++i],
-        this->_debug_info,
+        value,
+        debug,
         this->_qualifier
     );
 }

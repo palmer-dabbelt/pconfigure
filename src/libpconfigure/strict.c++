@@ -36,12 +36,21 @@ strict::strict(void)
 
 strict strict::parse(const std::string& str, const debug_info::ptr& d)
 {
+    /* The advice is spelled the way the value was given, since that's
+     * where whoever reads it is going to fix it: "--strict v9x" typed
+     * at a shell is mended at the shell, and telling that person
+     * about "STRICT = v0.13" leaves them to work out the flag's
+     * spelling for themselves. */
+    auto example = d->from_command_line()
+        ? std::string("--strict v0.13")
+        : std::string("STRICT = v0.13");
+
     auto bad = [&](const std::string& why) {
         std::cerr << std::to_string(d) << "\n"
                   << "  STRICT wants a pconfigure version, and '" << str
                   << "' " << why << "\n"
                   << "  it's written the way a release is written:"
-                  << " 'STRICT = v0.13'\n";
+                  << " '" << example << "'\n";
         abort();
     };
 

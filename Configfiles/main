@@ -462,6 +462,7 @@ TESTSRC     += cmdline-unknown-option-counts-arguments-like-the-rest.bash
 TESTSRC     += strict.bash
 TESTSRC     += strict-opts-target.bash
 TESTSRC     += strict-lint.bash
+TESTSRC     += cmdline-strict-bad-value-says-command-line-spelling.bash
 TESTSRC     += vendored-configureopts.bash
 TESTSRC     += subproject-targets.bash
 TESTSRC     += configureopts-on-pconfigure-subproject-names-line.bash

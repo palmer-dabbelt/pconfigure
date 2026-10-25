@@ -177,9 +177,7 @@ std::vector<command::ptr> commands(int argc, const char **argv)
             continue;
         }
 
-        auto debug = std::make_shared<debug_info>("args",
-                                                  i,
-                                                  argv[i]);
+        auto debug = debug_info::command_line(i, argv[i]);
 
         auto cmd = command::parse(argv[i], debug);
         if (cmd == NULL) {

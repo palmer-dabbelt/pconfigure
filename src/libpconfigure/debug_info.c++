@@ -25,8 +25,34 @@ debug_info::debug_info(const std::string& filename,
                        const std::string& line)
     : _filename(filename),
       _line_number(line_number),
-      _line(line)
+      _line(line),
+      _command_line(false)
 {
+}
+
+debug_info::debug_info(const std::string& filename,
+                       size_t line_number,
+                       const std::string& line,
+                       bool command_line)
+    : _filename(filename),
+      _line_number(line_number),
+      _line(line),
+      _command_line(command_line)
+{
+}
+
+std::shared_ptr<debug_info> debug_info::command_line(size_t index,
+                                                     const std::string& words)
+{
+    /* Not make_shared(), which can't reach a private constructor. */
+    return std::shared_ptr<debug_info>(
+        new debug_info("args", index, words, true));
+}
+
+std::shared_ptr<debug_info> debug_info::with_line(const std::string& line) const
+{
+    return std::shared_ptr<debug_info>(
+        new debug_info(_filename, _line_number, line, _command_line));
 }
 
 std::string std::to_string(const std::shared_ptr<debug_info>& di)

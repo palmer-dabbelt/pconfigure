@@ -35,16 +35,40 @@ private:
     const std::string _filename;
     const size_t _line_number;
     const std::string _line;
+    const bool _command_line;
+
+private:
+    debug_info(const std::string& filename,
+               size_t line_number,
+               const std::string& line,
+               bool command_line);
 
 public:
     debug_info(const std::string& filename,
                size_t line_number,
                const std::string& line);
 
+    /* A word on pconfigure's own command line rather than a line in a
+     * Configfile.  The two are told apart by asking rather than by
+     * looking at the filename, since "args" is a name a file could
+     * have too.  It matters to anything that says what to write
+     * instead: the same setting is spelled "STRICT = v0.13" in one
+     * place and "--strict v0.13" in the other, and advice in the
+     * wrong spelling is advice the reader has to translate first. */
+    static std::shared_ptr<debug_info> command_line(size_t index,
+                                                    const std::string& words);
+
 public:
     const std::string& filename(void) const { return _filename; }
     const size_t& line_number(void) const { return _line_number; }
     const std::string& line(void) const { return _line; }
+    bool from_command_line(void) const { return _command_line; }
+
+    /* The same place with more of the command line quoted, for a flag
+     * that turned out to take the word after it: a complaint about the
+     * value has to show the value, and "args:1 '--strict'" shows
+     * everything but. */
+    std::shared_ptr<debug_info> with_line(const std::string& line) const;
 };
 
 namespace std {
