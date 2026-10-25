@@ -616,6 +616,7 @@ TESTSRC     += configfile-wrong-operator-in-config-names-file.bash
 TESTSRC     += configfile-minus-equals-names-line.bash
 TESTSRC     += deplibs-without-target-names-line.bash
 TESTSRC     += subproject-wrong-operator-names-line.bash
+TESTSRC     += phc-wrong-operator-refused.bash
 TESTSRC     += configureopts-without-build-system-names-line.bash
 TESTSRC     += compileopts-without-target-names-the-line.bash
 TESTSRC     += deplibs-after-sources-names-the-line.bash

@@ -2946,7 +2946,16 @@ void command_processor::process_one(const command::ptr& cmd)
         process_one(cmd->with_type(command_type::SOURCES));
         return;
 
+    /* There is one header compiler, so a '+=' here can't mean
+     * anything the '=' doesn't -- and taking it as one anyway reads a
+     * line that looks like it adds a second tool as replacing the
+     * first, which is the opposite of what it says.  It gets refused
+     * the way every other command that sets one thing refuses it.
+     * The "--phc" on the command line arrives here as an '=' already. */
     case command_type::PHC:
+        if (cmd->check_operation("=") == false)
+            goto bad_op_eq;
+
         _stack.top()->phc = cmd->data();
         return;
     }
