@@ -780,20 +780,237 @@ static bool ends_shell_word(char c)
     }
 }
 
+/* Decodes the backslash escape inside a $'...' that starts at s, just
+ * past the backslash, into out, the way bash does: \n, \t and the
+ * other single letters, up to three octal digits, \x with up to two
+ * hex digits, \u and \U as UTF-8, and \c as a control character.  The
+ * number of characters of s it used goes in *used, and what it
+ * returns is the number of bytes written to out, which has room for
+ * at least four.  Anything bash doesn't know as an escape is kept,
+ * backslash and all, as bash keeps it. */
+static size_t decode_ansi_c_escape(const char *s, size_t *used, char *out)
+{
+    unsigned long value;
+    size_t digits, max_digits;
+    int base;
+
+    *used = 1;
+    switch (s[0]) {
+    case 'a': out[0] = '\a'; return 1;
+    case 'b': out[0] = '\b'; return 1;
+    case 'e':
+    case 'E': out[0] = '\033'; return 1;
+    case 'f': out[0] = '\f'; return 1;
+    case 'n': out[0] = '\n'; return 1;
+    case 'r': out[0] = '\r'; return 1;
+    case 't': out[0] = '\t'; return 1;
+    case 'v': out[0] = '\v'; return 1;
+    case '\\':
+    case '\'':
+    case '"':
+    case '?': out[0] = s[0]; return 1;
+    case 'c':
+        if (s[1] == '\0') {
+            out[0] = '\\';
+            out[1] = 'c';
+            return 2;
+        }
+        *used = 2;
+        out[0] = (s[1] == '?')
+            ? 0x7f : (toupper((unsigned char)s[1]) & 0x1f);
+        return 1;
+    case 'x': base = 16; max_digits = 2; break;
+    case 'u': base = 16; max_digits = 4; break;
+    case 'U': base = 16; max_digits = 8; break;
+    default:
+        if (s[0] >= '0' && s[0] <= '7') {
+            base = 8;
+            max_digits = 3;
+            break;
+        }
+        out[0] = '\\';
+        out[1] = s[0];
+        return 2;
+    }
+
+    /* An octal escape's first digit is the character right after the
+     * backslash; the others name the base and then give digits. */
+    digits = 0;
+    value = 0;
+    *used = (base == 8) ? 0 : 1;
+    while (digits < max_digits) {
+        char c = s[*used];
+        int digit;
+
+        if (base == 8 && c >= '0' && c <= '7')
+            digit = c - '0';
+        else if (base == 16 && isxdigit((unsigned char)c))
+            digit = isdigit((unsigned char)c)
+                ? c - '0' : tolower((unsigned char)c) - 'a' + 10;
+        else
+            break;
+
+        value = value * base + digit;
+        digits++;
+        (*used)++;
+    }
+
+    if (digits == 0) {
+        out[0] = '\\';
+        out[1] = s[0];
+        return 2;
+    }
+
+    if (s[0] != 'u' && s[0] != 'U') {
+        out[0] = (char)value;
+        return 1;
+    }
+
+    if (value < 0x80) {
+        out[0] = (char)value;
+        return 1;
+    }
+    if (value < 0x800) {
+        out[0] = (char)(0xc0 | (value >> 6));
+        out[1] = (char)(0x80 | (value & 0x3f));
+        return 2;
+    }
+    if (value < 0x10000) {
+        out[0] = (char)(0xe0 | (value >> 12));
+        out[1] = (char)(0x80 | ((value >> 6) & 0x3f));
+        out[2] = (char)(0x80 | (value & 0x3f));
+        return 3;
+    }
+    out[0] = (char)(0xf0 | ((value >> 18) & 0x07));
+    out[1] = (char)(0x80 | ((value >> 12) & 0x3f));
+    out[2] = (char)(0x80 | ((value >> 6) & 0x3f));
+    out[3] = (char)(0x80 | (value & 0x3f));
+    return 4;
+}
+
+/* Reads the word a "<<" was given, starting at line[*i], and returns
+ * it the way the shell compares it against the body's lines: with its
+ * quoting taken out.  That quoting can be anywhere in the word and in
+ * any of the shell's spellings, so <<'END', <<\END, <<E\ND, <<E"N"D
+ * and <<$'END' are all ended by a line saying END; taking only a
+ * quote at the front of the word leaves the others waiting for a
+ * line no script writes, and the body then swallows the rest of the
+ * file.  *i is left on the character that ended the word.  A quote
+ * left open runs to the end of the line, which is as far as anything
+ * here reads. */
+static char *read_heredoc_delim(const char *line, size_t *i)
+{
+    char *out;
+    size_t n;
+
+    /* Taking quoting out never makes a word longer: even a \u or \U
+     * escape is spelled in more characters than its UTF-8 takes. */
+    out = (char *)malloc(strlen(line + *i) + 1);
+    if (out == NULL) {
+        perror("malloc()");
+        abort();
+    }
+    n = 0;
+
+    while (ends_shell_word(line[*i]) == false) {
+        if (line[*i] == '\\' && line[*i + 1] != '\0') {
+            out[n++] = line[*i + 1];
+            *i += 2;
+            continue;
+        }
+
+        if (line[*i] == '\'') {
+            (*i)++;
+            while (line[*i] != '\0' && line[*i] != '\'')
+                out[n++] = line[(*i)++];
+            if (line[*i] != '\0')
+                (*i)++;
+            continue;
+        }
+
+        /* A $'...' is single quoting that also reads backslash
+         * escapes.  One that comes out as a NUL ends the string as
+         * far as bash is concerned, so the rest of the quote adds
+         * nothing to the word. */
+        if (line[*i] == '$' && line[*i + 1] == '\'') {
+            bool ended = false;
+
+            *i += 2;
+            while (line[*i] != '\0' && line[*i] != '\'') {
+                char decoded[4];
+                size_t used, length, k;
+
+                if (line[*i] != '\\' || line[*i + 1] == '\0') {
+                    if (ended == false)
+                        out[n++] = line[*i];
+                    (*i)++;
+                    continue;
+                }
+
+                length = decode_ansi_c_escape(line + *i + 1, &used,
+                                              decoded);
+                for (k = 0; k < length && ended == false; k++) {
+                    if (decoded[k] == '\0')
+                        ended = true;
+                    else
+                        out[n++] = decoded[k];
+                }
+                *i += 1 + used;
+            }
+            if (line[*i] != '\0')
+                (*i)++;
+            continue;
+        }
+
+        /* A $"..." is double quoting that asks for the string to be
+         * translated, which is nothing to do with where a body ends;
+         * the '$' just goes. */
+        if (line[*i] == '$' && line[*i + 1] == '"')
+            (*i)++;
+
+        /* Inside double quotes a backslash only quotes the characters
+         * that would mean something there, and is otherwise just a
+         * backslash. */
+        if (line[*i] == '"') {
+            (*i)++;
+            while (line[*i] != '\0' && line[*i] != '"') {
+                if (line[*i] == '\\' && line[*i + 1] != '\0'
+                    && strchr("$`\"\\", line[*i + 1]) != NULL)
+                    (*i)++;
+                out[n++] = line[(*i)++];
+            }
+            if (line[*i] != '\0')
+                (*i)++;
+            continue;
+        }
+
+        out[n++] = line[(*i)++];
+    }
+
+    out[n] = '\0';
+    return out;
+}
+
 void open_heredocs(const char *line, size_t lineno,
                    struct heredoc *open, int *count,
                    enum pinclude_language language)
 {
     size_t i;
+    size_t delim_end;
     char quoted;
 
     quoted = '\0';
+
+    /* Where the last delimiter read on this line ended, which no word
+     * can at the start of the line. */
+    delim_end = 0;
 
     for (i = 0; line[i] != '\0'; i++) {
         size_t start;
         bool strip_tabs;
         bool strip_blanks;
-        char delim_quote;
+        char *delim;
+        bool empty;
 
         /* Quoting is followed only so that a "<<" written inside a
          * string is left alone, which matters because writing one
@@ -840,9 +1057,13 @@ void open_heredocs(const char *line, size_t lineno,
         /* A "<<" with a word character against its left is a shift
          * rather than a redirection: "$((1<<20))" is arithmetic, and
          * reading it as the start of a heredoc would swallow the rest
-         * of the file. */
-        if (i > 0 && (isalnum((unsigned char)line[i - 1])
-                      || line[i - 1] == '_'))
+         * of the file.  The exception is a "<<" written right against
+         * the delimiter of the one before it, as in "<<A<<B": there
+         * is no arithmetic in a delimiter, and that '<' is what ended
+         * it. */
+        if (i > 0 && i != delim_end
+            && (isalnum((unsigned char)line[i - 1])
+                || line[i - 1] == '_'))
             continue;
 
         i += 2;
@@ -873,32 +1094,36 @@ void open_heredocs(const char *line, size_t lineno,
         /* Quoting the delimiter is how a script asks for a body that
          * the shell expands nothing in.  It makes no difference to
          * where the body ends, which is all that's being read here:
-         * either way the word inside the quotes is what ends it. */
-        delim_quote = '\0';
-        if (line[i] == '\'' || line[i] == '"') {
-            delim_quote = line[i];
-            i++;
-        }
-
+         * what ends it is the word with its quoting taken out. */
         start = i;
-        while (line[i] != '\0'
-               && (delim_quote == '\0'
-                   ? ends_shell_word(line[i]) == false
-                   : line[i] != delim_quote))
-            i++;
+        delim = read_heredoc_delim(line, &i);
+
+        /* The character that ended the word is looked at again rather
+         * than stepped over, since it can be the '<' of another
+         * redirection written right against this one, as in
+         * "<<'A'<<'B'", or the '\0' of a last line with no newline. */
+        empty = (i == start);
+        delim_end = i;
+        i--;
 
         /* A "<<" with nothing after it isn't a script the shell would
-         * run either, so there's nothing here to be right about. */
-        if (i == start)
+         * run either, so there's nothing here to be right about.  A
+         * "<<''" is different: bash takes that as a heredoc an empty
+         * line ends, and so does this. */
+        if (empty == true) {
+            free(delim);
             continue;
+        }
 
         /* More heredocs open at once than anything writes.  Reading
          * any further would be writing past the end of the list, and
          * whatever this file is it is not a shell script. */
-        if (*count >= NEST_MAX)
+        if (*count >= NEST_MAX) {
+            free(delim);
             return;
+        }
 
-        open[*count].delim = strndup(line + start, i - start);
+        open[*count].delim = delim;
         open[*count].strip_tabs = strip_tabs;
         open[*count].strip_blanks = strip_blanks;
         open[*count].lineno = lineno;

@@ -705,6 +705,181 @@ static bool ends_shell_word(char c)
     }
 }
 
+/* Decodes the backslash escape inside a $'...' that starts at line[i],
+ * just past the backslash, the way bash does: \n, \t and the other
+ * single letters, up to three octal digits, \x with up to two hex
+ * digits, \u and \U as UTF-8, and \c as a control character.  i is
+ * left after the escape.  Anything bash doesn't know as an escape is
+ * kept, backslash and all, as bash keeps it. */
+static std::string decode_ansi_c_escape(const std::string& line, size_t& i)
+{
+    auto c = line[i++];
+    switch (c) {
+    case 'a': return "\a";
+    case 'b': return "\b";
+    case 'e':
+    case 'E': return "\033";
+    case 'f': return "\f";
+    case 'n': return "\n";
+    case 'r': return "\r";
+    case 't': return "\t";
+    case 'v': return "\v";
+    case '\\':
+    case '\'':
+    case '"':
+    case '?': return std::string(1, c);
+    case 'c':
+        if (i >= line.size())
+            return "\\c";
+        c = line[i++];
+        return std::string(1, (c == '?')
+                                  ? 0x7f : (toupper((unsigned char)c) & 0x1f));
+    }
+
+    int base;
+    size_t max_digits;
+    switch (c) {
+    case 'x': base = 16; max_digits = 2; break;
+    case 'u': base = 16; max_digits = 4; break;
+    case 'U': base = 16; max_digits = 8; break;
+    default:
+        if (c < '0' || c > '7')
+            return std::string("\\") + c;
+
+        /* An octal escape's first digit is the character right after
+         * the backslash; the others name the base and then give
+         * digits. */
+        base = 8;
+        max_digits = 3;
+        --i;
+        break;
+    }
+
+    unsigned long value = 0;
+    size_t digits = 0;
+    while (digits < max_digits && i < line.size()) {
+        auto d = line[i];
+        int digit;
+
+        if (base == 8 && d >= '0' && d <= '7')
+            digit = d - '0';
+        else if (base == 16 && isxdigit((unsigned char)d))
+            digit = isdigit((unsigned char)d)
+                ? d - '0' : tolower((unsigned char)d) - 'a' + 10;
+        else
+            break;
+
+        value = value * base + digit;
+        ++digits;
+        ++i;
+    }
+
+    if (digits == 0)
+        return std::string("\\") + c;
+
+    if ((c != 'u' && c != 'U') || value < 0x80)
+        return std::string(1, (char)value);
+    if (value < 0x800)
+        return std::string{(char)(0xc0 | (value >> 6)),
+                           (char)(0x80 | (value & 0x3f))};
+    if (value < 0x10000)
+        return std::string{(char)(0xe0 | (value >> 12)),
+                           (char)(0x80 | ((value >> 6) & 0x3f)),
+                           (char)(0x80 | (value & 0x3f))};
+    return std::string{(char)(0xf0 | ((value >> 18) & 0x07)),
+                       (char)(0x80 | ((value >> 12) & 0x3f)),
+                       (char)(0x80 | ((value >> 6) & 0x3f)),
+                       (char)(0x80 | (value & 0x3f))};
+}
+
+/* Reads the word a "<<" was given, starting at line[i], and returns it
+ * the way the shell compares it against the body's lines: with its
+ * quoting taken out.  That quoting can be anywhere in the word and in
+ * any of the shell's spellings, so <<'END', <<\END, <<E\ND, <<E"N"D
+ * and <<$'END' are all ended by a line saying END; taking only a
+ * quote at the front of the word leaves the others waiting for a line
+ * no script writes, and the body then swallows the rest of the file.
+ * i is left on the character that ended the word.  A quote left open
+ * runs to the end of the line, which is as far as anything here
+ * reads. */
+static std::string read_heredoc_delim(const std::string& line, size_t& i)
+{
+    std::string out;
+
+    while (i < line.size() && ends_shell_word(line[i]) == false) {
+        if (line[i] == '\\' && i + 1 < line.size()) {
+            out += line[i + 1];
+            i += 2;
+            continue;
+        }
+
+        if (line[i] == '\'') {
+            ++i;
+            while (i < line.size() && line[i] != '\'')
+                out += line[i++];
+            if (i < line.size())
+                ++i;
+            continue;
+        }
+
+        /* A $'...' is single quoting that also reads backslash
+         * escapes.  One that comes out as a NUL ends the string as far
+         * as bash is concerned, so the rest of the quote adds nothing
+         * to the word. */
+        if (line[i] == '$' && i + 1 < line.size() && line[i + 1] == '\'') {
+            auto ended = false;
+
+            i += 2;
+            while (i < line.size() && line[i] != '\'') {
+                if (line[i] != '\\' || i + 1 >= line.size()) {
+                    if (ended == false)
+                        out += line[i];
+                    ++i;
+                    continue;
+                }
+
+                ++i;
+                for (auto d: decode_ansi_c_escape(line, i)) {
+                    if (d == '\0')
+                        ended = true;
+                    if (ended == false)
+                        out += d;
+                }
+            }
+            if (i < line.size())
+                ++i;
+            continue;
+        }
+
+        /* A $"..." is double quoting that asks for the string to be
+         * translated, which is nothing to do with where a body ends;
+         * the '$' just goes. */
+        if (line[i] == '$' && i + 1 < line.size() && line[i + 1] == '"')
+            ++i;
+
+        /* Inside double quotes a backslash only quotes the characters
+         * that would mean something there, and is otherwise just a
+         * backslash. */
+        if (line[i] == '"') {
+            ++i;
+            while (i < line.size() && line[i] != '"') {
+                if (line[i] == '\\' && i + 1 < line.size()
+                    && std::string("$`\"\\").find(line[i + 1])
+                       != std::string::npos)
+                    ++i;
+                out += line[i++];
+            }
+            if (i < line.size())
+                ++i;
+            continue;
+        }
+
+        out += line[i++];
+    }
+
+    return out;
+}
+
 /* Adds the heredocs a line opens to the ones still waiting for a
  * body, in the order those bodies arrive.
  *
@@ -716,6 +891,10 @@ void open_heredocs(const std::string& line, std::vector<heredoc>& open,
                    pinclude::syntax language)
 {
     char quoted = '\0';
+
+    /* Where the last delimiter read on this line ended, which no word
+     * can at the start of the line. */
+    size_t delim_end = 0;
 
     for (size_t i = 0; i < line.size(); ++i) {
         /* Quoting is followed so that a "<<" written inside a string
@@ -760,9 +939,13 @@ void open_heredocs(const std::string& line, std::vector<heredoc>& open,
         }
 
         /* A "<<" with a word character against its left is a shift
-         * rather than a redirection: "$((1<<20))" is arithmetic. */
-        if (i > 0 && (isalnum((unsigned char)line[i - 1])
-                      || line[i - 1] == '_'))
+         * rather than a redirection: "$((1<<20))" is arithmetic.  The
+         * exception is a "<<" written right against the delimiter of
+         * the one before it, as in "<<A<<B": there is no arithmetic in
+         * a delimiter, and that '<' is what ended it. */
+        if (i > 0 && i != delim_end
+            && (isalnum((unsigned char)line[i - 1])
+                || line[i - 1] == '_'))
             continue;
 
         i += 2;
@@ -792,28 +975,27 @@ void open_heredocs(const std::string& line, std::vector<heredoc>& open,
 
         /* Quoting the delimiter asks for a body the shell expands
          * nothing in, which makes no difference to where that body
-         * ends -- the word inside the quotes is what ends it either
-         * way. */
-        char delim_quote = '\0';
-        if (i < line.size() && (line[i] == '\'' || line[i] == '"')) {
-            delim_quote = line[i];
-            ++i;
-        }
-
+         * ends: what ends it is the word with its quoting taken out. */
         auto start = i;
-        while (i < line.size()
-               && (delim_quote == '\0'
-                   ? ends_shell_word(line[i]) == false
-                   : line[i] != delim_quote))
-            ++i;
+        auto delim = read_heredoc_delim(line, i);
+
+        /* The character that ended the word is looked at again rather
+         * than stepped over, since it can be the '<' of another
+         * redirection written right against this one, as in
+         * "<<'A'<<'B'". */
+        auto empty = (i == start);
+        delim_end = i;
+        --i;
 
         /* A "<<" with nothing after it isn't a script the shell would
-         * run either, so there's nothing here to be right about. */
-        if (i == start)
+         * run either, so there's nothing here to be right about.  A
+         * "<<''" is different: bash takes that as a heredoc an empty
+         * line ends, and so does this. */
+        if (empty)
             continue;
 
         open.push_back(heredoc{
-            line.substr(start, i - start),
+            delim,
             strip_tabs,
             strip_blanks
         });
