@@ -2895,6 +2895,18 @@ the header by name as well, somewhere the scan reads, fixes both.
 Listing the source behind it in \texttt{SOURCES} fixes only the link:
 the header is still not a prerequisite.
 
+C is compiled and linked by \texttt{\$\{CC\}}, C++ by
+\texttt{\$\{CXX\}}, and static libraries of either are archived by
+\texttt{\$\{AR\}}, so the toolchain is picked when \texttt{make}
+runs: \texttt{make CC=clang} builds with \texttt{clang}.  The
+generated \texttt{Makefile} gives them defaults of \texttt{cc},
+\texttt{c++} and \texttt{ar} with \texttt{?=}, which only matter
+when \texttt{make}'s own built-in variables are gone -- under
+\texttt{make -R}, or below a parent build with \texttt{-R} in its
+\texttt{MAKEFLAGS}, as kbuild has.  A value from the command line or
+the environment still wins.  A \texttt{CROSS\_COMPILE} replaces all
+three (see Section~\ref{cmd:cross_compile}).
+
 A source is C when it is called \texttt{.c}.
 
 C supports linking against C.
