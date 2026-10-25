@@ -264,6 +264,10 @@ public:
         { return _base; }
     const context::ptr& root_context(void) const
         { return _root; }
+    /* How strict the context the next line lands in asked to be,
+     * which is what a complaint about that line has to go by. */
+    const strict& strictness(void) const
+        { return _stack.top()->strictness; }
     const std::vector<test_suite::ptr>& test_suites(void) const
         { return _test_suites; }
 

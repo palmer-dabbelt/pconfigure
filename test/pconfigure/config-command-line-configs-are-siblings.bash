@@ -36,6 +36,11 @@ then
     echo "two --config options were taken for a cycle" >&2
     exit 1
 fi
+# debug's CONFIG does read debugsym a second time, though, so that is
+# said about at the CONFIG that did it, naming the "--config" that read
+# the file first.
+grep -q "Configfiles/debug:1 'CONFIG += debugsym'" out
+grep -q "warning: .*Configfiles/debugsym.* was already read for args:1 '--config debugsym'" out
 make $MAKE_ARGS
 ./bin/main
 
@@ -49,3 +54,11 @@ then
     exit 1
 fi
 test -e Makefile
+
+# It is a repeat, said about once at the second "--config".  The CONFIG
+# inside debug is read again only because debug is, and the first
+# reading of debugsym was that very line; complaining about it too
+# would blame the line as a repeat of itself.
+grep -q "args:3 '--config debug'" out
+grep -q "warning: .*Configfiles/debug, .* was already read for args:1 '--config debug'" out
+test "$(grep -c "was already read" out)" = 1

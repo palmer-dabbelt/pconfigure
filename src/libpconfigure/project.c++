@@ -203,12 +203,36 @@ void project::read_file(const ptr& self,
      * one a CONFIG named, so a CONFIG of "../Configfile" from inside
      * it is the same cycle as a file naming itself. */
     auto normalized = file_utils::normalize_path(filename);
+
+    /* A CONFIG -- or a "--config", which is read before any of these --
+     * can name one of them before its turn comes, and then it is read
+     * twice.  The only line to blame is that CONFIG, so the complaint
+     * goes there; by the time the file's own turn comes nothing else
+     * is reading it, and a complaint about one of its CONFIGs would
+     * name that same line as both the repeat and the first reading. */
+    auto found = self->_read.find(normalized);
+    bool repeat = found != self->_read.end();
+    if (repeat && found->second != NULL && self->_rereading == 0) {
+        self->_processor->strictness().complain(
+            strict_since::v0_13(),
+            found->second->debug(),
+            "CONFIG names " + normalized + ", which is one of the"
+            " Configfiles every project reads anyway, so everything in"
+            " it is read a second time when its own turn comes",
+            "remove this CONFIG -- the file is read without one");
+    }
+
     self->_reading.push_back(std::make_pair(normalized, command::ptr(NULL)));
+    self->_read.insert(std::make_pair(normalized, command::ptr(NULL)));
+    if (repeat)
+        self->_rereading++;
 
     for (const auto& line: lines_from_file(self->_processor->srcpath(),
                                            filename))
         process_line(self, line, seen);
 
+    if (repeat)
+        self->_rereading--;
     self->_reading.pop_back();
 }
 
@@ -267,13 +291,51 @@ void project::read_config(const ptr& self,
         abort();
     }
 
+    /* A file that has already been read is read again, because a
+     * CONFIG is the manual's #include: its lines land wherever the
+     * CONFIG is, so a file of options can mean something under each
+     * of two targets.  But far more often it is the same line written
+     * twice, or two Configfiles that each pull in one they share, and
+     * then everything the file declares is declared twice -- which
+     * used to be said only by the warning about a duplicate target,
+     * blaming a line of the CONFIG'd file as a duplicate of itself
+     * and never naming either CONFIG.  This names both. */
+    bool repeat = false;
+    for (const auto& name: names) {
+        auto found = self->_read.find(name);
+        if (found == self->_read.end())
+            continue;
+
+        repeat = true;
+        if (self->_rereading > 0)
+            break;
+
+        auto before = (found->second != NULL)
+            ? "for " + std::to_string(found->second->debug())
+            : std::string("as one of the Configfiles every project reads");
+        processor->strictness().complain(
+            strict_since::v0_13(),
+            config->debug(),
+            "CONFIG names " + name + ", which was already read " + before
+            + ", so everything in it is read a second time",
+            "remove one of the two -- and if its lines really are meant to"
+            " land in two places, give the second place a Configfile of its"
+            " own, so that nothing is read twice");
+        break;
+    }
+
     for (const auto& name: names) {
         self->_reading.push_back(std::make_pair(name, config));
+        self->_read.insert(std::make_pair(name, config));
     }
+    if (repeat)
+        self->_rereading++;
 
     for (const auto& line: config_lines(processor->srcpath(), config))
         process_line(self, line, seen);
 
+    if (repeat)
+        self->_rereading--;
     for (size_t i = 0; i < names.size(); ++i)
         self->_reading.pop_back();
 }

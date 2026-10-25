@@ -77,6 +77,20 @@ private:
      * ran out, and pconfigure died of SIGSEGV having said nothing. */
     std::vector<std::pair<std::string, command::ptr>> _reading;
 
+    /* Every Configfile read so far, beside the CONFIG that first read
+     * it (NULL again for one every project reads).  This is what lets
+     * a second CONFIG of the same file be told about at its own line,
+     * rather than only through whatever the file declares twice. */
+    std::map<std::string, command::ptr> _read;
+
+    /* How many of the files being read are being read a second time.
+     * Every CONFIG inside a repeat names something the first reading
+     * already read, so complaining about each of them would bury the
+     * one line that needs changing under lines that merely follow from
+     * it -- and would blame each of those lines as a repeat of itself,
+     * as the line that first read the file is that very line. */
+    size_t _rereading = 0;
+
 public:
     project(const std::string& base,
             const command_processor::ptr& processor,
@@ -340,7 +354,8 @@ private:
 
     /* Processes every line of the Configfiles one CONFIG names, where
      * the CONFIG is.  A CONFIG that names a file still being read is
-     * a cycle and refused, at the CONFIG's own line. */
+     * a cycle and refused, and one that names a file already read is
+     * warned about, both at the CONFIG's own line. */
     static void read_config(const ptr& self,
                             const command::ptr& config,
                             std::set<std::string>& seen);
