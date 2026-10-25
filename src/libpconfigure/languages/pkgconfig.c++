@@ -52,6 +52,36 @@ static std::string absolute_base(const std::string& base)
     return out;
 }
 
+/* A path as the value of a pkg-config variable.
+ *
+ * pkg-config splits a Cflags or Libs line into flags the way a shell
+ * splits words, after it has pasted the variables in, so a space in
+ * the prefix ends the flag it's in -- "-I/home/me/my checkout/include"
+ * comes back as two -- and a quote starts a quoted string that the
+ * rest of the line has to close.  A '#' anywhere in a value starts a
+ * comment, which quietly cuts the path short.  A backslash in front
+ * of any of those makes it an ordinary character, and pkg-config
+ * hands the flag back out with the backslash still in it, which is
+ * the spelling the shell running the compile wants as well. */
+static std::string pkgconfig_escape(const std::string& value)
+{
+    auto out = std::string();
+    for (const auto& c: value) {
+        switch (c) {
+        case '\\':
+        case ' ':
+        case '\t':
+        case '#':
+        case '\'':
+        case '"':
+            out += '\\';
+            break;
+        }
+        out += c;
+    }
+    return out;
+}
+
 /* Text to be pasted in as the replacement half of the
  * 's^pattern^replacement^g' the .pc is run through, inside the
  * single quotes that hand it to sed.
@@ -287,7 +317,7 @@ language_pkgconfig::targets(const context::ptr& ctx) const
             auto replace = [&](const std::string& name,
                                const std::string& value) {
                 return " | sed 's^@@pconfigure_" + name + "@@^"
-                    + sed_replacement(value) + "^g'";
+                    + sed_replacement(pkgconfig_escape(value)) + "^g'";
             };
             command += replace("prefix", prefix);
             command += replace("libdir", ctx->unbased(ctx->lib_dir));

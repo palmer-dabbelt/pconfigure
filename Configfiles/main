@@ -353,6 +353,7 @@ TESTSRC     += pkgconfig-sed-option-with-dollar.bash
 TESTSRC     += pkgconfig-sed-script-file-with-space.bash
 TESTSRC     += pkgconfig-build-tree-prefix-with-ampersand.bash
 TESTSRC     += pkgconfig-build-tree-prefix-with-caret.bash
+TESTSRC     += subprojects-pkgconfig-checkout-path-with-space.bash
 TESTSRC     += ppkg-config-not-in-path.bash
 TESTSRC     += ppkg-config-option-path-with-space.bash
 TESTSRC     += ppkg-config-beside-pconfigure-in-spaced-directory.bash

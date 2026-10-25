@@ -2199,9 +2199,16 @@ cxx_headers_read_by(const std::string& source,
     auto promised_set = std::unordered_set<std::string>(promised.begin(),
                                                         promised.end());
 
+    /* A header found through an absolute directory comes back
+     * absolute, and that is how pkg-config names a subproject's
+     * include directory.  Spelled from here instead, it's the same
+     * name the subproject's Makefile gives the header it installs
+     * there, and it doesn't carry the path of the checkout into the
+     * Makefile as a prerequisite -- which make, having no quoting for
+     * a prerequisite, splits at the first space in "my checkout". */
     auto out = std::vector<std::string>();
     auto callback = [&](std::string s) {
-        out.push_back(s);
+        out.push_back(relative_to_here(s));
         return 0;
     };
 
@@ -2234,7 +2241,7 @@ cxx_headers_read_by(const std::string& source,
          * so it is read with the same set of defines the source is
          * read with afterwards, and leaves its own in there. */
         found = file_utils::normalize_path(found);
-        out.push_back(found);
+        out.push_back(relative_to_here(found));
         pinclude::list_defining(found,
                                 include_dirs,
                                 defined,
