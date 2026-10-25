@@ -2446,7 +2446,19 @@ same thing everywhere it can be written:
 At the top of a \texttt{Configfile}, before any target, it applies to
 the whole project -- and to every project that \texttt{Configfile}
 pulls in with a \texttt{SUBPROJECTS} after it, the same way a
-\texttt{PREFIX} carries down.
+\texttt{PREFIX} carries down.  Not to the ones pulled in above it,
+though: a subproject is read where its line is, so one written above
+a top-level \texttt{CROSS\_COMPILE} keeps the toolchain it was read
+with.  When a library in that subproject, or in any subproject under
+it, is still built with the toolchain the subproject was handed and
+that isn't the toolchain the line names, the line is an error naming
+it, the subproject and the library, since the project would be linked
+against a library built for another machine; it belongs above the
+first \texttt{SUBPROJECTS} or \texttt{BOOTSTRAP}, or the subproject
+can name the same toolchain itself.  A subproject that builds no
+library, that only pulls in others, or whose libraries each name
+their own toolchain is built the same wherever the line is written,
+and is no reason to refuse it.
 
 After a \texttt{BINARIES}, \texttt{LIBRARIES}, \texttt{LIBEXECS} or
 \texttt{TESTEXECS} it applies to that one target, and to the
@@ -2575,6 +2587,29 @@ every file \texttt{make install} writes.  Repeated slashes and a trailing one ar
 \texttt{/opt/thing} does; a prefix of \texttt{/} on its own is kept,
 and installs to \texttt{/bin} and \texttt{/lib} rather than
 \texttt{//bin} and \texttt{//lib}.
+
+A subproject (Section~\ref{cmd:subprojects}) installs into the prefix
+of the project that pulled it in, as that prefix stood at the
+\texttt{SUBPROJECTS} line --- a subproject is read where its line is
+--- unless its own \texttt{Configfile} sets one, at the top or on a
+single target.  A program is installed with a run-time search path
+under its own prefix, so a \texttt{PREFIX} below a subproject that was
+already read, which would put the program somewhere other than where
+that subproject's libraries install, would leave it unable to find
+them.  That is an error naming the line, the subproject and the
+library, wherever the line is: at the top of the \texttt{Configfile} or
+under a single target.  Set the prefix above the first
+\texttt{SUBPROJECTS} or \texttt{BOOTSTRAP}, or give the subproject the
+same \texttt{PREFIX} in its own \texttt{Configfile}.
+
+What is compared is where each library really installs, in the
+subproject and in every subproject under it, and only a library still
+on the prefix the subproject was handed counts: that is the library
+the line would have reached had it been written above.  A
+\texttt{PREFIX} that changes nothing is accepted, and so is one below a
+subproject that installs no library, that only pulls in others, or
+whose libraries were each given a \texttt{PREFIX} of their own --
+those install in the same place wherever the line is written.
 
 Note that it's probably not sane to have \texttt{PREFIX} in the middle
 of a \texttt{Configfile}.  See Section~\ref{err::prefix} for more
@@ -5907,5 +5942,11 @@ linking step is generated (to set \texttt{-rpath}, for example) and
 once when the \texttt{make install} target is generated.  It's really
 best if \texttt{\$PREFIX} is the same at both times, otherwise
 unexpected things may happen.
+
+A subproject read above the \texttt{PREFIX} is a third place it's
+referred to, and the one case of this that is caught: a \texttt{PREFIX}
+that would install a program somewhere other than a library from a
+subproject already read is an error, as described with
+\texttt{PREFIX} itself.
 
 \end{document}
