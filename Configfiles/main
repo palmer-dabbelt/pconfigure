@@ -982,6 +982,8 @@ TESTSRC     += subproject-configfile-directory-refused.bash
 TESTSRC     += subproject-lines-after-subprojects-close-target.bash
 TESTSRC     += language-compileopts-after-target-reach-only-later-targets.bash
 TESTSRC     += language-include-dir-searched-before-target-include-dir.bash
+TESTSRC     += tests-under-static-archive-take-their-own-linkopts.bash
+TESTSRC     += linkopts-in-tree-archive-by-path-waits-for-it.bash
 
 # The half of pconfigure that a build can run on its own, one source
 # at a time.  It is a BINARY rather than a LIBEXEC because pconfigure
