@@ -2358,10 +2358,26 @@ static std::string relative_to_here(const std::string& dir)
 }
 
 /* The name to ask for a directory by, which has to be the same name
- * whoever built it offers it under. */
+ * whoever built it offers it under.  That's library_capability()'s
+ * spelling: no trailing '/', and "." for the directory pconfigure ran
+ * in.  normalize_path() keeps a trailing slash, since that's how a
+ * path says it names a directory, but here every caller already knows
+ * it has a directory and sticks a "/" and a name on the end of it --
+ * so "-Lsub/libs/" has to ask for "sub/libs/name" rather than
+ * "sub/libs//name", which nothing offers.  The root directory comes
+ * out empty, which is how library_capability() spells it too. */
 static std::string canonical_dir(const std::string& dir)
 {
-    return file_utils::normalize_path(relative_to_here(dir));
+    auto out = file_utils::normalize_path(relative_to_here(dir));
+
+    /* Only a relative path that normalizes to nothing, like "./",
+     * comes out of normalize_path() empty. */
+    if (out.size() == 0)
+        return ".";
+
+    if (out[out.size() - 1] == '/')
+        out.pop_back();
+    return out;
 }
 
 /* The suffixes a linker will look for when it's asked for "-lfoo".
