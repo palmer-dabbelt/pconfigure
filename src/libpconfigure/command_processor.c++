@@ -750,10 +750,10 @@ static bool names_a_make_target(const command_type& type)
  * that everything else is safe.  Dashes, dots, underscores and
  * non-ASCII letters are ordinary characters to both make and the
  * shell, which is all a name needs.  The glob characters -- '*', '?',
- * '[' -- and '%' do build today, by the luck of there being nothing
- * for them to match, and refusing names that work is a change for a
- * strict.h++ warning to make if anyone ever wants it made.  And only
- * names are asked at all, since a COMPILEOPTS or a LINKOPTS is a
+ * '[' -- and '%' are not here either, because a name with one in it
+ * builds, and so there are projects that work today with one; they get
+ * make_wildcard_character() and a warning instead.  And only names are
+ * asked at all, since a COMPILEOPTS or a LINKOPTS is a
  * command line that never becomes a target and has every right to an
  * "-DX=a:b" or a '#' in it. */
 static std::string make_special_character(char c)
@@ -808,6 +808,54 @@ static std::string make_special_character(char c)
         return std::string("the name is pasted bare into the recipes that")
                + " build it, where the shell reads a '" + c + "' as the"
                + " start of a quoted string that never ends";
+    default:
+        return "";
+    }
+}
+
+/* Why "c" shouldn't be in the name of a target or a source, or "" when
+ * nothing is wrong with it.  These are the characters a name can hold
+ * and still be built, which is exactly why they aren't refused: a
+ * project with a "50%off" builds it and installs it today, and a
+ * build system that stops building last week's project is not much of
+ * a build system.  But each of them builds by luck rather than by
+ * design, and the luck runs out somewhere a person won't look for it
+ * until it has already gone wrong, so they're a strict.h++ warning.
+ *
+ * A '%' builds because "bin/50%off:" is a pattern rule that "all:
+ * bin/50%off" happens to match with a stem of "%".  The rules that
+ * clean and uninstall it are phony, though, and make never searches
+ * pattern rules for a phony target, so "make clean" and "make
+ * uninstall" find nothing to do and say nothing about it.
+ *
+ * The glob characters build because there's nothing for them to
+ * match.  make expands a glob in a rule's targets against the files
+ * that exist, and the shell expands one in the recipes the name is
+ * pasted into bare, so as soon as a second target's name matches --
+ * "a?b" beside an "axb" -- the two programs' rules land on the same
+ * files and the copies are handed both of them.
+ *
+ * Escaping them was tried and isn't there to be had: GNU make reads a
+ * "\%" as a literal '%' in a rule's target but not in the
+ * prerequisites naming it, so an escaped "all: bin/50\%off" asks for a
+ * file with a backslash in its name, and the shell half is the same
+ * rewrite of every recipe that make_special_character() turns down. */
+static std::string make_wildcard_character(char c)
+{
+    switch (c) {
+    case '%':
+        return "make reads a '%' in a rule's target as a pattern rule,"
+               " which is enough to build and install it but is never"
+               " consulted for the phony targets that remove it, so make"
+               " clean and make uninstall leave it where it is";
+    case '*':
+    case '?':
+    case '[':
+        return std::string("make expands a '") + c + "' in a rule's"
+               + " target against the files that exist, and the shell"
+               + " expands it in the recipes the name is pasted into, so"
+               + " beside another target whose name it matches the two"
+               + " build over each other's files";
     default:
         return "";
     }
@@ -1042,6 +1090,30 @@ void command_processor::process(const command::ptr& cmd)
      * once, as a TESTSRC, rather than as whichever of its two
      * commands happened to get there first. */
     refuse_make_special_character(cmd);
+
+    /* After the refusal rather than before it, so that a name with a
+     * ':' and a '%' in it is only refused rather than warned about and
+     * then refused, and asked of the line as it was written for the
+     * same reason that is.  Only the first character is named, as the
+     * refusal does: one warning per line says what to change. */
+    if (names_a_make_target(cmd->type()) == true) {
+        for (const auto& c: cmd->data()) {
+            auto why = make_wildcard_character(c);
+            if (why.size() == 0)
+                continue;
+
+            _stack.top()->strictness.complain(
+                strict_since::v0_13(),
+                cmd->debug(),
+                std::to_string(cmd->type()) + " has a '" + c
+                + "' in it: '" + cmd->data() + "'\n  this is the name of"
+                " something the Makefile builds, and " + why,
+                std::string("rename it without the '") + c + "' --"
+                " letters, digits, '-', '_' and '.' are all safe -- and"
+                " write that name here");
+            break;
+        }
+    }
 
     process_one(cmd);
 }
