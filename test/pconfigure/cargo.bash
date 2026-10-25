@@ -582,8 +582,10 @@ grep -q "^obj/sub2/build-stamp:" Makefile
 
 # There is no configure rule, and the positive twin of that is the
 # build rule right above: a build system with two rules would have
-# written a stamp and something else beside it.
-if grep -q "^obj/sub/config" Makefile
+# written a stamp and something else beside it.  The one rule that
+# does start that way is the one that writes the options file back
+# if it goes missing, which every vendored tree has.
+if grep "^obj/sub/config" Makefile | grep -vx "obj/sub/configure-opts:"
 then
     exit 1
 fi

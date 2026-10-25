@@ -175,6 +175,14 @@ int main(int argc, const char **argv)
     for (const auto& project: projects)
         project->check_aggregated_test_suites(project::flatten(project));
 
+    /* Before any Makefile, rather than along with each project's own,
+     * because the Makefile make is run on carries a rule for every
+     * file like these that the run wrote (see
+     * file_utils::write_configure_output()) -- and it is written
+     * first, before a subproject's would have been. */
+    for (const auto& project: projects)
+        project->write_configureopts();
+
     for (const auto& project: projects)
         project->write_makefile(edges[project->base()],
                                 project::flatten(project),

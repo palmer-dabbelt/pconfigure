@@ -1298,8 +1298,9 @@ language_cxx::link_objects(const context::ptr& ctx,
             link_inputs.push_back(child->src_dir + "/" + child->cmd->data());
 
     auto link_inputs_path = shared_link_dir + "link-inputs";
-    if (file_utils::write_if_changed(link_inputs_path,
-                                     this->hash_options(link_inputs)) == false) {
+    auto link_inputs_hash = this->hash_options(link_inputs);
+    if (file_utils::write_configure_output(link_inputs_path,
+                                           link_inputs_hash) == false) {
         std::cerr << "can't write '" << link_inputs_path << "': "
                   << strerror(errno) << "\n"
                   << "  this is where the inputs of '"
@@ -1795,7 +1796,7 @@ language_cxx::write_deps_context(const context::ptr& ctx,
      * each configure is every dependency in the project worked out
      * again, whether or not anything changed. */
     file_utils::mkdir_p(link);
-    file_utils::write_if_changed(context_path, out);
+    file_utils::write_configure_output(context_path, out);
     return context_path;
 }
 

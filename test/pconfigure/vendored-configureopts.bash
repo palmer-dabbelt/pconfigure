@@ -173,10 +173,12 @@ then
     exit 1
 fi
 
-# Nothing in the Makefile knows how to build it, which is the point.
-# A file make could rebuild is a file make would rebuild, and then
-# the comparison this exists for would come out equal every time.
-if grep -q '^obj/sub/configure-opts:' Makefile
+# The Makefile knows how to write it back when it is missing, and
+# that is all it knows: the rule has no prerequisites.  One that had
+# any would be a rule make ran whenever they changed, and then the
+# comparison this exists for would come out equal every time.
+grep -qx 'obj/sub/configure-opts:' Makefile
+if grep -q '^obj/sub/configure-opts: *[^ ]' Makefile
 then
     exit 1
 fi

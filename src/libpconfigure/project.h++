@@ -254,6 +254,20 @@ public:
         const std::vector<ptr>& projects) const;
 
 public:
+    /* Writes down what this run told each vendored tree, so that make
+     * has something to compare against.  A vendored tree's rules are
+     * built out of its CONFIGUREOPTS, and a rule whose recipe changed
+     * is not a rule make will run again -- so the options have to
+     * reach the Makefile as a file as well as as a recipe.
+     *
+     * Public, and called for every project before any Makefile is
+     * written, because the Makefile make is run on lists every file
+     * like this one that the run wrote: written along with its own
+     * project's Makefile, a subproject's would come after the list
+     * was already out. */
+    void write_configureopts(void) const;
+
+public:
     /* A project and everything below it, parents before children. */
     static std::vector<ptr> flatten(const ptr& root);
 
@@ -349,13 +363,6 @@ private:
      * would be a generated file in revision control, which is a merge
      * conflict waiting to happen. */
     void write_bootstrap_makefile(void) const;
-
-    /* Writes down what this run told each vendored tree, so that make
-     * has something to compare against.  A vendored tree's rules are
-     * built out of its CONFIGUREOPTS, and a rule whose recipe changed
-     * is not a rule make will run again -- so the options have to
-     * reach the Makefile as a file as well as as a recipe. */
-    void write_configureopts(void) const;
 
     /* Says so when a target isn't shaped like one: nothing to build,
      * or the same output as something already asked for.  Both are

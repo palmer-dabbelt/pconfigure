@@ -754,7 +754,7 @@ build_system_kconfig::vendored_targets(
     }
 
     file_utils::mkdir_p(output_dir());
-    file_utils::write_if_changed(deps_context, context);
+    file_utils::write_configure_output(deps_context, context);
 
     auto reread = makefile::tool_command("psubdeps")
                 + " --context " + deps_context;
@@ -791,7 +791,7 @@ build_system_kconfig::vendored_targets(
                              project::prefix_variable(project_base));
         }
 
-        file_utils::write_if_changed(build_context, build_ctx);
+        file_utils::write_configure_output(build_context, build_ctx);
 
         reread_build = makefile::tool_command("psubdeps")
                      + " --context " + build_context;

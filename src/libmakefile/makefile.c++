@@ -188,6 +188,112 @@ void makefile::makefile::reconfigure_on(
     _configfiles_built = built;
 }
 
+void makefile::makefile::restore_configure_outputs(
+    const std::map<std::string, std::string>& outputs)
+{
+    _configure_outputs = outputs;
+}
+
+/* A word the shell reads back as exactly these bytes, inside a recipe
+ * make hands it: single quotes for the shell, with the one character
+ * they can't hold closed around, and every '$' doubled for make --
+ * which expands a recipe before the shell ever sees it, quotes or
+ * not. */
+static std::string recipe_quoted(const std::string& text)
+{
+    auto out = std::string("'");
+    for (const auto c: text) {
+        if (c == '\'')
+            out += "'\\''";
+        else if (c == '$')
+            out += "$$";
+        else
+            out += c;
+    }
+    return out + "'";
+}
+
+/* How much of a file one recipe line writes.  make runs each recipe
+ * line as a single argument to the shell, and Linux refuses an exec
+ * whose one argument is over 128 KiB (MAX_ARG_STRLEN), whatever the
+ * total limit is; a deps-context has a line per source, so a binary
+ * with a few hundred long-named ones is past that.  This counts the
+ * quoted text, before make turns "$$" back into "$", and stays well
+ * under, leaving room for the printf and the path make puts in for
+ * "$@". */
+static const size_t write_recipe_line_limit = 32 * 1024;
+
+/* The recipe lines that write a file holding exactly "contents".  A
+ * recipe line is one line of make and the contents are several, so
+ * each line goes to printf as an argument of its own, and printf puts
+ * the newlines back; whatever follows the last newline is printed
+ * without one.  Lines are gathered into as few printfs as fit under
+ * write_recipe_line_limit, the first writing the file and the rest
+ * appending to it, and a single line too long for one goes out in
+ * pieces with its newline after.
+ *
+ * Through a temporary and a rename, so that a make interrupted half
+ * way through leaves no file at all rather than a short one -- which
+ * make would go on believing, since a file with no prerequisites is
+ * up to date for as long as it exists.  The first line truncates the
+ * temporary, so one left over from such a make does no harm. */
+static std::vector<std::string> write_recipe(const std::string& contents)
+{
+    auto lines = std::vector<std::string>();
+    auto tail = std::string();
+    for (const auto c: contents) {
+        if (c == '\n') {
+            lines.push_back(tail);
+            tail.clear();
+        } else {
+            tail += c;
+        }
+    }
+
+    /* Each command here is one printf, of a size that fits on a
+     * recipe line of its own. */
+    auto commands = std::vector<std::string>();
+    auto pending = std::string();
+    auto flush = [&]() {
+        if (pending.size() > 0)
+            commands.push_back("printf '%s\\n'" + pending);
+        pending.clear();
+    };
+
+    /* A piece of raw text quotes to at most four times its size, a
+     * "'" turning into four characters, so pieces this long always
+     * fit. */
+    const auto piece = write_recipe_line_limit / 4;
+    auto print_unterminated = [&](const std::string& text) {
+        for (size_t i = 0; i < text.size(); i += piece)
+            commands.push_back("printf '%s' " +
+                               recipe_quoted(text.substr(i, piece)));
+    };
+
+    for (const auto& line: lines) {
+        auto word = " " + recipe_quoted(line);
+        if (word.size() > write_recipe_line_limit) {
+            flush();
+            print_unterminated(line);
+            commands.push_back("printf '\\n'");
+            continue;
+        }
+        if (pending.size() + word.size() > write_recipe_line_limit)
+            flush();
+        pending += word;
+    }
+    flush();
+    print_unterminated(tail);
+
+    auto out = std::vector<std::string>();
+    if (commands.size() == 0)
+        out.push_back(": > $@.tmp");
+    for (const auto& command: commands)
+        out.push_back(command + (out.size() == 0 ? " > $@.tmp" : " >> $@.tmp"));
+    out.push_back("mv -f $@.tmp $@");
+    return out;
+}
+
 void makefile::makefile::write_to_file(const std::string& filename)
 {
     /* Rewritten every time, unconditionally, and that is not an
@@ -563,6 +669,43 @@ void makefile::makefile::write_to_file(const std::string& filename)
             fprintf(file, "\t%s%s $(PCONFIGURE_ARGS)\n", q, pconfigure.c_str());
         }
 
+        fprintf(file, "\n");
+    }
+
+    /* The files a configure wrote for the build to read -- the hash of
+     * what goes into each link, the context pdeps works from, what a
+     * vendored tree was configured with -- which rules name as
+     * prerequisites and which nothing but a configure wrote.  They
+     * live in object directories, and an object directory is a cache
+     * that people delete; with one gone, every make after stopped on
+     * "No rule to make target", in a tree whose Configfiles said
+     * exactly what they said before.
+     *
+     * Each gets a rule that writes it again, saying what the
+     * configure that wrote this Makefile put there -- which is the
+     * answer a configure run now would give too, since this Makefile
+     * is what that configure left and nothing has asked for another.
+     * No prerequisites, so the rule means "if it is missing" and
+     * nothing else: a file with no prerequisites is up to date for as
+     * long as it exists.  And it comes back newer than whatever hangs
+     * off it, which is the right answer for a link or a vendored
+     * configure whose record of its inputs went away: doing it again
+     * is the only way to know it is current.
+     *
+     * Rather than a rule that runs pconfigure, which was the other
+     * way to put them back.  Without AUTORECONFIGURE a Makefile does
+     * not rerun the configure that wrote it -- a Configfile somebody
+     * edited is not picked up until they ask -- and a deleted object
+     * directory is no reason for it to start; this way the build
+     * after one is the build that was configured, and nothing more.
+     * It is also one rule per file, so a make -j that finds several
+     * gone writes each once rather than racing several configures
+     * over all of them. */
+    for (const auto& output: _configure_outputs) {
+        fprintf(file, "%s:\n", output.first.c_str());
+        fprintf(file, "\t%smkdir -p $(dir $@)\n", q);
+        for (const auto& line: write_recipe(output.second))
+            fprintf(file, "\t%s%s\n", q, line.c_str());
         fprintf(file, "\n");
     }
 

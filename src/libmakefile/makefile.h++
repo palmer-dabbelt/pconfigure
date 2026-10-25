@@ -21,6 +21,7 @@
 #ifndef LIBMAKEFILE__MAKEFILE_HXX
 #define LIBMAKEFILE__MAKEFILE_HXX
 
+#include <map>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -122,6 +123,12 @@ namespace makefile {
          * $(wildcard) -- see write_to_file() for why. */
         std::vector<std::string> _configfiles_built;
 
+        /* Files a configure writes for this build to read, which no
+         * other rule makes, and what each one says.  Each gets a rule
+         * here that writes it again, for the make after somebody
+         * deleted the directory it was in. */
+        std::map<std::string, std::string> _configure_outputs;
+
     public:
         /* Creates a new "empty" Makefile -- note that this actually
          * contains some about of default targets and such that you
@@ -216,6 +223,13 @@ namespace makefile {
          * build before it decides whether to reconfigure. */
         void reconfigure_on(const std::vector<std::string>& configfiles,
                             const std::vector<std::string>& built);
+
+        /* Says that this Makefile is to know how to write each of
+         * these files, keyed by path, with exactly what pconfigure
+         * wrote there.  They are files rules name and nothing but a
+         * configure would otherwise put back. */
+        void restore_configure_outputs(
+            const std::map<std::string, std::string>& outputs);
 
         /* Writes this makefilie out to a text file. */
         void write_to_file(const std::string& filename);

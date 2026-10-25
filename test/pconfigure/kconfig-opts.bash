@@ -1,5 +1,17 @@
 #include "harness_start.bash"
 
+# Each vendored tree's configure-opts gets a rule that writes it back
+# if somebody deletes the object directory it lives in, and that rule
+# holds the file's text: every option as the Configfile spelled it,
+# each line quoted whole as one argument to the printf that puts it
+# back, so "--env NAME=two words" is in there with no quotes around
+# the value.  It is a copy of a file, not a command line anything
+# runs, so the checks below that a spelling never reaches a command
+# look at the Makefile without it.
+without_restore_rules() {
+    sed '/^[^[:space:]]*\/configure-opts:$/,/^$/d' "$1"
+}
+
 mkdir -p sub/configs sub/scripts/kconfig sub/drivers
 mkdir -p bare/configs frags
 
@@ -267,7 +279,7 @@ grep -q -- "-C sub .*'MY_VAR=\\\$(abspath tests/x)' 'sdk'\$" stamp.rule
 # together would leave "$(abspath tests/x)" as some path pconfigure
 # guessed at, and pconfigure has no business guessing: make is the one
 # that knows what directory it'll be run from.
-if grep -q 'MY_VAR=/' Makefile
+if without_restore_rules Makefile | grep -q 'MY_VAR=/'
 then
     exit 1
 fi
@@ -307,8 +319,8 @@ grep -q "^	@MY_ENV='fromenv' .*KCONFIG_CONFIG=" Makefile
 # so the recipe dies at build time having been accepted without a
 # murmur at configure time.  The value that proves it is the one with
 # a space in it, since a value without one looks the same either way.
-grep -q "MY_WORDS='two words'" Makefile
-if grep -q 'MY_WORDS=two words' Makefile
+without_restore_rules Makefile | grep -q "MY_WORDS='two words'"
+if without_restore_rules Makefile | grep -q 'MY_WORDS=two words'
 then
     exit 1
 fi
@@ -316,7 +328,7 @@ fi
 # And it is never on the far side of $(MAKE), where it would stop
 # being an environment variable and start being an override the tree
 # can't argue with.
-if grep -q '\$(MAKE).*MY_ENV=' Makefile
+if without_restore_rules Makefile | grep -q '\$(MAKE).*MY_ENV='
 then
     exit 1
 fi
@@ -555,7 +567,7 @@ cat Makefile
 # tree is configured with, so a value read wrong is a sub-make asked
 # for a rule the tree hasn't got.
 grep -q -- "-C sub .*tiny_defconfig" Makefile
-if grep -q -- "=tiny_defconfig" Makefile
+if without_restore_rules Makefile | grep -q -- "=tiny_defconfig"
 then
     exit 1
 fi

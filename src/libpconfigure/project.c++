@@ -1394,23 +1394,25 @@ makefile::target::ptr project::cache_clean_target(const std::vector<ptr>& projec
 
         /* And these, for the same reason: a project that works its
          * dependencies out during the build keeps what pdeps needs to
-         * know in here, and the Makefile only ever names those as
-         * prerequisites.  Throwing one away leaves a build that stops
-         * on a missing file nothing knows how to make. */
+         * know in here, and the Makefile names those as
+         * prerequisites.  Throwing one away no longer stops the
+         * build, since the Makefile can write it back, but it comes
+         * back newer than every fragment that read it -- so a cache
+         * clean would cost every dependency in the project being
+         * worked out again. */
         if (project->_processor->autoreconfigure() == true)
             prune += " -not -name 'deps-context-*'";
 
         /* And the file that hashes what goes into each link, which
-         * the link rules name as a prerequisite and nothing names as
-         * a target -- so the "what the build still knows how to
-         * make" test below would call every one of them stale.  It
-         * is pconfigure's output, written at configure time and
-         * refreshed by the reconfigure, which is the same reason the
-         * Makefiles above are spared; the one difference is that it
-         * exists for every project rather than only for an
-         * AUTORECONFIGURE one, so this is said without a condition.
-         * Throwing one away leaves the next make stopped on a
-         * prerequisite nothing has a rule for. */
+         * the link rules name as a prerequisite.  It is pconfigure's
+         * output, written at configure time and refreshed by the
+         * reconfigure, which is the same reason the Makefiles above
+         * are spared; the one difference is that it exists for every
+         * project rather than only for an AUTORECONFIGURE one, so
+         * this is said without a condition.  The Makefile can write
+         * one back, so throwing it away no longer stops the build,
+         * but what comes back is newer than the link: a cache clean
+         * would cost a relink of everything. */
         prune += " -not -name 'link-inputs'";
 
         /* And the scratch a test was given, which the Makefile names
@@ -1955,6 +1957,17 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
         out->add_dep("clean", clean_name);
     }
 
+    /* Every file the run wrote for a build to read and nothing in the
+     * build makes, with a rule each that writes it again -- see
+     * makefile::write_to_file() for why.  Only in the Makefile of the
+     * project pconfigure ran in, and with every project's files: the
+     * paths are spelled from up here, and a subproject's Makefile is
+     * included from here, so the rules reach its files too.  A
+     * subproject's Makefile carrying them as well would be two rules
+     * for one file once included. */
+    if (_base.size() == 0)
+        out->restore_configure_outputs(file_utils::configure_outputs());
+
     out->add_standalone_target(cache_clean_target(aggregated));
     out->add_standalone_target(distclean_target(aggregated));
 
@@ -1975,7 +1988,6 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
     write_check_dirs(aggregated);
     write_check_stamp();
     write_check_scopes(*out);
-    write_configureopts();
 }
 
 void project::check_target_shape(const context::ptr& ctx,
@@ -2437,8 +2449,8 @@ void project::write_configureopts(void) const
         if (path.size() == 0)
             continue;
 
-        if (file_utils::write_if_changed(path,
-                                         vendored->configure_signature()))
+        if (file_utils::write_configure_output(
+                path, vendored->configure_signature()))
             continue;
 
         std::cerr << "can't write '" << path << "': "

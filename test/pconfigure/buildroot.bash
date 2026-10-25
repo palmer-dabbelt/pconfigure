@@ -1,5 +1,17 @@
 #include "harness_start.bash"
 
+# Each vendored tree's configure-opts gets a rule that writes it back
+# if somebody deletes the object directory it lives in, and that rule
+# holds the file's text: every option as the Configfile spelled it,
+# each line quoted whole as one argument to the printf that puts it
+# back, so "--env NAME=two words" is in there with no quotes around
+# the value.  It is a copy of a file, not a command line anything
+# runs, so the check below that a spelling never reaches a command
+# looks at the Makefile without it.
+without_restore_rules() {
+    sed '/^[^[:space:]]*\/configure-opts:$/,/^$/d' "$1"
+}
+
 mkdir -p src
 mkdir -p sub/configs sub/utils sub/package/busybox sub/package/dropbear
 mkdir -p sub/support/misc sub/linux sub/fs/ext2
@@ -202,8 +214,8 @@ grep -q "BUILDROOT" Makefile
 # free.  "For free" is worth an assertion: the day somebody gives this
 # build system an environment of its own is the day the quoting stops
 # being inherited, and nothing else here would notice.
-grep -q "MY_FLAGS='-O2 -g'" Makefile
-if grep -q "MY_FLAGS=-O2 -g" Makefile
+without_restore_rules Makefile | grep -q "MY_FLAGS='-O2 -g'"
+if without_restore_rules Makefile | grep -q "MY_FLAGS=-O2 -g"
 then
     exit 1
 fi

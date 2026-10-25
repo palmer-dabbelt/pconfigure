@@ -22,6 +22,7 @@
 #define FILE_UTILS_HXX
 
 #include <functional>
+#include <map>
 #include <set>
 #include <vector>
 #include <string>
@@ -174,6 +175,31 @@ namespace file_utils {
      * as saying something different. */
     bool write_if_changed(const std::string& path,
                           const std::string& contents);
+
+    /* write_if_changed(), for a file the build names and nothing in
+     * the build makes: one pconfigure writes at configure time for a
+     * rule to read or to hang off of, such as the hash of what goes
+     * into a link.  Such a file lives in an object directory, and an
+     * object directory is a cache people delete -- after which every
+     * rule naming one stopped make with "No rule to make target",
+     * since the only thing that knew how to write it was pconfigure.
+     * So each one is written down along with what it says, and the
+     * Makefile make is run on gets a rule that says it again (see
+     * configure_outputs()).
+     *
+     * A file that is only a key -- read by pconfigure on the next run
+     * to decide whether something beside it is stale, and named by no
+     * rule -- has no need of this, and a missing one already means
+     * what it should. */
+    bool write_configure_output(const std::string& path,
+                                const std::string& contents);
+
+    /* Every file this run wrote through write_configure_output(),
+     * and what it wrote there.  Spelled the way the writer spelled
+     * it, which is from the top of the tree where pconfigure runs;
+     * sorted, so the Makefile that lists them comes out the same on
+     * every run that wrote the same files. */
+    const std::map<std::string, std::string>& configure_outputs(void);
 
     /* What git considers ignored inside "srcdir", one entry per
      * top-level ignored file or directory, spelled "srcdir/name" --

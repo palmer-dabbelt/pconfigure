@@ -347,6 +347,34 @@ bool file_utils::write_if_changed(const std::string& path,
     return fclose(out) == 0 && wrote;
 }
 
+/* One list for the whole run rather than one per project, because
+ * one Makefile is what answers for all of them: the project make is
+ * run in is the only one that has every subproject's rules in hand,
+ * and a subproject's object directory is as deletable as anybody's. */
+static std::map<std::string, std::string>& configure_outputs_written(void)
+{
+    static std::map<std::string, std::string> written;
+    return written;
+}
+
+bool file_utils::write_configure_output(const std::string& path,
+                                        const std::string& contents)
+{
+    /* Only once it is there.  A file that could not be written is an
+     * error for the caller to report, not a rule for the build to
+     * carry. */
+    if (write_if_changed(path, contents) == false)
+        return false;
+
+    configure_outputs_written()[path] = contents;
+    return true;
+}
+
+const std::map<std::string, std::string>& file_utils::configure_outputs(void)
+{
+    return configure_outputs_written();
+}
+
 bool file_utils::inside(const std::string& path, const std::string& dir)
 {
     if (path == dir)
