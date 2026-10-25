@@ -294,6 +294,13 @@ $ $DIRNAME/configure
 \end{verbatim}
 in the land of GNU tools.
 
+\texttt{\$DIRNAME} has to be a directory.  A Configfile that isn't
+there is read as an empty one, so a path that doesn't exist would
+otherwise configure an empty project and exit successfully; instead
+\pconfigure\ refuses it, naming the path and saying whether it is
+missing or isn't a directory.  The same goes for a \texttt{SRCPATH}
+written in a Configfile.
+
 \section{\texttt{make} Targets \label{make}}
 
 \subsection{\texttt{make all} \label{make:all}}
