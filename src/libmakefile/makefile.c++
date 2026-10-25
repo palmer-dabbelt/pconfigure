@@ -19,6 +19,7 @@
  */
 
 #include "makefile.h++"
+#include "recipe_quote.h++"
 #include "self_path.h++"
 #include <algorithm>
 #include <iostream>
@@ -194,25 +195,6 @@ void makefile::makefile::restore_configure_outputs(
     _configure_outputs = outputs;
 }
 
-/* A word the shell reads back as exactly these bytes, inside a recipe
- * make hands it: single quotes for the shell, with the one character
- * they can't hold closed around, and every '$' doubled for make --
- * which expands a recipe before the shell ever sees it, quotes or
- * not. */
-static std::string recipe_quoted(const std::string& text)
-{
-    auto out = std::string("'");
-    for (const auto c: text) {
-        if (c == '\'')
-            out += "'\\''";
-        else if (c == '$')
-            out += "$$";
-        else
-            out += c;
-    }
-    return out + "'";
-}
-
 /* How much of a file one recipe line writes.  make runs each recipe
  * line as a single argument to the shell, and Linux refuses an exec
  * whose one argument is over 128 KiB (MAX_ARG_STRLEN), whatever the
@@ -266,12 +248,12 @@ static std::vector<std::string> write_recipe(const std::string& contents)
     const auto piece = write_recipe_line_limit / 4;
     auto print_unterminated = [&](const std::string& text) {
         for (size_t i = 0; i < text.size(); i += piece)
-            commands.push_back("printf '%s' " +
-                               recipe_quoted(text.substr(i, piece)));
+            commands.push_back(
+                "printf '%s' " + makefile::recipe_quoted(text.substr(i, piece)));
     };
 
     for (const auto& line: lines) {
-        auto word = " " + recipe_quoted(line);
+        auto word = " " + makefile::recipe_quoted(line);
         if (word.size() > write_recipe_line_limit) {
             flush();
             print_unterminated(line);
