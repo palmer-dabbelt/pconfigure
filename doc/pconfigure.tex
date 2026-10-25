@@ -4954,7 +4954,15 @@ A bash ``compiler'', which really just does the following
   have come out with an include silently missing from it; if the body
   was nothing but text then it was going to be treated as text either
   way, and nothing is said.
-\item Sets the correct shebang at the beginning of the file
+\item Sets the correct shebang at the beginning of the file.  The
+  interpreter is always \texttt{pbashc}'s own, but if the script
+  starts with a \texttt{\#!} line of its own, whatever options it
+  gave are carried onto the new one and the script's line is
+  replaced rather than left below it as a comment --- so
+  \texttt{\#!/bin/bash -e} still stops at the first failure, and
+  every line of the program is on the line it has in the source.  In
+  \texttt{\#!/usr/bin/env bash} the word after \texttt{env} names
+  the program rather than an option, so nothing is carried from it.
 \item Marks the output as executable
 \end{itemize}
 
