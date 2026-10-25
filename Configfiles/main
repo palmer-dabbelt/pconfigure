@@ -444,6 +444,7 @@ TESTSRC     += testdeps-directive-in-c-test-comment-is-ignored.bash
 TESTSRC     += testdeps-directive-after-cxx-stream-insertion-is-read.bash
 TESTSRC     += testdeps-directive-after-bash-test-glob-is-read.bash
 TESTSRC     += testdeps-directive-after-perl-test-glob-is-read.bash
+TESTSRC     += testdeps-path-with-hash-waited-for.bash
 TESTSRC     += deptests.bash
 TESTSRC     += deptests-bad.bash
 TESTSRC     += scratchdir.bash

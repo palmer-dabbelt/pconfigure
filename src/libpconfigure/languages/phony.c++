@@ -72,10 +72,12 @@ language_phony::targets(const context::ptr& ctx) const
     /* Whatever this name is supposed to stand for gets built when
      * somebody asks for it.  A TESTDEPS is the only way to say what
      * that is: a phony target has no sources, so there's nothing else
-     * for it to be made out of. */
+     * for it to be made out of.  Spelled for the rule line, the same
+     * way a test's TESTDEPS is. */
     auto deps = std::vector<makefile::target::ptr>();
     for (const auto& dep: ctx->based_test_deps())
-        deps.push_back(std::make_shared<makefile::target>(dep));
+        deps.push_back(std::make_shared<makefile::target>(
+                           makefile::prerequisite(dep)));
 
     auto comment = std::vector<std::string>{
         "language_phony::targets()",

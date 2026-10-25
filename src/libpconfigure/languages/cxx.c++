@@ -583,9 +583,12 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
              * with a TESTDEPS, and all that has to happen is that make
              * builds it first.  Every one of them is something this
              * project builds, which is what keeps this Makefile usable
-             * on its own. */
+             * on its own.  It is a path as the Configfile wrote it, so it
+             * is spelled for the rule line it lands on: a '#' left bare
+             * there is a comment that cuts the path short. */
             for (const auto& dep: ctx->based_test_deps())
-                deps.push_back(std::make_shared<makefile::target>(dep));
+                deps.push_back(std::make_shared<makefile::target>(
+                                   makefile::prerequisite(dep)));
 
             /* A test that reads what another test left behind says so
              * with a DEPTESTS, and make ordering the two is the whole of
