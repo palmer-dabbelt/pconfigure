@@ -205,6 +205,21 @@ short form.
 An option that takes a value and is given none is a fatal error that
 says which option wanted one.
 
+Any other word is a \texttt{Configfile} line, written as one quoted
+word: \texttt{pconfigure 'LANGUAGES += c'}.  It is read the way the
+same line in a file would be, as though it were at the top of the
+first file read: runs of white space are just the space between two
+words, white space at either end is dropped, a line that is empty or a
+comment does nothing, and anything in backticks is run while
+configuring, with a command that fails stopping the run.  The
+backticks are run once every option has been read, so a
+\texttt{--ppkg-config} given after the line still names the
+\texttt{ppkg-config} it runs.  Options are matched exactly as they
+were typed, and so is the value after one: neither is tidied or
+expanded.  A word that is neither an option nor a line that can be
+read is a fatal error that names it and counts it from the first word
+after \texttt{pconfigure}.
+
 \subsection{\texttt{--help} \label{cl:help}}
 
 Prints a short description of every command-line option and exits
