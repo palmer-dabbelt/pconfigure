@@ -612,18 +612,19 @@ language_bash::targets(const context::ptr& ctx) const
  * A line of COMPILEOPTS is a piece of a command line rather than one
  * word of it -- "-I inc" and "-Wall -Iinc" are each one line -- and
  * the shell is what splits it before pbashc sees it, so it is split
- * the same way here first. */
+ * the same way here first, by the same splitter the C scan uses.  The
+ * shell takes the quotes off as it splits, too, so -I'lib' reaches
+ * pbashc as -Ilib and each argument here is the text the shell hands
+ * over rather than the spelling it was written in: a directory called
+ * "'lib'" is one nothing would ever be found in. */
 static std::vector<std::string>
 pbashc_flag_arguments(const std::vector<std::string>& opts,
                       const std::string& flag)
 {
     auto words = std::vector<std::string>();
-    for (const auto& opt: opts) {
-        std::istringstream ss(opt);
-        std::string word;
-        while (ss >> word)
-            words.push_back(word);
-    }
+    for (const auto& opt: opts)
+        for (const auto& word: string_utils::shell_words(opt))
+            words.push_back(string_utils::shell_unescape(word));
 
     auto out = std::vector<std::string>();
     for (size_t i = 0; i < words.size(); ++i) {

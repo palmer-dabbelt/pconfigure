@@ -39,23 +39,29 @@ namespace string_utils {
                                         const std::string& delims);
 
     /* Splits a piece of a command line into the words a shell would
-     * see, as far as a backslash goes: white space with a backslash
-     * in front of it is part of a word rather than the gap between
-     * two.  The words keep their backslashes, because they are going
-     * back on to a command line where the shell wants them.
+     * see: white space with a backslash in front of it, or inside a
+     * pair of quotes, is part of a word rather than the gap between
+     * two.  The words keep their backslashes and quotes, because they
+     * are going back on to a command line where the shell wants them.
      *
      * That is the spelling pkg-config hands back a path with a space
      * in it, "-I/home/me/my\ checkout/include", and the reason this
      * exists: split at every space, that is two words, and the second
-     * one looks like a relative path of its own.  Quotes aren't
-     * understood, since nothing that writes these uses them. */
+     * one looks like a relative path of its own.  A Configfile can
+     * quote instead, as -I"my checkout/include", and that is one word
+     * to the shell just the same. */
     std::vector<std::string> shell_words(const std::string& in);
 
     /* One of the words above as the text it stands for, which is what
-     * a word naming a path has to be before it can be compared with
-     * a path or looked for on the disk.  pkg-config puts a backslash
-     * in front of more than spaces -- "R&D" comes back as "R\&D" --
-     * so every backslash comes off, along with nothing else. */
+     * a word naming a path or a macro has to be before it can be
+     * compared with one or looked for on the disk.  This is the
+     * shell's quote removal: a backslash outside quotes keeps the
+     * character after it and goes, as pkg-config's "R\&D" wants;
+     * single quotes keep everything between them; and inside double
+     * quotes a backslash only escapes the few characters the shell
+     * says it does.  The quotes themselves go, so that -I'src/lib' is
+     * the directory src/lib -- but only the ones the shell would take
+     * off, so -DX='"str"' still leaves X a string literal. */
     std::string shell_unescape(const std::string& in);
 
     /* Joins the string using delim as the separator between

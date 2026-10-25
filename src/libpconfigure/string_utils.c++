@@ -109,12 +109,30 @@ std::vector<std::string> string_utils::shell_words(const std::string& in)
     auto word = std::string();
     auto in_word = false;
 
+    /* The quote that's open, or nothing when none is.  A word that
+     * opens a quote and never closes it runs to the end of the line,
+     * which is a line the shell would refuse to run; the compiler's
+     * complaint about it says more than one from here could. */
+    auto quote = '\0';
+
     for (size_t i = 0; i < in.size(); ++i) {
-        if (in[i] == '\\' && i + 1 < in.size()) {
+        if (quote == '\'') {
+            word += in[i];
+            if (in[i] == '\'')
+                quote = '\0';
+        } else if (in[i] == '\\' && i + 1 < in.size()) {
             word += in[i];
             word += in[i+1];
             in_word = true;
             ++i;
+        } else if (quote == '"') {
+            word += in[i];
+            if (in[i] == '"')
+                quote = '\0';
+        } else if (in[i] == '\'' || in[i] == '"') {
+            word += in[i];
+            quote = in[i];
+            in_word = true;
         } else if (isspace(in[i])) {
             if (in_word == true)
                 out.push_back(word);
@@ -135,10 +153,33 @@ std::vector<std::string> string_utils::shell_words(const std::string& in)
 std::string string_utils::shell_unescape(const std::string& in)
 {
     auto out = std::string();
+    auto quote = '\0';
+
     for (size_t i = 0; i < in.size(); ++i) {
-        if (in[i] == '\\' && i + 1 < in.size())
-            ++i;
-        out += in[i];
+        if (quote == '\'') {
+            if (in[i] == '\'')
+                quote = '\0';
+            else
+                out += in[i];
+        } else if (quote == '"') {
+            /* Inside double quotes a backslash only means something in
+             * front of the characters that would otherwise do
+             * something there; anywhere else it is text, as it is in
+             * -DPATH="C:\dir". */
+            if (in[i] == '"')
+                quote = '\0';
+            else if (in[i] == '\\' && i + 1 < in.size()
+                     && std::string("$`\"\\").find(in[i+1]) != std::string::npos)
+                out += in[++i];
+            else
+                out += in[i];
+        } else if (in[i] == '\'' || in[i] == '"') {
+            quote = in[i];
+        } else if (in[i] == '\\' && i + 1 < in.size()) {
+            out += in[++i];
+        } else {
+            out += in[i];
+        }
     }
     return out;
 }

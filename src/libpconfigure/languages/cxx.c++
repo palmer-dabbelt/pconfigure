@@ -185,9 +185,15 @@ cxx_forced_includes(const std::vector<std::string>& opts)
     auto imacros = std::vector<std::string>();
     auto includes = std::vector<std::string>();
     auto pending = std::string();
+
+    /* Each is a file to be looked for, so like flag_arguments() it is
+     * wanted as the text the shell hands the compiler: a name written
+     * as -include 'config.h' is looked for as config.h, not as a file
+     * with quotes in its name that no directory has. */
     for (const auto& opt: opts) {
         if (pending.size() > 0) {
-            (pending == "-imacros" ? imacros : includes).push_back(opt);
+            (pending == "-imacros" ? imacros : includes)
+                .push_back(string_utils::shell_unescape(opt));
             pending = "";
             continue;
         }
@@ -198,7 +204,8 @@ cxx_forced_includes(const std::vector<std::string>& opts)
         if (split.second.size() == 0)
             pending = split.first;
         else
-            (split.first == "-imacros" ? imacros : includes).push_back(split.second);
+            (split.first == "-imacros" ? imacros : includes)
+                .push_back(string_utils::shell_unescape(split.second));
     }
 
     return imacros + includes;
