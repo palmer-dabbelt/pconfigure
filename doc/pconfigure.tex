@@ -404,12 +404,20 @@ The options are recorded in the \texttt{Makefile} of the project
 path from that directory, so a subproject's own \texttt{Makefile}
 keeps an empty default.
 
-The \pconfigure\ that runs is whatever the \texttt{PATH} calls
-\pconfigure, rather than the binary that wrote the file: reconfiguring
-is somebody deciding to reconfigure, and the \pconfigure\ they mean is
-the one they have.  A project that pins its own with
-\texttt{BOOTSTRAP} (Section~\ref{cmd:bootstrap}) is the exception, and
-runs the one it builds.
+The \pconfigure\ that runs is the one that wrote the
+\texttt{Makefile}, named by its absolute path the same way its helper
+tools are, rather than whatever the \texttt{PATH} calls \pconfigure.
+A tree that vendors \pconfigure\ and builds it into
+\texttt{src/pconfigure/bin} has never installed one, so the
+\texttt{PATH} may have no answer at all, and an installed copy that
+does answer may well be a different version from the one this tree was
+configured with.  Under \texttt{AUTORECONFIGURE} this is also the
+recipe \texttt{make} uses to remake the \texttt{Makefile} when a
+\texttt{Configfile} is newer, so it has to work wherever the rest of
+the build does.  Reconfiguring with some other \pconfigure\ means
+running that one by hand.  A project that pins its own with
+\texttt{BOOTSTRAP} (Section~\ref{cmd:bootstrap}) runs the one it
+builds instead.
 
 A project that asked for \texttt{AUTORECONFIGURE}
 (Section~\ref{cmd:autoreconfigure}) still needs this.  What that moves
@@ -1431,10 +1439,10 @@ about that: what a \texttt{Makefile} says is what the
 running it again is \texttt{make reconfigure}
 (Section~\ref{make:reconfigure}).  The rule is the same one every
 project gets, pointed at the \pconfigure\ this project builds rather
-than at the \texttt{PATH} --- pinning a \pconfigure\ and then
-reconfiguring with somebody else's would be pinning nothing at all.
-It takes the same \texttt{PCONFIGURE\_ARGS}, and so does the first
-configure:
+than at the one that wrote the \texttt{Makefile} --- pinning a
+\pconfigure\ and then reconfiguring with somebody else's would be
+pinning nothing at all.  It takes the same \texttt{PCONFIGURE\_ARGS},
+and so does the first configure:
 
 \begin{verbatim}
 $ make PCONFIGURE_ARGS="--config debug"
