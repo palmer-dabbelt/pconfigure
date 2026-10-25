@@ -125,6 +125,24 @@ void project::check_prefix_variables(const std::vector<ptr>& everyone)
     }
 }
 
+/* Registers one CONFIG_DEPS that a Configfile in the project at
+ * "srcpath" wrote.  A relative path means somewhere in that project, so
+ * it is rooted there; an absolute one -- a tool or a pkg-config file
+ * outside the tree, say -- already names exactly one place, and is
+ * watched where it is.  Pasting it onto the project's directory
+ * instead gives a path the normalizer quietly turns into a relative
+ * one inside the project, which names nothing, and the $(wildcard)
+ * every watched name goes through hides that: the build just never
+ * reconfigures when the thing the line was written for changes. */
+static void add_config_dep_from(const std::string& srcpath,
+                                const std::string& dep)
+{
+    if (dep[0] == '/')
+        add_configfile_dep(dep);
+    else
+        add_configfile_dep(srcpath + "/" + dep);
+}
+
 void project::process_line(const ptr& self,
                            const configfile_line& line,
                            std::set<std::string>& seen)
@@ -160,7 +178,7 @@ void project::process_line(const ptr& self,
         if (dep.size() == 0)
             break;
 
-        add_configfile_dep(processor->srcpath() + "/" + dep);
+        add_config_dep_from(processor->srcpath(), dep);
     }
 
     /* A subproject is read before the next line, so that the rest of
@@ -218,7 +236,7 @@ project::ptr project::read(const command_processor::ptr& processor,
         if (dep.size() == 0)
             break;
 
-        add_configfile_dep(processor->srcpath() + "/" + dep);
+        add_config_dep_from(processor->srcpath(), dep);
     }
 
     for (const auto& filename: std::vector<std::string>{
