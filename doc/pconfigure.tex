@@ -379,6 +379,23 @@ the rule to say so:
 $ make reconfigure PCONFIGURE_ARGS="--config debug"
 \end{verbatim}
 
+Without them it runs \pconfigure\ the way it was last run.  The
+\texttt{Makefile} records the options the run that wrote it was given
+as the default for \texttt{PCONFIGURE\_ARGS}, so a tree configured
+with \texttt{--config debug} is reconfigured with it until somebody
+says otherwise --- and saying otherwise is giving
+\texttt{PCONFIGURE\_ARGS} again, empty for a \pconfigure\ with no
+options at all:
+
+\begin{verbatim}
+$ make reconfigure PCONFIGURE_ARGS=
+\end{verbatim}
+
+The options are recorded in the \texttt{Makefile} of the project
+\pconfigure\ was run in, and only there.  A path in one of them is a
+path from that directory, so a subproject's own \texttt{Makefile}
+keeps an empty default.
+
 The \pconfigure\ that runs is whatever the \texttt{PATH} calls
 \pconfigure, rather than the binary that wrote the file: reconfiguring
 is somebody deciding to reconfigure, and the \pconfigure\ they mean is
@@ -1415,6 +1432,11 @@ configure:
 $ make PCONFIGURE_ARGS="--config debug"
 \end{verbatim}
 
+Options given to that first \texttt{make} are recorded in
+\texttt{Makefile.pconfigure} like any others, so a plain \texttt{make}
+after it --- including one that runs \pconfigure\ again under
+\texttt{AUTORECONFIGURE} --- keeps them.
+
 \texttt{make distclean} takes back \texttt{Makefile.pconfigure} along
 with everything else \pconfigure\ wrote, and leaves the committed
 \texttt{Makefile} alone: a tree it had removed that from is a tree
@@ -1926,6 +1948,14 @@ sources there are is the input nothing was watching.  It covers every
 \texttt{SUBPROJECTS} --- a subproject cannot be configured from inside
 itself, so its \texttt{Configfile} changing re-runs the \pconfigure\
 at the top of the tree.
+
+The \pconfigure\ it runs is given the options the last one was, the
+same default \texttt{make reconfigure} has
+(Section~\ref{make:reconfigure}).  A tree configured with
+\texttt{--config}, \texttt{--verbose}, \texttt{--cross-compile} or
+\texttt{--srcpath} stays configured that way when a
+\texttt{Configfile} changes; a build that dropped them would be a
+different build that nobody asked for.
 
 What it does not cover is an input that is not a \texttt{Configfile}.
 An executable \texttt{CONFIG} that enumerates a directory is written
