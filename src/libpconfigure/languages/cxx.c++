@@ -154,25 +154,35 @@ cxx_include_search(const std::vector<std::string>& opts)
      * and needs no telling apart afterwards.  "-isystem" is asked
      * with "-isystem-after" ahead of it for the reason include_flags()
      * puts it there: a word that starts with the longer name is that
-     * flag and not the shorter one. */
+     * flag and not the shorter one.
+     *
+     * Each directory comes back as the text it stands for rather than
+     * as the shell would be handed it, since what's asked of these is
+     * where to look on the disk.  The quotes come off before the word
+     * is matched against the flags, not just off what follows the
+     * flag: a quote may open before the flag as easily as after it,
+     * and '-Iinc' is the compiler's -Iinc, but matched as written it
+     * starts with a quote rather than "-I", and the directory was
+     * passed over as though it were some other option. */
     auto of = [&](const std::string& flag) {
         auto out = std::vector<std::string>();
         auto pending = std::string();
         for (const auto& opt: opts) {
+            auto word = string_utils::shell_unescape(opt);
             if (pending.size() > 0) {
                 if (pending == flag)
-                    out.push_back(string_utils::shell_unescape(opt));
+                    out.push_back(word);
                 pending = "";
                 continue;
             }
 
-            auto split = split_flag(opt, include_flags());
+            auto split = split_flag(word, include_flags());
             if (split.first.size() == 0)
                 continue;
             if (split.second.size() == 0)
                 pending = split.first;
             else if (split.first == flag)
-                out.push_back(string_utils::shell_unescape(split.second));
+                out.push_back(split.second);
         }
         return out;
     };
@@ -216,23 +226,30 @@ cxx_forced_includes(const std::vector<std::string>& opts)
     /* Each is a file to be looked for, so like an include directory it is
      * wanted as the text the shell hands the compiler: a name written
      * as -include 'config.h' is looked for as config.h, not as a file
-     * with quotes in its name that no directory has. */
+     * with quotes in its name that no directory has.
+     *
+     * Also like an include directory, the quotes come off before the
+     * word is matched, not just off the name after the flag: a quote
+     * that opens first, as in '-includeconfig.h', is the shell's all
+     * the same, but the word as written starts with a quote rather
+     * than "-include", and the file the compiler reads was never
+     * scanned. */
     for (const auto& opt: opts) {
+        auto word = string_utils::shell_unescape(opt);
         if (pending.size() > 0) {
-            (pending == "-imacros" ? imacros : includes)
-                .push_back(string_utils::shell_unescape(opt));
+            (pending == "-imacros" ? imacros : includes).push_back(word);
             pending = "";
             continue;
         }
 
-        auto split = split_forced_include(opt);
+        auto split = split_forced_include(word);
         if (split.first.size() == 0)
             continue;
         if (split.second.size() == 0)
             pending = split.first;
         else
             (split.first == "-imacros" ? imacros : includes)
-                .push_back(string_utils::shell_unescape(split.second));
+                .push_back(split.second);
     }
 
     return imacros + includes;
@@ -256,24 +273,28 @@ cxx_defines(const std::vector<std::string>& opts)
      * "#ifndef"s it takes -- listing headers that are never read,
      * linking in the sources behind them, and leaving out the ones
      * that are.  So the two are walked together, in order, each
-     * spelling of each as cxx_include_search() takes its flags. */
+     * spelling of each as cxx_include_search() takes its flags, and
+     * with the quotes off before the word is matched, as it does: a
+     * name with parentheses in it has to be quoted, and
+     * '-DLOG(x)=(x)' is the compiler's -DLOG(x)=(x) even though the
+     * word as written starts with a quote rather than "-D". */
     auto out = std::vector<std::string>();
     auto pending = std::string();
     auto apply = [&](const std::string& flag, const std::string& arg) {
-        auto name = string_utils::shell_unescape(arg);
-        name = name.substr(0, name.find('='));
+        auto name = arg.substr(0, arg.find('='));
         out.erase(std::remove(out.begin(), out.end(), name), out.end());
         if (flag == "-D")
             out.push_back(name);
     };
     for (const auto& opt: opts) {
+        auto word = string_utils::shell_unescape(opt);
         if (pending.size() > 0) {
-            apply(pending, opt);
+            apply(pending, word);
             pending = "";
             continue;
         }
 
-        auto split = split_flag(opt, std::vector<std::string>{"-D", "-U"});
+        auto split = split_flag(word, std::vector<std::string>{"-D", "-U"});
         if (split.first.size() == 0)
             continue;
         if (split.second.size() == 0)
