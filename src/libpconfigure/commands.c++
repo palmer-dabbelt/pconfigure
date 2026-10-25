@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <cctype>
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
@@ -136,7 +137,9 @@ void add_pkgconfig_dep(const std::string& path)
 }
 
 static std::string execute(std::string line, const debug_info::ptr& where);
-static std::string replace_all(std::string haystack, std::string needle, std::string new_needle);
+static std::string replace_word(const std::string& haystack,
+                                const std::string& word,
+                                const std::string& replacement);
 
 static std::vector<std::string> command_line;
 
@@ -525,8 +528,8 @@ std::string execute(std::string line, const debug_info::ptr& where)
              * had the shell run "/x/my" instead, the backtick expand
              * to nothing, and the consumer configured quietly
              * without the flags it asked for. */
-            auto command_str = replace_all(command.str(), "ppkg-config",
-                                           string_utils::quoted(ppkg_config_command()));
+            auto command_str = replace_word(command.str(), "ppkg-config",
+                                            string_utils::quoted(ppkg_config_command()));
 
             /* A pkg-config that this build produces itself comes
              * first, so that a project linking against a subproject
@@ -654,19 +657,53 @@ std::string execute(std::string line, const debug_info::ptr& where)
     return executed.str();
 }
 
-std::string replace_all(std::string haystack, std::string needle, std::string new_needle)
+/* Whether "c" ends a shell word on either side of it: blanks, and the
+ * operators that start a new command without needing a blank -- a
+ * pipe, a ';', a '&&', a '<' or '>', and the parentheses of a '$(' or
+ * a subshell. */
+static bool ends_shell_word(char c)
 {
-    /* FIXME: This implementation is afwul, but I'm tired. */
-    auto out = std::string("");
-    for (size_t i = 0; i < haystack.size(); ++i) {
-        if (strncmp(haystack.c_str() + i, needle.c_str(), needle.size()) == 0 ) {
-            out = out + new_needle;
-            i += needle.size();
-            --i;
+    return isspace((unsigned char)c) || strchr("|;&()<>", c) != NULL;
+}
+
+/* Replaces "word" in "haystack" only where it stands as a word of its
+ * own, which is all the Configfile ever meant by writing it.  Replacing
+ * every occurrence also rewrote text that merely contains it: a
+ * ppkg-config named by its path ("/opt/x/bin/ppkg-config") became
+ * that directory followed by a second, quoted absolute path, a
+ * project's own "tools/ppkg-config-shim" became "tools/" glued to one,
+ * and a value like "myppkg-config" that was only being echoed came out
+ * altered.  The first two named nothing and stopped the configure; the
+ * last went into the build quietly wrong.
+ *
+ * A '/' is deliberately not a boundary: a path whose last component is
+ * the word already says which program it means, and that's the one
+ * that should run.  Quotes aren't boundaries either, so that a value
+ * the shell is only being asked to print is left as written. */
+std::string replace_word(const std::string& haystack,
+                         const std::string& word,
+                         const std::string& replacement)
+{
+    auto out = std::string();
+    size_t i = 0;
+    while (i < haystack.size()) {
+        auto at = haystack.find(word, i);
+        if (at == std::string::npos)
+            break;
+
+        auto end = at + word.size();
+        bool starts = at == 0 || ends_shell_word(haystack[at - 1]);
+        bool stops = end == haystack.size() || ends_shell_word(haystack[end]);
+
+        out += haystack.substr(i, at - i);
+        if (starts && stops) {
+            out += replacement;
+            i = end;
         } else {
-            char s[] = {haystack[i], '\0'};
-            out = out + std::string(s);
+            out += haystack[at];
+            i = at + 1;
         }
     }
+    out += haystack.substr(i);
     return out;
 }
