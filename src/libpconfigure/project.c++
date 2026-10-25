@@ -373,6 +373,20 @@ void project::generate_targets(void)
         generated[context] = language->targets(context);
     }
 
+    /* A HEADERSRC is the other way a project makes a header for
+     * itself, and it is asked here for the same reason: what it makes
+     * has to be known before any source is.  Its copy is also made
+     * while its targets are worked out, when the header isn't there
+     * yet, so a scan below it finds the copy wherever the line was
+     * written. */
+    for (const auto& context: _processor->output_contexts()) {
+        if (context->check_type({context_type::HEADER}) == false)
+            continue;
+
+        auto language = pick_language(context->languages, context);
+        generated[context] = language->targets(context);
+    }
+
     for (const auto& context: _processor->output_contexts()) {
         if (context->debug == true)
             std::cerr << "Building Context: " << context->cmd->data() << "\n";

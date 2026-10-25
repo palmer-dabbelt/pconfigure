@@ -471,6 +471,7 @@ TESTSRC     += configfile-utf8-byte-order-mark.bash
 TESTSRC     += configfile-byte-order-mark-mid-file.bash
 TESTSRC     += testsrc-escape-names-testsrc.bash
 TESTSRC     += headersrc-escape-names-headersrc.bash
+TESTSRC     += headersrc-below-consumer-copied-before-scan.bash
 TESTSRC     += testsrc-headersrc-metacharacter-names-command.bash
 TESTSRC     += configfile-crlf-line-endings.bash
 TESTSRC     += configfile-no-trailing-newline.bash
