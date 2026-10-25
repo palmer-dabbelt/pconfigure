@@ -602,6 +602,37 @@ leaves empty, \texttt{HDRDIR} itself included.  So an include
 directory that only ever held copies goes, and one holding a header
 somebody wrote stays with that header in it.
 
+Since every one of those directories is removed whole, \pconfigure\
+refuses a source it can see in one of them.  A \texttt{SOURCES},
+\texttt{TESTSRC}, \texttt{HEADERSRC} or \texttt{GENERATE} that reads
+a file out of one is refused, pointing at that line.  So is a file
+that one of those was found to read when \pconfigure\ scanned it ---
+a header a C or C++ source includes, a file a script or a test
+pastes in with \texttt{\#include} --- pointing at the line that
+built what reads it, since no line names the file itself.  The usual
+way to get here is \texttt{SRCDIR = .} with a \texttt{lib} of library
+code or headers beside the sources: nothing in the
+\texttt{Configfile} names \texttt{lib} as an output directory,
+because it is the default \texttt{LIBDIR}, and the first
+\texttt{distclean} would have taken those files with it.  Moving the
+sources under a directory of their own, or the libraries somewhere
+else with a \texttt{LIBDIR}, is the way out.  This is asked once
+every \texttt{Configfile} has been read, since a later
+\texttt{LIBDIR} can still move the library directory, and it is asked
+of the file's directory with its symlinks resolved too, because
+\texttt{rm} follows a symlink it meets partway along a path.
+
+What is asked about is what \pconfigure\ itself reads, and that
+leaves two gaps.  Under \texttt{AUTORECONFIGURE} the headers a source
+reads are worked out by \texttt{pdeps} while the build runs, so a
+header no line names isn't asked about at all.  And a file found by
+scanning that sits in an object directory isn't either, because a
+vendored tree installs its headers there under names no rule in the
+Makefile builds, and those can't be told apart from one somebody
+wrote; a file in an object directory that a line names is still
+refused.  A file anything in the build writes is output, wherever it
+lands, and is never refused.
+
 \subsection{\texttt{make uninstall}}
 
 Removes every target created by \texttt{make install} (see
