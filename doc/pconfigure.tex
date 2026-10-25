@@ -2631,6 +2631,25 @@ fatal error too, naming the file along with the line that wrote the
 \texttt{CONFIG}, or the \texttt{--config} option when it came from the
 command line.
 
+A \texttt{CONFIG} that names a file whose lines are still being read
+--- a file that names itself, two files that name each other, or
+\texttt{CONFIG += ../Configfile} from the top-level \texttt{Configfile}
+--- would read its own line again and never finish, so it is a fatal
+error at that line, listing the \texttt{CONFIG} lines that led there.
+
+A \texttt{CONFIG} that names a file already read, whether by an earlier
+\texttt{CONFIG} or as one of the files every project reads, reads it
+again, just as a second \texttt{\#include} would.  Since that declares
+everything in the file a second time it is a warning at the repeated
+line, naming the earlier one, and an error under \texttt{STRICT = v0.13}
+(Section~\ref{cmd:strict}).  The same goes for a \texttt{--config}
+option, which is read before any \texttt{Configfile}: naming one of
+the files every project reads, such as \texttt{--config main}, reads
+it a second time when its own turn comes, and is warned about at the
+option.  Several \texttt{--config} options stand side by side, each
+read in turn, so one naming a file another also \texttt{CONFIG}s is a
+repeat and never a cycle.
+
 \subsection{\texttt{CONFIG\_DEPS += \$path} \label{cmd:config_deps}}
 
 Names something the configuration reads that is not itself a
