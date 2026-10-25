@@ -191,7 +191,7 @@ void project::process_line(const ptr& self,
         if (base.size() == 0)
             break;
 
-        auto child = read(base, processor->root_context(), asked_by, seen);
+        auto child = read(base, processor, asked_by, seen);
         if (child != NULL)
             self->_children.push_back(child);
     }
@@ -261,7 +261,7 @@ project::ptr project::read(const command_processor::ptr& processor,
 }
 
 project::ptr project::read(const std::string& base,
-                           const context::ptr& defaults,
+                           const command_processor::ptr& parent,
                            const command::ptr& asked_by,
                            std::set<std::string>& seen)
 {
@@ -277,7 +277,10 @@ project::ptr project::read(const std::string& base,
     if (seen.insert(normalized).second == false)
         return NULL;
 
-    auto processor = std::make_shared<command_processor>(normalized, defaults);
+    auto processor = std::make_shared<command_processor>(
+        normalized,
+        parent->root_context(),
+        parent->vendored_in_run());
     return read(processor, seen, asked_by);
 }
 

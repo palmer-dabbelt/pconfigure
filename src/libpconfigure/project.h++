@@ -86,11 +86,12 @@ public:
      * for twice is only read once, and so that a project that somehow
      * contains itself doesn't recurse forever.
      *
-     * "defaults" is the context a subproject inherits from whoever
-     * pulled it in, and is NULL for the project being configured.
+     * "parent" is the command processor of whoever pulled it in:
+     * the subproject inherits that project's root context as its
+     * defaults, and shares the run's list of bound vendored trees.
      * "asked_by" is the line that pulled it in. */
     static ptr read(const std::string& base,
-                    const context::ptr& defaults,
+                    const command_processor::ptr& parent,
                     const command::ptr& asked_by,
                     std::set<std::string>& seen);
 

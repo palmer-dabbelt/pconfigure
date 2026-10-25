@@ -33,14 +33,21 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-command_processor::command_processor(const std::string& base,
-                                     const context::ptr& defaults)
+command_processor::command_processor(
+    const std::string& base,
+    const context::ptr& defaults,
+    const std::shared_ptr<std::map<std::string, command::ptr>>&
+        vendored_in_run)
     : _stack(),
       _opts_target(NULL),
       _stale_opts_target(NULL),
       _stale_opts_closed_by(NULL),
       _build_systems(),
       _vendored(),
+      _vendored_in_run(vendored_in_run != NULL
+                       ? vendored_in_run
+                       : std::make_shared<std::map<std::string,
+                                                   command::ptr>>()),
       _configure_target(NULL),
       _test_suites(),
       _autoreconfigure(false),
@@ -2617,6 +2624,47 @@ void command_processor::process_one(const command::ptr& cmd)
             return;
         }
 
+        /* A tree some other project in this run already bound is
+         * refused rather than bound again.  The same line inside one
+         * Configfile gets back to the tree above, but across two
+         * projects there is no one tree for it to get back to: each
+         * project builds what it binds into its own object directory
+         * and writes the rules for it into its own Makefile, and the
+         * other project's rules were finished when that project was.
+         * Binding it a second time is what used to happen, and it
+         * built the tree twice, into two directories, with two
+         * recursive makes that a parallel make ran over the one
+         * source tree at once.  Handing the second line the first
+         * project's binding instead would be quieter and no better:
+         * a CONFIGUREOPTS after it would be talking to rules that
+         * have already been written, and a TESTDEPS or a
+         * SUBPROJECT_TARGETS would be spelled from an object
+         * directory the tree doesn't build into.
+         *
+         * Only a vendored tree is asked about.  A pconfigure
+         * subproject named by two projects is read once, by the
+         * first, and the second line is all it needs to be -- that
+         * project's Makefile is included by everyone's. */
+        if (picked->vendored() == true) {
+            auto already = _vendored_in_run->find(path);
+            if (already != _vendored_in_run->end()) {
+                std::cerr << std::to_string(cmd->debug()) << "\n"
+                          << "  error: '" << path << "' is a vendored"
+                          << " tree, and another project in this run"
+                          << " already builds it, from\n"
+                          << "  "
+                          << std::to_string(already->second->debug())
+                          << "\n"
+                          << "  a vendored tree is built once, by the"
+                          << " project whose Configfile names it, and"
+                          << " two projects can't both own it\n"
+                          << "  remove one of the two lines, and put any"
+                          << " CONFIGUREOPTS or SUBPROJECT_TARGETS for"
+                          << " the tree under the one that stays\n";
+                abort();
+            }
+        }
+
         /* Binding copies, so that the CONFIGUREOPTS that come after
          * this land on this subproject rather than on every other
          * subproject built the same way. */
@@ -2659,6 +2707,7 @@ void command_processor::process_one(const command::ptr& cmd)
         }
 
         _vendored.push_back(bound);
+        (*_vendored_in_run)[path] = cmd;
 
         return;
     }

@@ -21,6 +21,7 @@
 #ifndef COMMAND_PROCESSOR_HXX
 #define COMMAND_PROCESSOR_HXX
 
+#include <map>
 #include <memory>
 #include <stack>
 #include <utility>
@@ -65,6 +66,14 @@ private:
      * SUBPROJECTS that turned out not to be a pconfigure project.
      * These are bound, and they're what produce targets. */
     std::vector<build_system::ptr> _vendored;
+
+    /* Every vendored tree bound anywhere in this run, by the
+     * directory it resolved to, along with the line that bound it.
+     * This one map is shared by every project's command processor,
+     * which is what lets a subproject's line find a tree its parent
+     * already bound, and the other way round: "_vendored" above only
+     * sees this project's own. */
+    std::shared_ptr<std::map<std::string, command::ptr>> _vendored_in_run;
 
     /* The object that should be touched for CONFIGUREOPTS, which is
      * whichever build system or subproject was named most
@@ -222,9 +231,15 @@ public:
     /* Creates a new, mostly empty command processor (there is a
      * default context on the stack, for example) for the project
      * rooted at "base" -- which is either empty, for the project
-     * being configured, or a path ending in '/' for a subproject. */
+     * being configured, or a path ending in '/' for a subproject.
+     * A subproject is also handed the vendored trees the run has
+     * bound so far, as whoever pulled it in has them (see
+     * vendored_in_run()), so that it adds to the same list. */
     command_processor(const std::string& base = "",
-                      const context::ptr& defaults = NULL);
+                      const context::ptr& defaults = NULL,
+                      const std::shared_ptr<std::map<std::string,
+                                                     command::ptr>>&
+                          vendored_in_run = NULL);
     virtual ~command_processor(void) {}
 
 public:
@@ -233,6 +248,9 @@ public:
         { return _output_contexts; }
     const std::vector<build_system::ptr>& vendored(void) const
         { return _vendored; }
+    const std::shared_ptr<std::map<std::string, command::ptr>>&
+    vendored_in_run(void) const
+        { return _vendored_in_run; }
     const std::vector<std::pair<std::string, command::ptr>>&
     named_subprojects(void) const
         { return _named_subprojects; }
