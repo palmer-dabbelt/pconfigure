@@ -2984,6 +2984,15 @@ arguments the way the shell would split it.
 Note that one \texttt{sed} process is run for each argument provided
 as a compile option.
 
+The template is the target's one \texttt{SOURCES}; a \texttt{-S}
+script is only ever run over it, never used in its place.  A second
+\texttt{SOURCES} is a fatal error naming its line, since a
+\texttt{pkg-config} file has no \texttt{\#include} to bring it in:
+put its contents into the first, or give it a \texttt{LIBRARIES} of
+its own.  A target with no \texttt{SOURCES} gets the usual warning,
+and its rules then fail when \texttt{make} reaches them rather than
+writing out an empty \texttt{.pc}.
+
 pkgconfig supports linking against pkgconfig.
 
 \subsection{\texttt{scala}: Scala \label{lang:scala}}
