@@ -1225,7 +1225,13 @@ to walk through a symlink only when it is the last thing on the path.
 A link that stays inside the project is left alone --- linking a
 vendored tree into place from elsewhere in the same checkout is a real
 thing to do --- and a path that does not resolve at all is left to
-whoever reads the \texttt{Configfile} that is not there.
+whoever reads the \texttt{Configfile} that is not there.  The rule
+against the project itself or a directory containing it is asked of
+the directory too, for links that stay inside the project: a
+\texttt{self} linking to \texttt{.}, or an \texttt{up} in a
+subproject linking to \texttt{..}, is refused at the line just as
+\texttt{.} or \texttt{..} would be, rather than reading the same tree
+again and again under a longer name each time.
 
 Nor may a subproject be inside any other directory \texttt{make
 distclean} removes whole: where the binaries, the libraries and the
@@ -1274,7 +1280,10 @@ A single run of \texttt{pconfigure} reads every project and writes a
 includes its subprojects'.  There is no recursive \texttt{make}: a
 build from the top has the whole thing in one dependency graph, so
 \texttt{make -j} can schedule across projects.  Subprojects nest,
-and a project that gets asked for twice is only read once.
+and a project that gets asked for twice is only read once.  Which
+project a directory is goes by the directory rather than the
+spelling, so a \texttt{vendor/a} that is also named through a
+symlink \texttt{a} to it is one project, read once.
 
 A subproject's \texttt{Makefile} goes into that subproject's object
 directory, under a name built out of where the subproject sits in the
