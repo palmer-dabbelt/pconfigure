@@ -66,8 +66,18 @@ language_implicit_h::targets(const context::ptr& ctx) const
         }
 
         auto install_path = "$(DESTDIR)" + ctx->installed(ctx->hdr_dir) + "/" + ctx->cmd->data();
-        auto header_path = ctx->hdr_dir + "/" + ctx->cmd->data();
-        
+
+        /* A header with nothing under it is one somebody wrote, so it
+         * is read out of the source tree rather than out of the build
+         * directory: with a "--srcpath" or a SRCPATH those are two
+         * different places, and hdr_dir is spelled from where
+         * pconfigure was run.  This is the same directory the C scan
+         * puts first on the include path, so the header a compile
+         * found is the header that gets installed.  Without a srcpath
+         * src_path is the base and this is hdr_dir again. */
+        auto header_path = ctx->src_path + ctx->unbased(ctx->hdr_dir)
+            + "/" + ctx->cmd->data();
+
         /* On "uninstall" as well as "install", for the reason
          * languages/bash.c++ gives: a rule that only installs is a
          * header "make uninstall" leaves behind under the prefix. */
