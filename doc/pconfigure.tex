@@ -160,6 +160,11 @@ your project.  It's not expected that you make either
 \texttt{Configfiles/local} or \texttt{Configfile.local} as these will
 be specific to end-user systems.
 
+Only a file that doesn't exist is skipped.  One that exists but can't
+be read, or that is a directory, is a fatal error naming it, since
+reading it as empty would write a \texttt{Makefile} missing everything
+it declares.
+
 \subsection{Writing your first \texttt{Configfile}}
 
 The \texttt{Configfile} format is designed to be as terse as possible.
@@ -2464,6 +2469,11 @@ its own, but when neither exists a fatal error occurs, naming the line
 that wrote the \texttt{CONFIG}: a misspelled name would otherwise read
 nothing at all and leave out everything the file was meant to declare.
 This is also true of a \texttt{--config} on the command line.
+
+A file that exists but can't be read, or that is a directory, is a
+fatal error too, naming the file along with the line that wrote the
+\texttt{CONFIG}, or the \texttt{--config} option when it came from the
+command line.
 
 \subsection{\texttt{CONFIG\_DEPS += \$path} \label{cmd:config_deps}}
 
