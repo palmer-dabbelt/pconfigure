@@ -356,6 +356,7 @@ TESTSRC     += scratchdir.bash
 TESTSRC     += test-suites.bash
 TESTSRC     += test-suites-unnamed.bash
 TESTSRC     += default-test-suite.bash
+TESTSRC     += default-test-suite-runs-included-suites.bash
 TESTSRC     += test-suites-subprojects.bash
 TESTSRC     += test-suites-subproject-includes.bash
 TESTSRC     += test-suites-subproject-unjoined.bash
