@@ -4878,7 +4878,11 @@ on luck.
 The commands asked are the ones that name something the language
 backends build: \texttt{BINARIES}, \texttt{LIBRARIES},
 \texttt{LIBEXECS}, \texttt{TESTS}, \texttt{TESTSRC},
-\texttt{HEADERS}, \texttt{HEADERSRC} and \texttt{SOURCES}.  A
+\texttt{TESTEXECS}, \texttt{HEADERS}, \texttt{HEADERSRC} and
+\texttt{SOURCES} --- and the ones that name a target without building
+it from sources, \texttt{PHONY}, \texttt{GENERATE} and
+\texttt{TGENERATE}, whose names land on the left of a rule all the
+same.  A
 \texttt{SUBPROJECTS} and a \texttt{SUBPROJECT\_TARGETS} are not, since
 the vendored build systems quote what they write, and neither is a
 command line: \texttt{COMPILEOPTS += -DX=a:b\#c} means what it says.
