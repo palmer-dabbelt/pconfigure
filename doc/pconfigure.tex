@@ -373,6 +373,13 @@ configured into a \texttt{Makefile} that can't build anything.
 Rename it, or name a symlink to it that has no space in its name.  The
 same goes for a \texttt{SRCPATH} written in a Configfile.
 
+Nor may it start with a \texttt{-}, for the reason a \texttt{SRCDIR}
+may not: every source path starts with it, and a compiler reads
+\texttt{-sp/src/main.c} as an option rather than a file.  A directory
+that really is called \texttt{-sp} is written \texttt{--srcpath ./-sp}
+or \texttt{SRCPATH = ./-sp}, which keeps its \texttt{./} all the way
+to the compile line.
+
 \section{\texttt{make} Targets \label{make}}
 
 \subsection{\texttt{make all} \label{make:all}}
@@ -1187,6 +1194,15 @@ underscore, so those pairs would share one.  \pconfigure\ refuses
 the pair, naming both \texttt{SUBPROJECTS} lines; rename one of the
 directories.
 
+Nor may the directory start with a \texttt{-}.  Every path in the
+subproject's build starts with its directory, and the compilers,
+\texttt{mkdir} and \texttt{rm} in its recipes read a word starting
+with a \texttt{-} as an option rather than a file, so a tree checked
+out as \texttt{-dep} is refused rather than left to fail inside
+\texttt{make}.  Writing it \texttt{./-dep} does not get around this,
+since the directory is normalized before anything is built from it;
+check the tree out under another name.
+
 It may not be the project itself or any directory that contains it,
 it may not climb out of the project, and it may not be inside an object
 directory.  A \texttt{SUBPROJECTS += ..} in a subproject names the
@@ -1628,7 +1644,8 @@ Being inside the tree means what it means for \texttt{SUBPROJECTS},
 and is asked the same way: a path that climbs out with \texttt{../},
 one inside the object directory, and one that reaches outside the
 project or into the object directory through a symlink are all fatal
-errors, as is a shell metacharacter.  The vendored \pconfigure\ is the
+errors, as is a shell metacharacter or a directory starting with a
+\texttt{-}.  The vendored \pconfigure\ is the
 last tree anybody wants a \texttt{make distclean} to remove.  An
 absolute path is a fatal error here too, even one that names a
 directory inside the tree, because it ends up in the committed
@@ -2533,6 +2550,13 @@ information.
 Sets the \texttt{LIBDIR} variable to \texttt{\$val}.  By default it is
 set to \texttt{lib}.
 
+It may not start with a \texttt{-}, which the \texttt{mkdir} in front
+of every library copied there would read as an option.  Writing
+\texttt{./-lib} does not help, because \texttt{make} takes the
+\texttt{./} back off the name of each library before its recipe runs,
+so \pconfigure\ refuses both spellings; pick a directory with another
+name.
+
 A target is linked with its \texttt{LIBDIR} on the library search
 path, which is how a \texttt{DEPLIBS} finds a library this build
 produced without anybody having to say where it came out.  A
@@ -2555,6 +2579,12 @@ set to \texttt{include}.
 
 Sets the \texttt{SRCDIR} variable to \texttt{\$val}.  By default it is
 set to \texttt{src}.
+
+A \texttt{SRCDIR} starting with a \texttt{-} is refused, because every
+source path starts with it and a compiler reads \texttt{-src/main.c}
+as an option rather than a file.  A directory that really is called
+\texttt{-src} is written \texttt{SRCDIR = ./-src}, which keeps its
+\texttt{./} all the way to the compile line.
 
 \subsection{\texttt{STRICT = \$version} \label{cmd:strict}}
 
