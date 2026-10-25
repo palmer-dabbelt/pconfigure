@@ -263,6 +263,9 @@ about \pconfigure\ rather than about the build: it prints what
 
 Sets \texttt{PHC} for the whole project before any \texttt{Configfile}
 is read, see Section~\ref{cmd:phc}.
+\texttt{<path>} can't be empty: there is no header compiler with no
+name, and a \texttt{Configfile} can't write \texttt{PHC =} with
+nothing after it either.  Leave the option off to keep the default.
 
 \subsection{\texttt{--ppkg-config <path>} \label{cl:ppkg_config}}
 
@@ -2387,6 +2390,12 @@ Like \texttt{CROSS\_COMPILE} this lands on whatever context is open,
 so a subproject inherits it from whoever pulled it in until it says
 otherwise.  \texttt{--phc} (see Section~\ref{cl:phc}) sets it for the
 whole project from the command line.
+
+Each header is also copied into place while \pconfigure\ runs, so
+that what includes it can be scanned, and that copy runs the header
+compiler.  A \texttt{PHC} that names a program that can't be found or
+run is therefore an error at configure time, and the message names the
+\texttt{PHC} line or the \texttt{--phc} that chose it.
 
 \subsection{\texttt{PREFIX = \$prefix}}
 
