@@ -2465,6 +2465,12 @@ language.  Note that currently it is only legal to call all
 them being placed in a global directory -- this may change in the
 future such that it is possible to associate \texttt{GENERATE}
 commands with specific targets in order to keep them seperate.
+
+The output is named by the path \texttt{\$name} reaches rather than by
+how the line spelled it, so \texttt{GENERATE += ./gen.h} writes the
+same \texttt{gen.h} that a source's \texttt{\#include "gen.h"} finds,
+and that source is rebuilt when it is regenerated.
+
 \texttt{\$SRCDIR/\$name.proc} is expected to be an executable that has
 two calling formats:
 
