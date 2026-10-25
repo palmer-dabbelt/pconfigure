@@ -372,9 +372,22 @@ language_pkgconfig::targets(const context::ptr& ctx) const
             filename + ":" + std::to_string(lineno)
         };
 
+        /* The PREFIX, every sed option written inline and which
+         * template is read are all in the recipe and in no file the
+         * rule names, so a reconfigure that changed one of them used
+         * to rewrite the build-tree copy below, which pconfigure makes
+         * itself, and leave this one -- and so what "make install"
+         * puts in place -- saying what it said before.  A record of
+         * the recipe is what make can see change: see
+         * recipe_record().  A "-S" script is already a prerequisite,
+         * which is why an edit to one was never missed. */
+        auto bin_record = std::vector<makefile::target::ptr>{
+            recipe_record(ctx, target, commands)
+        };
+
         auto bin_target = std::make_shared<makefile::target>(target,
                                                              short_cmd,
-                                                             prerequisites,
+                                                             prerequisites + bin_record,
                                                              global_targets,
                                                              commands,
                                                              comment);
@@ -390,21 +403,33 @@ language_pkgconfig::targets(const context::ptr& ctx) const
             ctx->cmd->data().find_last_of("/") + 1);
         auto build_path = pkgconfig_dir + "/" + basename;
 
+        auto build_commands = std::vector<std::string>{
+            /* Spelled out rather than "$(dir $@)", to match the copy
+             * pconfigure writes itself below, where there's no make
+             * around to say what that means. */
+            "mkdir -p " + pkgconfig_dir,
+            build(absolute_base(ctx->base), true, build_path)
+        };
+
+        /* pconfigure writes this copy itself on every configure, but
+         * only when everything it's made from is already there; a
+         * "-S" script some other rule generates isn't, and then it is
+         * make that builds this copy and has to know that the recipe
+         * changed.  The record is written before the copy below, so a
+         * copy that configure does write is newer than it. */
+        auto build_record = std::vector<makefile::target::ptr>{
+            recipe_record(ctx, build_path, build_commands)
+        };
+
         auto build_target = std::make_shared<makefile::target>(
             build_path,
             short_cmd,
-            prerequisites,
+            prerequisites + build_record,
             std::vector<makefile::global_targets>{
                 makefile::global_targets::ALL,
                 makefile::global_targets::CLEAN,
             },
-            std::vector<std::string>{
-                /* Spelled out rather than "$(dir $@)", to match the
-                 * copy pconfigure writes itself below, where there's
-                 * no make around to say what that means. */
-                "mkdir -p " + pkgconfig_dir,
-                build(absolute_base(ctx->base), true, build_path)
-            },
+            build_commands,
             comment);
 
         add_pkgconfig_path(pkgconfig_dir);
@@ -466,9 +491,15 @@ language_pkgconfig::targets(const context::ptr& ctx) const
             makefile::global_targets::UNINSTALL,
         };
 
+        /* The installed copy is built by the same recipe as the one
+         * in lib/, apart from where it's written, so that one's record
+         * is this one's too.  A new PREFIX also moves the installed
+         * copy to a new name, but a new sed option or template
+         * doesn't, and "make install" used to say there was nothing to
+         * do. */
         auto ins_target = std::make_shared<makefile::target>(install_path,
                                                              short_cmd,
-                                                             prerequisites,
+                                                             prerequisites + bin_record,
                                                              install_global_targets,
                                                              install_commands,
                                                              comment);

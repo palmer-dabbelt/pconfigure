@@ -47,8 +47,11 @@ do
     fi
 
     # Nor are the half-written copies it was being made out of left
-    # lying around beside it, whatever they happen to be called.
-    if test -n "$(find $(dirname $pc) -name "$(basename $pc)*" 2>/dev/null)"
+    # lying around beside it, whatever they happen to be called.  The
+    # record of its recipe is the one file that belongs there: configure
+    # wrote that, not the failed build, and it's what notices the fix.
+    if test -n "$(find $(dirname $pc) -name "$(basename $pc)*" \
+                  ! -name "$(basename $pc).recipe-inputs" 2>/dev/null)"
     then
         ls -l $pc*
         echo "a failed build of $pc left a file behind" >&2
