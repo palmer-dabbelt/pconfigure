@@ -21,6 +21,7 @@
 #ifndef FILE_UTILS_HXX
 #define FILE_UTILS_HXX
 
+#include <functional>
 #include <set>
 #include <vector>
 #include <string>
@@ -42,11 +43,25 @@ namespace file_utils {
     std::vector<struct line_and_number> readlines_and_numbers(FILE *f);
 
     /* Like readlines(), but executes the input file with the given
-     * argument list. */
+     * argument list.  A command that can't be started or doesn't
+     * succeed is handed to "failed", along with how it failed as
+     * describe_wait_status() spells it, and "failed" is expected not
+     * to return: only the caller knows which Configfile line asked for
+     * the command, so only the caller can write the error a reader
+     * needs. */
     std::vector<std::string> execlines(
         std::string path,
-        std::vector<std::string> args = std::vector<std::string>()
+        std::vector<std::string> args,
+        const std::function<void(const std::string&)>& failed
         );
+
+    /* Turns what system() or pclose() returned into the words a person
+     * would use for it -- "exited with status 2", "was killed by signal
+     * 15 (Terminated)" -- to follow the name of the command.  The raw
+     * number is wait()'s encoding, which shifts an exit code left by
+     * eight, and nobody reading "status 512" should have to know that
+     * it means the script said 2. */
+    std::string describe_wait_status(int status);
 
     /* Tidies a path into the one spelling of it that everything else
      * will use: no "." components, no doubled slashes, and no ".."

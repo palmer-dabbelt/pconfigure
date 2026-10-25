@@ -23,6 +23,7 @@
 #include "vector_util.h++"
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
@@ -70,7 +71,9 @@ std::vector<std::string> file_utils::readlines(FILE *f)
 }
 
 std::vector<std::string>
-file_utils::execlines(std::string path, std::vector<std::string> args)
+file_utils::execlines(std::string path,
+                      std::vector<std::string> args,
+                      const std::function<void(const std::string&)>& failed)
 {
     std::ostringstream cmd;
 
@@ -89,8 +92,7 @@ file_utils::execlines(std::string path, std::vector<std::string> args)
     std::vector<std::string> out;
     auto file = popen(cmd.str().c_str(), "r");
     if (file == NULL) {
-        std::cerr << "can't run '" << cmd.str() << "': "
-                  << strerror(errno) << "\n";
+        failed(std::string("could not be started: ") + strerror(errno));
         abort();
     }
 
@@ -116,16 +118,49 @@ file_utils::execlines(std::string path, std::vector<std::string> args)
     free(lineptr);
 
     /* The shell has already said what went wrong on stderr, but it
-     * said it about the command rather than about the run: without
-     * this the only other thing anybody gets is a signal. */
+     * said it about the command rather than about the run, and it
+     * can't say which Configfile line the command came from -- so the
+     * caller gets told, and writes the error.  The abort() after it is
+     * a backstop for a caller that forgot to stop: carrying on with
+     * whatever half an answer was read would be worse than stopping
+     * without a good message. */
     auto status = pclose(file);
     if (status != 0) {
-        std::cerr << "'" << cmd.str() << "' failed with status "
-                  << std::to_string(status) << "\n";
+        failed(describe_wait_status(status));
         abort();
     }
 
     return out;
+}
+
+std::string file_utils::describe_wait_status(int status)
+{
+    if (status == -1)
+        return std::string("could not be waited for: ") + strerror(errno);
+
+    /* The two codes the shell keeps for itself are spelled out, since
+     * they are the shell talking rather than the command: 127 is what
+     * it exits with when there was nothing to run, and 126 when there
+     * was something but it couldn't be executed.  A command is free to
+     * exit with either of them on its own account, which is why the
+     * number is kept rather than replaced. */
+    if (WIFEXITED(status)) {
+        auto code = WEXITSTATUS(status);
+        auto out = "exited with status " + std::to_string(code);
+        if (code == 127)
+            out += ", which is the shell saying it found nothing to run";
+        if (code == 126)
+            out += ", which is the shell saying it could not execute it";
+        return out;
+    }
+
+    if (WIFSIGNALED(status)) {
+        auto sig = WTERMSIG(status);
+        return "was killed by signal " + std::to_string(sig)
+            + " (" + strsignal(sig) + ")";
+    }
+
+    return "stopped with wait status " + std::to_string(status);
 }
 
 std::string file_utils::normalize_directory(const std::string& path)

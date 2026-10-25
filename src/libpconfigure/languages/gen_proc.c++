@@ -363,7 +363,11 @@ language_gen_proc::targets(const context::ptr& ctx) const
         };
         auto dep_lines = file_utils::execlines(
             in_project("\"" + ctx->unbased(procfile) + "\""),
-            {"--deps"});
+            {"--deps"},
+            [&](const std::string& how) {
+                std::cerr << "'" << procfile << " --deps' " << how << "\n";
+                abort();
+            });
         for (const auto& line: dep_lines) {
             /* A '?' with nothing but whitespace after it is the one
              * new way there is to write this wrong, and left alone it
