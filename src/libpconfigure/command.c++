@@ -85,9 +85,8 @@ command::ptr command::with_data(const std::string& data)
         this->_printed_nothing);
 }
 
-command::ptr command::parse(const std::string& str,
-                            const debug_info::ptr& d,
-                            bool printed_nothing)
+command::ptr command::parse_option(const std::string& str,
+                                   const debug_info::ptr& d)
 {
     if (str == "--verbose")
         return std::make_shared<command>(command_type::VERBOSE, "=", "true", d);
@@ -107,6 +106,17 @@ command::ptr command::parse(const std::string& str,
         return std::make_shared<command>(command_type::CROSS_COMPILE, "=", d);
     if (str == "--strict")
         return std::make_shared<command>(command_type::STRICT, "=", d);
+
+    return NULL;
+}
+
+command::ptr command::parse(const std::string& str,
+                            const debug_info::ptr& d,
+                            bool printed_nothing)
+{
+    auto option = parse_option(str, d);
+    if (option != NULL)
+        return option;
 
     auto split = string_utils::split_char(str, " ");
 

@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <algorithm>
 #include <cctype>
 #include <cerrno>
 #include <cstdlib>
@@ -33,6 +34,7 @@
 #include <iostream>
 #include <regex>
 #include <sstream>
+#include <utility>
 
 /* The ppkg-config named by --ppkg-config, or empty when nobody named
  * one.  FIXME: this is a hack, it doesn't fit the regular argument
@@ -140,6 +142,9 @@ static std::string execute(std::string line, const debug_info::ptr& where);
 static std::string replace_word(const std::string& haystack,
                                 const std::string& word,
                                 const std::string& replacement);
+static command::ptr parse_written(const debug_info::ptr& where,
+                                  bool& said_nothing,
+                                  std::string& shown);
 
 static std::vector<std::string> command_line;
 
@@ -168,6 +173,9 @@ std::vector<command::ptr> commands(int argc, const char **argv)
      * at a time, rather than here: a "--debug" that is the argument
      * to another option is a path or a name, and has to be kept. */
     command_line.clear();
+
+    /* Where in "out" each Configfile line goes, and which word it was. */
+    std::vector<std::pair<size_t, int>> lines;
 
     for (auto i = 1; i < argc; ++i) {
         /* The words from "first" to wherever "i" has got to once this
@@ -205,12 +213,79 @@ std::vector<command::ptr> commands(int argc, const char **argv)
 
         auto debug = debug_info::command_line(i, argv[i]);
 
-        auto cmd = command::parse(argv[i], debug);
+        /* A word that is one of the options is matched exactly as it
+         * was typed, and so is the word an option takes after it:
+         * that's a name -- a path, a suffix, a version -- and nothing
+         * about it is the Configfile syntax the tidying below is for.
+         * Tidying the option itself first is no better, since a
+         * ' --srcpath' made into --srcpath that way would come too
+         * late to be given the word after it. */
+        auto option = command::parse_option(argv[i], debug);
+        if (option != NULL) {
+            auto ecmd = option->consume_extra_arguments(i, argc, argv);
+            if (ecmd == NULL) {
+                /* The test above is about "option" and this one is
+                 * about "ecmd": written the other way it was the same
+                 * question asked twice, and the answer to the one
+                 * nobody asked was a read off the end of argv. */
+                std::cerr << "Command-line option '"
+                          << argv[i]
+                          << "' needs an argument after it\n";
+
+                abort();
+            }
+
+            record();
+            out.push_back(ecmd);
+            continue;
+        }
+
+        /* Anything else is a Configfile line, and is read the way one
+         * out of a file is: tidied, and with its backticks run while
+         * configuring.  Read as it was typed instead, a run of spaces
+         * left an empty word where the operator goes, a space at
+         * either end was an empty command name or the end of a value,
+         * and backticks went into the Makefile for every compile to
+         * run again, with nobody stopping when one failed.
+         *
+         * Not yet, though.  Backticks run whatever --ppkg-config names,
+         * and that option can come after the line: the manual's word
+         * is that a line here does what it would at the top of the
+         * first file read, and by then every option has been read.
+         * So the line keeps its place and is read once they all have
+         * been. */
+        record();
+        lines.push_back(std::make_pair(out.size(), i));
+        out.push_back(NULL);
+    }
+
+    for (const auto& line: lines) {
+        auto i = line.second;
+        auto debug = debug_info::command_line(i, argv[i]);
+
+        /* What would be an option once its spaces were gone was not
+         * typed as one, and is turned away the same way as any other
+         * word that isn't an option or a line: taking it as the option
+         * would mean an option that never got the word it takes. */
+        auto said_nothing = true;
+        auto shown = std::string();
+        auto cmd = parse_written(debug, said_nothing, shown);
+        if (cmd != NULL && command::parse_option(shown, debug) != NULL)
+            cmd = NULL;
+
+        /* A word that says nothing -- empty, all space, a comment, or
+         * a command in backticks that printed nothing -- is what a
+         * Configfile line saying nothing is, which is nothing to do. */
+        if (said_nothing)
+            continue;
+
         if (cmd == NULL) {
             /* Counted the way the debug_info above counts it, from
              * the first word after the program's name, so that this
              * and every other complaint about the command line ("args:1
-             * '--strict'") give the same word the same number.
+             * '--strict'") give the same word the same number.  The
+             * word is quoted as it was typed, since that's what will
+             * be looked for in the command that ran this.
              *
              * A word that isn't one of the options is read as a
              * Configfile line, which is why both are named: somebody
@@ -229,22 +304,12 @@ std::vector<command::ptr> commands(int argc, const char **argv)
 
             abort();
         }
-        auto ecmd = cmd->consume_extra_arguments(i, argc, argv);
-        if (ecmd == NULL) {
-            /* The test above is about "cmd" and this one is about
-             * "ecmd": written the other way it was the same question
-             * asked twice, and the answer to the one nobody asked was
-             * a read off the end of argv. */
-            std::cerr << "Command-line option '"
-                      << argv[i]
-                      << "' needs an argument after it\n";
 
-            abort();
-        }
-
-        record();
-        out.push_back(ecmd);
+        out[line.first] = cmd;
     }
+
+    /* The places kept for lines that turned out to say nothing. */
+    out.erase(std::remove(out.begin(), out.end(), nullptr), out.end());
 
     return out;
 }
@@ -315,9 +380,23 @@ std::vector<configfile_line> configfile_lines(const std::string& srcpath)
     return out;
 }
 
-command::ptr parse_line(const configfile_line& line)
+/* Reading a line, whether it came out of a Configfile or was given on
+ * the command line: the two are meant to be the same thing, and the
+ * manual says a line on the command line does exactly what it would at
+ * the top of the first file read.  "where" says where the line came
+ * from and carries it as it was written.
+ *
+ * NULL comes back both for a line that says nothing and for one that
+ * can't be read, and "said_nothing" tells the two apart, because only
+ * the caller knows how to say where an unreadable line was.  "shown"
+ * is the line the way any complaint about it should quote it. */
+static command::ptr parse_written(const debug_info::ptr& where,
+                                  bool& said_nothing,
+                                  std::string& shown)
 {
-    auto text = string_utils::clean_white(line.text);
+    said_nothing = true;
+    auto text = string_utils::clean_white(where->line());
+    shown = text;
 
     /* Skip empty lines and anything beginning with a '#' --
      * those are comments.  This happens before the backticks in the
@@ -336,10 +415,7 @@ command::ptr parse_line(const configfile_line& line)
      * leaves the gaps either side of it behind as two spaces, and
      * "SOURCES += `true` main.c" names a source called " main.c". */
     auto typed = text;
-    auto where = std::make_shared<debug_info>(line.filename,
-                                              line.number,
-                                              typed);
-    text = string_utils::clean_white(execute(text, where));
+    text = string_utils::clean_white(execute(text, where->with_line(typed)));
 
     /* A line that was nothing but a command which printed nothing is
      * a line with nothing left in it. */
@@ -364,13 +440,23 @@ command::ptr parse_line(const configfile_line& line)
         && (typed_words.size() > 2)
         && (typed_words[0] == words[0])
         && (typed_words[1] == words[1]);
-    auto shown = printed_nothing ? typed : text;
+    shown = printed_nothing ? typed : text;
+    said_nothing = false;
 
-    auto debug = std::make_shared<debug_info>(line.filename,
+    return command::parse(text, where->with_line(shown), printed_nothing);
+}
+
+command::ptr parse_line(const configfile_line& line)
+{
+    auto where = std::make_shared<debug_info>(line.filename,
                                               line.number,
-                                              shown);
+                                              line.text);
 
-    auto cmd = command::parse(text, debug, printed_nothing);
+    auto said_nothing = true;
+    auto shown = std::string();
+    auto cmd = parse_written(where, said_nothing, shown);
+    if (said_nothing)
+        return NULL;
     if (cmd == NULL) {
         std::cerr << "Unable to parse "
                   << line.filename

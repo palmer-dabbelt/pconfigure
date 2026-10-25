@@ -109,6 +109,15 @@ public:
      * whole lot safer. */
     static ptr parse(const std::string& str, const debug_info::ptr& d,
                      bool printed_nothing = false);
+
+    /* Just the half of parse() that knows pconfigure's own options,
+     * matched exactly as they were typed: NULL for any other word.
+     * The command line asks this first, because a word that isn't an
+     * option is a Configfile line, and a Configfile line is tidied
+     * and has its backticks run before it's read -- which an option,
+     * and the word after one, must not be. */
+    static ptr parse_option(const std::string& str,
+                            const debug_info::ptr& d);
 };
 
 #endif
