@@ -4869,11 +4869,9 @@ The list is the characters that were found to break a build, not a
 promise about every other one.  Letters, digits, \texttt{-},
 \texttt{\_}, \texttt{.} and non-ASCII letters are ordinary characters
 to both \texttt{make} and the shell, and a name made of those is safe.
-Other punctuation --- \texttt{\%}, \texttt{*}, \texttt{?},
-\texttt{[} and the like --- isn't refused, because names with them in
-do build today, but only because there is nothing for \texttt{make} or
-the shell to match them against; a name that relies on that is relying
-on luck.
+\texttt{\%}, \texttt{*}, \texttt{?} and \texttt{[} aren't refused,
+because names with them in do build today, but each of them is a
+warning that names the line (see Section~\ref{warn:wildcard}).
 
 The commands asked are the ones that name something the language
 backends build: \texttt{BINARIES}, \texttt{LIBRARIES},
@@ -4890,6 +4888,35 @@ command line: \texttt{COMPILEOPTS += -DX=a:b\#c} means what it says.
 Unlike a space, this is not a \texttt{STRICT} warning.  No
 \texttt{Configfile} ever built with one of these in a name, so there is
 nothing old for refusing it to break.
+
+\subsection{A name with a \texttt{\%} or a glob character
+  \label{warn:wildcard}}
+
+\begin{verbatim}
+BINARIES += 50%off
+BINARIES += a?b
+\end{verbatim}
+
+These build, which is why they aren't refused with the characters in
+Section~\ref{cmd:make-special}, but they build by luck.
+
+A \texttt{\%} makes the rule for the name a pattern rule, which
+\texttt{make all} happens to match.  The rules that remove it again
+are phony, and \texttt{make} never looks for a pattern rule for a
+phony target, so \texttt{make clean} and \texttt{make uninstall}
+find nothing to do and leave the program where it is.
+
+A \texttt{*}, \texttt{?} or \texttt{[} is expanded by \texttt{make}
+in a rule's targets and by the shell in the recipes, against whatever
+files exist.  On its own there is nothing for it to match; beside
+another target whose name it does match --- \texttt{a?b} next to
+\texttt{axb} --- the two programs' rules land on the same files.  The
+warning doesn't wait for the second name to turn up, since it is
+usually written long after the first.
+
+Escaping them isn't on offer: \texttt{make} reads a
+\texttt{\textbackslash\%} as a plain \texttt{\%} in some places and
+not others.  Rename the target without the character.
 
 \subsection{\texttt{COMPAT}}
 
