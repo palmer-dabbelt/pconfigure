@@ -484,6 +484,17 @@ Recursively removes \texttt{BINDIR}, \texttt{OBJDIR}, \texttt{LIBDIR},
 \texttt{TESTEXECDIR}, and \texttt{CHECKDIR}.  This completely removes every file
 \pconfigure\ could have touched.
 
+\texttt{HDRDIR} is not on that list, because it is a source directory
+as well as an output one: a \texttt{HEADERS} with nothing under it
+installs a header straight out of it (see Section~\ref{cmd:headers}),
+and nothing in the build could write that header again.  What the
+build does put there --- the copies a \texttt{HEADERS} with a
+\texttt{SOURCES} under it makes, \texttt{HEADERSRC} included --- is
+removed one file at a time instead, along with any directory that
+leaves empty, \texttt{HDRDIR} itself included.  So an include
+directory that only ever held copies goes, and one holding a header
+somebody wrote stays with that header in it.
+
 \subsection{\texttt{make uninstall}}
 
 Removes every target created by \texttt{make install} (see
@@ -821,7 +832,7 @@ the test it belongs to; \texttt{make cache-clean} deliberately leaves
 it alone, since reclaiming a stale object cache should not throw away
 the one thing in the tree that was expensive to make.
 
-\subsection{\texttt{HEADERS += \$name}}
+\subsection{\texttt{HEADERS += \$name} \label{cmd:headers}}
 
 The \texttt{HEADERS} command creates a target that's meant for
 installing, but it's quite different than the \texttt{BINARIES}-based
