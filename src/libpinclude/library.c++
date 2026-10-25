@@ -147,6 +147,7 @@ static
 int list_overwrite_defines(std::string filename,
                            std::vector<std::string> include_dirs_without_cwd,
                            std::unordered_set<std::string>& defines,
+                           std::unordered_set<std::string>& reading,
                            std::function<int(std::string)> callback,
                            bool skip_missing_files,
                            pinclude::syntax language,
@@ -164,10 +165,27 @@ int pinclude::list(std::string filename,
                    bool refuse_if,
                    bool strict_directives)
 {
+    /* The files the scan is in the middle of reading, from this one
+     * down to whichever it is reading now.  An include of one of them
+     * is a cycle, and following it would go round the cycle until
+     * opening one more file failed for want of descriptors or the
+     * recursion ran off the end of the stack.  pbashc pastes each
+     * file in once, and C stops at "#pragma once" or an include
+     * guard, so either way a cycle is something that builds and the
+     * scan has to get out of it on its own.
+     *
+     * This is deliberately not every file the scan has ever been
+     * into.  A header with no guard is read again every time it is
+     * included, and what it includes can depend on what has been
+     * defined since the last time, so a file reached a second time
+     * by another route is read again just as it always was.  A
+     * guarded header follows nothing on its second read anyway. */
+    auto reading = std::unordered_set<std::string>();
     return list_overwrite_defines(
         filename,
         include_dirs_without_cwd,
         defines,
+        reading,
         callback,
         skip_missing_files,
         language,
@@ -180,6 +198,7 @@ int pinclude::list(std::string filename,
 int list_overwrite_defines(std::string filename,
                            std::vector<std::string> include_dirs,
                            std::unordered_set<std::string>& defines,
+                           std::unordered_set<std::string>& reading,
                            std::function<int(std::string)> callback,
                            bool skip_missing_files,
                            pinclude::syntax language,
@@ -366,6 +385,14 @@ int list_overwrite_defines(std::string filename,
             && rest.size() > 0
             && rest[0] == '#';
     };
+
+    /* On the list for as long as this call is reading the file,
+     * under the same spelling an include of it is checked against.
+     * The scan's own first file goes on it too, so that a helper
+     * which includes the script it was included from doesn't make
+     * the script a prerequisite of itself. */
+    auto reading_as = strip_dd(filename);
+    reading.insert(reading_as);
 
     /* Counted up as a line is read rather than after it has been
      * dealt with, so the count starts one behind what it names: the
@@ -616,6 +643,16 @@ int list_overwrite_defines(std::string filename,
                 abort();
             }
 
+            /* Compared on the path as it was found, after strip_dd()
+             * has taken the ".." out of it, so that "b.bash" from next
+             * door and "../src/b.bash" from a sibling directory are
+             * the one file they are.  The callback is skipped along
+             * with the read: a file still being read has already been
+             * named, or is the one the whole scan started from. */
+            if (full_path.valid() == true
+                && reading.count(full_path.data()) > 0)
+                return;
+
             if (full_path.valid() == true) {
                 auto fout = callback(full_path.data());
                 if (fout != 0) {
@@ -627,6 +664,7 @@ int list_overwrite_defines(std::string filename,
                     full_path.data(),
                     include_dirs,
                     defines,
+                    reading,
                     callback,
                     skip_missing_files,
                     language,
@@ -641,6 +679,8 @@ int list_overwrite_defines(std::string filename,
             }
         }, bare_directives);
     }
+
+    reading.erase(reading_as);
     return 0;
 }
 
