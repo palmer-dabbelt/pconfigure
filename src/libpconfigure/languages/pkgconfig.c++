@@ -108,13 +108,61 @@ language_pkgconfig::targets(const context::ptr& ctx) const
 
         auto short_cmd = "PKGCFG\t" + ctx->cmd->data();
 
-        auto sources = std::vector<makefile::target::ptr>();
+        /* A .pc is one template run through sed, so there is exactly
+         * one file for it to be made out of.  The "-S" sed scripts
+         * below are prerequisites too, but they are kept on a list of
+         * their own: the recipe used to "cat" whatever came first on a
+         * shared list, which made a lone "-S" script the template and
+         * read past the end of an empty list when there was nothing
+         * at all. */
+        context::ptr template_ctx = NULL;
         for (const auto& child: ctx->children) {
-            if (child->type == context_type::SOURCE) {
+            if (child->type != context_type::SOURCE)
+                continue;
+
+            /* A second SOURCES used to be made a prerequisite and then
+             * never read, so editing it rebuilt the .pc and nothing in
+             * it ever reached the output.  This is the same refusal a
+             * BASH target makes, less the advice about including one
+             * file from the other: there is no "#include" in a .pc, so
+             * the two have to become one file. */
+            if (template_ctx != NULL) {
+                auto first_path = template_ctx->src_dir + "/"
+                    + template_ctx->cmd->data();
                 auto path = child->src_dir + "/" + child->cmd->data();
-                sources.push_back(std::make_shared<makefile::target>(path));
+                auto where = template_ctx->cmd->debug()->filename() + ":"
+                    + std::to_string(template_ctx->cmd->debug()->line_number());
+
+                std::cerr << std::to_string(child->cmd->debug()) << "\n";
+                if (path == first_path) {
+                    std::cerr << "  error: '" << child->cmd->data()
+                              << "' is already the SOURCES of '"
+                              << ctx->cmd->data() << "', from "
+                              << where << "\n"
+                              << "  delete this line\n";
+                    abort();
+                }
+
+                std::cerr << "  error: '" << ctx->cmd->data()
+                          << "' is one pkg-config file made from one"
+                          << " template, and it already has '"
+                          << template_ctx->cmd->data() << "' from "
+                          << where << "\n"
+                          << "  move what is in " << child->cmd->data()
+                          << " into " << template_ctx->cmd->data()
+                          << " instead of a second SOURCES, or give "
+                          << child->cmd->data() << " a LIBRARIES of its"
+                          << " own\n";
+                abort();
             }
+
+            template_ctx = child;
         }
+
+        auto sources = std::vector<makefile::target::ptr>();
+        if (template_ctx != NULL)
+            sources.push_back(std::make_shared<makefile::target>(
+                template_ctx->src_dir + "/" + template_ctx->cmd->data()));
 
         /* pkg-config can take an indirect sed reference, which
          * involves running a sed command that is stored in a file.
@@ -133,10 +181,16 @@ language_pkgconfig::targets(const context::ptr& ctx) const
             return path;
         };
 
+        auto sed_scripts = std::vector<makefile::target::ptr>();
         for (const auto& str: this->clopts(ctx))
             if (strncmp(str.c_str(), "-S", 2) == 0)
-                sources.push_back(
+                sed_scripts.push_back(
                     std::make_shared<makefile::target>(sed_file(str)));
+
+        auto prerequisites = sources + sed_scripts;
+
+        auto filename = ctx->cmd->debug()->filename();
+        auto lineno = ctx->cmd->debug()->line_number();
 
         auto global_targets = std::vector<makefile::global_targets>{
             makefile::global_targets::ALL,
@@ -172,8 +226,16 @@ language_pkgconfig::targets(const context::ptr& ctx) const
          *
          * An option that starts with a backtick is still handed over
          * as written: it is a command for the shell to run, and its
-         * output being split into words is what it is for. */
-        auto build = [&](const std::string& prefix, bool for_make) {
+         * output being split into words is what it is for.
+         *
+         * With no template there's no .pc to write.  The project
+         * has already warned that this target has nothing to build,
+         * which is all STRICT lets it be, so the Makefile still comes
+         * out -- but the rule for the .pc fails when make reaches it,
+         * naming the line, rather than writing out an empty file that
+         * some consumer's pkg-config would take at its word. */
+        auto build = [&](const std::string& prefix, bool for_make,
+                         const std::string& output) {
             auto argument = [&](const std::string& str) {
                 if (for_make)
                     return string_utils::quoted(string_utils::unexpanded(str));
@@ -181,6 +243,11 @@ language_pkgconfig::targets(const context::ptr& ctx) const
             };
 
             auto command = std::string();
+            if (sources.size() == 0)
+                return "echo '" + filename + ":" + std::to_string(lineno)
+                    + ": " + ctx->cmd->data() + " has no SOURCES to be"
+                    + " made from' >&2; exit 1";
+
             command += "cat " + sources[0]->name();
             command += " | sed 's^@@pconfigure_prefix@@^" + prefix + "^g'";
             command += " | sed 's^@@pconfigure_libdir@@^" + ctx->unbased(ctx->lib_dir) + "^g'";
@@ -194,19 +261,15 @@ language_pkgconfig::targets(const context::ptr& ctx) const
                     command += " | sed " + argument(str);
             }
 
-            command += "> ";
+            command += "> " + output;
             return command;
         };
 
-        auto command = build(ctx->prefix, true);
-
         auto commands = std::vector<std::string>{
             "mkdir -p $(dir $@)",
-            command + target
+            build(ctx->prefix, true, target)
         };
 
-        auto filename = ctx->cmd->debug()->filename();
-        auto lineno = ctx->cmd->debug()->line_number();
         auto comment = std::vector<std::string>{
             "language_pkgconfig::targets()",
             filename + ":" + std::to_string(lineno)
@@ -214,7 +277,7 @@ language_pkgconfig::targets(const context::ptr& ctx) const
 
         auto bin_target = std::make_shared<makefile::target>(target,
                                                              short_cmd,
-                                                             sources,
+                                                             prerequisites,
                                                              global_targets,
                                                              commands,
                                                              comment);
@@ -229,12 +292,11 @@ language_pkgconfig::targets(const context::ptr& ctx) const
         auto basename = ctx->cmd->data().substr(
             ctx->cmd->data().find_last_of("/") + 1);
         auto build_path = pkgconfig_dir + "/" + basename;
-        auto build_command = build(absolute_base(ctx->base), true);
 
         auto build_target = std::make_shared<makefile::target>(
             build_path,
             short_cmd,
-            sources,
+            prerequisites,
             std::vector<makefile::global_targets>{
                 makefile::global_targets::ALL,
                 makefile::global_targets::CLEAN,
@@ -245,7 +307,7 @@ language_pkgconfig::targets(const context::ptr& ctx) const
                  * pconfigure itself, where there's no make around to
                  * say what that means. */
                 "mkdir -p " + pkgconfig_dir,
-                build_command + build_path
+                build(absolute_base(ctx->base), true, build_path)
             },
             comment);
 
@@ -258,9 +320,11 @@ language_pkgconfig::targets(const context::ptr& ctx) const
          * about. */
         add_pkgconfig_dep(build_path);
 
-        if (access(build_path.c_str(), R_OK) != 0) {
+        /* Without a template the commands only say so and fail, and
+         * the project has already said that once here. */
+        if (sources.size() > 0 && access(build_path.c_str(), R_OK) != 0) {
             auto have_sources = true;
-            for (const auto& source: sources)
+            for (const auto& source: prerequisites)
                 if (access(source->name().c_str(), R_OK) != 0)
                     have_sources = false;
 
@@ -271,7 +335,7 @@ language_pkgconfig::targets(const context::ptr& ctx) const
              * for a shell rather than for make: see build() above. */
             auto configure_commands = std::vector<std::string>{
                 "mkdir -p " + pkgconfig_dir,
-                build(absolute_base(ctx->base), false) + build_path
+                build(absolute_base(ctx->base), false, build_path)
             };
 
             if (have_sources == true)
@@ -284,7 +348,7 @@ language_pkgconfig::targets(const context::ptr& ctx) const
 
         auto install_commands = std::vector<std::string>{
             "mkdir -p $(dir $@)",
-            command + install_path
+            build(ctx->prefix, true, install_path)
         };
 
         auto install_global_targets = std::vector<makefile::global_targets>{
@@ -294,7 +358,7 @@ language_pkgconfig::targets(const context::ptr& ctx) const
 
         auto ins_target = std::make_shared<makefile::target>(install_path,
                                                              short_cmd,
-                                                             sources,
+                                                             prerequisites,
                                                              install_global_targets,
                                                              install_commands,
                                                              comment);
