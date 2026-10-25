@@ -482,6 +482,47 @@ static void refuse_unsafe_metacharacter(const command::ptr& cmd,
     abort();
 }
 
+/* Refuses "cmd" when "path", the directory it names as pconfigure is
+ * going to write it, starts with a '-'.  "instead" is the line to
+ * suggest in its place.
+ *
+ * Every path under a directory is that directory with the rest pasted
+ * on, and those paths reach the recipes as bare words: the compiler's
+ * "-c", the "mkdir -p" in front of a copy or a compile, the "rm -rf"
+ * of a clean.  Each of those tools reads a word starting with a '-'
+ * as options of its own rather than as a file, so "SRCDIR = -src"
+ * compiles with "-c -src/main.c" and gets "no input files", and a
+ * "-dep" subproject stops at its first "mkdir -p -dep/obj/...".  The
+ * metacharacter check above can't see it, since a '-' is an ordinary
+ * character everywhere but the front.
+ *
+ * A refusal rather than a "./" written in front of every such path.
+ * The paths come from a dozen places in every language and build
+ * system, and some of them can't keep a "./" at all: make strips it
+ * from the name of a target, so the "$(dir $@)" handed to a mkdir
+ * comes out bare however the rule was spelled, and a subproject's
+ * directory is normalized before it becomes the variable every one of
+ * its paths is named through.  None of these ever built, so there is
+ * no Configfile working today for this to break. */
+static void refuse_leading_dash(const command::ptr& cmd,
+                                const std::string& path,
+                                const std::string& instead)
+{
+    if (path.size() == 0 || path[0] != '-')
+        return;
+
+    auto command_name = std::to_string(cmd->type());
+    std::cerr << std::to_string(cmd->debug()) << "\n"
+              << "  error: " << command_name << " names a directory"
+              << " starting with a '-': '" << cmd->data() << "'\n"
+              << "  every path under it starts with that '-' too, and"
+              << " the compilers, mkdir and rm that this build hands"
+              << " those paths to read a word starting with a '-' as an"
+              << " option rather than as a file\n"
+              << "  " << instead << "\n";
+    abort();
+}
+
 /* Refuses a BINARIES, LIBRARIES, LIBEXECS, TESTEXECS or HEADERS whose
  * own name leaves the project.
  *
@@ -2085,6 +2126,19 @@ void command_processor::process_one(const command::ptr& cmd)
          * it, which leaves_the_project() already has a name for. */
         refuse_unsafe_metacharacter(cmd, "LIBDIR");
 
+        /* Unlike a SRCDIR there is no spelling of this one that
+         * works: a library is a target in here, and make takes a "./"
+         * back off a target's name before the "mkdir -p $(dir $@)"
+         * in its recipe ever sees it -- which is why this asks of
+         * the path with the "./" already gone. */
+        refuse_leading_dash(cmd,
+                            file_utils::normalize_path(_base + cmd->data()),
+                            "write a directory that doesn't start with"
+                            " a '-', like 'LIBDIR = lib' -- a './' in"
+                            " front doesn't help, since make takes it"
+                            " back off the name of every library built"
+                            " there");
+
         _stack.top()->lib_dir = _base + cmd->data();
         return;
     }
@@ -2512,6 +2566,13 @@ void command_processor::process_one(const command::ptr& cmd)
          * after its own refusal: a value with both a '$' and a '('
          * keeps the more specific "make expansion" answer. */
         refuse_unsafe_metacharacter(cmd, "SRCDIR");
+
+        /* A source directory is only ever read, and only ever reaches
+         * a recipe as the front of a source's path, so a "./" written
+         * in front of it stays there and is all it takes. */
+        refuse_leading_dash(cmd, _base + cmd->data(),
+                            "write it as 'SRCDIR = ./" + cmd->data()
+                            + "', which names the same directory");
 
         _stack.top()->src_dir = _base + cmd->data();
         return;
@@ -3249,6 +3310,17 @@ void command_processor::process_one(const command::ptr& cmd)
                       << " and name the symlink\n";
             abort();
         }
+
+        /* The source root ends up on the front of every source path
+         * the same way a SRCDIR does, one level further out, so a
+         * "-sp" puts "-c -sp/src/main.c" on the compile line just as
+         * a "-src" SRCDIR would.  It is only ever read, too, so the
+         * "./" of a "./-sp" stays on the front all the way to the
+         * compiler, and that is the spelling to suggest. */
+        refuse_leading_dash(cmd, _base + cmd->data(),
+                            "write it as 'SRCPATH = ./" + cmd->data()
+                            + "' (or '--srcpath ./" + cmd->data()
+                            + "'), which names the same directory");
 
         auto path = _base + cmd->data();
         tos->src_dir = path + "/" + tos->src_dir.substr(_base.size());
