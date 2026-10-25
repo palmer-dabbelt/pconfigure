@@ -778,6 +778,8 @@ TESTSRC     += nested-binary-install-and-rpath.bash
 TESTSRC     += prefix-custom-install-layout.bash
 TESTSRC     += subproject-two-spellings-distclean.bash
 TESTSRC     += project-path-with-space-builds-and-reconfigures.bash
+TESTSRC     += cache-clean-mixed-build-stays-settled.bash
+TESTSRC     += cache-clean-drops-object-of-removed-source.bash
 
 # The half of pconfigure that a build can run on its own, one source
 # at a time.  It is a BINARY rather than a LIBEXEC because pconfigure
