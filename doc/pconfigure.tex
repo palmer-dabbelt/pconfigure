@@ -3004,7 +3004,13 @@ The directives are read the way the compiler reads them, including the
 ones it only warns about.  An \texttt{\#ifdef} or \texttt{\#ifndef}
 asks about the identifier it starts with, so \texttt{\#ifdef
 VERBOSE(x)} is a question about \texttt{VERBOSE}, and anything written
-after an \texttt{\#else} or \texttt{\#endif} is passed over.  A
+after an \texttt{\#else} or \texttt{\#endif} is passed over.  The
+names that start out defined are the ones the target's
+\texttt{COMPILEOPTS} hand the compiler, with every \texttt{-D} and
+\texttt{-U} taken in the order the compiler takes them: a target
+whose \texttt{-UTRACE} follows a \texttt{-DTRACE} from its
+language's \texttt{COMPILEOPTS} has \texttt{TRACE} undefined, both
+to the compiler and to the scan.  A
 computed include, \texttt{\#include NAME} with \texttt{NAME} a macro
 naming the header, is passed over too: what the scan keeps is which
 names are defined, not what they are defined as, so it has no way of
