@@ -331,6 +331,18 @@ Builds and runs every test specified by the \texttt{Configfile}, or
 just the tests of one test suite when the project named one with
 \texttt{DEFAULT\_TEST\_SUITE} (see Section~\ref{cmd:default_test_suite}).
 
+A test whose result is current is not run again, and a set of results
+that has already been scored is not scored again --- unless the set
+itself changed.  Moving a test into a suite, adding an
+\texttt{INCLUDE\_TEST\_SUITES}, or pulling in a subproject whose
+tests already ran on their own all change which results \texttt{make
+  check} is about without making any of them newer, so \pconfigure\
+writes down what each set holds, in \texttt{\$OBJDIR/check-all-scope}
+and \texttt{\$OBJDIR/check-suite-\$name-scope}, and the next
+\texttt{make check} scores the new set.  Those files are only
+rewritten when what they say changes, so a reconfigure that leaves
+every set as it was leaves \texttt{make check} with nothing to do.
+
 \subsection{\texttt{make check-\$suite} \label{make:check_suite}}
 
 Builds and runs the tests of one test suite (see
