@@ -358,16 +358,85 @@ language_gen_proc::targets(const context::ptr& ctx) const
                 "declare should do."
         };
 
+        /* Every way of running the script wrong is fatal, and a fatal
+         * error has to name the GENERATE line that asked for it: a
+         * tree with a dozen of these is not one where the reader can
+         * be expected to work out which line owns "gen.h.proc" from
+         * the shell's complaint about it.  The script is named as it
+         * is spelled from where pconfigure was run, since that is
+         * where a reader is going to go looking for it.
+         *
+         * The two commonest mistakes are checked for before anything
+         * is run, so that they can be told apart and each given its
+         * remedy.  Left to the shell, a script that isn't there and a
+         * script without its execute bit both come back as nothing
+         * better than an exit code -- 127 and 126 -- that a script is
+         * also free to exit with on its own account. */
+        auto gen_line = std::to_string(ctx->cmd->debug());
+        if (access(procfile.c_str(), F_OK) != 0) {
+            std::cerr << gen_line << "\n"
+                      << "  error: GENERATE += " << ctx->cmd->data()
+                      << " runs " << procfile << ", which does not exist\n"
+                      << "  that script prints the generated file's inputs"
+                      << " when given --deps, and the file itself when"
+                      << " given --generate\n"
+                      << "  write it there, or drop the GENERATE line if"
+                      << " nothing generates " << ctx->cmd->data()
+                      << " any more\n";
+            abort();
+        }
+        if (access(procfile.c_str(), X_OK) != 0) {
+            std::cerr << gen_line << "\n"
+                      << "  error: " << procfile
+                      << " is there but is not executable\n"
+                      << "  GENERATE runs the script itself rather than"
+                      << " handing it to an interpreter, so it needs its"
+                      << " execute bit and a #! line\n"
+                      << "  chmod +x " << procfile
+                      << ", and commit the mode change so a fresh clone"
+                      << " gets it too\n";
+            abort();
+        }
+
+        /* Anything else is the script's own business, and the script
+         * has had its say on stderr already, so what is left to add is
+         * where it came from, how it ended, and that the way forward is
+         * to run it by hand and see.
+         *
+         * The command to run it by hand is spelled out whole, because
+         * the script is not run as it is named above: it is run from
+         * the top of its own project, as that project spells it, so
+         * that the paths it reads and prints are the ones it was
+         * written against.  For a subproject "sub/src/gen.h.proc" is
+         * where to find the script but "src/gen.h.proc" is what gets
+         * run, from inside "sub/", and an instruction that mixed the
+         * two -- "run sub/src/gen.h.proc from sub/" -- names a file
+         * that does not exist from where it tells the reader to
+         * stand. */
+        auto script_failed = [&](const std::string& run,
+                                 const std::string& how) {
+            auto by_hand = ctx->unbased(procfile) + " " + run;
+            if (ctx->base.size() > 0)
+                by_hand = "cd " + ctx->base + " && " + by_hand;
+            std::cerr << gen_line << "\n"
+                      << "  error: '" << procfile << " " << run << "' "
+                      << how << "\n"
+                      << "  GENERATE runs the script with --deps to learn"
+                      << " what " << ctx->cmd->data() << " is made from,"
+                      << " then with --generate to make it, and both have"
+                      << " to succeed\n"
+                      << "  run it by hand to see what went wrong, and fix"
+                      << " the script: " << by_hand << "\n";
+            abort();
+        };
+
         auto sources = std::vector<makefile::target::ptr>{
             std::make_shared<makefile::target>(procfile)
         };
         auto dep_lines = file_utils::execlines(
             in_project("\"" + ctx->unbased(procfile) + "\""),
             {"--deps"},
-            [&](const std::string& how) {
-                std::cerr << "'" << procfile << " --deps' " << how << "\n";
-                abort();
-            });
+            [&](const std::string& how) { script_failed("--deps", how); });
         for (const auto& line: dep_lines) {
             /* A '?' with nothing but whitespace after it is the one
              * new way there is to write this wrong, and left alone it
@@ -562,12 +631,28 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * to tell the rest of pconfigure these commands have actually been
          * generated. */
         if (access(target.c_str(), R_OK) != 0) {
-            for (const auto& cmd: commands) {
-                if (system(cmd.c_str()) != 0) {
-                    std::cerr << "system(" << cmd << ") failed" << std::endl;
-                    abort();
-                }
+            auto status = system(commands[0].c_str());
+            if (status != 0) {
+                std::cerr << gen_line << "\n"
+                          << "  error: '" << commands[0] << "' "
+                          << file_utils::describe_wait_status(status)
+                          << "\n"
+                          << "  " << ctx->gen_dir << " is where "
+                          << ctx->cmd->data() << " gets generated, so it"
+                          << " has to be a directory pconfigure can"
+                          << " write\n";
+                abort();
             }
+
+            /* The status is not decoded here, because there is nothing
+             * left of the script's in it: the recipe's "|| (rm ...;
+             * exit 1)" turns every failure into a 1, so that make sees
+             * a failure whatever the script exited with.  Reporting
+             * "exited with status 1" for a script that exited 3 would
+             * be a precise-looking wrong answer, so this says only that
+             * it failed -- which is all that is known. */
+            if (system(commands[1].c_str()) != 0)
+                script_failed("--generate", "failed");
         }
 
         auto filename = ctx->cmd->debug()->filename();
