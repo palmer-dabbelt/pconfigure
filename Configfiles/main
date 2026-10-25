@@ -310,6 +310,7 @@ TESTSRC     += subprojects-nested.bash
 TESTSRC     += subprojects-pkgconfig.bash
 TESTSRC     += ppkg-config-not-in-path.bash
 TESTSRC     += reconfigure-not-in-path.bash
+TESTSRC     += make-reconfigure-runs-the-pconfigure-that-configured.bash
 TESTSRC     += subprojects-siblings.bash
 TESTSRC     += subproject-variable-collision-names-both-lines.bash
 TESTSRC     += subproject-variable-collision-nested-names-lines.bash
