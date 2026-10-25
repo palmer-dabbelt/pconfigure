@@ -2312,6 +2312,41 @@ void command_processor::process_one(const command::ptr& cmd)
             abort();
         }
 
+        /* A directory that contains this project is the same mistake
+         * one step removed: "SUBPROJECTS += .." in "a" names the
+         * project that pulled "a" in, and a subproject that pulls its
+         * own parent back in is a cycle.  Neither later step says so.
+         * The top resolves to the empty path, which is also how the
+         * loop that reads subprojects knows it has run out, so the
+         * line was dropped without a word.  An ancestor that is
+         * already a project was skipped as a tree asked for twice,
+         * and one that is not -- the top naming "a/b" directly, with
+         * ".." in "a/b" -- would be read as a project wrapped around
+         * the one that named it.  Run inside the containing
+         * directory, the same ".." climbs out and is refused, so from
+         * above it is refused as well.  The message says only that
+         * the directory contains this one, since whether it is a
+         * project in this run depends on the lines above.
+         *
+         * Both paths are normalized directories ending in '/', or
+         * empty for the top, so a prefix test can't mistake "ab/"
+         * for being inside "a/". */
+        if (_base.compare(0, path.size(), path) == 0
+            && path.size() < _base.size()) {
+            std::cerr << "SUBPROJECTS can't point at a directory that"
+                      << " contains it: '"
+                      << std::to_string(cmd->debug())
+                      << "'\n"
+                      << "  '" << cmd->data() << "' resolves to '"
+                      << (path.size() == 0 ? std::string(".") : path)
+                      << "', which contains this project's"
+                      << " directory, so it can't also be its"
+                      << " subproject\n"
+                      << "  remove the line; a project reads its own"
+                      << " subprojects, never the one above it\n";
+            abort();
+        }
+
         /* Everything here names files relative to where pconfigure
          * ran, and a Makefile written outside that tree would be
          * talking about a directory this build doesn't own.
