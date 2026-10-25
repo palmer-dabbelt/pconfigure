@@ -2215,6 +2215,60 @@ void project::check_target_shape(const context::ptr& ctx,
             " only one set of rules can come out, so the other is lost,"
             " and if the two disagree at all the build stops here");
 
+    /* Two targets can also fight over one path without either of
+     * them naming it exactly: "BINARIES += tools" builds the file
+     * bin/tools, and "BINARIES += tools/run" needs bin/tools to be the
+     * directory it lands in.  No order of the two rules makes both of
+     * those true, and the failure make arrives at says nothing about
+     * why -- an "mkdir" refusing to replace a file with a directory,
+     * or worse, an "mv" that finishes copying bin/tools into place by
+     * moving it into the directory the other rule made, so the build
+     * succeeds with no bin/tools program at all.
+     *
+     * This one is always an error rather than a strictness warning
+     * like the one above.  An exact duplicate can at least come out as
+     * one working target when the two lines agree; a file and a
+     * directory at one path can't come out as anything.
+     *
+     * Asked both ways, since either line can come first: the paths
+     * above this one that are already some target's file, and the
+     * targets already filed under this one as a directory.  The second
+     * is a range of the map starting at "<output>/", which is exactly
+     * the paths inside it and none of the ones that merely share the
+     * name as a prefix -- "tools-run" and "tools.d/run" sort apart
+     * from "tools/". */
+    auto refuse_nesting = [&](const std::string& file,
+                              const context::ptr& file_ctx,
+                              const std::string& inside,
+                              const context::ptr& inside_ctx)
+        {
+            std::cerr << std::to_string(ctx->cmd->debug()) << "\n"
+                      << "  error: '" << file << "' is the file built by "
+                      << std::to_string(file_ctx->cmd->debug())
+                      << ", but '" << inside << "', built by "
+                      << std::to_string(inside_ctx->cmd->debug())
+                      << ", needs it to be a directory\n"
+                      << "  one path can't be both a file and a"
+                      << " directory, so rename one of the two targets"
+                      << " so that neither comes out inside the other"
+                      << " -- 'tools' and 'tools-run', say, rather than"
+                      << " 'tools' and 'tools/run'\n";
+            abort();
+        };
+
+    for (auto slash = output.find('/');
+         slash != std::string::npos;
+         slash = output.find('/', slash + 1)) {
+        auto parent = seen.find(output.substr(0, slash));
+        if (parent != seen.end())
+            refuse_nesting(parent->first, parent->second, output, ctx);
+    }
+
+    auto below = seen.lower_bound(output + "/");
+    if (below != seen.end() && below->first.compare(0, output.size() + 1,
+                                                    output + "/") == 0)
+        refuse_nesting(output, ctx, below->first, below->second);
+
     seen[output] = ctx;
 }
 
