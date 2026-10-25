@@ -386,6 +386,14 @@ that this may require re-linking some targets in order to deal with
 something like \texttt{-rpath}.  Exactly what is rebuilt and how
 depends on the language, see Section~\ref{lang} for more information.
 
+What lands under the prefix is given a fixed mode, the way
+\texttt{install -m} would give it: 0755 for programs, scripts and
+shared libraries, and 0644 for headers and static archives.  That
+doesn't depend on the umask the tree was built under, so a tree built
+under \texttt{umask 077} still installs files everyone can read and
+run.  The copies in the build tree keep whatever mode the build gave
+them.
+
 \texttt{DESTDIR}, said on \texttt{make}'s command line, puts the whole
 install under a staging directory, the way it does for any other
 package.  It can't have whitespace in it.  Every installed file is a
