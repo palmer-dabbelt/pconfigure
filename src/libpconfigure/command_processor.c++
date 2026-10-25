@@ -1086,9 +1086,19 @@ void command_processor::process_one(const command::ptr& cmd)
             return;
         }
 
-        std::cerr << cmd->data() << " is not boolean\n";
+        /* The value alone doesn't say which line it came from, and a
+         * Configfile that turns this off for several targets has
+         * several of them, so the line is what gets named.  The two
+         * answers are spelled out because "yes" and "1" are what
+         * people reach for first and neither is taken. */
+        std::cerr << std::to_string(cmd->debug()) << "\n"
+                  << "  error: '" << cmd->data() << "' is not"
+                  << " 'true' or 'false'\n"
+                  << "  " << std::to_string(cmd->type())
+                  << " asks whether pconfigure works out what this"
+                  << " target links from its headers, and there are"
+                  << " two answers\n";
         abort();
-        return;
     }
 
     /* Whether the dependencies of this project's sources are worked

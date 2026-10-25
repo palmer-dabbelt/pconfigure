@@ -285,6 +285,7 @@ TESTSRC     += has-attribute.bash
 TESTSRC     += autodeps.bash
 TESTSRC     += autodeps-headers.bash
 TESTSRC     += autodeps-bash.bash
+TESTSRC     += autodeps-non-boolean-names-line.bash
 TESTSRC     += osx-shared-deps.bash
 TESTSRC     += osx-entitlements.bash
 TESTSRC     += frameworks.bash
