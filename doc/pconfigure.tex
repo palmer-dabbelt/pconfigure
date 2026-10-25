@@ -1994,6 +1994,19 @@ configure time too, so a \texttt{Makefile} that rewrote itself would
 fix one half of the answer and leave the other half stale without
 saying so.
 
+The other files a configure leaves in an object directory for the
+build to read are a different case, and not only an
+\texttt{AUTORECONFIGURE} one: the record of what goes into each link,
+the context files \texttt{pdeps} works from, and the options a
+vendored tree was configured with.  The \texttt{Makefile} knows what
+each of them says, so it has a rule that writes a missing one back
+exactly as the configure wrote it, without running \pconfigure.
+Deleting the object directory of the project \pconfigure\ ran in, or
+any part of one, costs a rebuild of what was in there and nothing
+more.  A subproject's whole object directory also takes the
+\texttt{Makefile} its parent includes, and putting that back is the
+configure described above.
+
 A \texttt{Configfile} that never existed before is noticed the day it
 is written, since the names are looked up afresh on every run.  One
 that is deleted is not --- the same \texttt{\$(wildcard)} that lets an
