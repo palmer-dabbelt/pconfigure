@@ -381,7 +381,25 @@ void project::generate_targets(void)
                     std::cerr << "  target: " << target->name() << "\n";
                 _targets.push_back(target);
             } else if (!same_recipe(found->second, target)) {
-                std::cout << "Mismatched recipe for targets with same name\n";
+                /* Two different rules for one file.  The ways of getting
+                 * here that anybody has found are complained about
+                 * earlier, naming both lines -- two BINARIES that come
+                 * out in one place get a warning just above this loop,
+                 * or an error under STRICT -- so this is what is left
+                 * when that warning was not enough, and the backstop
+                 * for the next way nobody has found yet.
+                 *
+                 * It goes to stderr, and names the line being read and
+                 * the file that two rules write, because abort() does
+                 * not flush stdout: the same sentence on std::cout was,
+                 * whenever stdout was a file or a pipe, an exit status
+                 * of 134 and nothing else whatsoever. */
+                std::cerr << std::to_string(context->cmd->debug()) << "\n"
+                          << "  error: Mismatched recipe for targets with"
+                          << " same name: two different rules write '"
+                          << target->name() << "'\n"
+                          << "  give one of the two things that write it a"
+                          << " different name\n";
                 abort();
             }
             _by_name[target->name()] = target;
