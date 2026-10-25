@@ -35,7 +35,8 @@ int pinclude::list(std::string filename,
                    pinclude::syntax language,
                    pinclude::directive_callback on_directive,
                    bool refuse_if,
-                   bool strict_directives)
+                   bool strict_directives,
+                   std::unordered_set<std::string> promised)
 {
     std::unordered_set<std::string> define_set;
     for (const auto& define: defines)
@@ -49,7 +50,8 @@ int pinclude::list(std::string filename,
                 language,
                 on_directive,
                 refuse_if,
-                strict_directives);
+                strict_directives,
+                promised);
 }
 
 /* OUTPUT and ELSE are the two halves of a conditional whose
@@ -153,7 +155,8 @@ int list_overwrite_defines(std::string filename,
                            pinclude::syntax language,
                            const pinclude::directive_callback& on_directive,
                            bool refuse_if,
-                           bool strict_directives);
+                           bool strict_directives,
+                           const std::unordered_set<std::string>& promised);
 
 int pinclude::list(std::string filename,
                    std::vector<std::string> include_dirs_without_cwd,
@@ -163,7 +166,8 @@ int pinclude::list(std::string filename,
                    pinclude::syntax language,
                    pinclude::directive_callback on_directive,
                    bool refuse_if,
-                   bool strict_directives)
+                   bool strict_directives,
+                   std::unordered_set<std::string> promised)
 {
     /* The files the scan is in the middle of reading, from this one
      * down to whichever it is reading now.  An include of one of them
@@ -191,7 +195,8 @@ int pinclude::list(std::string filename,
         language,
         on_directive,
         refuse_if,
-        strict_directives
+        strict_directives,
+        promised
     );
 }
 
@@ -199,7 +204,8 @@ int pinclude::list_defining(std::string filename,
                             std::vector<std::string> include_dirs,
                             std::unordered_set<std::string>& defines,
                             std::function<int(std::string)> callback,
-                            bool skip_missing_files)
+                            bool skip_missing_files,
+                            std::unordered_set<std::string> promised)
 {
     /* A cycle is a cycle within this one file's includes, the same as
      * for list(): the file read after this one starts again with
@@ -215,7 +221,8 @@ int pinclude::list_defining(std::string filename,
         pinclude::syntax::C,
         pinclude::directive_callback(),
         false,
-        false
+        false,
+        promised
     );
 }
 
@@ -228,7 +235,8 @@ int list_overwrite_defines(std::string filename,
                            pinclude::syntax language,
                            const pinclude::directive_callback& on_directive,
                            bool refuse_if,
-                           bool strict_directives)
+                           bool strict_directives,
+                           const std::unordered_set<std::string>& promised)
 {
     /* Every script is read the strict way, which is the question
      * check_line() asks, and so is a C file whose caller asked for it
@@ -656,14 +664,25 @@ int list_overwrite_defines(std::string filename,
                 return !S_ISDIR(st.st_mode);
             };
 
+            /* A file the build is going to make is where it is going
+             * to be, as far as this search is concerned, whether it
+             * has been made yet or not -- see promised in the header.
+             * Asked in the same breath as whether a file is there,
+             * rather than after the whole search has failed, so that
+             * it wins against anything later down the path. */
+            auto findable = [&](const std::string& path) {
+                return includable(path)
+                    || promised.count(strip_dd(path)) > 0;
+            };
+
             auto full_path = [&]() {
                 auto cwd_relative = get_relative_cwd(filename) + rest_path;
-                if (includable(cwd_relative))
+                if (findable(cwd_relative))
                     return option<std::string>(strip_dd(cwd_relative));
 
                 for (const auto& dir: include_dirs) {
                     auto check = dir + "/" + rest_path;
-                    if (includable(check))
+                    if (findable(check))
                         return option<std::string>(strip_dd(check));
                 }
 
@@ -674,6 +693,11 @@ int list_overwrite_defines(std::string filename,
                 std::cerr << "Unable to open file: " << rest_path << "\n";
                 abort();
             }
+
+            /* Named but not followed: a promise that has not been kept
+             * yet has no lines in it to read. */
+            auto unmade = full_path.valid() == true
+                && includable(full_path.data()) == false;
 
             /* Compared on the path as it was found, after strip_dd()
              * has taken the ".." out of it, so that "b.bash" from next
@@ -692,6 +716,9 @@ int list_overwrite_defines(std::string filename,
                     abort();
                 }
 
+                if (unmade == true)
+                    return;
+
                 auto rout = list_overwrite_defines(
                     full_path.data(),
                     include_dirs,
@@ -702,7 +729,8 @@ int list_overwrite_defines(std::string filename,
                     language,
                     on_directive,
                     refuse_if,
-                    strict_directives
+                    strict_directives,
+                    promised
                 );
                 if (rout != 0) {
                     std::cerr << "Early out no longer supported in pinclude::list\n";

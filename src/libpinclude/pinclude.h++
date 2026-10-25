@@ -109,7 +109,20 @@ namespace pinclude {
      * set of files from the one pbashc would have pasted in.  It is
      * not the same question as language: a C test is read the
      * script way for its "#pconfigure" lines, and its "#if"s are as
-     * ordinary as any other C file's. */
+     * ordinary as any other C file's.
+     *
+     * promised is the files the build is going to make, spelled the
+     * way an include found in one of include_dirs is spelled, which
+     * count as being where they will be whether or not they are there
+     * yet.  One that is missing is named like any other include --
+     * a build that has just been cleaned has every one of them
+     * missing, and a list that leaves them out is a list of what the
+     * file reads that is wrong for exactly as long as it takes the
+     * build to make them -- but it is not read, because there is
+     * nothing to read, and what it would have pulled in is not known
+     * until it exists.  It is looked for in the search order the
+     * others are, so the place it will be beats a stale copy further
+     * down the include path, the way it will for the compiler. */
     int list(std::string filename,
              std::vector<std::string> include_dirs,
              std::vector<std::string> defined,
@@ -118,7 +131,8 @@ namespace pinclude {
              syntax language = syntax::C,
              directive_callback on_directive = {},
              bool refuse_if = false,
-             bool strict_directives = false);
+             bool strict_directives = false,
+             std::unordered_set<std::string> promised = {});
 
     int list(std::string filename,
              std::vector<std::string> include_dirs,
@@ -128,7 +142,8 @@ namespace pinclude {
              syntax language = syntax::C,
              directive_callback on_directive = {},
              bool refuse_if = false,
-             bool strict_directives = false);
+             bool strict_directives = false,
+             std::unordered_set<std::string> promised = {});
 
     /* list(), for a file read ahead of another one rather than for
      * a file on its own: whatever it "#define"s is left in defines
@@ -142,7 +157,8 @@ namespace pinclude {
                       std::vector<std::string> include_dirs,
                       std::unordered_set<std::string>& defines,
                       std::function<int(std::string)> callback,
-                      bool skip_missing_files);
+                      bool skip_missing_files,
+                      std::unordered_set<std::string> promised = {});
 
     static inline
     int list(std::string filename,
