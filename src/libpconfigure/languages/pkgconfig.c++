@@ -21,6 +21,7 @@
 #include "pkgconfig.h++"
 #include "../commands.h++"
 #include "../language_list.h++"
+#include "../string_utils.h++"
 #include <assert.h>
 #include <iostream>
 #include <stdlib.h>
@@ -142,7 +143,43 @@ language_pkgconfig::targets(const context::ptr& ctx) const
             makefile::global_targets::CLEAN,
         };
 
-        auto build = [&](const std::string& prefix) {
+        /* Each option is, as the manual puts it, passed to sed as an
+         * argument: one argument, holding exactly what was written.
+         * That takes quoting, because a sed expression is allowed any
+         * character at all and a .pc file is mostly free text -- a
+         * Description with an apostrophe in it, or a Version with a
+         * space in it, is not doing anything unusual.
+         *
+         * The same command is read by two different things, though.
+         * make expands a '$' in a recipe before the shell sees it,
+         * which would turn the '$' anchoring an expression to the end
+         * of a line into whatever some make variable held, so the
+         * recipe spells it '$$'.  The build-tree copy is also built
+         * here by pconfigure, through a shell with no make in front
+         * of it, where a '$$' would be a process ID -- so whoever
+         * runs the command says which of the two it is for.
+         *
+         * A "-S" file is read with backticks inside double quotes
+         * rather than "$(cat ...)" for the same reason: it contains
+         * no '$' for make to get at, so both readers see the same
+         * thing.  The double quotes are what keep its contents one
+         * argument; without them the shell split a script at every
+         * space, and "s/@@VERSION@@/1.0 beta/" became an unterminated
+         * expression and a file called "beta/".  The shell strips
+         * the trailing newline the file almost certainly ends with,
+         * and any newlines left in the middle separate commands just
+         * as they would in a sed script.
+         *
+         * An option that starts with a backtick is still handed over
+         * as written: it is a command for the shell to run, and its
+         * output being split into words is what it is for. */
+        auto build = [&](const std::string& prefix, bool for_make) {
+            auto argument = [&](const std::string& str) {
+                if (for_make)
+                    return string_utils::quoted(string_utils::unexpanded(str));
+                return string_utils::quoted(str);
+            };
+
             auto command = std::string();
             command += "cat " + sources[0]->name();
             command += " | sed 's^@@pconfigure_prefix@@^" + prefix + "^g'";
@@ -150,18 +187,18 @@ language_pkgconfig::targets(const context::ptr& ctx) const
             command += " | sed 's^@@pconfigure_hdrdir@@^" + ctx->unbased(ctx->hdr_dir) + "^g'";
             for (const auto& str: this->clopts(ctx)) {
                 if (strncmp(str.c_str(), "-S", 2) == 0)
-                    command += " | sed `cat " + sed_file(str) + "`";
+                    command += " | sed \"`cat " + argument(sed_file(str)) + "`\"";
                 else if (strncmp(str.c_str(), "`", 1) == 0)
                     command += " | sed " + str;
                 else
-                    command += " | sed '" + str + "'";
+                    command += " | sed " + argument(str);
             }
 
             command += "> ";
             return command;
         };
 
-        auto command = build(ctx->prefix);
+        auto command = build(ctx->prefix, true);
 
         auto commands = std::vector<std::string>{
             "mkdir -p $(dir $@)",
@@ -192,7 +229,7 @@ language_pkgconfig::targets(const context::ptr& ctx) const
         auto basename = ctx->cmd->data().substr(
             ctx->cmd->data().find_last_of("/") + 1);
         auto build_path = pkgconfig_dir + "/" + basename;
-        auto build_command = build(absolute_base(ctx->base));
+        auto build_command = build(absolute_base(ctx->base), true);
 
         auto build_target = std::make_shared<makefile::target>(
             build_path,
@@ -203,10 +240,10 @@ language_pkgconfig::targets(const context::ptr& ctx) const
                 makefile::global_targets::CLEAN,
             },
             std::vector<std::string>{
-                /* Spelled out rather than "$(dir $@)", because these
-                 * same commands get run below by pconfigure itself,
-                 * where there's no make around to say what that
-                 * means. */
+                /* Spelled out rather than "$(dir $@)", because a
+                 * copy of these commands gets run below by
+                 * pconfigure itself, where there's no make around to
+                 * say what that means. */
                 "mkdir -p " + pkgconfig_dir,
                 build_command + build_path
             },
@@ -230,8 +267,15 @@ language_pkgconfig::targets(const context::ptr& ctx) const
             /* Anything it's built from that isn't there yet will be
              * by the time make runs, so this is worth trying and not
              * worth failing over. */
+            /* The same two commands as the target's, but spelled
+             * for a shell rather than for make: see build() above. */
+            auto configure_commands = std::vector<std::string>{
+                "mkdir -p " + pkgconfig_dir,
+                build(absolute_base(ctx->base), false) + build_path
+            };
+
             if (have_sources == true)
-                for (const auto& cmd: build_target->cmds())
+                for (const auto& cmd: configure_commands)
                     if (system(cmd.c_str()) != 0)
                         break;
         }
