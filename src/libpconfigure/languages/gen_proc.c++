@@ -616,8 +616,20 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * of the chain may not be the thing that quietly ends it. */
         auto tmp_target = temporary_path(target);
         auto short_cmd = "GEN\t" + ctx->cmd->data();
+
+        /* The directory made is the one the output goes in, which is
+         * not always the generated-files directory itself: a GENERATE
+         * of "sub/gen.h" writes obj/proc/sub/gen.h, so that it is
+         * found by the '#include "sub/gen.h"' that asked for it, and
+         * making only obj/proc left the redirect below with nowhere
+         * to write.  It is cut from the target rather than spelled as
+         * "$(dir $@)" because these same lines are run through
+         * system() at configure time, where there is no make to
+         * expand that -- and the target always has a '/', since it
+         * starts with the generated-files directory. */
+        auto target_dir = target.substr(0, target.rfind('/'));
         auto commands = std::vector<std::string>{
-            "mkdir -p " + ctx->gen_dir,
+            "mkdir -p " + target_dir,
             "(" + in_project(ctx->unbased(procfile) + " --generate")
                 + ") > " + tmp_target
                 + " && { if cmp -s " + tmp_target + " " + target
