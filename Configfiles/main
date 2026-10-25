@@ -604,6 +604,7 @@ TESTSRC     += subproject-targets-kconfig-config-keeps-configure-rule.bash
 TESTSRC     += subproject-targets-autotools-config-status-keeps-configure-rule.bash
 TESTSRC     += subproject-targets-dotdot-and-plain-one-rule.bash
 TESTSRC     += testdeps-subproject-target-spellings-one-prerequisite.bash
+TESTSRC     += testdeps-on-child-vendored-output-from-top-and-child.bash
 TESTSRC     += subproject-configfile-error-names-subproject-file.bash
 TESTSRC     += subprojects-missing-directory-names-line.bash
 TESTSRC     += configfile-backticks.bash
