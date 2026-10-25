@@ -1499,6 +1499,13 @@ which costs nothing since the tree has built them by then --- so a
 name that is wrong is complained about at the first build rather than
 whenever something happens to want that file.
 
+A file the tree's configure step writes, such as a \texttt{kconfig}
+tree's \texttt{.config} or an \texttt{autotools} tree's
+\texttt{config.status}, already has a rule: the one that runs that
+configure step.  Naming it here is allowed, and gets no second rule
+--- the one already there is what builds it, and is what anything
+that asks for the file waits on.
+
 A \texttt{SUBPROJECT\_TARGETS} needs a \texttt{SUBPROJECTS} above it
 rather than a bare \texttt{BUILD\_SYSTEMS}: it names a file in one
 tree's output directory, so it has to say which tree.  It also can't
