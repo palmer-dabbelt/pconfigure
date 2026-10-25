@@ -3,7 +3,10 @@
 # A MAKEOPS without an '=' is a goal rather than a variable, and is
 # refused.  With vendored trees under subprojects, which Configfile
 # the line is in is the part of that refusal somebody needs, so it has
-# to name the line along with the spelling it wanted.
+# to name the line along with the spelling it wanted.  It says why as
+# well, like the other refusals of a MAKEOPS do: "V" on its own looks
+# like a perfectly good flag to somebody who hasn't been bitten by
+# make taking it for a target.
 mkdir -p a/k
 
 echo "SUBPROJECTS += a" > Configfile
@@ -28,6 +31,7 @@ fi
 cat out
 grep -q "MAKEOPS 'V' has no value" out
 grep -q "a/Configfile:4" out
+grep -q "make would take it for a goal to build" out
 grep -q "it should look like 'MAKEOPS += ARCH=arm64'" out
 
 # kbuild's "--make-var" is the same variable written as an option, and

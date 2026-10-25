@@ -88,10 +88,15 @@ void build_system::add_makeopt(const std::string& opt,
     /* A variable is a name and a value.  Without the '=' this is a
      * word that make would take for a goal, which is a different
      * thing entirely and one that would go quietly wrong: the tree
-     * would be asked to build a target nobody meant. */
+     * would be asked to build a target nobody meant.  That is the
+     * part worth saying, since a bare word like "V" reads as a fine
+     * flag to anyone who hasn't been bitten by it. */
     if (opt.find('=') == std::string::npos) {
         error_at_line() << name() << ": MAKEOPS '" << opt << "' has no"
-                        << " value: it should look like"
+                        << " value\n"
+                        << "  without an '=' make would take it for a goal"
+                        << " to build, not a variable to set\n"
+                        << "  it should look like"
                         << " 'MAKEOPS += ARCH=arm64'\n";
         abort();
     }
