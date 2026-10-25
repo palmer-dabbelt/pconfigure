@@ -2900,12 +2900,35 @@ void command_processor::process_one(const command::ptr& cmd)
 
         return;
 
+    /* "--version" and "--help" are answered before any Configfile is
+     * read, because there's no point reading one just to print
+     * something and stop.  The parser takes the same commands from a
+     * Configfile line, though, and there they're read too late to do
+     * anything at all -- "VERSION = 1.2.0" looks like it gives the
+     * project a version, and it used to be thrown away without a
+     * word.  A line that's accepted and does nothing is refused, the
+     * same as any other command that's parsed and not implemented. */
     case command_type::VERSION:
-        this->_given_version_command = true;
-        return;
-
     case command_type::HELP:
-        this->_given_help_command = true;
+        if (cmd->debug()->from_command_line() == false) {
+            auto option = (cmd->type() == command_type::VERSION)
+                ? std::string("--version")
+                : std::string("--help");
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: "
+                      << std::to_string(cmd->type())
+                      << " only means something on the command line, as '"
+                      << option << "'\n"
+                      << "  remove the line; a Configfile is read after"
+                      << " that option has been looked for, so nothing"
+                      << " here can act on it\n";
+            abort();
+        }
+
+        if (cmd->type() == command_type::VERSION)
+            this->_given_version_command = true;
+        else
+            this->_given_help_command = true;
         return;
 
     case command_type::SRCPATH:
