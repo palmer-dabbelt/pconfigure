@@ -16,14 +16,16 @@
 # notes when a pconfigure starts and ends, and holds each one open long
 # enough that two which were allowed to overlap would.  The recipe names
 # pconfigure by its full path, which is why this wraps the shell rather
-# than putting a pconfigure on PATH.
+# than putting a pconfigure on PATH.  That path is quoted as one shell
+# word, so the pattern has to see past a closing quote as well as a
+# bare path.
 
 mkdir -p src sub/src
 
 cat >wrapsh <<'EOF'
 #!/bin/bash
 case "$2" in
-*/pconfigure|*/pconfigure\ *)
+*/pconfigure|*/pconfigure\'|*/pconfigure\ *|*/pconfigure\'\ *)
     echo "start" >> "$PCONFIGURE_RUNS"
     sleep 2
     /bin/bash "$@"
