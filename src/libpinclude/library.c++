@@ -543,6 +543,29 @@ int list_overwrite_defines(std::string filename,
             defines.insert(define);
         }, bare_directives);
 
+        /* A name that has been "#undef"ed is no longer defined, and an
+         * "#ifdef" of it after that is off -- whether a "#define"
+         * further up made it or a "-D" in COMPILEOPTS did.  Left
+         * defined, the scan follows an include the compiler never
+         * sees, and the source behind it gets built and linked into a
+         * program that never asked for it.
+         *
+         * Only where lines are live: an "#undef" in a branch that
+         * isn't taken undefines nothing, just as an include there
+         * includes nothing.  And only in C, since pbashc reads neither
+         * "#define" nor "#undef" in a script -- the names a script
+         * sees are the "-D"s and nothing else, and taking one away
+         * here would leave out an include pbashc pastes in. */
+        check_line(line, "undef", [&](std::string rest) {
+            if (language != pinclude::syntax::C)
+                return;
+            if (state_stack.top() != state::OUTPUT)
+                return;
+
+            auto after = rest.find_first_of(" \t");
+            defines.erase(rest.substr(0, after));
+        }, bare_directives);
+
         check_line(line, "else", [&](std::string rest) {
             if (only_shell_comment(rest))
                 rest = "";
