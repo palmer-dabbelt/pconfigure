@@ -72,7 +72,9 @@ cxx_defines(const std::vector<std::string>& opts);
 
 /* The headers a source reads when it is compiled with the given
  * options, which comes down to the include path and the defines those
- * options would hand the preprocessor.
+ * options would hand the preprocessor, and the files "-include" and
+ * "-imacros" have it read before the source -- which are headers of
+ * the source themselves, and whose own defines the source then sees.
  *
  * This is asked in two places -- by pconfigure when it walks the
  * sources itself, and by pdeps when make does the walking under

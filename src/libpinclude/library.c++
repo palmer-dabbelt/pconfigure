@@ -195,6 +195,30 @@ int pinclude::list(std::string filename,
     );
 }
 
+int pinclude::list_defining(std::string filename,
+                            std::vector<std::string> include_dirs,
+                            std::unordered_set<std::string>& defines,
+                            std::function<int(std::string)> callback,
+                            bool skip_missing_files)
+{
+    /* A cycle is a cycle within this one file's includes, the same as
+     * for list(): the file read after this one starts again with
+     * nothing being read, and only the defines carry over. */
+    auto reading = std::unordered_set<std::string>();
+    return list_overwrite_defines(
+        filename,
+        include_dirs,
+        defines,
+        reading,
+        callback,
+        skip_missing_files,
+        pinclude::syntax::C,
+        pinclude::directive_callback(),
+        false,
+        false
+    );
+}
+
 int list_overwrite_defines(std::string filename,
                            std::vector<std::string> include_dirs,
                            std::unordered_set<std::string>& defines,

@@ -130,6 +130,20 @@ namespace pinclude {
              bool refuse_if = false,
              bool strict_directives = false);
 
+    /* list(), for a file read ahead of another one rather than for
+     * a file on its own: whatever it "#define"s is left in defines
+     * for the read that comes after it.  That is what a compiler's
+     * "-include" is -- a header read before the source's first line,
+     * whose macros the source's "#ifdef"s then see -- and a scan that
+     * forgot them would pass over the very headers a config.h is
+     * there to turn on.  Always read as C, since nothing else has a
+     * file read ahead of it. */
+    int list_defining(std::string filename,
+                      std::vector<std::string> include_dirs,
+                      std::unordered_set<std::string>& defines,
+                      std::function<int(std::string)> callback,
+                      bool skip_missing_files);
+
     static inline
     int list(std::string filename,
              std::function<int(std::string)> callback,

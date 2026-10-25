@@ -27,14 +27,17 @@
 #include "../pick_language.h++"
 #include "../project.h++"
 #include <pinclude.h++>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
 #include <cstdint>
+#include <functional>
 #include <iostream>
 #include <set>
 #include <sstream>
+#include <unordered_set>
 #include <utility>
 
 /* The directories a set of link arguments tells the linker to look
@@ -152,6 +155,53 @@ std::vector<std::string>
 cxx_include_dirs(const std::vector<std::string>& opts)
 {
     return flag_arguments(opts, include_flags());
+}
+
+/* The flags that have the compiler read a file before the source:
+ * "-include" reads it as though the source's first line had included
+ * it, and "-imacros" reads it for its macros alone.  Both take the
+ * file stuck on or as the next word, like "-I".
+ *
+ * clang has an "-include-pch" whose argument is a precompiled header,
+ * which is no file the scan could read and none it should go looking
+ * for by "-pch".  Nothing that is a forced include starts with
+ * "-include-", since gcc would have to be asked for a header whose
+ * name starts with a '-', so any word that does is left alone. */
+static std::pair<std::string, std::string>
+split_forced_include(const std::string& word)
+{
+    if (word.compare(0, 9, "-include-") == 0)
+        return std::make_pair(std::string(), std::string());
+    return split_flag(word, std::vector<std::string>{"-imacros", "-include"});
+}
+
+static std::vector<std::string>
+cxx_forced_includes(const std::vector<std::string>& opts)
+{
+    /* gcc reads every "-imacros" before any "-include", whatever order
+     * they were written in, and the order matters to the scan for the
+     * same reason it matters to the compiler: a file can test what
+     * one read ahead of it defined. */
+    auto imacros = std::vector<std::string>();
+    auto includes = std::vector<std::string>();
+    auto pending = std::string();
+    for (const auto& opt: opts) {
+        if (pending.size() > 0) {
+            (pending == "-imacros" ? imacros : includes).push_back(opt);
+            pending = "";
+            continue;
+        }
+
+        auto split = split_forced_include(opt);
+        if (split.first.size() == 0)
+            continue;
+        if (split.second.size() == 0)
+            pending = split.first;
+        else
+            (split.first == "-imacros" ? imacros : includes).push_back(split.second);
+    }
+
+    return imacros + includes;
 }
 
 std::vector<std::string>
@@ -1507,6 +1557,24 @@ language_cxx::compile_options(const context::ptr& ctx,
         return file_utils::reroot(child->src_path, dir);
     };
 
+    /* A forced include is a file rather than a directory, and the
+     * compiler has two places to look for it: the directory it was run
+     * from, and then along the include path.  The first of those is
+     * the subproject's own directory to whoever wrote its Configfile,
+     * so a file there gets the directory put on the front just as
+     * "-I" does.  Anything else was found down the include path, and
+     * has to go on being looked for by the name it was written with:
+     * with the subproject's directory on the front it would be looked
+     * for under that name in every include directory, which is
+     * nowhere.  That makes the answer depend on what is there when
+     * pconfigure runs, which is also when it reads the "#include"s. */
+    auto reroot_file = [&](const std::string& file) {
+        auto rerooted = reroot(file);
+        if (rerooted != file && access(rerooted.c_str(), F_OK) != 0)
+            return file;
+        return rerooted;
+    };
+
     auto filter_compile_opts = [&](const std::vector<std::string> compile_opts)
         {
             /* A line of COMPILEOPTS is a piece of a command line, and
@@ -1525,17 +1593,29 @@ language_cxx::compile_options(const context::ptr& ctx,
                     words.push_back(word);
             }
 
+            /* What the word after a flag that stands alone is
+             * rerooted with, or nothing when the last word was no
+             * such flag. */
             auto out = std::vector<std::string>();
-            auto pending = false;
+            auto pending = std::function<std::string(const std::string&)>();
             for (const auto& opt: words) {
                 auto split = split_flag(opt, include_flags());
+                auto forced = split_forced_include(opt);
 
-                if (pending == true) {
-                    out.push_back(reroot(opt));
-                    pending = false;
+                if (pending != nullptr) {
+                    out.push_back(pending(opt));
+                    pending = nullptr;
+                } else if (forced.first.size() > 0 && forced.second.size() == 0) {
+                    out.push_back(opt);
+                    pending = reroot_file;
+                } else if (forced.first.size() > 0) {
+                    /* Two words for the reason given for "-isystem"
+                     * below. */
+                    out.push_back(forced.first);
+                    out.push_back(reroot_file(forced.second));
                 } else if (split.first.size() > 0 && split.second.size() == 0) {
                     out.push_back(opt);
-                    pending = true;
+                    pending = reroot;
                 } else if (split.first == "-I") {
                     out.push_back("-I" + reroot(split.second));
                 } else if (split.first.size() > 0) {
@@ -2106,17 +2186,54 @@ std::vector<std::string>
 cxx_headers_read_by(const std::string& source,
                     const std::vector<std::string>& compile_opts)
 {
-    auto defined = cxx_defines(compile_opts);
+    auto defined = std::unordered_set<std::string>();
+    for (const auto& define: cxx_defines(compile_opts))
+        defined.insert(define);
     auto include_dirs = cxx_include_dirs(compile_opts);
 
     auto out = std::vector<std::string>();
+    auto callback = [&](std::string s) {
+        out.push_back(s);
+        return 0;
+    };
+
+    /* A forced include is looked for where the compiler looks for it:
+     * in the directory the compiler runs from first, rather than the
+     * one the source is in, and then along the include path the way a
+     * '#include "..."' is.  One that isn't anywhere is skipped, the
+     * same as an "#include" of a file that isn't there: the compiler
+     * has the better sentence to say about that. */
+    auto includable = [](const std::string& path) {
+        struct stat st;
+        if (stat(path.c_str(), &st) != 0)
+            return false;
+        return !S_ISDIR(st.st_mode) && access(path.c_str(), R_OK) == 0;
+    };
+
+    for (const auto& name: cxx_forced_includes(compile_opts)) {
+        auto found = std::string();
+        if (includable(name))
+            found = name;
+        else if (name[0] != '/')
+            for (const auto& dir: include_dirs)
+                if (found.size() == 0 && includable(dir + "/" + name))
+                    found = dir + "/" + name;
+
+        if (found.size() == 0)
+            continue;
+
+        /* What it defines is defined before the source's first line,
+         * so it is read with the same set of defines the source is
+         * read with afterwards, and leaves its own in there. */
+        found = file_utils::normalize_path(found);
+        out.push_back(found);
+        pinclude::list_defining(found, include_dirs, defined, callback, true);
+    }
+
     pinclude::list(source,
                    include_dirs,
                    defined,
-                   [&](std::string s) {
-                       out.push_back(s);
-                       return 0;
-                   },
+                   callback,
                    true);
     return out;
 }
