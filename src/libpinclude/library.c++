@@ -378,36 +378,127 @@ int list_overwrite_defines(std::string filename,
             out = out.substr(0, out.size() - 1) + line;
         }
 
-        /* The comment state has to survive between calls, because a
-         * block comment can span lines.  A line comment cannot: it
-         * ends at the newline, so it gets a state of its own rather
-         * than sharing the block comment's.  1 is the closing slash of
-         * a block comment, which is still part of the comment; 2 is
-         * inside a block comment; 3 is inside a line comment.  The
-         * guards matter as much as the states do: a line comment
-         * opened inside a block comment doesn't start anything, and
-         * neither does a block comment opened inside a line one. */
+        /* Only a block comment can still be open when the line ends,
+         * so it is the only state kept between calls: "comment" is 1
+         * while one is open and 0 otherwise.  Everything else below
+         * ends with the line it is on.
+         *
+         * A slash and a star only open a comment when they are C.
+         * Inside a string literal, a character literal or an
+         * #include's header name they are not: a glob of log files
+         * in a string has them side by side and opens nothing, '"' is
+         * a character rather than the start of a string, and in
+         * #include "lib//extra.h" the two slashes are part of a file
+         * name the compiler opens as lib/extra.h.  Blanked as a
+         * comment, any of those hides what comes after it -- every
+         * later #include, for a block comment that is never closed --
+         * so the literals are walked as the compiler walks them,
+         * escapes and all.  A literal still open at the end of the
+         * line is a program the compiler refuses, and this doesn't
+         * try to be cleverer about one than ending it there. */
+        enum class in { CODE, LINE_COMMENT, LITERAL, HEADER };
+        auto at = in::CODE;
+        auto close = '\0';
+        auto peek = [&](size_t i) {
+            return i + 1 < out.size() ? out[i + 1] : '\0';
+        };
+
+        /* A header name is only where an #include puts one, which
+         * is directly after the word.  Anywhere else a '<' is a
+         * comparison or a template's bracket, and taken for a header
+         * name it would hide a real comment up to the next '>'; a '"'
+         * anywhere else is a string literal, which is read the same
+         * way but for its escapes. */
+        auto opens_header_name = [&](size_t i) {
+            size_t j = 0;
+            while (j < i && isspace((unsigned char)out[j]))
+                j++;
+            if (j >= i || out[j] != '#')
+                return false;
+            j++;
+            while (j < i && isspace((unsigned char)out[j]))
+                j++;
+            if (out.compare(j, 7, "include") != 0)
+                return false;
+            j += 7;
+            while (j < i && isspace((unsigned char)out[j]))
+                j++;
+            return j == i;
+        };
+
+        /* Since C++14 a quote inside a number separates its digits --
+         * 1'000'000 -- and opens nothing.  The number is the run of
+         * pp-number characters the quote is in the middle of, and it
+         * is a number rather than an L'x' or u8'x' prefix when that
+         * run starts with a digit. */
+        auto separates_digits = [&](size_t i) {
+            size_t j = i;
+            while (j > 0 && (isalnum((unsigned char)out[j - 1])
+                             || out[j - 1] == '_'
+                             || out[j - 1] == '.'
+                             || out[j - 1] == '\''))
+                j--;
+            return j < i && isdigit((unsigned char)out[j]);
+        };
+
         for (size_t i = 0; i < out.size(); ++i) {
-            bool was_comment = comment > 0;
-            if (comment == 1)
-               comment = 0;
-            if (comment == 0 && out[i] == '/' && out[i+1] == '/')
-              comment = 3;
-            if (comment == 0 && out[i] == '/' && out[i+1] == '*')
-              comment = 2;
-            if (comment == 2 && out[i] == '*' && out[i+1] == '/')
-              comment = 1;
+            if (comment == 1) {
+                if (out[i] == '*' && peek(i) == '/') {
+                    out[i] = ' ';
+                    out[++i] = ' ';
+                    comment = 0;
+                    continue;
+                }
+                out[i] = ' ';
+                continue;
+            }
 
-            if (was_comment || comment > 0)
-              out[i] = ' ';
+            switch (at) {
+            case in::LINE_COMMENT:
+                out[i] = ' ';
+                continue;
+
+            case in::LITERAL:
+            case in::HEADER:
+                /* A header name has no escapes: a backslash in one is
+                 * just a character of the file name. */
+                if (at == in::LITERAL && out[i] == '\\') {
+                    ++i;
+                    continue;
+                }
+
+                if (out[i] == close)
+                    at = in::CODE;
+                continue;
+
+            case in::CODE:
+                break;
+            }
+
+            if (out[i] == '/' && peek(i) == '/') {
+                at = in::LINE_COMMENT;
+                out[i] = ' ';
+            } else if (out[i] == '/' && peek(i) == '*') {
+                /* Both characters are stepped over here, so that the
+                 * "*" that opens a block comment is never also taken
+                 * for the one that closes it: "/" "*" "/" is a comment
+                 * that is still open, and what follows it up to a "*"
+                 * "/" of its own is still comment. */
+                comment = 1;
+                out[i] = ' ';
+                out[++i] = ' ';
+            } else if ((out[i] == '"' || out[i] == '<')
+                       && opens_header_name(i)) {
+                at = in::HEADER;
+                close = out[i] == '<' ? '>' : '"';
+            } else if (out[i] == '"') {
+                at = in::LITERAL;
+                close = '"';
+            } else if (out[i] == '\'' && separates_digits(i) == false) {
+                at = in::LITERAL;
+                close = '\'';
+            }
         }
-
-        /* Whatever a line comment was hiding, it stops hiding it here.
-         * Leaving the state set would blank every line that follows,
-         * to the end of the file or to whatever stray close of a block
-         * comment happened to turn up first. */
-        if (comment == 3)
-            comment = 0;
 
         return true;
     };
