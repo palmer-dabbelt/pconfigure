@@ -501,11 +501,20 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
                     {
                         return !t->has_global_target(makefile::global_targets::INSTALL);
                     });
-            auto bin_name = ctx->type == context_type::BINARY ? ctx->test_binary : bin_targets[0]->name();
-            /* A test under a PHONY has nothing it's testing, so
+            /* The program this test is attached to is whatever opened
+             * the target above it -- the same answer bash.c++ gives a
+             * BASH test.  It is not anything out of bin_targets: those
+             * are the test's own compiled self, and the first of them
+             * is an object file, which handed to the test as
+             * $PTEST_BINARY was neither runnable nor in $BINDIR, and as
+             * the prerequisite meant a rebuilt program never made the
+             * test run again.
+             *
+             * A test under a PHONY has nothing it's testing, so
              * there's no program to wait for and none to hand it.
              * Everywhere else this is the thing the test
              * exercises. */
+            auto bin_name = ctx->test_binary;
             auto deps = bin_targets;
             if (bin_name.size() > 0)
                 deps = std::vector<makefile::target::ptr>{
