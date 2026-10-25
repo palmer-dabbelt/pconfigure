@@ -585,7 +585,7 @@ the whole of that project's cache was stale; a subproject that wants
 one of these gets it from a \pconfigure\ run of its own (see
 Section~\ref{cmd:subprojects}).
 
-\subsection{\texttt{make distclean}}
+\subsection{\texttt{make distclean} \label{make:distclean}}
 
 Recursively removes \texttt{BINDIR}, \texttt{OBJDIR}, \texttt{LIBDIR},
 \texttt{TESTEXECDIR}, and \texttt{CHECKDIR}.  This completely removes every file
@@ -2746,6 +2746,25 @@ A \texttt{HEADERSRC} may be written above or below the targets whose
 sources read the copy: like a \texttt{GENERATE}, every one is copied
 before \pconfigure\ looks through any source for the headers it
 includes, so the dependency on the copy is found either way.
+
+The copy is build output: it is written over whenever its source is
+newer, and \texttt{make distclean} removes it (see
+Section~\ref{make:distclean}).  So a \texttt{HEADERSRC}, or a
+\texttt{HEADERS} with a \texttt{SOURCES} under it, is refused when
+its copy would land on a file that isn't one.  That is the source
+itself, as with \texttt{SRCDIR = include}, where the source and the
+copy are one path; and it is a file already in \texttt{HDRDIR} that
+nothing in this build made --- one with no record of its recipe in
+\texttt{OBJDIR} from an earlier configure, and that doesn't say
+exactly what its source says.  \texttt{make clean} removes that
+record along with the copy, so a header written into \texttt{HDRDIR}
+after a clean is one nothing vouches for.  A copy whose record was
+lost, as when \texttt{OBJDIR} is deleted after its source was edited,
+can't be told apart from a header somebody wrote and is refused too;
+deleting the copy and configuring again is the fix for that one.  A
+header that is meant to be installed from where it already is wants a
+\texttt{HEADERS} with nothing under it instead
+(Section~\ref{cmd:headers}).
 
 \subsection{\texttt{GENERATE += \$name.proc}}
 
