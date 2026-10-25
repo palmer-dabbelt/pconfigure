@@ -85,6 +85,8 @@ static bool closes_heredoc(const char *line, const struct heredoc *open);
 
 static bool reads_as_directive(const char *line);
 
+static bool is_directive(const char *line, const char *directive);
+
 static int _pinclude_lines(const char *input,
                            pinclude_callback_t per_include,
                            void *include_priv, pinclude_lineback_t per_line,
@@ -223,7 +225,14 @@ static int _pinclude_lines(const char *input,
 #endif
         }
 
-        if (strncmp(buffer, "#else", strlen("#else")) == 0) {
+        /* Unlike the "#ifdef"s above, neither of these has anything
+         * after it to need a space in front of, so all that ends the
+         * keyword is a word ending.  Matching the first few letters
+         * alone took a comment such as "#elsewhere ..." for an
+         * "#else" -- flipping a conditional that wasn't there and
+         * silently dropping every include after it -- and disagreed
+         * with the dependency scan, which wants the word to end. */
+        if (is_directive(buffer, "#else") == true) {
             state[state_i] = !state[state_i];
 
 #ifdef DEBUG_LIBPINCLUDE_DEFINE
@@ -239,7 +248,7 @@ static int _pinclude_lines(const char *input,
             state[state_i] = true;
         }
 
-        if (strncmp(buffer, "#endif", strlen("#endif")) == 0) {
+        if (is_directive(buffer, "#endif") == true) {
             if (state_i == 0)
                 abort();
 
@@ -727,25 +736,30 @@ bool reads_as_directive(const char *line)
     };
     size_t i;
 
-    for (i = 0; directives[i] != NULL; i++) {
-        size_t length;
-        char after;
-
-        length = strlen(directives[i]);
-        if (strncmp(line, directives[i], length) != 0)
-            continue;
-
-        /* A directive's name ends where an identifier ends, so that
-         * "#included" is a word which starts with one rather than one
-         * of them. */
-        after = line[length];
-        if (isalnum((unsigned char)after) || after == '_')
-            continue;
-
-        return true;
-    }
+    for (i = 0; directives[i] != NULL; i++)
+        if (is_directive(line, directives[i]) == true)
+            return true;
 
     return false;
+}
+
+bool is_directive(const char *line, const char *directive)
+{
+    size_t length;
+    char after;
+
+    length = strlen(directive);
+    if (strncmp(line, directive, length) != 0)
+        return false;
+
+    /* A directive's name ends where an identifier ends, so that
+     * "#included" is a word which starts with one rather than one of
+     * them. */
+    after = line[length];
+    if (isalnum((unsigned char)after) || after == '_')
+        return false;
+
+    return true;
 }
 
 void str_chomp(char *str)
