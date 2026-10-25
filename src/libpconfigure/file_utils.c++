@@ -94,12 +94,23 @@ file_utils::execlines(std::string path, std::vector<std::string> args)
         abort();
     }
 
+    /* The newline is taken off only when there is one.  The last line
+     * of what a program prints need not end in one -- printf with no
+     * "\n" is the ordinary way a shell script prints a single name --
+     * and getline() hands that line back exactly as it was printed.
+     * Chopping the final byte unconditionally took the last letter of
+     * the path off instead, so a "--deps" answer of "src/answer.txt"
+     * became a rule naming "src/answer.tx", a file that does not
+     * exist, and make stopped on it.  The length getline() returns is
+     * used rather than strlen(), so that a stray NUL in the output
+     * does not end the line early either. */
     char *lineptr = NULL;
     size_t n = 0;
-    while (getline(&lineptr, &n, file) > 0) {
-        auto line = std::string(lineptr);
-        line = line.substr(0, line.size()-1);
-        out.push_back(line);
+    ssize_t length;
+    while ((length = getline(&lineptr, &n, file)) > 0) {
+        if (lineptr[length - 1] == '\n')
+            length--;
+        out.push_back(std::string(lineptr, length));
     }
 
     free(lineptr);
