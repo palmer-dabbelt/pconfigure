@@ -764,6 +764,7 @@ TESTSRC     += configfile-minus-equals-names-line.bash
 TESTSRC     += configfile-make-style-operators-refused-with-rewrite.bash
 TESTSRC     += configfile-form-feed-and-vertical-tab-are-whitespace.bash
 TESTSRC     += configfile-carriage-return-only-line-endings-refused.bash
+TESTSRC     += configfile-repeated-languages-line-harmless.bash
 TESTSRC     += deplibs-without-target-names-line.bash
 TESTSRC     += subproject-wrong-operator-names-line.bash
 TESTSRC     += phc-wrong-operator-refused.bash
