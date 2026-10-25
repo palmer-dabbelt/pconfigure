@@ -236,8 +236,17 @@ is read, see Section~\ref{cmd:phc}.
 Uses \texttt{<path>} as \texttt{ppkg-config} (see
 Section~\ref{prog:ppkg-config}) when a \texttt{Configfile} runs it in
 backticks.  The word \texttt{ppkg-config} is replaced wherever it
-appears inside a backticked command, so \texttt{`ppkg-config --cflags
-x`} runs \texttt{<path>} instead.  The path goes in quoted, as a
+appears as a word of its own inside a backticked command, so
+\texttt{`ppkg-config --cflags x`} runs \texttt{<path>} instead, and
+so does \texttt{`true | ppkg-config --cflags x`}: a word starts and
+ends at a blank, at either end of the command, or at one of the shell
+operators \texttt{|}, \texttt{;}, \texttt{\&}, \texttt{<},
+\texttt{>}, \texttt{(} and \texttt{)}, which covers \texttt{\$(}
+too.  Text that only contains it is left as written: a ppkg-config
+named by its path, such as \texttt{/opt/bin/ppkg-config}, runs that
+path, a script called \texttt{tools/ppkg-config-shim} runs that
+script, and \texttt{myppkg-config} or a quoted
+\texttt{'ppkg-config'} is not touched.  The path goes in quoted, as a
 single word, so a \texttt{<path>} with a space in it -- or a
 \pconfigure\ installed under such a directory, for the default below
 -- still names one program.
