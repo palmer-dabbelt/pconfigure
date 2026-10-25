@@ -342,9 +342,15 @@ package.  It can't have whitespace in it.  Every installed file is a
 \texttt{make} target whose name starts with \texttt{DESTDIR}, and
 \texttt{make} splits target names at whitespace, so a staging
 directory called \texttt{stage dir} would have installed into a
-\texttt{dir} inside the source tree.  The \texttt{Makefile} stops with
-an error saying so instead, whatever was being built.  A symlink to
-the staging directory names the same place without the space:
+\texttt{dir} inside the source tree.  It can't have a \texttt{:},
+\texttt{;} or \texttt{\%} in it either, which \texttt{make} reads as
+rule syntax in those same names: the first two would have stopped
+\texttt{make} with an error that never mentions \texttt{DESTDIR},
+and a \texttt{\%} would have let
+\texttt{make install} work and then \texttt{make uninstall} remove
+nothing.  The \texttt{Makefile} stops with an error saying so instead,
+whatever was being built.  A symlink to the staging directory names
+the same place without the character in the way:
 
 \begin{verbatim}
 $ ln -s "$PWD/stage dir" /tmp/stage
