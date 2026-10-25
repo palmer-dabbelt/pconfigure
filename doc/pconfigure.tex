@@ -4920,7 +4920,10 @@ A bash ``compiler'', which really just does the following
 \item Reads the \texttt{-I} and \texttt{-D} in the target's
   \texttt{COMPILEOPTS}, with the argument either stuck on or as the
   next word.  A \texttt{-I} adds a directory an \texttt{\#include} is
-  looked for in, after the including file's own.  A \texttt{-D}
+  looked for in, after the including file's own.  A directory that
+  shares the include's name is passed over rather than pasted in as
+  nothing, and the search carries on; an include found nowhere stops
+  \texttt{pbashc} with an error naming its line.  A \texttt{-D}
   defines a name for \texttt{\#ifdef} and \texttt{\#ifndef}, which
   decide which \texttt{\#include}s are pasted in --- every other line
   is a comment to BASH and goes out as it came in.
