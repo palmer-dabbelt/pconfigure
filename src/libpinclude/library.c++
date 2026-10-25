@@ -512,23 +512,50 @@ int list_overwrite_defines(std::string filename,
     };
 
     /* Labelling an "#else" or an "#endif" with the condition it
-     * belongs to is a habit carried over from C, and in a script the
-     * label is a shell comment: "#endif # WITH_EXTRAS".  The C
-     * spelling never gets this far, since its comments have already
-     * been blanked out by the time a line is matched, but a script's
-     * comments start with the same '#' a directive does and nothing
-     * blanks those.  pbashc only looks at the start of the line for
-     * these two and compiles the labelled form happily, so refusing
-     * it here would leave a script the compiler accepts as one the
-     * project can't be configured around.
+     * belongs to is a habit carried over from C, and there is more
+     * than one way of writing the label.  In a script it is a shell
+     * comment, "#endif # WITH_EXTRAS"; in C it is either a comment,
+     * which has been blanked out by the time a line gets here, or the
+     * bare name, "#endif WITH_EXTRAS", which is older than "//" and
+     * which the compiler still reads as an "#endif", warning about the
+     * rest.  pbashc only looks at the start of the line for these two
+     * as well, so in neither language does what follows the keyword
+     * change what the line does.
      *
-     * Only a comment, and only in a script: anything else after the
-     * keyword is still a mistake worth stopping for, and in C there
-     * is no '#' comment for it to be. */
-    const auto only_shell_comment = [&](const std::string& rest) {
-        return language != pinclude::syntax::C
-            && rest.size() > 0
-            && rest[0] == '#';
+     * Refusing it here instead left a source the compiler builds as
+     * one the project couldn't be configured around, and the warning
+     * is the compiler's to give: it sees the line on every build,
+     * where this only sees it when the scan runs.  So the "#else"
+     * and "#endif" below take no notice of anything after the
+     * keyword. */
+
+    /* "#ifdef NAME" asks about one name.  The compiler reads a C line
+     * with more after the name -- "#ifdef VERBOSE LOGGING", or
+     * "#ifdef VERBOSE(x)", or "#ifdef VERBOSE;" -- as a question
+     * about the identifier the line starts with, warning about the
+     * rest, and the scan has to answer the same question or it
+     * follows the other branch.  So the name ends where the
+     * identifier does, at the first character that can't be part of
+     * one, and not merely at the first space: cut at the space,
+     * "VERBOSE(x)" is a name nothing defines, and the scan quietly
+     * takes the branch the compiler skips.  Handed whole to the
+     * expression reader it wasn't a question at all: "defined(VERBOSE
+     * LOGGING)" is no expression, and the reader aborted on it
+     * without saying which file it was in.
+     *
+     * Only for C.  pbashc compares everything after the keyword with
+     * the names it was given, so in a script the identifier is not
+     * the question pbashc asks, and answering it here would only
+     * trade one disagreement for another. */
+    const auto ifdef_name = [&](const std::string& rest) {
+        if (language != pinclude::syntax::C)
+            return rest;
+
+        size_t end = 0;
+        while (end < rest.size()
+               && (isalnum((unsigned char)rest[end]) || rest[end] == '_'))
+            end++;
+        return rest.substr(0, end);
     };
 
     /* On the list for as long as this call is reading the file,
@@ -619,12 +646,12 @@ int list_overwrite_defines(std::string filename,
         }, bare_directives);
 
         check_line(line, "ifdef", [&](std::string rest) {
-            auto resolved = resolve_pp_function("defined(" + rest + ")", defines);
+            auto resolved = resolve_pp_function("defined(" + ifdef_name(rest) + ")", defines);
             push_conditional(resolved);
         }, bare_directives);
 
         check_line(line, "ifndef", [&](std::string rest) {
-            auto resolved = resolve_pp_function("!defined(" + rest + ")", defines);
+            auto resolved = resolve_pp_function("!defined(" + ifdef_name(rest) + ")", defines);
             push_conditional(resolved);
         }, bare_directives);
 
@@ -665,19 +692,7 @@ int list_overwrite_defines(std::string filename,
             defines.erase(rest.substr(0, after));
         }, bare_directives);
 
-        check_line(line, "else", [&](std::string rest) {
-            if (only_shell_comment(rest))
-                rest = "";
-
-            for (const auto r: rest) {
-                if (!isspace(r)) {
-                    std::cerr << "There shouldn't be anything after an else\n";
-                    std::cerr << "#else\"" << rest << "\"\n";
-                    std::cerr << "at " << filename << ":" << lineno << "\n";
-                    abort();
-                }
-            }
-
+        check_line(line, "else", [&](std::string) {
             if (state_stack.size() == 0) {
                 std::cerr << "else without if\n";
                 abort();
@@ -765,15 +780,7 @@ int list_overwrite_defines(std::string filename,
             }
         }, bare_directives);
 
-        check_line(line, "endif", [&](std::string rest) {
-            if (only_shell_comment(rest))
-                rest = "";
-
-            if (rest != "") {
-                std::cerr << "There shouldn't be anything after an endif\n";
-                abort();
-            }
-
+        check_line(line, "endif", [&](std::string) {
             if (state_stack.size() == 0) {
                 std::cerr << "endif without a cooresponding open\n";
                 abort();
@@ -830,16 +837,36 @@ int list_overwrite_defines(std::string filename,
                 return rest.substr(1, end - 1);
             };
 
-            auto rest_path = [&]() {
-                if (rest[0] == '<')
-                    return delimited('>');
-                if (rest[0] == '"')
-                    return delimited('"');
+            /* Anything but a quote or a '<' after the keyword is a
+             * computed include, "#include NAME" with NAME a macro
+             * that expands to one of the spellings above.  That is
+             * standard C, and how a project picks a configuration
+             * header without an "#ifdef" ladder, but there is nothing
+             * here to expand it with: what is tracked is which names
+             * are defined rather than what they are defined as.  A
+             * header the scan can't name is one it can't list, so the
+             * line is passed over and the rest of the file read as
+             * usual.  That is no change from what a script gets:
+             * pbashc drops every "#include" line from its output, and
+             * one with no quote or '<' after it pastes nothing in, so
+             * passing it over here includes nothing either way.
+             *
+             * It costs two things in C.  The header behind the macro
+             * isn't a prerequisite of the object, so an edit to it
+             * alone doesn't rebuild one.  And the source that
+             * implements that header is never found, since finding it
+             * is what listing the header does, so unless something
+             * else brings it in the configure succeeds and the link
+             * then fails.  Including the header by name as well pays
+             * for both; listing its source in SOURCES pays only for
+             * the link.  Aborting cost the whole project, in two
+             * lines that named no file. */
+            if (rest.empty() || (rest[0] != '<' && rest[0] != '"'))
+                return;
 
-                std::cerr << "Unable to parse line " << line << "\n";
-                std::cerr << "  Unknown include format, expected < or \"" << "\n";
-                abort();
-            }();
+            auto rest_path = rest[0] == '<'
+                ? delimited('>')
+                : delimited('"');
 
             /* A directory is readable, so access() alone lets one
              * stand in for an include that shares its name.  It is
