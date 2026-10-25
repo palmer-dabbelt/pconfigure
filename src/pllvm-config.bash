@@ -63,6 +63,23 @@ then
     stdout="$stdout -DHAVE_$have"
 fi
 
-# Outputs the results of pkg-config
-echo $stdout | sed 's@-DNDEBUG@@g'
+# Outputs the results of pkg-config, without the "-DNDEBUG" LLVM was
+# built with: that's LLVM's choice, and borrowing it along with the
+# include path would switch off the asserts of the project asking.
+# It is dropped as a whole word.  Removing it as a substring (which is
+# what a sed over the output did) also takes the front off any longer
+# define that starts the same way, turning "-DNDEBUG_ASSERTS=1" into
+# the bare word "_ASSERTS=1", which the compiler driver reads as an
+# input file.  Globbing is off so that a word that looks like a pattern
+# is passed along as written.
+set -f
+out=""
+for word in $stdout
+do
+    if [[ "$word" != "-DNDEBUG" ]]
+    then
+        out="$out $word"
+    fi
+done
+echo $out
 exit 0

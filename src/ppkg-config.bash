@@ -46,11 +46,37 @@ else
     stdout="$($cmd $args)"
 fi
 retval="$?"
-stdout="$(echo "$stdout" | sed 's^-L/usr/lib64^^g' | sed 's^-Wl,-rpath,/usr/lib64^^g' | sed 's^-L/usr/lib^^g' | sed 's^-Wl,-rpath,/usr/lib^^g')"
+
+# Drops the flags that only name what the toolchain already does by
+# default: the directories the linker and loader search anyway, and on
+# Darwin a "-lrt" for a library that is part of libSystem there.  These
+# have to be compared as whole words.  Removing them as substrings
+# (which is what a sed over the output did) also takes the front off
+# any longer word that happens to start the same way, so
+# "-L/usr/lib/x86_64-linux-gnu/openmpi/lib" came out as the bare path
+# "/x86_64-linux-gnu/openmpi/lib" and "-lrtmp" as "mp" -- words the
+# compiler driver reads as input files, with the search path or
+# library the package asked for gone.  The output is split the way the
+# final unquoted echo splits it, with globbing off so a word that
+# looks like a pattern is passed along as written.
+unwanted=(-L/usr/lib64 -Wl,-rpath,/usr/lib64 -L/usr/lib -Wl,-rpath,/usr/lib)
 if [[ "$(uname)" == "Darwin" ]]
 then
-    stdout="$(echo "$stdout" | sed 's/-lrt//g')"
+    unwanted+=(-lrt)
 fi
+read -r -d '' -a words <<<"$stdout" || true
+stdout=""
+for word in "${words[@]}"
+do
+    for drop in "${unwanted[@]}"
+    do
+        if [[ "$word" == "$drop" ]]
+        then
+            continue 2
+        fi
+    done
+    stdout="$stdout $word"
+done
 
 # If --optional is given then don't panic
 if [[ "$retval" != "0" ]]
@@ -80,5 +106,6 @@ then
 fi
 
 # Outputs the results of pkg-config
+set -f
 echo $stdout
 exit 0
