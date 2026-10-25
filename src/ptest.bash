@@ -543,6 +543,26 @@ then
     echo "ptest: unable to enter the test's own directory $tmpdir" >&2
     exit 1
 fi
-tar -c * > "$out"
+
+# Everything the test left is collected, whatever it is called and
+# however much of it there is.  A bare "tar -c *" got three things
+# wrong: the glob skips dotfiles, so a ".git" or a ".log" vanished from
+# the result; every name was a word on tar's command line, so a file
+# called "-f" was read as an option and the archive came out empty;
+# and enough files at the top level overran the kernel's argument
+# limit, so tar never ran at all.  The last two scored a test that
+# passed as an EROR.
+#
+# So the names go to tar on its standard input, NUL-separated, which
+# has no length limit and no option parsing -- GNU tar reads a --null
+# list verbatim, and so does bsdtar.  printf is a builtin, so the
+# expansion never reaches exec either.  "tar -c ." would have fixed
+# all three too, but it names every member "./ptest__return", and
+# everything that reads a result -- the report above, the harness,
+# the tests that open one another's results -- asks for the bare
+# name.  The glob keeps those names; dotglob is what makes it match
+# what "." would have, since bash never matches "." or ".." anyway.
+shopt -s dotglob
+printf '%s\0' * | tar -c --null -T - > "$out"
 
 rm -rf "$tmpdir"
