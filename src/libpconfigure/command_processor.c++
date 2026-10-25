@@ -3136,6 +3136,26 @@ void command_processor::process_one(const command::ptr& cmd)
         if (cmd->check_operation("=") == false)
             goto bad_op_eq;
 
+        /* A Configfile can't give PHC nothing: the parser refuses
+         * "PHC =" with the value left off, and backticks that print
+         * nothing are refused before they get here.  "--phc ''" is
+         * the one way left, and it's taken at its word as a tool
+         * named nothing -- which turns every header copy into
+         * " -i src/x.h -o include/x.h", a shell looking for a program
+         * called "-i" and a Makefile recipe whose leading '-' make
+         * reads as "ignore errors".  There is no header compiler that
+         * nothing could mean, so it's refused here, where the option
+         * can still be named. */
+        if (cmd->data().empty()) {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: PHC is given nothing, and there is no"
+                      << " header compiler with an empty name\n"
+                      << "  give '--phc' the path to the program that"
+                      << " copies headers into place, or leave the option"
+                      << " off to use the phc that came with pconfigure\n";
+            abort();
+        }
+
         _stack.top()->phc = cmd->data();
         return;
     }
