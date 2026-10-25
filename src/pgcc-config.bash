@@ -1,6 +1,12 @@
+# pgcc-config is meant to be run inside a Configfile backtick, where
+# everything it prints on stdout becomes compiler flags.  So stdout is
+# only ever the answer: the usage and every reason for giving up go to
+# stderr, where they're a diagnostic rather than words of a compile
+# command.  The usage's heredoc delimiter is quoted because the text
+# mentions `program -dumpversion` as prose, not as something to run.
 if [[ "$1" == "" || "$2" == "" ]]
 then
-    cat <<EOF
+    cat >&2 <<'EOF'
 pgcc-config <program> <version> [test] [flag]
 
   If [test] and [flag] are passed, then flag is returned IFF the test
@@ -23,7 +29,9 @@ then
 
     if [[ "$(echo "$dumpversion" | cut -d '.' -f 1)" != "4" ]]
     then
-        echo "OSX doesn't have sort -V, so we only support gcc-4"
+        # Comparing arbitrary versions wants "sort -V", which OSX
+        # doesn't have, so only GCC 4.x's versions are understood.
+        echo "pgcc-config: $program reports version $dumpversion, but only GCC 4.x versions can be compared (OSX doesn't have sort -V)" >&2
         exit 1
     fi
 
