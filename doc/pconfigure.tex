@@ -453,7 +453,10 @@ name: a vendored subproject's output directory and its install prefix
 (Section~\ref{buildsys:prefix}), the record of where the test results
 live, the \texttt{Makefile}s a \pconfigure\ run from above left in
 here, the bookkeeping an \texttt{AUTORECONFIGURE} build keeps for
-working its dependencies out, and the scratch directory a test was
+working its dependencies out, the record each \texttt{GENERATE} keeps
+of the recipe that wrote its dependency fragment (without which the
+next configure would throw the fragment away and run \texttt{--deps}
+again), and the scratch directory a test was
 given --- which is a fixture somebody deliberately did not want copied
 around, and usually one that is expensive to make twice.
 \texttt{make clean} is what removes that last one, along with the
