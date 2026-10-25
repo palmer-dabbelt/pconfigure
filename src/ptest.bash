@@ -6,6 +6,22 @@ check_dirs=()
 abrt_dirs=()
 check_suite=""
 check_results=()
+
+# A directory is the same directory with a slash after it -- which is
+# how a shell's tab completion hands one over -- but the report finds
+# which directory a result named outright belongs to by comparing the
+# text, and "check/" followed by "/*" matches nothing.  So the slashes
+# come off once, here, and everything after this sees one spelling.
+# "/" alone keeps its slash, since without it there is no directory.
+strip_slashes() {
+    local dir="$1"
+    while [[ "$dir" == */ ]] && [[ "$dir" != "/" ]]
+    do
+        dir="${dir%/}"
+    done
+    echo "$dir"
+}
+
 while [[ "$1" == --* ]]
 do
     if [[ "$1" == "--verbose" ]]
@@ -35,14 +51,15 @@ do
         # child that did, and a child that asked shouldn't lose that
         # just because the report was run from above it.
         shift
-        check_dirs+=("$1")
-        abrt_dirs+=("$1")
+        dir="$(strip_slashes "$1")"
+        check_dirs+=("$dir")
+        abrt_dirs+=("$dir")
     elif [[ "$1" == "--check-dir" ]]
     then
         # One per project: a build with subprojects has its test
         # results spread across all of them.
         shift
-        check_dirs+=("$1")
+        check_dirs+=("$(strip_slashes "$1")")
     elif [[ "$1" == "--check-suite" ]]
     then
         # Reports one named set of tests rather than everything that
@@ -76,6 +93,7 @@ then
         # --abrt-is-fail-dir says on the command line.
         while IFS=$'\t' read -r dir flag
         do
+            dir="$(strip_slashes "$dir")"
             if [[ "$dir" != "" ]]
             then
                 check_dirs+=("$dir")
@@ -173,10 +191,13 @@ then
     # Which check directory a result named outright was found under,
     # which is what a whole run gets for free by walking down from the
     # directory itself.  The longest one that matches, so that a
-    # project nested inside another is named as itself.
+    # project nested inside another is named as itself.  The search
+    # starts from nothing rather than from ".", the answer for a result
+    # under none of them, because "." is one character long and a
+    # directory whose name is too could never beat it.
     result_dir() {
         local file="$1"
-        local out="."
+        local out=""
         local dir
 
         for dir in "${check_dirs[@]}"
@@ -187,7 +208,7 @@ then
             fi
         done
 
-        echo "$out"
+        echo "${out:-.}"
     }
 
     # The results this run is reporting on, each with the directory it
