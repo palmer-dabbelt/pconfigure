@@ -3819,6 +3819,16 @@ worked and a build one step further on that could not find the tool.
 The fourth is one rule per \texttt{SUBPROJECT\_TARGETS}, which every
 build system gets.
 
+The tree's \texttt{make} is a recursive \texttt{\$(MAKE)}, so a
+\texttt{make -n} runs it to have it say what it would build, while
+only printing the \texttt{configure} line that creates the build
+directory.  On a tree that has never been configured, then, there
+is no directory for the sub-make to go into.  Under \texttt{-n}, and
+only then, the sub-make is skipped when its directory is missing, so
+a dry run of a fresh tree prints the \texttt{configure} and the
+\texttt{make} it would run and exits successfully.  Once the tree has
+been configured, a dry run goes into it as usual.
+
 What is installed goes into \texttt{--prefix}, which defaults to
 \texttt{\$obj\_dir/\$dirname/prefix}: beside the build directory
 rather than inside it, since the build directory is the tree's and the
@@ -4033,7 +4043,10 @@ building something that was never configured.  The second builds, and
 installs unless \texttt{--no-install} says otherwise, and writes a
 stamp to say it did; as with \texttt{autotools}, the install is part
 of building the tree because a vendored tool tree is vendored so that
-the rest of this build can run the tool.  The third writes down the
+the rest of this build can run the tool.  A build by a recursive
+\texttt{\$(MAKE)} behaves under \texttt{make -n} the way an
+\texttt{autotools} one does, skipping a build directory the cmake it
+has only printed has not yet created.  The third writes down the
 build-side options, and is explained below.
 
 Configuring is starting over, and that is the one thing about this
