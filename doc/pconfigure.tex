@@ -2708,6 +2708,17 @@ written, since a \texttt{\#} against the first column is a line the
 shell reads as a comment and every other language reads as something
 it does not understand.
 
+A \texttt{BASH} target is compiled from exactly one \texttt{SOURCES},
+since \texttt{pbashc} takes one input and that file is the whole
+program.  A second \texttt{SOURCES} under the same target is a fatal
+error naming its line.  The way to make two files into one script is
+to \texttt{\#include} the second from the first, which \texttt{pbashc}
+expands and the dependency scan follows; the error says which
+\texttt{\#include} to write, spelled from the first file's directory,
+which is where \texttt{pbashc} looks a quoted name up first.  The same
+file listed twice is refused too, with a message saying to delete the
+repeated line.
+
 \texttt{bash} supports linking against BASH.
 
 \subsection{\texttt{c}: C \label{lang:c}}
@@ -2804,6 +2815,13 @@ installation.  The headers it recognizes are the ones C++ recognizes:
 \texttt{.h++}, \texttt{.hpp}, \texttt{.hxx}, \texttt{.hh}, and
 \texttt{.h}.  See Section~\ref{lang:cxx}.
 
+A \texttt{HEADERS} is installed from exactly one \texttt{SOURCES}, as
+a \texttt{BASH} target is, and a second one is a fatal error naming
+its line.  Unlike \texttt{pbashc}, the header compiler is a plain copy
+that leaves \texttt{\#include} alone, so a header that includes
+another does not bring it along: each header to be installed needs a
+\texttt{HEADERS} of its own.
+
 Headers support linking against headers.
 
 \subsection{\texttt{perl}: Perl (\texttt{pperlc} compiler)}
@@ -2811,6 +2829,9 @@ Headers support linking against headers.
 This is almost exactly the same as the BASH language (see
 Section~\ref{lang:bash}, but it compiles Perl instead by using
 \texttt{pperlc} (see Section~\ref{prog:pperlc}).
+Like a \texttt{BASH} target, a perl target takes exactly one
+\texttt{SOURCES}, and a second is refused with the \texttt{\#include}
+to write instead.
 
 Perl supports linking against perl.
 
