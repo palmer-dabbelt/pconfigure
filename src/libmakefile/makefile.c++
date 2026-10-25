@@ -423,6 +423,31 @@ void makefile::makefile::write_to_file(const std::string& filename)
                   " that has none, such as a symlink to it)\n");
     fprintf(file, "endif\n\n");
 
+    /* Whitespace isn't the only thing make reads in a target name.  A
+     * ':' ends the targets of a rule and a ';' ends its
+     * prerequisites, so a DESTDIR of "stage-12:30" stopped make on
+     * "target pattern contains no '%'" and one with a ';' on "missing
+     * separator" -- errors about a line of this Makefile that never
+     * mention DESTDIR.  A '%' is worse, because it doesn't stop
+     * anything: it turns every installed file's rule into a pattern
+     * rule.  The install happened to still match those, but the
+     * uninstall helpers are phony, make never looks for a pattern
+     * rule for a phony target, and "make uninstall" said "Nothing to
+     * be done" and left everything installed.
+     *
+     * Each of these is an ordinary character in a directory name, so
+     * the error has the same way out the whitespace one does.  A '#'
+     * isn't here because it is harmless: a DESTDIR is expanded after
+     * make has already stripped the comments from a line. */
+    fprintf(file, "ifneq ($(findstring :,$(DESTDIR))$(findstring ;,$(DESTDIR))"
+                  "$(findstring %%,$(DESTDIR)),)\n");
+    fprintf(file, "$(error DESTDIR=\"$(DESTDIR)\" has a ':', ';' or '%%'"
+                  " in it, and make reads those as rule syntax in the"
+                  " installed files' target names: install through a path"
+                  " to the same directory that has none, such as a"
+                  " symlink to it)\n");
+    fprintf(file, "endif\n\n");
+
     /* Where every other project in the run is.  These are defaults,
      * so the first Makefile make reads is the one that decides -- and
      * that's the project make was run in, which is exactly whose
