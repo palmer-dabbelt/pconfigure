@@ -114,6 +114,23 @@ namespace file_utils {
     std::string relative_directory(const std::string& from,
                                    const std::string& to);
 
+    /* A directory a Configfile wrote, said from the top of the tree
+     * instead.  "base" is the project's directory, spelled the way
+     * normalize_directory() spells one.
+     *
+     * Whoever wrote a Configfile only knew about their own project,
+     * so a relative directory in it -- an "-I" or an "-L" -- means one
+     * next to that Configfile, while everything that reads it is run
+     * from the top.  An absolute directory already means the same
+     * thing from everywhere, and an empty one isn't a directory at
+     * all, so neither is touched.
+     *
+     * One function rather than a copy per language, because a
+     * subproject's directory is the same directory whichever
+     * language asks, and two languages that spelled it differently
+     * would find a file in one and miss it in the other. */
+    std::string reroot(const std::string& base, const std::string& dir);
+
     /* Makes a directory and every directory above it, the way
      * "mkdir -p" does, and says whether it worked.  A directory that
      * was already there is a success, since what the caller wanted

@@ -68,9 +68,7 @@ static std::vector<std::string> reroot_link_opts(const std::vector<std::string>&
         return words;
 
     auto reroot = [&](const std::string& dir) {
-        if (dir.size() == 0 || dir[0] == '/')
-            return dir;
-        return base + dir;
+        return file_utils::reroot(base, dir);
     };
 
     auto out = std::vector<std::string>();
@@ -1489,9 +1487,7 @@ language_cxx::compile_options(const context::ptr& ctx,
      * directory put on the front.  An absolute one already means the
      * same thing from everywhere. */
     auto reroot = [&](const std::string& dir) {
-        if (dir.size() == 0 || dir[0] == '/')
-            return dir;
-        return child->src_path + dir;
+        return file_utils::reroot(child->src_path, dir);
     };
 
     auto filter_compile_opts = [&](const std::vector<std::string> compile_opts)

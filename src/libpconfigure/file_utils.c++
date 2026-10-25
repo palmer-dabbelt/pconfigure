@@ -192,6 +192,14 @@ static std::vector<std::string> components(const std::string& dir)
     return out;
 }
 
+std::string file_utils::reroot(const std::string& base,
+                               const std::string& dir)
+{
+    if (dir.size() == 0 || dir[0] == '/')
+        return dir;
+    return base + dir;
+}
+
 std::string file_utils::relative_directory(const std::string& from,
                                            const std::string& to)
 {
