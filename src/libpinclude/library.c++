@@ -99,6 +99,8 @@ static void open_heredocs(const std::string& line,
 
 static bool closes_heredoc(const std::string& line, const heredoc& open);
 
+static bool ends_perl_script(const std::string& line);
+
 static void check_line(
     const std::string& line,
     const std::string& pp,
@@ -332,7 +334,16 @@ int list_overwrite_defines(std::string filename,
     int lineno = 0;
     int comment = 0;
     std::vector<heredoc> heredocs;
+    auto in_data = false;
     while (next_logical_line(file, line, comment, lineno)) {
+        /* Below a Perl script's "__DATA__" or "__END__" is data the
+         * script reads, or nothing at all, and never script -- so an
+         * "#include" there is no file the script reads, for the same
+         * reason one in a heredoc isn't.  Only to the end of this
+         * file, which is how far pperlc takes it too. */
+        if (in_data == true)
+            continue;
+
         /* A heredoc's body is text the script writes out rather than
          * script, so an "#include" in one is a line meant for
          * whatever compiles the file being written and not a file
@@ -352,6 +363,14 @@ int list_overwrite_defines(std::string filename,
             }
 
             open_heredocs(line, heredocs, language);
+        }
+
+        /* Whatever the #ifdef state, since pperlc writes this line out
+         * either way and perl stops reading there either way. */
+        if (language == pinclude::syntax::PERL
+            && ends_perl_script(line) == true) {
+            in_data = true;
+            continue;
         }
 
         check_line(line, "if", [&](std::string rest) {
@@ -712,6 +731,32 @@ bool closes_heredoc(const std::string& line, const heredoc& open)
         --end;
 
     return line.compare(begin, end - begin, open.delim) == 0;
+}
+
+/* TRUE for the line that ends a Perl script, after which perl reads
+ * nothing more of it as code.  The marker is a token rather than a
+ * line, so it may be indented, but it is the whole of an identifier:
+ * "__END__X" is a name like any other.  The same reading as pperlc's,
+ * which is what keeps the two agreeing about where the script ends. */
+bool ends_perl_script(const std::string& line)
+{
+    size_t i = 0;
+    while (i < line.size() && (line[i] == ' ' || line[i] == '\t'))
+        ++i;
+
+    for (const std::string marker: {"__END__", "__DATA__"}) {
+        if (line.compare(i, marker.size(), marker) != 0)
+            continue;
+
+        auto end = i + marker.size();
+        if (end < line.size()
+            && (isalnum((unsigned char)line[end]) || line[end] == '_'))
+            continue;
+
+        return true;
+    }
+
+    return false;
 }
 
 static void check_line(const std::string& line, const std::string& pp, const std::function<void(std::string)> on_match, bool bare_directives)

@@ -91,6 +91,8 @@ static bool closes_heredoc(const char *line, const struct heredoc *open);
 
 static bool reads_as_directive(const char *line);
 
+static bool ends_perl_script(const char *line);
+
 static bool is_directive(const char *line, const char *directive);
 
 static bool includable(const char *path);
@@ -128,6 +130,7 @@ static int _pinclude_lines(const char *input,
     struct heredoc heredocs[NEST_MAX];
     int heredocs_open;
     bool in_heredoc;
+    bool in_data;
 
 #ifdef DEBUG_LIBPINCLUDE_DEFINE
     fprintf(stderr, "input: '%s'\n", input);
@@ -143,6 +146,7 @@ static int _pinclude_lines(const char *input,
     taken[state_i] = true;
     lineno = 0;
     heredocs_open = 0;
+    in_data = false;
 
     while (fgets(buffer, LINE_MAX, infile) != NULL) {
         lineno++;
@@ -165,7 +169,8 @@ static int _pinclude_lines(const char *input,
              * never reaches the output.  Inside a heredoc it is
              * neither, which means it goes out exactly as it came
              * in. */
-            if (in_heredoc == true || strncmp(buffer, "#include", 8) != 0) {
+            if (in_heredoc == true || in_data == true
+                || strncmp(buffer, "#include", 8) != 0) {
                 if ((err = per_line(buffer, line_priv)) != 0) {
                     return err;
                 }
@@ -186,6 +191,21 @@ static int _pinclude_lines(const char *input,
                 }
             }
         }
+
+        /* Below a Perl script's "__DATA__" or "__END__" line is data
+         * the script reads, or nothing at all, and is never script --
+         * a heredoc's body that runs to the end of the file, as far as
+         * anything here is concerned, and one that is supposed to.  A
+         * C template kept down there brings its "#include" lines along
+         * just as one in a heredoc does.
+         *
+         * Only to the end of this file.  An included file is pasted in
+         * whole, so its "__END__" ends the script it is pasted into as
+         * well; but saying so here would quietly stop expanding the
+         * includes after it, which is a worse way to find that out
+         * than perl not running what follows. */
+        if (in_data == true)
+            continue;
 
         if (in_heredoc == true) {
             /* What this heredoc has to answer for if it turns out
@@ -210,6 +230,14 @@ static int _pinclude_lines(const char *input,
                 heredocs_open--;
             }
 
+            continue;
+        }
+
+        /* Asked whatever the #ifdef state is, since that only ever
+         * decides which includes are pasted in: every other line goes
+         * out regardless, and perl sees this one wherever it is. */
+        if (language == PINCLUDE_PERL && ends_perl_script(buffer) == true) {
+            in_data = true;
             continue;
         }
 
@@ -896,6 +924,38 @@ bool is_directive(const char *line, const char *directive)
         return false;
 
     return true;
+}
+
+/* TRUE for the line that ends a Perl script, after which perl reads
+ * nothing more of it as code.  The marker is a token rather than a
+ * line, so it may be indented, but it is the whole of an identifier:
+ * "__END__X" is a name like any other. */
+bool ends_perl_script(const char *line)
+{
+    static const char *const markers[] = { "__END__", "__DATA__", NULL };
+    size_t i;
+    size_t m;
+
+    i = 0;
+    while (line[i] == ' ' || line[i] == '\t')
+        i++;
+
+    for (m = 0; markers[m] != NULL; m++) {
+        size_t length;
+        char after;
+
+        length = strlen(markers[m]);
+        if (strncmp(line + i, markers[m], length) != 0)
+            continue;
+
+        after = line[i + length];
+        if (isalnum((unsigned char)after) || after == '_')
+            continue;
+
+        return true;
+    }
+
+    return false;
 }
 
 void str_chomp(char *str)
