@@ -2623,9 +2623,23 @@ language_cxx::needs(const makefile::target::ptr& target) const
     /* Which of the search directories a library actually turns up in
      * is the linker's business, so ask for it in all of them and let
      * the ones that nothing builds go unanswered. */
-    for (const auto& dir: search_dirs)
-        for (const auto& name: library_names)
+    for (const auto& dir: search_dirs) {
+        for (const auto& name: library_names) {
+            /* "-l:libfoo.a" is GNU ld asking for a file by its exact
+             * name rather than for a library by its short one, still
+             * searched for along the "-L" directories.  No "lib"
+             * prefix or suffix is added, so what it wants is just
+             * that file in each directory, which every target
+             * already offers under its own name. */
+            if (name.size() > 1 && name[0] == ':') {
+                auto file = dir + "/" + name.substr(1);
+                out.push_back("file:" + canonical_dir(file));
+                continue;
+            }
+
             out.push_back("library:" + canonical_dir(dir) + "/" + name);
+        }
+    }
 
     return out;
 }
