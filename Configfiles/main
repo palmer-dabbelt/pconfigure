@@ -385,6 +385,7 @@ TESTSRC     += ptest-skip-after-nul-in-output.bash
 TESTSRC     += testsrc-nested-dir-bash-check-runs.bash
 TESTSRC     += testsrc-nested-dir-c-check-runs.bash
 TESTSRC     += makeflags.bash
+TESTSRC     += check-test-does-not-inherit-make-flags.bash
 TESTSRC     += cmdline-args.bash
 TESTSRC     += strict.bash
 TESTSRC     += strict-opts-target.bash
