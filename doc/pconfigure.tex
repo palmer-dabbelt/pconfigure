@@ -5646,7 +5646,12 @@ A bash ``compiler'', which really just does the following
 
   Each file is pasted in at most once: an \texttt{\#include} of a
   file that is already in the output is skipped, so two helpers that
-  include each other are fine, and each comes out once.  \pconfigure\
+  include each other are fine, and each comes out once.  The script
+  itself counts as in the output, so a helper that includes it back
+  doesn't paste it a second time.  A file is the same file however
+  its \texttt{\#include} spells it: \texttt{../common.bash} from a
+  subdirectory, \texttt{./helper.bash}, or a path through a symbolic
+  link all name what they lead to.  \pconfigure\
   doesn't keep the same list when it works out what a script depends
   on, or which headers a C or C++ source reads.  It only refuses to
   follow an \texttt{\#include} back into a file it is still in the
