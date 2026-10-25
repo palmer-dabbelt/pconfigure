@@ -50,6 +50,10 @@ static std::vector<std::string> link_dirs(const std::vector<std::string>& args);
  * relative path everything else uses to talk about it. */
 static std::string relative_to_here(const std::string& dir);
 
+/* The same, normalized, so two spellings of one directory compare
+ * equal. */
+static std::string canonical_dir(const std::string& dir);
+
 /* Splits link arguments into words and re-roots the relative "-L"
  * directories among them at the project they were written in.
  *
@@ -930,13 +934,32 @@ language_cxx::link_target::generate_makefile_target(void) const
         deps.push_back(std::make_shared<makefile::target>(entitlements));
 #endif
 
+    /* The name this library goes by once it's built, which is the
+     * file's own name and nothing more.  A LIBRARIES line may put a
+     * directory in front of it ("sub/libfoo.so") or spell it with a
+     * "./", and either way that says where the file goes under lib/
+     * rather than what it's called.  Whatever goes here is copied
+     * into every consumer's NEEDED (or load command, on Mach-O), and
+     * the dynamic loader reads one with a '/' in it as a path from
+     * the directory the program was started in instead of a name to
+     * look up along its runpath -- so a consumer would only start
+     * from one directory.  The path is normalized first so that a
+     * ".." can't leave anything but a file name behind. */
+    auto soname = [&](void) -> std::string
+        {
+            auto path = file_utils::normalize_path(_ctx->cmd->data());
+            auto slash = path.rfind('/');
+            if (slash == std::string::npos)
+                return path;
+            return path.substr(slash + 1);
+        }();
+
     auto shared = [&](void) -> std::string
         {
             switch (_shared) {
             case shared_target::TRUE:
                 if (mach_o == true)
-                    return " -shared -Wl,-install_name,@rpath/"
-                         + _ctx->cmd->data();
+                    return " -shared -Wl,-install_name,@rpath/" + soname;
                 /* Without an ELF soname, a consumer's NEEDED entry
                  * doesn't get this library's name -- it gets whatever
                  * path "-l" happened to resolve to when THAT consumer
@@ -948,7 +971,7 @@ language_cxx::link_target::generate_makefile_target(void) const
                  * was linked from, which is exactly as fragile as it
                  * sounds. -install_name is the Mach-O spelling of the
                  * same idea just above; -soname is ELF's. */
-                return " -shared -Wl,-soname," + _ctx->cmd->data();
+                return " -shared -Wl,-soname," + soname;
             case shared_target::FALSE:
                 return "";
             }
@@ -1008,7 +1031,38 @@ language_cxx::link_target::generate_makefile_target(void) const
         {
             switch (_install) {
             case install_target::TRUE:
-                return {"-Wl,-rpath," + _ctx->installed(_ctx->lib_dir)};
+            {
+                auto out = std::vector<std::string>{
+                    "-Wl,-rpath," + _ctx->installed(_ctx->lib_dir)
+                };
+
+                /* A LIBRARIES name with a directory in it installs
+                 * into that directory under the lib directory, and a
+                 * consumer finds it at build time with a "-L" into
+                 * the same place in the build tree.  Its soname is
+                 * just the file's name, so once installed the only
+                 * way the loader finds it is a runpath entry for that
+                 * directory too.  Every other "-L" is left alone, the
+                 * same as before: one into a subproject or outside
+                 * this project says nothing about where its libraries
+                 * end up installed. */
+                auto lib_dir = canonical_dir(_ctx->lib_dir) + "/";
+                for (const auto& raw: link_dirs(_opts)) {
+                    auto dir = canonical_dir(raw);
+                    if (dir.compare(0, lib_dir.size(), lib_dir) != 0)
+                        continue;
+
+                    /* "-Llib/sub" twice, or once as "-L./lib/sub", is
+                     * still the one directory to look in. */
+                    auto rpath = "-Wl,-rpath,"
+                        + _ctx->installed(_ctx->lib_dir)
+                        + "/" + dir.substr(lib_dir.size());
+                    if (std::find(out.begin(), out.end(), rpath) == out.end())
+                        out.push_back(rpath);
+                }
+
+                return out;
+            }
 
             case install_target::FALSE:
             {
