@@ -890,7 +890,7 @@ build_system_kconfig::vendored_targets(
      * it stood was not, which is every build of a tree that vendors
      * pconfigure.
      *
-     * Absolute, out of tool_command(), and wrapped in "$(wildcard)",
+     * Absolute, out of tool_path(), and wrapped in "$(wildcard)",
      * for the reasons written out at length over language_cxx::
      * deps_source(): absolute so make cannot mistake it for the
      * in-tree target it does have a rule for and try to link it
@@ -902,7 +902,7 @@ build_system_kconfig::vendored_targets(
      * fragment can still be remade at most once and the remaking
      * still terminates. */
     auto psubdeps = std::make_shared<makefile::target>(
-        "$(wildcard " + makefile::tool_command("psubdeps") + ")");
+        "$(wildcard " + makefile::tool_path("psubdeps") + ")");
 
     auto deps_target = std::make_shared<makefile::target>(
         deps_fragment,

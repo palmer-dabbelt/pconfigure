@@ -31,7 +31,7 @@ $PTEST_BINARY $PCONFIGURE_ARGS
 cat Makefile
 
 # No --bin on the command line, because there is nothing to name.
-grep -q "ptest --test obj/check/integration/nothing.c --out check/integration/nothing.c --srcdir" Makefile
+grep -q "ptest' --test obj/check/integration/nothing.c --out check/integration/nothing.c --srcdir" Makefile
 if grep -q -- "--out check/integration/nothing.c --bin" Makefile
 then
     exit 1

@@ -19,6 +19,7 @@
  */
 
 #include "self_path.h++"
+#include "recipe_quote.h++"
 #include <limits.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -79,11 +80,16 @@ namespace makefile {
         return dir;
     }
 
-    std::string tool_command(const std::string& tool_name)
+    std::string tool_path(const std::string& tool_name)
     {
         const auto& dir = self_exec_dir();
         if (dir.empty())
             return tool_name;
         return dir + "/" + tool_name;
+    }
+
+    std::string tool_command(const std::string& tool_name)
+    {
+        return recipe_quoted(tool_path(tool_name));
     }
 }

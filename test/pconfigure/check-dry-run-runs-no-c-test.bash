@@ -47,7 +47,7 @@ rm check/t/side-effect.c
 
 make $MAKE_ARGS -n check > dry.out
 cat dry.out
-grep -q "ptest .*--out check/t/side-effect.c" dry.out
+grep -q "ptest' .*--out check/t/side-effect.c" dry.out
 
 test ! -e ran.log
 test ! -e check/t/side-effect.c

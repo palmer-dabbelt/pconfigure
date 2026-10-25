@@ -86,7 +86,7 @@ diff sub-expected sub/obj/check-dirs
 
 # This is the list the Makefile's own report rules have always had,
 # and the file is meant to be the same thing said out loud.
-grep -q "ptest .*--check-dir check --check-dir sub/check" Makefile
+grep -q "ptest' .*--check-dir check --check-dir sub/check" Makefile
 
 ##############################################################################
 # Reporting                                                                  #

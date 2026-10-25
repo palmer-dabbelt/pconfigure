@@ -44,7 +44,7 @@ cp check/t/side-effect.bash before.tar
 
 make $MAKE_ARGS -n check > dry.out
 cat dry.out
-grep -q "ptest .*--test obj/check/t/side-effect.bash" dry.out
+grep -q "ptest' .*--test obj/check/t/side-effect.bash" dry.out
 
 test ! -e ran.log
 cmp before.tar check/t/side-effect.bash

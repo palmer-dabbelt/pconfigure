@@ -65,7 +65,7 @@ static std::string ppkg_config_command(void)
     if (ppkg_config_option.empty() == false)
         return ppkg_config_option;
 
-    auto sibling = makefile::tool_command("ppkg-config");
+    auto sibling = makefile::tool_path("ppkg-config");
     if (sibling != "ppkg-config" && access(sibling.c_str(), X_OK) == 0)
         return sibling;
 

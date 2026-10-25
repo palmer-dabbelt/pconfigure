@@ -1808,7 +1808,7 @@ language_cxx::write_deps_context(const context::ptr& ctx,
     if (is_shared == shared_target::TRUE)
         out += say("pic", "-fPIC");
 
-    out += say("pdeps", makefile::tool_command("pdeps"));
+    out += say("pdeps", makefile::tool_path("pdeps"));
     out += say("quiet", child->verbose ? "false" : "true");
     out += say("autodeps", ctx->autodeps ? "true" : "false");
 
@@ -1987,7 +1987,7 @@ language_cxx::deps_source(const context::ptr& ctx,
      * pconfigure is rebuilt where it stood every time somebody edits
      * it, which is the one case this project is.
      *
-     * Named the way tool_command() says it, which is an absolute path
+     * Named the way tool_path() says it, which is an absolute path
      * -- deliberately, and not to be helpfully shortened later.  A
      * tree that vendors pconfigure has a rule for that binary under
      * the relative spelling, and make does not treat the two
@@ -2026,7 +2026,7 @@ language_cxx::deps_source(const context::ptr& ctx,
         std::make_shared<makefile::target>("$(wildcard " + source_path + ")"),
         std::make_shared<makefile::target>(context_path),
         std::make_shared<makefile::target>(
-            "$(wildcard " + makefile::tool_command("pdeps") + ")")
+            "$(wildcard " + makefile::tool_path("pdeps") + ")")
     };
 
     auto commands = std::vector<std::string>{

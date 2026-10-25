@@ -45,7 +45,7 @@ sleep 2
 sed -i 's/-Ifail/-Ipass/' Configfile
 
 $PTEST_BINARY $PCONFIGURE_ARGS
-grep -q "pbashc -i test/tool/t.bash .*-Ipass" Makefile
+grep -q "pbashc' -i test/tool/t.bash .*-Ipass" Makefile
 
 make $MAKE_ARGS check
 test "$(tar -xOf check/tool/t.bash ptest__return)" = "0"

@@ -42,8 +42,8 @@ cat Makefile
 # rather than just checking the output is worth it: the two programs
 # agree on every header that has no directives in it, so a test that
 # only compared contents would go on passing if this were put back.
-grep -q "^	@.*phc -i include/test.h -o " Makefile
-if grep -q "pbashc -i include/test.h" Makefile
+grep -q "^	@.*phc' -i include/test.h -o " Makefile
+if grep -q "pbashc'\? -i include/test.h" Makefile
 then
     exit 1
 fi

@@ -736,7 +736,7 @@ language_bash::deps_script(const context::ptr& ctx,
                script_syntax() == pinclude::syntax::PERL ? "perl" : "shell");
     out += say("target", target);
 
-    out += say("pdeps", makefile::tool_command("pdeps"));
+    out += say("pdeps", makefile::tool_path("pdeps"));
     out += say("quiet", child->verbose ? "false" : "true");
 
     /* Where pdeps is standing is worked out the way it is for C: see
@@ -764,7 +764,7 @@ language_bash::deps_script(const context::ptr& ctx,
         std::make_shared<makefile::target>("$(wildcard " + source_path + ")"),
         std::make_shared<makefile::target>(context_path),
         std::make_shared<makefile::target>(
-            "$(wildcard " + makefile::tool_command("pdeps") + ")")
+            "$(wildcard " + makefile::tool_path("pdeps") + ")")
     };
 
     auto commands = std::vector<std::string>{

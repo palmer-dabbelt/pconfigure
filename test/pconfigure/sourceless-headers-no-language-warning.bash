@@ -52,7 +52,7 @@ do
     # Still the header it was: read straight out of the header
     # directory, which is what implicit_h does and nothing else does,
     # and installed byte for byte.
-    grep -q "^	@.*phc -i include/api.h -o " Makefile
+    grep -q "^	@.*phc' -i include/api.h -o " Makefile
     make $MAKE_ARGS DESTDIR=$(pwd)/install install
     diff -u include/api.h install/usr/local/include/api.h
 

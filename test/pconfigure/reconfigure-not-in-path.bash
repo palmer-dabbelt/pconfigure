@@ -55,10 +55,10 @@ EOF2
 $PTEST_BINARY $PCONFIGURE_ARGS
 cat Makefile
 
-# The recipe has to name a pconfigure that exists.  "pwd -P" because
-# pconfigure asks the kernel where it is, and on macOS that resolves
-# the symlink a temporary directory sits behind.
-grep -qE "^\s+@?$(dirname "$PTEST_BINARY")/pconfigure " Makefile
+# The recipe has to name a pconfigure that exists, quoted as one shell
+# word.  "pwd -P" because pconfigure asks the kernel where it is, and
+# on macOS that resolves the symlink a temporary directory sits behind.
+grep -qE "^\s+@?'$(dirname "$PTEST_BINARY")/pconfigure' " Makefile
 
 # And it has to run.  This is the symptom, named directly: with a bare
 # name the shell writes "command not found" and make stops.

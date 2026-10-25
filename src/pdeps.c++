@@ -42,6 +42,7 @@
  * answer waiting to disagree with the first. */
 
 #include <libmakefile/path_prefix.h++>
+#include <libmakefile/recipe_quote.h++>
 #include <libpconfigure/context_file.h++>
 #include <libpconfigure/file_utils.h++>
 #include <libpconfigure/languages/bash.h++>
@@ -84,6 +85,12 @@ namespace {
         std::string dep_prefix, dep_suffix;
 
         std::string compiler, pretty, pic;
+
+        /* Where this program is, as a file name rather than a
+         * command: it is a prerequisite of a fragment as well as the
+         * thing a recipe runs, and make reads the two differently.
+         * Quoted for the shell where a recipe runs it, and only
+         * there. */
         std::string pdeps;
 
         /* What every recipe written below gets in front of it, which
@@ -458,7 +465,8 @@ namespace {
 
         say(stamp + ":");
         out += "\t" + ctx.at + "test -f $@ || " + prefix.rewrite(
-                   ctx.pdeps + " --context " + ctx.path
+                   makefile::recipe_quoted(ctx.pdeps)
+                   + " --context " + ctx.path
                    + " --source " + name) + "\n";
         out += "\n";
 
@@ -711,7 +719,8 @@ int main(int argc, const char **argv)
                            + "\"\n";
                     out += "\t" + behind.at + "mkdir -p $(dir $@)\n";
                     out += "\t" + behind.at + prefix.rewrite(
-                               behind.pdeps + " --context " + owner.path
+                               makefile::recipe_quoted(behind.pdeps)
+                               + " --context " + owner.path
                                + " --source " + sibling) + "\n";
 
                     /* And "make clean" takes it, the way it takes the
@@ -801,7 +810,8 @@ int main(int argc, const char **argv)
 
     say(stamp + ":");
     out += "\t" + ctx.at + "test -f $@ || " + prefix.rewrite(
-               ctx.pdeps + " --context " + ctx.path
+               makefile::recipe_quoted(ctx.pdeps)
+               + " --context " + ctx.path
                + " --source " + name) + "\n";
     out += "\n";
 

@@ -39,7 +39,7 @@ SOURCES     += tool.bash
 EOF
 
 $PTEST_BINARY $PCONFIGURE_ARGS
-grep -q "pbashc .*-DGREETING=goodbye" Makefile
+grep -q "pbashc' .*-DGREETING=goodbye" Makefile
 
 make $MAKE_ARGS
 test "$(./bin/tool)" = "goodbye"

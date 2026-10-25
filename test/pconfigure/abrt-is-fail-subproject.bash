@@ -56,7 +56,7 @@ $PTEST_BINARY $PCONFIGURE_ARGS
 cat Makefile
 
 # Said per directory, and only for the one that asked.
-grep -q "ptest .*--check-dir check --abrt-is-fail-dir sub/check" Makefile
+grep -q "ptest' .*--check-dir check --abrt-is-fail-dir sub/check" Makefile
 if grep -q -- "--abrt-is-fail " Makefile
 then
     exit 1

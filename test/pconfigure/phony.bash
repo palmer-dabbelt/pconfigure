@@ -105,7 +105,7 @@ fi
 # test with no binary has nothing else to build out of.  It gets its
 # check directory either way, which is where a DEPTESTS predecessor's
 # result would be.
-grep -q "ptest --test obj/check/integration/boots.bash --out check/integration/boots.bash --srcdir '\\\$(abspath \\.)' --checkdir check/integration --scratchdir obj/check/integration/boots.bash.scratch\$" Makefile
+grep -q "ptest' --test obj/check/integration/boots.bash --out check/integration/boots.bash --srcdir '\\\$(abspath \\.)' --checkdir check/integration --scratchdir obj/check/integration/boots.bash.scratch\$" Makefile
 
 # A phony belongs to the project that asked for it, the same way every
 # other target does -- so two projects can both want one called the
