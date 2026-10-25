@@ -1074,9 +1074,12 @@ An \texttt{\$opt} is a piece of a command line, and it is read as the
 words the shell will split it into, so one line can carry several
 flags.  The shell's quotes and backslashes come off those words before
 \pconfigure\ reads one as a directory, a file or a macro name, just as
-they do before the compiler sees it: \texttt{-I'src/lib'} is the
-directory \texttt{src/lib}, and \texttt{-DMSG='"hi"'} defines
-\texttt{MSG}.  An include directory a subproject names is written from that
+they do before the compiler sees it, whether the quote opens after
+the flag or before it: \texttt{-I'src/lib'} and \texttt{'-Isrc/lib'}
+are both the directory \texttt{src/lib}, and \texttt{-DMSG='"hi"'}
+defines \texttt{MSG}.  A function-like \texttt{'-DLOG(x)=(x)'} or
+\texttt{'-DLOG(x)'} defines \texttt{LOG}, the name being what comes
+before the parameter list.  An include directory a subproject names is written from that
 subproject's own directory: the relative directory of a \texttt{-I},
 \texttt{-isystem}, \texttt{-iquote}, \texttt{-idirafter} or clang's
 \texttt{-isystem-after}, with the directory stuck on or as the next
