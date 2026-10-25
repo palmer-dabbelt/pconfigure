@@ -132,7 +132,7 @@ void add_pkgconfig_dep(const std::string& path)
     pkgconfig_deps.push_back(normalized);
 }
 
-static std::string execute(std::string line);
+static std::string execute(std::string line, const debug_info::ptr& where);
 static std::string replace_all(std::string haystack, std::string needle, std::string new_needle);
 
 static std::vector<std::string> command_line;
@@ -294,7 +294,10 @@ command::ptr parse_line(const configfile_line& line)
      * leaves the gaps either side of it behind as two spaces, and
      * "SOURCES += `true` main.c" names a source called " main.c". */
     auto typed = text;
-    text = string_utils::clean_white(execute(text));
+    auto where = std::make_shared<debug_info>(line.filename,
+                                              line.number,
+                                              typed);
+    text = string_utils::clean_white(execute(text, where));
 
     /* A line that was nothing but a command which printed nothing is
      * a line with nothing left in it. */
@@ -416,7 +419,11 @@ std::vector<configfile_line> lines_from_file(const std::string& srcpath,
     return out;
 }
 
-std::string execute(std::string line)
+/* "where" is the line as it was written, for the errors: a command
+ * that can't be run is a mistake on a particular Configfile line, and
+ * the text of that line on its own is no help finding it in a tree
+ * with a Configfile, a Configfiles/main and a handful of CONFIGs. */
+std::string execute(std::string line, const debug_info::ptr& where)
 {
     if (line.find('`') == std::string::npos)
         return line;
@@ -517,10 +524,12 @@ std::string execute(std::string line)
      * the line and dropping the rest without a word, which is what
      * this used to do. */
     if (in_command == true) {
-        std::cerr << "unterminated '`' in '" << line << "'\n"
+        std::cerr << std::to_string(where) << "\n"
+                  << "  error: unterminated '`'\n"
                   << "  everything after a '`' is a command to run until"
                   << " the next '`',\n"
-                  << "  so this line has no end for the command in it\n";
+                  << "  so this line has no end for the command in it\n"
+                  << "  close the command with a second '`'\n";
         abort();
     }
 

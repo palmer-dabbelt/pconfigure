@@ -532,6 +532,7 @@ TESTSRC     += configfile-backtick-empty-append.bash
 TESTSRC     += configfile-backtick-empty-where-empty-is-legal.bash
 TESTSRC     += configfile-backtick-empty-still-checks-command.bash
 TESTSRC     += configfile-backtick-empty-target-name.bash
+TESTSRC     += configfile-unterminated-backtick-names-line.bash
 TESTSRC     += bootstrap.bash
 TESTSRC     += bootstrap-quiet.bash
 TESTSRC     += reconfigure.bash
