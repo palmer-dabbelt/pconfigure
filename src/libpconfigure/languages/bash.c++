@@ -459,16 +459,22 @@ language_bash::targets(const context::ptr& ctx) const
     {
         auto child_ctx = ctx->dup(context_type::BINARY);
         child_ctx->bin_dir = ctx->obj_dir + "/" + ctx->unbased(ctx->check_dir);
+
+        /* A test is run out of the build tree and never installed,
+         * the way a TESTEXECS is, so it gets no install rule to begin
+         * with.  languages/cxx.c++ builds its tests the same way,
+         * and had to: filtering an installing BINARY's targets back
+         * down after the fact left a C test's install link behind. */
+        child_ctx->install = false;
         auto bin_name = ctx->test_binary;
         auto bin_targets = vector_util::map(targets(child_ctx),
                                             [](const makefile::target::ptr& t)
                                             {
                                                 return t->without(makefile::global_targets::ALL);
                                             });
-        /* The compiled test and nothing else of what a BINARY gets,
-         * which is to say no install rule -- except for the fragment
-         * that says what the test reads, which is as much a part of
-         * building it as the rule that does. */
+        /* The compiled test and nothing else of what a BINARY gets --
+         * except for the fragment that says what the test reads, which
+         * is as much a part of building it as the rule that does. */
         {
             auto kept = std::vector<makefile::target::ptr>{bin_targets[0]};
             for (size_t i = 1; i < bin_targets.size(); ++i)

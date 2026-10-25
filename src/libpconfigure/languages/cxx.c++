@@ -540,17 +540,27 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
         {
             auto child_ctx = ctx->dup(context_type::BINARY);
             child_ctx->bin_dir = ctx->obj_dir + "/" + ctx->unbased(ctx->check_dir);
+
+            /* A test program is run out of the build tree and never
+             * installed, which is what a TESTEXECS is too, so it's
+             * built the way one is: the local link and nothing else.
+             * This used to build it as an ordinary BINARIES and then
+             * filter out whatever was marked as installing -- but only
+             * the copy into $(DESTDIR) is, and the link it copies
+             * from, the one with the PREFIX's rpath, stayed a
+             * prerequisite of the check.  Every "make check" linked
+             * each compiled test twice, once into a file nothing
+             * read.  Saying so up front also keeps the link steps
+             * the objects' dependency fragments name in step with the
+             * ones that exist, since both are asked the same
+             * question. */
+            child_ctx->install = false;
             auto bin_targets =
-                vector_util::filter(
-                    vector_util::map(targets(child_ctx),
-                                     [](const makefile::target::ptr& t)
-                                     {
-                                         return t->without(makefile::global_targets::ALL);
-                                     }),
-                    [](const makefile::target::ptr& t)
-                    {
-                        return !t->has_global_target(makefile::global_targets::INSTALL);
-                    });
+                vector_util::map(targets(child_ctx),
+                                 [](const makefile::target::ptr& t)
+                                 {
+                                     return t->without(makefile::global_targets::ALL);
+                                 });
             /* The program this test is attached to is whatever opened
              * the target above it -- the same answer bash.c++ gives a
              * BASH test.  It is not anything out of bin_targets: those
