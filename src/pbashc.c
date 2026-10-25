@@ -269,7 +269,7 @@ char *replace(const char *line, const char *pair)
 {
     char *from, *out;
     const char *to;
-    int count;
+    size_t from_len, to_len, line_len, count, out_len;
     size_t ii, oi;
 
     to = strstr(pair, "=");
@@ -278,36 +278,58 @@ char *replace(const char *line, const char *pair)
 
     from = strndup(pair, to - pair);
     to++;
+    from_len = strlen(from);
+    to_len = strlen(to);
+    line_len = strlen(line);
 
+    /* A name with nothing in it matches at every offset without ever
+     * moving past one, so there is nothing sensible to replace. */
+    if (from_len == 0) {
+        free(from);
+        return strdup(line);
+    }
+
+    /* The matches are counted by the same walk that replaces them --
+     * left to right, skipping past each one -- because the count is
+     * what sizes the buffer.  It used to count a match at every
+     * offset, overlapping ones included, while the replacement only
+     * ever takes the ones that don't overlap: for a name like "XX" in
+     * a run of them that counted nearly twice as many, and with a
+     * value shorter than the name the buffer came out too small and
+     * the replacement wrote past the end of it. */
     count = 0;
-    for (ii = 0; ii < strlen(line); ++ii)
-        if (strncmp(line + ii, from, strlen(from)) == 0)
+    ii = 0;
+    while (ii < line_len) {
+        if (strncmp(line + ii, from, from_len) == 0) {
             count++;
+            ii += from_len;
+        } else {
+            ii++;
+        }
+    }
 
-    out = malloc(strlen(line)
-                 + (strlen(to) * count)
-                 - (strlen(from) * count)
-                 + 1);
+    /* Each match takes out from_len bytes and puts in to_len, and the
+     * count never exceeds line_len / from_len, so this can't go
+     * negative; it is written as a removal then an addition so that
+     * no intermediate value has to either. */
+    out_len = line_len - count * from_len + count * to_len;
+    out = malloc(out_len + 1);
     if (out == NULL) {
         perror("Unable to malloc()");
-        free(from);
-        return NULL;
+        exit(1);
     }
 
     ii = oi = 0;
-    out[0] = '\0';
-    while (ii < strlen(line)) {
-        if (strncmp(line + ii, from, strlen(from)) == 0) {
-            strcat(out + oi, to);
-            ii += strlen(from);
-            oi += strlen(to);
+    while (ii < line_len) {
+        if (strncmp(line + ii, from, from_len) == 0) {
+            memcpy(out + oi, to, to_len);
+            ii += from_len;
+            oi += to_len;
         } else {
-            out[oi] = line[ii];
-            oi++;
-            ii++;
-            out[oi] = '\0';
+            out[oi++] = line[ii++];
         }
     }
+    out[oi] = '\0';
 
     free(from);
     return out;

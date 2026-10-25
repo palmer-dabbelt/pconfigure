@@ -215,6 +215,7 @@ TESTSRC     += bash-nested-ifdef-inside-false-branch-not-pasted.bash
 TESTSRC     += bash-else-inside-false-branch-stays-off.bash
 TESTSRC     += bash-include-without-trailing-newline.bash
 TESTSRC     += bash-script-without-trailing-newline.bash
+TESTSRC     += bash-define-overlapping-name-replaced-safely.bash
 TESTSRC     += bash-deps-follow-compileopts-include-dirs.bash
 TESTSRC     += bash-deps-follow-compileopts-defines.bash
 TESTSRC     += bash-include-of-directory-refused.bash
