@@ -2583,6 +2583,19 @@ while staying older than its consumers.  It is made this way round
 because what it buys back is bounded by the cost of the consumers rather
 than of the script.
 
+Beside \texttt{\$name} \pconfigure\ keeps a few files of its own, all
+named after it: \texttt{\$name.tmp}, which the output is written
+through before it is moved into place, and \texttt{\$name.d},
+\texttt{\$name.d.raw}, \texttt{\$name.d.tmp} and
+\texttt{\$name.d-context}, which hold and record the dependency
+fragment that keeps \texttt{--deps} current during the build.  No
+other \texttt{GENERATE} in the project may have one of those as its
+output, since the two would then be fighting over one file: a
+\texttt{GENERATE += gen.h.d} next to a \texttt{GENERATE += gen.h} is
+refused, at whichever of the two lines comes second, naming the other.
+A name that merely ends the same way --- \texttt{rules.d} with no
+\texttt{rules} beside it --- is fine.
+
 \subsection{\texttt{TGENERATE += \$script}}
 
 Exactly the same as generate, but runs \texttt{test/\$script}
@@ -4731,10 +4744,11 @@ one set of rules can come out of that.  Which way it goes wrong
 depends on whether the two were described the same way.  Rules that
 match -- the same sources built with the same options -- are folded
 together, so the second target does nothing and it looks exactly like
-it worked.  Rules that don't match, as in the fragment above, stop the
-build instead, with \texttt{Mismatched recipe for targets with same
-name} and nothing to say which two lines it meant.  The warning is
-worth having for that case alone, since it names both of them.  The
+it worked.  Rules that don't match, as in the fragment above, stop
+\pconfigure\ instead, with \texttt{Mismatched recipe for targets with
+same name}, the file the two rules write and only the second of the two
+lines.  The warning is worth having for that case alone, since it names
+both of them.  The
 message names the line that asked for the output first.
 
 They're compared by where they come out rather than by what they're
