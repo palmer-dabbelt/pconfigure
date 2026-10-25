@@ -27,6 +27,40 @@
 #include <unistd.h>
 #include <iostream>
 
+/* Where a GENERATE's output is written before it is moved into place,
+ * where its dependency fragment lives, and where the recipe that made
+ * the fragment is recorded.  The recipes spell the fragment's own
+ * leftovers as "$@.raw" and "$@.tmp", so those two are named off the
+ * fragment rather than off the output. */
+static std::string temporary_path(const std::string& output)
+{
+    return output + ".tmp";
+}
+
+static std::string fragment_path(const std::string& output)
+{
+    return output + ".d";
+}
+
+static std::string fragment_context_path(const std::string& output)
+{
+    return output + ".d-context";
+}
+
+std::vector<std::pair<std::string, std::string>>
+language_gen_proc::scratch_files(const std::string& output)
+{
+    auto fragment = fragment_path(output);
+    return {
+        {temporary_path(output), "the temporary"},
+        {fragment, "the dependency fragment"},
+        {fragment + ".raw", "the dependency fragment's raw --deps answer"},
+        {fragment + ".tmp", "the dependency fragment's temporary"},
+        {fragment_context_path(output),
+         "the record of the dependency fragment's recipe"},
+    };
+}
+
 language_gen_proc* language_gen_proc::clone(void) const
 {
     return new language_gen_proc(this->list_compile_opts(),
@@ -464,7 +498,7 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * exists if and only if the last run that wrote it succeeded is
          * the rule this recipe is mostly about, and a cmp in the middle
          * of the chain may not be the thing that quietly ends it. */
-        auto tmp_target = target + ".tmp";
+        auto tmp_target = temporary_path(target);
         auto short_cmd = "GEN\t" + ctx->cmd->data();
         auto commands = std::vector<std::string>{
             "mkdir -p " + ctx->gen_dir,
@@ -542,7 +576,7 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * expands one dollar of a recipe before the shell sees it,
          * and the fragment has to still hold the reference when the
          * file reading it gets expanded too. */
-        auto deps_path = target + ".d";
+        auto deps_path = fragment_path(target);
 
         /* An optional input's directory is watched like any other
          * one, and the reason is not the arrival of the optional input
@@ -834,7 +868,7 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * goes on naming the unprefixed target, which that build never
          * asks for, so its lines are inert.  Both builds go green, and
          * an input arriving later is watched by nothing in either. */
-        auto dep_context = target + ".d-context";
+        auto dep_context = fragment_context_path(target);
         auto dep_context_content = std::string();
         for (const auto& command: dep_commands)
             dep_context_content += command + "\n";

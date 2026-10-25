@@ -23,6 +23,9 @@
 
 #include "../language.h++"
 #include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 /* GEN_PROC is the first language I have that doesn't need a compile
  * phase. */
@@ -44,6 +47,17 @@ public:
     virtual language_gen_proc* clone(void) const;
     virtual bool can_process(const context::ptr& ctx) const;
     virtual std::vector<makefile::target::ptr> targets(const context::ptr& ctx) const;
+
+public:
+    /* Every file the rules for one GENERATE write besides its output,
+     * each with the few words a diagnostic needs to say what it is.
+     * They sit next to the output and are named after it, which means
+     * nothing stops another GENERATE's output from having one of these
+     * names -- so the project asks this list before writing any rules.
+     * The rules and this list spell the names through the same
+     * helpers, so that the two cannot drift apart. */
+    static std::vector<std::pair<std::string, std::string>>
+    scratch_files(const std::string& output);
 };
 
 #endif
