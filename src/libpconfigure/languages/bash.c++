@@ -323,82 +323,19 @@ language_bash::targets(const context::ptr& ctx) const
             command
         };
 
-        /* The recipe, written down in a file that rides the rule as a
-         * prerequisite.  A C object follows its options because they
-         * are hashed into the object's path, so a changed flag is a
-         * different target; what comes out of here has one fixed name
-         * -- bin/<tool>, the compiled copy of a test, include/<hdr> --
-         * and make never reruns a rule because its recipe changed,
-         * only because a prerequisite is newer than the target.  So a
+        /* The recipe rides the rule as a prerequisite, so that a
          * reconfigure that changed a "-DNAME=value", moved a "-I" or
-         * pointed the target at a different SOURCES left the old
-         * output in place: the file the rule now names already
-         * existed and was older than what had been built from the
-         * other one.
-         *
-         * This is the link-inputs file language_cxx::link_objects()
-         * writes for a link, for the same reason and in the same way:
-         * written at configure time, rewritten only when what it says
-         * changes, so that a reconfigure which changes nothing
-         * rebuilds nothing, and written back by the Makefile if the
-         * object directory it sits in is thrown away.  What it holds
-         * is the recipe itself rather than a hash of it, since the
-         * recipe is every input there is -- the source, the options
-         * and the output -- and a file that says how the target was
-         * last built is one somebody can read.  The recipe names its
-         * source outright rather than through "$^", so this file
-         * being a prerequisite puts nothing on the command line.
-         *
-         * It sits in the object directory under the output's own
-         * name, with ".recipe-inputs" on the end: obj/bin/<tool>...,
-         * obj/include/<hdr>...  The compiled copy of a test is already
-         * in the object directory, so its record goes beside it
-         * rather than under a second "obj"; a directory named after
-         * the output can't be used there, since the output itself is
-         * the file of that name. */
-        auto output = file_utils::inside(target, ctx->obj_dir)
-            ? target.substr(ctx->obj_dir.size() + 1)
-            : ctx->unbased(target);
-        auto recipe_path = ctx->obj_dir + "/" + output + ".recipe-inputs";
-        auto recipe = std::string();
-        for (const auto& line: commands)
-            recipe += line + "\n";
-
-        /* A record that wasn't there before is new without anything it
-         * records having changed: this is the first configure since the
-         * output was made by something that kept no record -- a
-         * bootstrap.sh that compiles its own tool, or a pconfigure from
-         * before this file existed.  Left with the time it was written,
-         * it would be newer than that output and rebuild it on the next
-         * make for nothing; a tool rebuilt that way is then a new tool,
-         * and a tree that bootstraps it reconfigures a second time.  So
-         * a first record takes the output's time instead.  Only a record
-         * that was there and said something else is a reason to rebuild,
-         * which is the case all of this is for. */
-        auto first_record = access(recipe_path.c_str(), F_OK) != 0;
-        auto wrote = file_utils::write_configure_output(recipe_path, recipe);
-        if (wrote == true && first_record == true)
-            wrote = file_utils::no_newer_than(recipe_path, target);
-
-        if (wrote == false) {
-            std::cerr << "can't write '" << recipe_path << "': "
-                      << strerror(errno) << "\n"
-                      << "  this is where the command that builds '"
-                      << ctx->cmd->data() << "' is written down, which is\n"
-                      << "  how a change to its options or its SOURCES"
-                      << " gets it built again\n";
-            abort();
-        }
+         * pointed the target at a different SOURCES builds it again:
+         * see recipe_record(). */
+        auto recipe_inputs = std::vector<makefile::target::ptr>{
+            recipe_record(ctx, target, commands)
+        };
 
         auto filename = ctx->cmd->debug()->filename();
         auto lineno = ctx->cmd->debug()->line_number();
         auto comment = std::vector<std::string>{
             "language_bash::targets() BINARY",
             filename + ":" + std::to_string(lineno)
-        };
-
-        auto recipe_inputs = std::vector<makefile::target::ptr>{
-            std::make_shared<makefile::target>(recipe_path)
         };
 
         auto bin_target = std::make_shared<makefile::target>(target,

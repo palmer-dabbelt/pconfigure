@@ -213,6 +213,17 @@ protected:
      * it, so a single name nobody claims is enough to say no. */
     static bool all_sources_match(const context::ptr& ctx,
                                   const std::vector<std::string>& extensions);
+
+    /* A record of the recipe that builds "output", for the rule that
+     * builds it to name as a prerequisite, so that a reconfigure that
+     * changes the recipe builds the output again.  It is written now,
+     * and only when what it says has changed; the target returned is
+     * the record, ready to be added to the rule's prerequisites.  See
+     * language.c++ for why each part of that is the way it is. */
+    static makefile::target::ptr
+    recipe_record(const context::ptr& ctx,
+                  const std::string& output,
+                  const std::vector<std::string>& commands);
 };
 
 #endif
