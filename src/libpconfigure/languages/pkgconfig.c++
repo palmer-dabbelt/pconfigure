@@ -298,7 +298,20 @@ language_pkgconfig::targets(const context::ptr& ctx) const
          * which is all STRICT lets it be, so the Makefile still comes
          * out -- but the rule for the .pc fails when make reaches it,
          * naming the line, rather than writing out an empty file that
-         * some consumer's pkg-config would take at its word. */
+         * some consumer's pkg-config would take at its word.
+         *
+         * The seds run one after another, each reading the file the
+         * last one wrote, rather than as one pipeline.  A pipeline's
+         * status is its last command's, so a sed anywhere but last
+         * that refused its expression handed the rest nothing, they
+         * turned that into an empty .pc, and the rule succeeded --
+         * which also told the build-tree copy below that it was
+         * complete.  "set -o pipefail" would say so, but make runs
+         * recipes under /bin/sh, which needn't have it.  The output
+         * only appears once every step has worked, so a failure also
+         * leaves nothing behind that make would later take for up to
+         * date, and it names the Configfile line: sed's own complaint
+         * only counts expressions, and doesn't say which .pc. */
         auto build = [&](const std::string& prefix, bool for_make,
                          const std::string& output) {
             auto argument = [&](const std::string& str) {
@@ -313,25 +326,39 @@ language_pkgconfig::targets(const context::ptr& ctx) const
                     + ": " + ctx->cmd->data() + " has no SOURCES to be"
                     + " made from' >&2; exit 1";
 
-            command += "cat " + sources[0]->name();
+            /* One file holds the text so far and each sed writes the
+             * next version beside it, which then takes its place. */
+            auto text = output + ".pconfigure-sed";
+            auto next = output + ".pconfigure-sed-next";
+            auto step = [&](const std::string& sed) {
+                return " && " + sed + " < " + text + " > " + next
+                    + " && mv -f " + next + " " + text;
+            };
+
+            command += "cat " + sources[0]->name() + " > " + text;
             auto replace = [&](const std::string& name,
                                const std::string& value) {
-                return " | sed 's^@@pconfigure_" + name + "@@^"
-                    + sed_replacement(pkgconfig_escape(value)) + "^g'";
+                return step("sed 's^@@pconfigure_" + name + "@@^"
+                    + sed_replacement(pkgconfig_escape(value)) + "^g'");
             };
             command += replace("prefix", prefix);
             command += replace("libdir", ctx->unbased(ctx->lib_dir));
             command += replace("hdrdir", ctx->unbased(ctx->hdr_dir));
             for (const auto& str: this->clopts(ctx)) {
                 if (strncmp(str.c_str(), "-S", 2) == 0)
-                    command += " | sed \"`cat " + argument(sed_file(str)) + "`\"";
+                    command += step("sed \"`cat " + argument(sed_file(str)) + "`\"");
                 else if (strncmp(str.c_str(), "`", 1) == 0)
-                    command += " | sed " + str;
+                    command += step("sed " + str);
                 else
-                    command += " | sed " + argument(str);
+                    command += step("sed " + argument(str));
             }
 
-            command += "> " + output;
+            command += " && mv -f " + text + " " + output
+                + " || { rm -f " + text + " " + next + "; echo '"
+                + filename + ":" + std::to_string(lineno) + ": "
+                + ctx->cmd->data() + " could not be made: the sed"
+                + " above failed on its template or on one of its"
+                + " COMPILEOPTS' >&2; exit 1; }";
             return command;
         };
 
