@@ -2617,6 +2617,14 @@ refused, at whichever of the two lines comes second, naming the other.
 A name that merely ends the same way --- \texttt{rules.d} with no
 \texttt{rules} beside it --- is fine.
 
+A \texttt{\$name} may have a directory in it, which carries over to
+both the script and its output.  \texttt{GENERATE += sub/gen.h} calls
+\texttt{\$SRCDIR/sub/gen.h.proc} in the two ways above and writes its
+output to a \texttt{sub} directory inside the generated-files
+directory, which \pconfigure\ makes, so that the source asking for it
+includes it as \texttt{"sub/gen.h"} --- the same spelling it would use
+for a header of its own in that directory.
+
 \subsection{\texttt{TGENERATE += \$name}}
 
 Exactly the same as \texttt{GENERATE}, but runs
