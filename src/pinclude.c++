@@ -43,7 +43,8 @@ int main(int argc, const char **argv)
      * are defined as, and "-DNAME=value" defines NAME every bit as
      * much as "-DNAME" does.  Kept whole, "NAME=value" was a macro no
      * "#ifdef" has ever asked about, and whatever it guarded was left
-     * off the list. */
+     * off the list.  A function-like "-DNAME(args)", with or without
+     * a body, defines NAME too, so the name stops at a '(' as well. */
     for (int i = 1; i < argc; ++i) {
         std::string flag;
         std::string value;
@@ -69,7 +70,7 @@ int main(int argc, const char **argv)
         if (flag == "-I")
             dirs.push_back(value);
         else
-            defs.insert(value.substr(0, value.find('=')));
+            defs.insert(value.substr(0, value.find_first_of("=(")));
     }
 
     return pinclude::list(

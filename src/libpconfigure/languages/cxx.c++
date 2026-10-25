@@ -313,6 +313,12 @@ cxx_defines(const std::vector<std::string>& opts)
      * whole of "NAME=value" it would look for a macro by that name,
      * which no #ifdef has ever asked about.
      *
+     * The same goes for a function-like "-DNAME(args)" or
+     * "-DNAME(args)=body": the parameter list belongs to the
+     * definition, and the name is what comes before it.  Cut only at
+     * the '=', the name came out as "NAME(args)", so an "#ifdef NAME"
+     * looked off and the scan followed a branch the compiler skips.
+     *
      * A "-U" takes a name away again, and the compiler reads the two
      * in the order they're written: "-DTRACE -UTRACE" leaves TRACE
      * undefined and "-UTRACE -DTRACE" leaves it defined.  That's how
@@ -331,7 +337,7 @@ cxx_defines(const std::vector<std::string>& opts)
     auto out = std::vector<std::string>();
     auto pending = std::string();
     auto apply = [&](const std::string& flag, const std::string& arg) {
-        auto name = arg.substr(0, arg.find('='));
+        auto name = arg.substr(0, arg.find_first_of("=("));
         out.erase(std::remove(out.begin(), out.end(), name), out.end());
         if (flag == "-D")
             out.push_back(name);
