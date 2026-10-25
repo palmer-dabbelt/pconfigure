@@ -5118,7 +5118,17 @@ A bash ``compiler'', which really just does the following
   \texttt{<<<} is a here-string and carries its body on its own line,
   a \texttt{<<} with a word character written against its left is a
   shift rather than a redirection, and a \texttt{<<} inside quotes is
-  text.  Quoting is followed within a line and not across lines.
+  text.  Quoting is followed within a line and not across lines.  A
+  \texttt{<<} written right where the delimiter before it ended, as in
+  \texttt{<<A<<B}, opens a second heredoc rather than shifting.
+
+  The delimiter is read with its quoting taken out, wherever in the
+  word that quoting is and whichever of bash's spellings it uses, so
+  \texttt{<<'EOF'}, \texttt{<<\textbackslash EOF}, \texttt{<<E"O"F}
+  and \texttt{<<\$'EOF'} are all ended by a line saying \texttt{EOF}.
+  The backslash escapes in a \texttt{\$'...'} are decoded as bash
+  decodes them, with \texttt{\textbackslash u} and
+  \texttt{\textbackslash U} written out as UTF-8.
 
   A heredoc that no line ever ends has taken the rest of the file for
   its body.  If a directive went down with it \texttt{pbashc} says
