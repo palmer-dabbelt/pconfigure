@@ -601,12 +601,54 @@ std::vector<configfile_line> lines_from_file(const std::string& srcpath,
      * an unknown command that looked exactly like LANGUAGES on a
      * terminal.  Only the start of the file is forgiven: the same
      * bytes anywhere else are an invisible character somebody pasted
-     * in, and those still get refused on the line they're on. */
+     * in, and those still get refused on the line they're on.
+     *
+     * That refusal has to happen here, while the line is still every
+     * byte that was read.  Left for the parser, a mark at the front of
+     * a command's name happened to fail as an unknown command, but one
+     * at the front of a value went straight through: "BINARIES +=
+     * <mark>main" built a program whose name only looked like "main".
+     * A NUL is worse, because everything after this point treats the
+     * line as a C string: the rest of the line after one vanished
+     * without a word, and a line starting with one -- every line of a
+     * UTF-16 file has that shape -- read as a blank line.  Neither is
+     * ever part of a line anybody meant to write, so a line with
+     * either in it is refused outright, from a file or from what an
+     * executable Configfile printed alike. */
     static const std::string byte_order_mark = "\xEF\xBB\xBF";
     for (auto ln: file_utils::readlines_and_numbers(file)) {
         if (ln.number == 1
             && ln.line.compare(0, byte_order_mark.size(), byte_order_mark) == 0)
             ln.line = ln.line.substr(byte_order_mark.size());
+
+        auto nul = ln.line.find('\0');
+        auto mark = ln.line.find(byte_order_mark);
+        if (nul != std::string::npos || mark != std::string::npos) {
+            /* The line itself isn't quoted, since the whole trouble
+             * is bytes that don't show up when printed; the column
+             * (counted in bytes, from 1) is what says where they are. */
+            auto bad = (nul != std::string::npos) ? nul : mark;
+            auto what = (nul != std::string::npos)
+                ? std::string("a NUL byte")
+                : std::string("a UTF-8 byte order mark (EF BB BF)");
+            std::cerr << filename << ":" << ln.number << "\n"
+                      << "  error: this line has " << what
+                      << " in it, at byte " << (bad + 1) << "\n"
+                      << "  it doesn't show up on a terminal, but it is"
+                      << " part of the line, and a Configfile line is"
+                      << " plain text\n";
+            if (nul != std::string::npos)
+                std::cerr << "  save the file as UTF-8 or ASCII rather"
+                          << " than UTF-16, or remove the byte"
+                          << (executable ? " from what the program prints" : "")
+                          << "\n";
+            else
+                std::cerr << "  delete the invisible character; a byte"
+                          << " order mark is only allowed as the very"
+                          << " first thing in the file\n";
+            abort();
+        }
+
         out.push_back(configfile_line(filename, ln.number, ln.line));
     }
 
