@@ -1769,6 +1769,12 @@ language_cxx::write_deps_context(const context::ptr& ctx,
     out += say("quiet", child->verbose ? "false" : "true");
     out += say("autodeps", ctx->autodeps ? "true" : "false");
 
+    /* The headers the build makes, which pdeps has to count as found
+     * when it scans while one of them is missing -- see build_made on
+     * the context for when that is, and what it costs not to. */
+    for (const auto& made: ctx->build_made)
+        out += say("made", made);
+
     /* Only a project a parent can include has anything to say here.
      * The peers are deliberately not passed along: a path into a
      * sibling project is one that only means anything from the top of
@@ -2184,12 +2190,16 @@ std::vector<std::string> language_cxx::dependencies(
 
 std::vector<std::string>
 cxx_headers_read_by(const std::string& source,
-                    const std::vector<std::string>& compile_opts)
+                    const std::vector<std::string>& compile_opts,
+                    const std::vector<std::string>& promised)
 {
     auto defined = std::unordered_set<std::string>();
     for (const auto& define: cxx_defines(compile_opts))
         defined.insert(define);
     auto include_dirs = cxx_include_dirs(compile_opts);
+
+    auto promised_set = std::unordered_set<std::string>(promised.begin(),
+                                                        promised.end());
 
     auto out = std::vector<std::string>();
     auto callback = [&](std::string s) {
@@ -2227,14 +2237,24 @@ cxx_headers_read_by(const std::string& source,
          * read with afterwards, and leaves its own in there. */
         found = file_utils::normalize_path(found);
         out.push_back(found);
-        pinclude::list_defining(found, include_dirs, defined, callback, true);
+        pinclude::list_defining(found,
+                                include_dirs,
+                                defined,
+                                callback,
+                                true,
+                                promised_set);
     }
 
     pinclude::list(source,
                    include_dirs,
                    defined,
                    callback,
-                   true);
+                   true,
+                   pinclude::syntax::C,
+                   {},
+                   false,
+                   false,
+                   promised_set);
     return out;
 }
 

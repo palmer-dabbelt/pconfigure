@@ -81,10 +81,16 @@ cxx_defines(const std::vector<std::string>& opts);
  * AUTORECONFIGURE -- and it used to be answered by two copies of the
  * same loop.  Each copy got the same things wrong in the same way, so
  * the fix had to be made twice; now it only has to be made here, and
- * the two can't come to disagree about which headers a source reads. */
+ * the two can't come to disagree about which headers a source reads.
+ *
+ * "promised" is the headers the build is going to make, which pdeps
+ * passes and pconfigure does not: pconfigure has made every one of
+ * them by the time it scans anything, and pdeps can be asked after a
+ * "make clean" has taken them all away again. */
 std::vector<std::string>
 cxx_headers_read_by(const std::string& source,
-                    const std::vector<std::string>& compile_opts);
+                    const std::vector<std::string>& compile_opts,
+                    const std::vector<std::string>& promised = {});
 
 /* The endings that search tries, which is what anything deciding
  * how to build what it finds has to have an answer for. */

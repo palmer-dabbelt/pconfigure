@@ -95,6 +95,14 @@ namespace {
         std::vector<std::string> links;
         std::vector<std::string> opts;
 
+        /* The files the build makes, each of which counts as being
+         * where it will be when the scan goes looking for it.  A build
+         * after "make clean" asks before any of them have been made
+         * again, and a header this leaves out of the fragment is a
+         * header the object is compiled without having waited for,
+         * and is not recompiled for when it changes. */
+        std::vector<std::string> made;
+
         /* The sources whose fragments the Makefile already knows how
          * to build, because a Configfile named them, and the fragment
          * each one's rule writes.  Writing a second rule for one of
@@ -283,6 +291,7 @@ namespace {
                         value.substr(split + 1);
             }
             else if (key == "opt")         out.opts.push_back(value);
+            else if (key == "made")        out.made.push_back(value);
             else if (key == "behind-language") {
                 auto split = value.find(' ');
                 if (split == std::string::npos)
@@ -320,7 +329,7 @@ namespace {
     std::vector<std::string> headers_of(const deps_context& ctx,
                                         const std::string& source)
     {
-        return cxx_headers_read_by(source, ctx.opts);
+        return cxx_headers_read_by(source, ctx.opts, ctx.made);
     }
 
     /* The rule that runs this makes the directory too, since make

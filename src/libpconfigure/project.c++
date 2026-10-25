@@ -387,6 +387,51 @@ void project::generate_targets(void)
         generated[context] = language->targets(context);
     }
 
+    /* What those make, for a source to read.  Under AUTORECONFIGURE
+     * it is pdeps that works out which headers a source reads, while
+     * the build runs, and after a "make clean" or a deleted object
+     * directory these are exactly the headers that aren't there when
+     * it asks: a scan that only believes the disk leaves them out of
+     * the fragment, nothing then makes them before the object that
+     * reads them is compiled, and once they are back nothing
+     * recompiles that object when they change.  So pdeps is told
+     * they are coming.
+     *
+     * Every target with a recipe, rather than only the ones that look
+     * like headers: anything a GENERATE writes can be #included, and a
+     * name nothing includes is a name nothing ever asks about.  An
+     * install target is a copy outside the tree, which is no business
+     * of a scan inside it.
+     *
+     * Kept sorted, because it ends up in every context file pdeps
+     * reads and the map above is in whatever order the pointers came
+     * out in: a list that comes out shuffled is a context file that
+     * changes on every configure, and every fragment behind it worked
+     * out again for nothing. */
+    auto made = std::set<std::string>();
+    for (const auto& pair: generated)
+        for (const auto& target: pair.second) {
+            if (target->cmds().size() == 0)
+                continue;
+            if (target->has_global_target(makefile::global_targets::INSTALL)
+                || target->has_global_target(
+                       makefile::global_targets::UNINSTALL))
+                continue;
+            made.insert(file_utils::normalize_path(target->name()));
+        }
+    auto build_made = std::vector<std::string>(made.begin(), made.end());
+
+    std::function<void(const context::ptr&)> stamp_build_made =
+        [&](const context::ptr& ctx)
+        {
+            ctx->build_made = build_made;
+            for (const auto& child: ctx->children)
+                stamp_build_made(child);
+        };
+
+    for (const auto& context: _processor->output_contexts())
+        stamp_build_made(context);
+
     for (const auto& context: _processor->output_contexts()) {
         if (context->debug == true)
             std::cerr << "Building Context: " << context->cmd->data() << "\n";

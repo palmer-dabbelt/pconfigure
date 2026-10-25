@@ -256,6 +256,19 @@ public:
      * to mean the same thing as the same line at the top. */
     bool autoreconfigure;
 
+    /* The files this project's GENERATE and HEADERSRC lines make,
+     * which a source can #include like any other header and which are
+     * not on disk after a "make clean" or a deleted object directory.
+     *
+     * Only read under AUTORECONFIGURE, where it is handed to pdeps:
+     * that is the one place the headers a source reads are worked out
+     * while the build is happening, and so the one place a header the
+     * build has not got round to making yet would otherwise go
+     * unnoticed.  Stamped on by the project once every one of them is
+     * known, like the two above, and not one of the constructor's
+     * arguments because nothing but the project ever sets it. */
+    std::vector<std::string> build_made;
+
 public:
     /* Creates a new context with everything filled in to the default
      * values.  Note that you probably don't want to use this unless
