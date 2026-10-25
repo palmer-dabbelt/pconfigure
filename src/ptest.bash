@@ -279,8 +279,17 @@ then
                 # not just the first line, because a test that got
                 # half way through before finding out it could not
                 # finish has still not run.
+                #
+                # Read as text whatever is in it.  The output is
+                # whatever the test and the tools it ran printed,
+                # which for a compiler or an emulator is often not
+                # text at all, and one NUL byte is enough for grep to
+                # call the whole stream binary: it then says on stderr
+                # that a binary file matched and prints no line, so
+                # the skip would be counted as a pass and the report
+                # would carry grep's message in the middle of it.
                 why="$(tar -xOf "$f" ptest__output 2>/dev/null \
-                       | grep -m 1 '^SKIP:')"
+                       | grep -a -m 1 '^SKIP:')"
                 if [[ "$why" != "" ]]
                 then
                     # The reason, which was otherwise reachable only
