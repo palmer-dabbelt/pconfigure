@@ -2714,6 +2714,56 @@ void command_processor::process_one(const command::ptr& cmd)
             abort();
         }
 
+        /* The same two questions asked of the directory, because a
+         * symlink is a way to name this project, or one above it,
+         * that neither spelling check can see: "self" linking to "."
+         * at the top, or "up" linking to ".." in a subproject, reads
+         * as an ordinary name that neither is this project nor
+         * contains it.  Let through, the tree that wrote the line is
+         * read again under the new name, which names it again one
+         * level deeper, and so on until the path is too long to
+         * resolve -- and what finally comes out is "no build system"
+         * for a path dozens of directories deep, at a line in a
+         * Configfile that doesn't exist.
+         *
+         * Only a link back to this project or above it is refused.
+         * One that lands somewhere else in the tree is the vendored
+         * tree linked into place that the rules below deliberately
+         * leave alone, and naming it under both spellings is a tree
+         * asked for twice, which project::read() reads once.  A path
+         * that doesn't resolve can't be a link to anything, so it is
+         * left to the build-system check below to complain about.  So
+         * is a link out of the run's tree altogether, which contains
+         * this project too when it points above the top, but whose
+         * real problem is that it leaves -- and that has its own
+         * refusal, further down, saying so. */
+        auto real_path = file_utils::real_directory(path);
+        auto real_here = file_utils::real_directory(
+            _base.size() == 0 ? std::string(".") : _base);
+        auto real_top = file_utils::real_directory(".");
+        if (real_path.size() > 0 && real_here.size() > 0
+            && file_utils::inside(real_path, real_top) == true
+            && file_utils::inside(real_here, real_path) == true) {
+            auto itself = (real_here == real_path);
+            std::cerr << "SUBPROJECTS can't point at "
+                      << (itself ? "the project itself"
+                                 : "a directory that contains it")
+                      << ": '"
+                      << std::to_string(cmd->debug())
+                      << "'\n"
+                      << "  '" << path << "' resolves to '" << real_path
+                      << "', which "
+                      << (itself ? "is" : "contains")
+                      << " this project's directory '" << real_here
+                      << "', so reading it as a subproject would read"
+                      << " this project again inside itself\n"
+                      << "  remove the line, or point the symlink at the"
+                      << " tree it was meant to name; a project reads"
+                      << " its own subprojects, never itself or the one"
+                      << " above it\n";
+            abort();
+        }
+
         /* Everything here names files relative to where pconfigure
          * ran, and a Makefile written outside that tree would be
          * talking about a directory this build doesn't own.

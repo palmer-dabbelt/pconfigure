@@ -128,6 +128,18 @@ void project::check_prefix_variables(const std::vector<ptr>& everyone)
     }
 }
 
+/* What makes two project directories the same project: where the
+ * directory is once symlinks are resolved, so that two spellings of
+ * one tree agree.  The top's base is empty, which realpath() won't
+ * take, so it is asked as ".".  A directory that doesn't resolve has
+ * no identity but its name, which can't collide with a resolved one
+ * since resolved paths are absolute and no project base is. */
+static std::string identity(const std::string& base)
+{
+    auto real = file_utils::real_directory(base.size() == 0 ? "." : base);
+    return real.size() > 0 ? real : base;
+}
+
 /* Registers one CONFIG_DEPS that a Configfile in the project at
  * "srcpath" wrote.  A relative path means somewhere in that project, so
  * it is rooted there; an absolute one -- a tool or a pkg-config file
@@ -348,6 +360,13 @@ project::ptr project::read(const command_processor::ptr& processor,
     auto out = std::make_shared<project>(processor->base(), processor,
                                          asked_by);
 
+    /* The top of the run comes this way without passing the check in
+     * the other read(), and is just as much a project that has been
+     * read: a subproject that reaches back to it through a symlink is
+     * this tree again, not another one.  Inserting a project's own
+     * identity a second time changes nothing. */
+    seen.insert(identity(processor->base()));
+
     /* Anything the command line asked for comes first, since that's
      * the order it was processed in.  Every one of them is taken off
      * the queue before any is read: reading a file drains the queue
@@ -415,8 +434,13 @@ project::ptr project::read(const std::string& base,
 
     /* A project that two others both pull in is one project, and only
      * gets read once -- which is also what stops a project that
-     * somehow reaches itself from recursing forever. */
-    if (seen.insert(normalized).second == false)
+     * somehow reaches itself from recursing forever.  Which project a
+     * directory is gets decided by the directory, though, not by how
+     * the line spelled it: "vendor/a" and a symlink "a" to it are one
+     * tree, and reading it under both names writes two Makefiles into
+     * one object directory, each with its own rule for the same test
+     * result, which a parallel "make check" then runs at once. */
+    if (seen.insert(identity(normalized)).second == false)
         return NULL;
 
     auto processor = std::make_shared<command_processor>(
