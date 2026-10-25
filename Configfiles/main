@@ -93,6 +93,8 @@ SOURCES     += libpinclude/pinclude.pc
 BINARIES    += pclean
 SOURCES	    += pclean.bash
 TESTSRC     += simple.bash
+TESTSRC     += backslash-in-backup-name.bash
+TESTSRC     += backslash-newline-in-backup-name.bash
 
 BINARIES    += pbashc
 DEPLIBS     += pinclude
