@@ -1007,6 +1007,7 @@ TESTSRC     += unicode-library-names-deplibs-and-test.bash
 TESTSRC     += libdir-nested-with-nested-binaries-runpath.bash
 TESTSRC     += srcdir-dot-and-dotdot-spellings-build.bash
 TESTSRC     += sources-leading-dash-file-with-srcdir-dot.bash
+TESTSRC     += config-in-subdirectory-autoreconfigure.bash
 TESTSRC     += nested-binary-install-and-rpath.bash
 TESTSRC     += subproject-moved-libdir-nested-binary-runs-in-tree.bash
 TESTSRC     += prefix-above-subprojects-installs-both-into-one-prefix.bash
