@@ -218,10 +218,12 @@ is read, see Section~\ref{cmd:phc}.
 
 Uses \texttt{<path>} as \texttt{ppkg-config} (see
 Section~\ref{prog:ppkg-config}) when a \texttt{Configfile} runs it in
-backticks.  The substitution is textual: the word
-\texttt{ppkg-config} is replaced wherever it appears inside a
-backticked command, so \texttt{`ppkg-config --cflags x`} runs
-\texttt{<path>} instead.
+backticks.  The word \texttt{ppkg-config} is replaced wherever it
+appears inside a backticked command, so \texttt{`ppkg-config --cflags
+x`} runs \texttt{<path>} instead.  The path goes in quoted, as a
+single word, so a \texttt{<path>} with a space in it -- or a
+\pconfigure\ installed under such a directory, for the default below
+-- still names one program.
 
 Without this option the \texttt{ppkg-config} sitting beside the
 running \pconfigure\ is the one that runs, named by its absolute path
