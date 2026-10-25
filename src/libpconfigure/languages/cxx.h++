@@ -24,6 +24,7 @@
 #include "../language.h++"
 #include <map>
 #include <memory>
+#include <pinclude.h++>
 
 /* Every name a C or C++ source file goes by, and every name a header
  * that pairs with one goes by.  Which spelling a project picked is
@@ -54,8 +55,11 @@ cxx_sources_for_header(const std::string& full_header_path);
  *
  * Every flag that adds a directory to the search counts: "-I",
  * "-isystem", "-iquote", "-idirafter" and clang's "-isystem-after"
- * all decide where a "#include" is found, so a header in any of them is one the object
- * was compiled against.  Each of them, and "-D", may have its
+ * all decide where a "#include" is found, so a header in any of them
+ * is one the object was compiled against.  They come back in the
+ * order the compiler searches them, which is by kind and not by the
+ * order they were written in, with the "-iquote" ones set apart for
+ * the quoted spelling alone.  Each of them, and "-D", may have its
  * argument stuck on or as the word after it.  The options are words
  * already -- a line of COMPILEOPTS split on its spaces -- which is
  * what compile_options() hands out.
@@ -65,8 +69,8 @@ cxx_sources_for_header(const std::string& full_header_path);
  * Makefile and pdeps asks it of the same source while make runs, and
  * a header only one of them found is a header that is a prerequisite
  * under one build and not under the other. */
-std::vector<std::string>
-cxx_include_dirs(const std::vector<std::string>& opts);
+pinclude::search_path
+cxx_include_search(const std::vector<std::string>& opts);
 std::vector<std::string>
 cxx_defines(const std::vector<std::string>& opts);
 

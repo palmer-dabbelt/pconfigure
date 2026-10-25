@@ -83,10 +83,50 @@ namespace pinclude {
         PERL,
     };
 
+    /* Where an "#include" is looked for once the includer's own
+     * directory has been tried, which for a quoted include and an
+     * angled one are not the same place.  gcc and clang both look in
+     * an "-iquote" directory for '#include "..."' alone, and ahead of
+     * any "-I"; an angled include starts at the "-I"s and never sees
+     * it.  So the directories come in two lists rather than one: the
+     * ones only a quoted include searches, and then the ones both
+     * spellings search, each list already in the order it is to be
+     * searched.
+     *
+     * Most callers have nothing quote-only to say -- pbashc knows "-I"
+     * and nothing else, and reads the angled spelling as the quoted
+     * one anyway -- so a plain list of directories is taken to be
+     * one both spellings search. */
+    struct search_path {
+        std::vector<std::string> quoted_only;
+        std::vector<std::string> both;
+
+        search_path(void) = default;
+
+        search_path(std::vector<std::string> both_)
+        : quoted_only(), both(both_)
+        {}
+
+        search_path(std::vector<std::string> quoted_only_,
+                    std::vector<std::string> both_)
+        : quoted_only(quoted_only_), both(both_)
+        {}
+
+        /* Every directory a quoted include is looked for in, in the
+         * order it looks: the quote-only ones first. */
+        std::vector<std::string> quoted(void) const
+        {
+            auto out = quoted_only;
+            out.insert(out.end(), both.begin(), both.end());
+            return out;
+        }
+    };
+
     /* Looks through the given file for #include lines, calling the given
      * callback for any included file that exists inside one of the given
-     * include_dirs.  This handles some simple CPP #define-related things, the
-     * list of default definitions is given in defined.  Any non-zero return
+     * include_dirs, which are searched the way search_path above says.
+     * This handles some simple CPP #define-related things, the list of
+     * default definitions is given in defined.  Any non-zero return
      * value from the callback stops parsing and returns that value.
      *
      * language says which of the readings above to use, and is C
@@ -124,7 +164,7 @@ namespace pinclude {
      * others are, so the place it will be beats a stale copy further
      * down the include path, the way it will for the compiler. */
     int list(std::string filename,
-             std::vector<std::string> include_dirs,
+             pinclude::search_path include_dirs,
              std::vector<std::string> defined,
              std::function<int(std::string)> callback,
              bool skip_missing_files,
@@ -135,7 +175,7 @@ namespace pinclude {
              std::unordered_set<std::string> promised = {});
 
     int list(std::string filename,
-             std::vector<std::string> include_dirs,
+             pinclude::search_path include_dirs,
              std::unordered_set<std::string> defined,
              std::function<int(std::string)> callback,
              bool skip_missing_files,
@@ -154,7 +194,7 @@ namespace pinclude {
      * there to turn on.  Always read as C, since nothing else has a
      * file read ahead of it. */
     int list_defining(std::string filename,
-                      std::vector<std::string> include_dirs,
+                      pinclude::search_path include_dirs,
                       std::unordered_set<std::string>& defines,
                       std::function<int(std::string)> callback,
                       bool skip_missing_files,

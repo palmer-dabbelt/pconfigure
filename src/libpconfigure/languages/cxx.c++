@@ -124,39 +124,56 @@ split_flag(const std::string& word, const std::vector<std::string>& flags)
     return std::make_pair(std::string(), std::string());
 }
 
-/* Every argument of one of "flags", in either spelling: stuck on to
- * the flag, or the word after a flag that stands alone.  Each comes
- * back as the text it stands for rather than as the shell would be
- * handed it, since what's asked of these is where to look on the
- * disk. */
-static std::vector<std::string>
-flag_arguments(const std::vector<std::string>& opts,
-               const std::vector<std::string>& flags)
+pinclude::search_path
+cxx_include_search(const std::vector<std::string>& opts)
 {
-    auto out = std::vector<std::string>();
-    auto pending = false;
-    for (const auto& opt: opts) {
-        if (pending == true) {
-            out.push_back(string_utils::shell_unescape(opt));
-            pending = false;
-            continue;
+    /* The compiler doesn't search these in the order they were
+     * written, it searches them by kind and only goes by the written
+     * order among flags of the same kind.  A quoted include looks in
+     * every "-iquote" directory first, and an angled one not at all;
+     * then both look along every "-I", then every "-isystem", then
+     * the system's own directories, which clang's "-isystem-after"
+     * adds to the end of, and last of all every "-idirafter", which
+     * is only ever a fallback.  A scan that took them in written
+     * order would let an "-isystem" or "-idirafter" written first
+     * shadow an "-I" the compiler prefers, and would name the header
+     * the compiler didn't read: the object would miss edits to the
+     * one it did, and the source behind the wrong one would be
+     * linked in.
+     *
+     * Each flag is asked about on its own rather than through
+     * include_flags() at once, which keeps the order within a kind
+     * and needs no telling apart afterwards.  "-isystem" is asked
+     * with "-isystem-after" ahead of it for the reason include_flags()
+     * puts it there: a word that starts with the longer name is that
+     * flag and not the shorter one. */
+    auto of = [&](const std::string& flag) {
+        auto out = std::vector<std::string>();
+        auto pending = std::string();
+        for (const auto& opt: opts) {
+            if (pending.size() > 0) {
+                if (pending == flag)
+                    out.push_back(string_utils::shell_unescape(opt));
+                pending = "";
+                continue;
+            }
+
+            auto split = split_flag(opt, include_flags());
+            if (split.first.size() == 0)
+                continue;
+            if (split.second.size() == 0)
+                pending = split.first;
+            else if (split.first == flag)
+                out.push_back(string_utils::shell_unescape(split.second));
         }
+        return out;
+    };
 
-        auto split = split_flag(opt, flags);
-        if (split.first.size() == 0)
-            continue;
-        if (split.second.size() == 0)
-            pending = true;
-        else
-            out.push_back(string_utils::shell_unescape(split.second));
-    }
-    return out;
-}
-
-std::vector<std::string>
-cxx_include_dirs(const std::vector<std::string>& opts)
-{
-    return flag_arguments(opts, include_flags());
+    return pinclude::search_path(of("-iquote"),
+                                 of("-I")
+                                 + of("-isystem")
+                                 + of("-isystem-after")
+                                 + of("-idirafter"));
 }
 
 /* The flags that have the compiler read a file before the source:
@@ -188,7 +205,7 @@ cxx_forced_includes(const std::vector<std::string>& opts)
     auto includes = std::vector<std::string>();
     auto pending = std::string();
 
-    /* Each is a file to be looked for, so like flag_arguments() it is
+    /* Each is a file to be looked for, so like an include directory it is
      * wanted as the text the shell hands the compiler: a name written
      * as -include 'config.h' is looked for as config.h, not as a file
      * with quotes in its name that no directory has. */
@@ -231,7 +248,7 @@ cxx_defines(const std::vector<std::string>& opts)
      * "#ifndef"s it takes -- listing headers that are never read,
      * linking in the sources behind them, and leaving out the ones
      * that are.  So the two are walked together, in order, each
-     * spelling of each as flag_arguments() would take it. */
+     * spelling of each as cxx_include_search() takes its flags. */
     auto out = std::vector<std::string>();
     auto pending = std::string();
     auto apply = [&](const std::string& flag, const std::string& arg) {
@@ -2311,7 +2328,7 @@ cxx_headers_read_by(const std::string& source,
     auto defined = std::unordered_set<std::string>();
     for (const auto& define: cxx_defines(compile_opts))
         defined.insert(define);
-    auto include_dirs = cxx_include_dirs(compile_opts);
+    auto include_dirs = cxx_include_search(compile_opts);
 
     auto promised_set = std::unordered_set<std::string>(promised.begin(),
                                                         promised.end());
@@ -2347,7 +2364,7 @@ cxx_headers_read_by(const std::string& source,
         if (includable(name))
             found = name;
         else if (name[0] != '/')
-            for (const auto& dir: include_dirs)
+            for (const auto& dir: include_dirs.quoted())
                 if (found.size() == 0 && includable(dir + "/" + name))
                     found = dir + "/" + name;
 

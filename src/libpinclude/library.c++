@@ -28,7 +28,7 @@
 #include <unistd.h>
 
 int pinclude::list(std::string filename,
-                   std::vector<std::string> include_dirs,
+                   pinclude::search_path include_dirs,
                    std::vector<std::string> defines,
                    std::function<int(std::string)> callback,
                    bool skip_missing_files,
@@ -153,7 +153,7 @@ static std::vector<T> cat(const std::vector<T>& a, const std::vector<T>& b)
 
 static
 int list_overwrite_defines(std::string filename,
-                           std::vector<std::string> include_dirs_without_cwd,
+                           pinclude::search_path include_dirs_without_cwd,
                            std::unordered_set<std::string>& defines,
                            std::unordered_set<std::string>& reading,
                            std::function<int(std::string)> callback,
@@ -165,7 +165,7 @@ int list_overwrite_defines(std::string filename,
                            const std::unordered_set<std::string>& promised);
 
 int pinclude::list(std::string filename,
-                   std::vector<std::string> include_dirs_without_cwd,
+                   pinclude::search_path include_dirs_without_cwd,
                    std::unordered_set<std::string> defines,
                    std::function<int(std::string)> callback,
                    bool skip_missing_files,
@@ -207,7 +207,7 @@ int pinclude::list(std::string filename,
 }
 
 int pinclude::list_defining(std::string filename,
-                            std::vector<std::string> include_dirs,
+                            pinclude::search_path include_dirs,
                             std::unordered_set<std::string>& defines,
                             std::function<int(std::string)> callback,
                             bool skip_missing_files,
@@ -233,7 +233,7 @@ int pinclude::list_defining(std::string filename,
 }
 
 int list_overwrite_defines(std::string filename,
-                           std::vector<std::string> include_dirs,
+                           pinclude::search_path include_dirs,
                            std::unordered_set<std::string>& defines,
                            std::unordered_set<std::string>& reading,
                            std::function<int(std::string)> callback,
@@ -910,12 +910,23 @@ int list_overwrite_defines(std::string filename,
             auto searches_includer = rest[0] == '"'
                 || language != pinclude::syntax::C;
 
+            /* The same goes for an "-iquote" directory, and for the
+             * same reason: the angled spelling never looks there, so
+             * a header in one is no answer to "#include <extra.h>"
+             * however early its flag was written, and following it
+             * lists the wrong header and links the source behind it.
+             * Whichever spelling looks beside the includer is the one
+             * that looks in the quote-only directories after that. */
+            auto search_dirs = searches_includer
+                ? include_dirs.quoted()
+                : include_dirs.both;
+
             auto full_path = [&]() {
                 auto cwd_relative = get_relative_cwd(filename) + rest_path;
                 if (searches_includer && findable(cwd_relative))
                     return option<std::string>(strip_dd(cwd_relative));
 
-                for (const auto& dir: include_dirs) {
+                for (const auto& dir: search_dirs) {
                     auto check = dir + "/" + rest_path;
                     if (findable(check))
                         return option<std::string>(strip_dd(check));

@@ -557,7 +557,7 @@ language_bash::targets(const context::ptr& ctx) const
  * when it stands alone.
  *
  * This is pbashc's reading rather than a compiler's, which is why it
- * isn't cxx_include_dirs(): pbashc knows "-I" and nothing else, and a
+ * isn't cxx_include_search(): pbashc knows "-I" and nothing else, and a
  * "-isystem" that this counted as a directory would be one the script
  * was never searched in.
  *
