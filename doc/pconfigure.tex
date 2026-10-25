@@ -2460,11 +2460,14 @@ Allows for the generation of arbitrary targets.  The file
 \texttt{\$name} will be generated somewhere in \texttt{\$OBJDIR}.
 Some languages (C and C++, for example) will place this directory in
 the global include path, but the exact semantics are defined by the
-language.  Note that currently it is only legal to call all
-\texttt{GENERATE} commands before any other targets, which results in
-them being placed in a global directory -- this may change in the
-future such that it is possible to associate \texttt{GENERATE}
-commands with specific targets in order to keep them seperate.
+language.  Every \texttt{GENERATE} output is placed in one directory
+shared by the whole project, rather than with any one target, so a
+source anywhere in the project can include it.  A \texttt{GENERATE}
+may be written above or below the targets that read its output:
+\pconfigure\ generates every \texttt{GENERATE} before it looks
+through any source for the headers it includes, so the dependency on
+the generated file is found either way.  Writing one below a target
+is what lets that target be the tool the script runs.
 
 The output is named by the path \texttt{\$name} reaches rather than by
 how the line spelled it, so \texttt{GENERATE += ./gen.h} writes the
