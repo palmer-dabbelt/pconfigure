@@ -71,9 +71,14 @@ std::vector<configfile_line> config_lines(const std::string& srcpath,
 
 /* The lines of a file with exactly this name.  The source path is
  * only used to find executable Configfiles, which are run with it as
- * their working directory. */
+ * their working directory.  A file that isn't there has no lines; one
+ * that is there but can't be opened or is a directory is a fatal
+ * error, pointing at the command that asked for the file when there
+ * was one. */
 std::vector<configfile_line> lines_from_file(const std::string& srcpath,
-                                             const std::string& filename);
+                                             const std::string& filename,
+                                             const debug_info::ptr& asked_by
+                                                 = NULL);
 
 /* Turns a line into a command, running whatever it has in backticks
  * along the way.  Returns NULL for a line that says nothing, which is

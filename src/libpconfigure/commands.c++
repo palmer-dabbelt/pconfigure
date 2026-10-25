@@ -25,6 +25,7 @@
 #include <libmakefile/self_path.h++>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
@@ -243,8 +244,9 @@ std::vector<configfile_line> config_lines(const std::string& srcpath,
      * everything the file would have declared.
      *
      * Existence is the question rather than readability, so that a
-     * file which is there but can't be read is still found by whatever
-     * reads it, and complained about there if it is going to be. */
+     * file which is there but can't be read is still found by
+     * lines_from_file(), which complains about it with the reason it
+     * couldn't be read. */
     auto found = false;
     for (const auto& filename: filenames)
         if (access(filename.c_str(), F_OK) == 0)
@@ -264,7 +266,7 @@ std::vector<configfile_line> config_lines(const std::string& srcpath,
 
     std::vector<configfile_line> out;
     for (const auto& filename: filenames) {
-        auto lines = lines_from_file(srcpath, filename);
+        auto lines = lines_from_file(srcpath, filename, config->debug());
         out.insert(out.end(), lines.begin(), lines.end());
     }
     return out;
@@ -359,7 +361,8 @@ command::ptr parse_line(const configfile_line& line)
 }
 
 std::vector<configfile_line> lines_from_file(const std::string& srcpath,
-                                             const std::string& filename)
+                                             const std::string& filename,
+                                             const debug_info::ptr& asked_by)
 {
     auto out = std::vector<configfile_line>();
 
@@ -375,6 +378,53 @@ std::vector<configfile_line> lines_from_file(const std::string& srcpath,
             configfiles.push_back(normalized);
     }
 
+    /* A name with nothing behind it is a Configfile this project
+     * simply doesn't use -- nobody has to write a Configfile.local --
+     * so it is read as no lines.  Anything else that is there is a
+     * file somebody put there to be read, and failing to read it is
+     * not the same answer: it used to come out as no lines too, and
+     * pconfigure carried on and wrote a Makefile missing everything
+     * the file declared, with nothing said about why.  The complaint
+     * names the file, and the line that asked for it when there was
+     * one -- a CONFIG, or the --config on the command line. */
+    auto refuse = [&](const std::string& what,
+                      const std::string& why,
+                      const std::string& instead)
+        {
+            if (asked_by != NULL)
+                std::cerr << std::to_string(asked_by) << "\n"
+                          << "  error: " << filename << " " << what << "\n";
+            else
+                std::cerr << filename << "\n"
+                          << "  error: this Configfile " << what << "\n";
+            std::cerr << "  " << why << "\n"
+                      << "  " << instead << "\n";
+            abort();
+        };
+
+    struct stat st;
+    if (stat(filename.c_str(), &st) != 0) {
+        if (errno == ENOENT || errno == ENOTDIR)
+            return out;
+
+        refuse("can't be looked at: " + std::string(strerror(errno)),
+               "a Configfile that is there but can't be read would be"
+               " read as one with nothing in it",
+               "fix the permissions on the directories leading to it,"
+               " or remove it if it isn't meant to be part of the build");
+    }
+
+    /* A directory passes the executable test every directory passes,
+     * so this has to be asked first: otherwise the shell is asked to
+     * run it, says "Is a directory", and the lines that were meant
+     * one level down go unread. */
+    if (S_ISDIR(st.st_mode))
+        refuse("is a directory",
+               "a Configfile is a file of lines, or a program that prints"
+               " them, and a directory is neither",
+               "move the lines into a file with this name, or rename the"
+               " directory so it doesn't take the Configfile's name");
+
     /* An executable Configfile is a program that prints one, and it
      * gets run from the directory it lives in: a project's generator
      * only knows about its own tree, and this repository's own
@@ -383,27 +433,39 @@ std::vector<configfile_line> lines_from_file(const std::string& srcpath,
      * pconfigure itself deliberately stays where it was started,
      * since every path it has worked out is relative to there. */
     auto executable = access(filename.c_str(), X_OK) == 0;
-    auto file = [&]() -> FILE*
-        {
-            if (executable == true) {
-                auto directory = srcpath;
-                auto script = filename;
-                if (filename.compare(0, srcpath.size() + 1, srcpath + "/") == 0)
-                    script = filename.substr(srcpath.size() + 1);
-                else
-                    directory = ".";
+    FILE *file = NULL;
+    if (executable == true) {
+        auto directory = srcpath;
+        auto script = filename;
+        if (filename.compare(0, srcpath.size() + 1, srcpath + "/") == 0)
+            script = filename.substr(srcpath.size() + 1);
+        else
+            directory = ".";
 
-                return popen(("cd " + directory + " && exec ./" + script).c_str(),
-                             "r");
-            }
-
-            if (access(filename.c_str(), R_OK) == 0)
-                return fopen(filename.c_str(), "r");
-
-            return NULL;
-        }();
-    if (file == NULL)
-        return out;
+        /* popen() only fails when no shell could be started at all,
+         * which says nothing about the program itself.  The one thing
+         * that can be changed from here is not needing a shell: a
+         * Configfile that was never meant to be a program reads fine
+         * once its executable bit is gone. */
+        file = popen(("cd " + directory + " && exec ./" + script).c_str(),
+                     "r");
+        if (file == NULL)
+            refuse("is executable, but no shell could be started to run"
+                   " it: " + std::string(strerror(errno)),
+                   "an executable Configfile is a program, and what it"
+                   " prints is what gets read",
+                   "if it is a plain Configfile, clear its executable bit"
+                   " (chmod a-x) so it is read directly; otherwise free up"
+                   " processes or memory and run pconfigure again");
+    } else {
+        file = fopen(filename.c_str(), "r");
+        if (file == NULL)
+            refuse("can't be read: " + std::string(strerror(errno)),
+                   "a Configfile that is there but can't be read would be"
+                   " read as one with nothing in it",
+                   "fix the permissions on it (chmod a+r), or remove it if"
+                   " it isn't meant to be part of the build");
+    }
 
     /* Nothing is done to the lines here beyond reading them: a line
      * only becomes a command when it's about to be processed.
@@ -425,6 +487,11 @@ std::vector<configfile_line> lines_from_file(const std::string& srcpath,
         out.push_back(configfile_line(filename, ln.number, ln.line));
     }
 
+    /* The program's exit status isn't looked at.  Executable
+     * Configfiles in use today probe the machine they run on and are
+     * allowed to fail where a probe doesn't apply, printing nothing
+     * and relying on that nothing being read, so refusing a program
+     * that exits non-zero needs those fixed first. */
     if (executable == true)
         pclose(file);
     else
