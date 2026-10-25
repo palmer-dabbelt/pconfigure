@@ -1258,6 +1258,229 @@ void project::check_distclean_spares_subprojects(
     }
 }
 
+/* A directory "make distclean" removes, spelled the way the recipe
+ * spells it and resolved the way rm will reach it, along with what
+ * the directory is for.  Resolved once, here, rather than once for
+ * every file asked about: a run that reads a few thousand headers
+ * would otherwise ask the filesystem the same question a few thousand
+ * times over. */
+struct distclean_dir {
+    std::string dir;
+    std::string real;
+    std::string role;
+};
+
+static std::vector<distclean_dir>
+resolved_distclean_dirs(const std::map<std::string, std::string>& dirs)
+{
+    auto out = std::vector<distclean_dir>();
+    for (const auto& pair: dirs) {
+        auto dir = file_utils::normalize_path(pair.first);
+        out.push_back(distclean_dir{dir,
+                                    file_utils::real_directory(dir),
+                                    pair.second});
+    }
+    return out;
+}
+
+/* Where "make distclean" would take a file from, if anywhere: the
+ * directory it removes, what that directory is for, and how to say
+ * the file got there.  "found" is false for a file it leaves alone.
+ *
+ * Asked of the file's text and then of the directory it is in with
+ * its symlinks resolved, because rm follows a symlink it meets
+ * partway along a path: a "src" that links to "lib/src" is a source
+ * tree "rm -rf 'lib'" removes, whatever its name says.  The same
+ * second question the SUBPROJECTS rule asks, resolving both sides for
+ * the same reason.  A directory that isn't there resolves to "", and
+ * has nothing in it to lose.  "resolved" remembers the answer for
+ * each directory a file has been in, for the same reason the
+ * directories themselves are resolved only once. */
+struct distclean_taker {
+    bool found;
+    std::string what;
+    std::string where;
+    std::string dir;
+    std::string role;
+};
+
+static distclean_taker
+distclean_takes(const std::string& path,
+                const std::vector<distclean_dir>& dirs,
+                bool skip_object_dirs,
+                std::map<std::string, std::string>& resolved)
+{
+    auto file = file_utils::normalize_path(path);
+    auto slash = file.rfind('/');
+    auto parent = (slash == std::string::npos)
+        ? std::string(".")
+        : file.substr(0, slash);
+    auto name = (slash == std::string::npos)
+        ? file
+        : file.substr(slash + 1);
+
+    auto found = resolved.find(parent);
+    if (found == resolved.end())
+        found = resolved.emplace(parent,
+                                 file_utils::real_directory(parent)).first;
+    const auto& real_parent = found->second;
+
+    for (const auto& dir: dirs) {
+        if (skip_object_dirs == true && dir.role == "the object directory")
+            continue;
+
+        if (file_utils::inside(file, dir.dir) == true)
+            return distclean_taker{true, "'" + file + "' is", dir.dir,
+                                   dir.dir, dir.role};
+
+        if (real_parent.size() == 0 || dir.real.size() == 0)
+            continue;
+        if (file_utils::inside(real_parent, dir.real) == false)
+            continue;
+        return distclean_taker{true,
+                               "'" + file + "' resolves to '" + real_parent
+                               + "/" + name + "', which is",
+                               dir.real, dir.dir, dir.role};
+    }
+
+    return distclean_taker{false, "", "", "", ""};
+}
+
+/* The rest of what is said about a file distclean would take, which
+ * is the same whichever way the file was found. */
+static void explain_distclean_takes(const distclean_taker& taken)
+{
+    std::cerr << "  'make distclean' is an 'rm -rf' of '" << taken.dir
+              << "', because everything in there is output"
+              << " this build can write again -- and a source"
+              << " is the one thing it can't, so this file is"
+              << " one distclean away from being gone\n"
+              << "  keep the sources somewhere this build"
+              << " doesn't write, like a 'src' directory and"
+              << " 'SRCDIR = src'";
+    if (taken.role == "where libraries go")
+        std::cerr << ", or send the libraries somewhere else"
+                  << " with a line like 'LIBDIR = libs'";
+    std::cerr << "\n";
+}
+
+void project::check_distclean_spares_sources(
+    const std::vector<ptr>& projects,
+    const std::vector<ptr>& run) const
+{
+    /* Everything "make distclean" removes is removed whole, by an
+     * "rm -rf" of the directory and nothing finer, because everything
+     * in there is supposed to be output this build can write again.
+     * A source is the one thing it can't write again.
+     *
+     * Refused rather than spared.  Sparing it would turn the "rm -rf"
+     * of a directory into a walk that removes everything in there but
+     * a list of names, which is a recipe that has to be exactly right
+     * about every file a directory holds and fails by deleting
+     * somebody's work -- and it would still leave sources sharing a
+     * directory with the output the rest of the build writes, where
+     * a binary called "main" in "bin" is one rule away from a
+     * "bin/main" somebody wrote.  Moving the sources, or the
+     * libraries, is a one-line edit with none of that. */
+    const auto dirs = resolved_distclean_dirs(distclean_dirs(projects));
+    auto resolved = std::map<std::string, std::string>();
+
+    /* The files a Configfile line names outright come first, because
+     * that line is the one to point at: it is the one to change. */
+    for (const auto& project: projects) {
+        for (const auto& read: project->_processor->read_sources()) {
+            auto taken = distclean_takes(read.first, dirs, false, resolved);
+            if (taken.found == false)
+                continue;
+
+            std::cerr << std::to_string(read.second->debug()) << "\n"
+                      << "  error: " << taken.what << " inside '"
+                      << taken.where << "', " << taken.role << "\n";
+            explain_distclean_takes(taken);
+            abort();
+        }
+    }
+
+    /* Then every file the build reads that no line names: a header a
+     * source includes, a file a script pastes in, whatever else a
+     * language found by reading what it was handed.  The languages
+     * have already said what those are, as the prerequisites of the
+     * rules they wrote that nothing in the Makefile builds -- which
+     * is the one list that has all of them, whichever language found
+     * them and however.  A "lib/" of headers beside a "SRCDIR = ."
+     * source gets here without a single line saying "lib/", so asking
+     * only of what the lines name misses the very layout this is
+     * about.
+     *
+     * Only for a file pconfigure found, which under AUTORECONFIGURE a
+     * source's headers are not: those are worked out by pdeps while
+     * the build runs, and nothing here ever sees them.
+     *
+     * "Nothing builds" is asked of every project in the run, since a
+     * prerequisite built by the project above is still built.  And
+     * the object directory is left out of this half, because it is
+     * where files land that are output without any rule being named
+     * after them: a vendored tree installs its headers into it, and a
+     * source that includes one has a prerequisite in there that no
+     * rule builds.  A hand-written file kept in an object directory
+     * is still refused when a line names it, above. */
+    auto built = std::set<std::string>();
+    for (const auto& project: run)
+        for (const auto& target: project->targets())
+            built.insert(file_utils::normalize_path(target->name()));
+
+    for (const auto& project: projects) {
+        auto seen = std::set<makefile::target*>();
+
+        std::function<void(const makefile::target::ptr&,
+                           const debug_info::ptr&)> walk =
+            [&](const makefile::target::ptr& target,
+                const debug_info::ptr& line)
+            {
+                if (seen.insert(target.get()).second == false)
+                    return;
+
+                for (const auto& dep: target->deps()) {
+                    if (dep->cmds().size() != 0 || dep->deps().size() != 0) {
+                        walk(dep, line);
+                        continue;
+                    }
+
+                    auto path = file_utils::normalize_path(dep->name());
+                    if (built.find(path) != built.end())
+                        continue;
+
+                    auto taken = distclean_takes(path, dirs, true, resolved);
+                    if (taken.found == false)
+                        continue;
+
+                    std::cerr << std::to_string(line) << "\n"
+                              << "  error: " << taken.what << " inside '"
+                              << taken.where << "', " << taken.role
+                              << "\n"
+                              << "  no line names it, but '"
+                              << target->name() << "' is built from it:"
+                              << " pconfigure found it by reading what"
+                              << " this line builds, the way it follows"
+                              << " an '#include', and that makes it as"
+                              << " much a source as anything a SOURCES"
+                              << " names\n";
+                    explain_distclean_takes(taken);
+                    abort();
+                }
+            };
+
+        for (const auto& target: project->targets()) {
+            /* A target no line asked for is a vendored tree's, and
+             * what that reads is its own business. */
+            auto line = project->written_by(target->name());
+            if (line == NULL)
+                continue;
+            walk(target, line);
+        }
+    }
+}
+
 void project::check_autodeps(void) const
 {
     /* Everything one AUTODEPS reached, gathered under the line that

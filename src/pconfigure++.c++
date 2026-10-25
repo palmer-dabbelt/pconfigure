@@ -284,6 +284,13 @@ int main(int argc, const char **argv)
         project->check_distclean_spares_subprojects(
             project::flatten(project));
 
+    /* And of the sources, for the same reason: the LIBDIR that moves
+     * a directory distclean removes can come after the SOURCES that
+     * read a file out of it. */
+    for (const auto& project: projects)
+        project->check_distclean_spares_sources(project::flatten(project),
+                                                projects);
+
     /* Before a line of any Makefile is written, so that a build whose
      * "make check" would reach no test at all stops without leaving a
      * half-written set of them behind. */

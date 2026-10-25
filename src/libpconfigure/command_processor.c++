@@ -1937,6 +1937,13 @@ void command_processor::process_one(const command::ptr& cmd)
         set_opts_target(_stack.top());
         _output_contexts.push_back(_stack.top());
 
+        /* The script is a source somebody wrote just as much as a
+         * SOURCES is, so "make distclean" has to spare it the same
+         * way.  What it generates is output and lands in the object
+         * directory, which is none of this. */
+        _read_sources.push_back(std::make_pair(
+            _stack.top()->src_dir + "/" + generated->data() + ".proc", cmd));
+
         dup_tos_and_push(context_type::SOURCE,
                          std::make_shared<command>(
                              cmd->type(),
@@ -2457,6 +2464,13 @@ void command_processor::process_one(const command::ptr& cmd)
             process_directives(_stack.top()->src_dir + "/" + source->data(),
                                script);
         }
+
+        /* The path is the one every language compiles the file from,
+         * which is the target's source directory with the name on the
+         * end.  It is remembered against the line as it was written,
+         * so a TESTSRC or a HEADERSRC is blamed as itself. */
+        _read_sources.push_back(std::make_pair(
+            _stack.top()->src_dir + "/" + source->data(), cmd));
 
         dup_tos_and_push(context_type::SOURCE, source);
 

@@ -287,6 +287,20 @@ public:
     void check_distclean_spares_subprojects(
         const std::vector<ptr>& projects) const;
 
+    /* The same question asked of the sources: complains if "make
+     * distclean" in this project would remove a file some SOURCES,
+     * TESTSRC, HEADERSRC or GENERATE under it reads, or a file one of
+     * those was found to read when pconfigure scanned it -- a header
+     * it includes, say.  A "SRCDIR = ." project with a "lib/" of
+     * library code is the usual way to get here, and it gets here
+     * without writing any output directory down at all, because "lib"
+     * and "bin" are the defaults.  "run" is every project pconfigure
+     * read, which is what decides whether a file is one the build
+     * writes. */
+    void check_distclean_spares_sources(
+        const std::vector<ptr>& projects,
+        const std::vector<ptr>& run) const;
+
 public:
     /* Writes down what this run told each vendored tree, so that make
      * has something to compare against.  A vendored tree's rules are

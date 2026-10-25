@@ -213,6 +213,15 @@ private:
      * able to point back here when the answer is yes. */
     std::vector<std::pair<std::string, command::ptr>> _named_subprojects;
 
+    /* Every file a SOURCES (or a TESTSRC or HEADERSRC, through theirs)
+     * or a GENERATE's script reads out of the source directory, by
+     * the path it is read at and alongside the line that named it.
+     * Kept for the same question as the trees above, asked at the
+     * same point for the same reason: whether "make distclean" would
+     * remove the file depends on output directories a later line or
+     * a later project can still move. */
+    std::vector<std::pair<std::string, command::ptr>> _read_sources;
+
     /* The CONFIG commands whose Configfiles haven't been read yet,
      * which are handed back the same way and for the same reason.
      * The whole command is kept rather than just the name it gave,
@@ -254,6 +263,9 @@ public:
     const std::vector<std::pair<std::string, command::ptr>>&
     named_subprojects(void) const
         { return _named_subprojects; }
+    const std::vector<std::pair<std::string, command::ptr>>&
+    read_sources(void) const
+        { return _read_sources; }
     const bool& given_version_command(void) const
         { return _given_version_command; }
     const bool& given_help_command(void) const
