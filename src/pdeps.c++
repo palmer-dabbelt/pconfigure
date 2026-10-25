@@ -44,10 +44,13 @@
 #include <libmakefile/path_prefix.h++>
 #include <libpconfigure/context_file.h++>
 #include <libpconfigure/file_utils.h++>
+#include <libpconfigure/languages/bash.h++>
 #include <libpconfigure/languages/cxx.h++>
 #include <cstdint>
 #include <fstream>
 #include <functional>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <iostream>
 #include <map>
@@ -134,6 +137,15 @@ namespace {
         /* Where this file was when it was written, spelled the way
          * every prefix above is spelled: from the top of the tree. */
         std::string self;
+
+        /* Set for a script rather than a C source: "shell" or "perl",
+         * which is how the compiler reads it and so how the walk for
+         * what it includes has to.  A script is compiled into one
+         * file with everything it includes pasted in, so there are no
+         * objects and nothing behind the includes to build -- just
+         * the file it turns into, which is "target". */
+        std::string syntax;
+        std::string target;
 
     public:
         std::string source_of(const std::string& name) const
@@ -277,6 +289,8 @@ namespace {
             else if (key == "autodeps")    out.autodeps = value == "true";
             else if (key == "link")        out.links.push_back(value);
             else if (key == "behind")      out.behind = value;
+            else if (key == "syntax")      out.syntax = value;
+            else if (key == "target")      out.target = value;
             else if (key == "named") {
                 /* A name on its own is what a pconfigure from before
                  * named sources carried their fragments wrote, and
@@ -348,6 +362,125 @@ namespace {
     {
         return context_file::join(v);
     }
+
+    /* The piece of Makefile for a script, which is the C one with
+     * everything about objects taken out: what the script includes is
+     * a prerequisite of the file it is compiled into, and of this
+     * fragment, and that is all.  The reasoning for each of the pieces
+     * that are left is the same as for C, and is written out over
+     * their twins in main() below. */
+    void write_script(const deps_context& ctx,
+                      const makefile::path_prefix& prefix,
+                      const std::string& name,
+                      const std::string& header)
+    {
+        auto syntax = pinclude::syntax::SHELL;
+        if (ctx.syntax == "perl")
+            syntax = pinclude::syntax::PERL;
+        else if (ctx.syntax != "shell")
+            die("'" + ctx.syntax + "' in '" + ctx.path
+                + "' is not a script syntax: it is 'shell' or 'perl'");
+
+        if (ctx.target.size() == 0)
+            die("'" + ctx.path + "' describes a script but names no"
+                " target for it");
+
+        auto source = ctx.source_of(name);
+        auto deps = ctx.deps_of(name);
+
+        auto out = header;
+        auto say = [&](const std::string& line)
+            { out += prefix.rewrite(line) + "\n"; };
+
+        /* A script that has gone has nothing to say, and the rule for
+         * the file it compiled into still names it, which is make's
+         * business rather than this one's. */
+        if (access(source.c_str(), R_OK) != 0) {
+            out += "# There is no such file today, so it reads nothing.\n";
+            write(deps, out);
+            return;
+        }
+
+        auto includes = script_includes_read_by(source, ctx.opts, syntax);
+
+        /* The list as a file, so that one which changes without any
+         * file on it getting newer -- an include that now resolves to
+         * another directory's copy, because the first was deleted --
+         * still rebuilds the script. */
+        auto stamp = deps + ".includes";
+        auto had_stamp = access(stamp.c_str(), F_OK) == 0;
+        {
+            auto body = std::string();
+            body += "# Written by pdeps, from " + ctx.path + "\n";
+            body += "#\n";
+            body += "# The files '" + source + "' includes, under the hash\n";
+            body += "# the script is restaled on.  Editing it achieves\n";
+            body += "# nothing.\n";
+            body += "\n";
+            body += hash_of(includes) + "\n";
+            for (const auto& include: includes)
+                body += include + "\n";
+
+            if (file_utils::write_if_changed(stamp, body) == false)
+                die("unable to write '" + stamp + "'");
+        }
+
+        /* A stamp that is new says the list is new, which is not the
+         * same as saying it changed: there was no list before it to
+         * have changed from.  Left at the time it was written, it is
+         * newer than a script that was compiled before anyone asked
+         * -- the first build of a tree whose bootstrap compiled its
+         * own pconfigure, or the first after the object directory
+         * was thrown away -- and that script is compiled again for
+         * nothing.  When the script is a vendored pconfigure, that is
+         * a reconfigure for nothing too.  So a first stamp is dated
+         * like the newest of the files it lists, which is the one
+         * thing the script being up to date can be checked against
+         * without it.
+         *
+         * To the second, because that is the part of a file's time
+         * every system spells the same way, and rounding down only
+         * ever makes the stamp older than it might have been. */
+        if (had_stamp == false) {
+            auto newest = time_t(0);
+            auto files = includes;
+            files.push_back(source);
+            for (const auto& file: files) {
+                struct stat st;
+                if (stat(file.c_str(), &st) == 0 && st.st_mtime > newest)
+                    newest = st.st_mtime;
+            }
+
+            struct timespec times[2] = {{newest, 0}, {newest, 0}};
+            if (utimensat(AT_FDCWD, stamp.c_str(), times, 0) != 0)
+                die("unable to date '" + stamp + "'");
+        }
+
+        say(stamp + ":");
+        out += "\t" + ctx.at + "test -f $@ || " + prefix.rewrite(
+                   ctx.pdeps + " --context " + ctx.path
+                   + " --source " + name) + "\n";
+        out += "\n";
+
+        auto target_deps = includes;
+        target_deps.push_back(stamp);
+        say(ctx.target + ": " + join(target_deps));
+        say(deps + ": " + source + " " + join(includes));
+        out += "\n";
+
+        /* An empty rule for each, so that a file the script has since
+         * stopped including, and that has then been deleted, is
+         * something make can remake rather than the end of the
+         * build. */
+        auto said = std::set<std::string>();
+        said.insert(source);
+        say(source + ":");
+        for (const auto& include: includes)
+            if (said.insert(include).second == true)
+                say(include + ":");
+
+        write(deps, out);
+    }
 }
 
 int main(int argc, const char **argv)
@@ -364,7 +497,9 @@ int main(int argc, const char **argv)
 "\n"
 "pdeps writes the piece of Makefile that says what one source file depends\n"
 "on: the headers it reads, the rule that compiles it, and an include of the\n"
-"same thing for every source sitting behind one of those headers.\n"
+"same thing for every source sitting behind one of those headers.  For a\n"
+"BASH or Perl script it is what the script includes, as a prerequisite of\n"
+"the file the script is compiled into.\n"
 "\n"
 "It is run by the Makefiles pconfigure writes for a project that asked for\n"
 "AUTORECONFIGURE, and the context file is what pconfigure left behind to\n"
@@ -429,6 +564,11 @@ int main(int argc, const char **argv)
     out += "# is what the rule rebuilding this file is for.  Editing"
            " it achieves\n";
     out += "# nothing.\n\n";
+
+    if (ctx.syntax.size() > 0) {
+        write_script(ctx, prefix, name, out);
+        return 0;
+    }
 
     /* A source that has been deleted since the last build still has a
      * fragment sitting in the object directory, and make reads that

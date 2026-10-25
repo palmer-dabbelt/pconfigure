@@ -26,6 +26,22 @@
 #include <pinclude.h++>
 #include <memory>
 
+/* The files a script reads when pbashc or pperlc is run on it with
+ * the given options, read the way that compiler reads them: only the
+ * bare "#include" is a directive, what is text rather than script
+ * depends on the syntax, and an "#if" is refused because the
+ * compilers refuse it too.
+ *
+ * A free function for the reason cxx_headers_read_by() is one.
+ * pconfigure asks this of a script when it writes the Makefile, and
+ * under AUTORECONFIGURE pdeps asks it of the same script while make
+ * runs; an include only one of them found is a prerequisite under one
+ * build and not under the other. */
+std::vector<std::string>
+script_includes_read_by(const std::string& path,
+                        const std::vector<std::string>& opts,
+                        pinclude::syntax syntax);
+
 /* BASH is the first language I have that doesn't need a compile
  * phase. */
 class language_bash: public language {
@@ -65,6 +81,13 @@ public:
     dependencies(const std::string& path,
                  const std::vector<std::string>& opts) const;
 
+    /* Whether what a source includes is pasted into the output, which
+     * is what makes the list worth following while the build runs
+     * under AUTORECONFIGURE.  It is for pbashc and pperlc, which
+     * paste; phc copies a header as it stands, so nothing the header
+     * includes ends up inside what it installs. */
+    virtual bool pastes_includes(void) const { return true; }
+
     /* A target here is made from exactly one SOURCES, and a second one
      * is refused by targets().  What the refusal calls the target and
      * what it says to write instead depend on what the compiler does
@@ -80,6 +103,18 @@ public:
                          const std::string& spelling) const;
 
 protected:
+    /* The piece of Makefile that names what one script reads, for a
+     * project that works that out while it builds: a rule that runs
+     * pdeps over the script, to be included by the Makefile.  "target"
+     * is the file the script is compiled into, which is what the
+     * fragment hangs the includes off of, and "opts" are what the
+     * compiler is run with. */
+    makefile::target::ptr
+    deps_script(const context::ptr& ctx,
+                const context::ptr& child,
+                const std::string& target,
+                const std::vector<std::string>& opts) const;
+
     /* Whether targets() below has anything to write for this kind of
      * context.  Every BASH-like language builds through it, so a child
      * that answers can_process() on the file names alone has to ask

@@ -24,8 +24,11 @@
 #include "../pick_language.h++"
 #include "../file_utils.h++"
 #include "../string_utils.h++"
+#include "../project.h++"
 #include <pinclude.h++>
 #include <assert.h>
+#include <cstdint>
+#include <functional>
 #include <iostream>
 #include <sstream>
 
@@ -211,6 +214,7 @@ language_bash::targets(const context::ptr& ctx) const
 
         auto sources = std::vector<makefile::target::ptr>();
         auto deps = std::vector<makefile::target::ptr>();
+        auto fragments = std::vector<makefile::target::ptr>();
         auto tests = std::vector<makefile::target::ptr>();
         context::ptr first = NULL;
         for (const auto& child: ctx->children) {
@@ -255,7 +259,22 @@ language_bash::targets(const context::ptr& ctx) const
                 first = child;
                 auto path = child->src_dir + "/" + child->cmd->data();
                 sources.push_back(std::make_shared<makefile::target>(path));
-                if (ctx->autodeps == true)
+
+                /* What a script includes is what it depends on in
+                 * exactly the sense a C source's headers are, since
+                 * the compiler pastes them in -- so a project that
+                 * asked for its dependencies to be worked out while
+                 * it builds gets them that way here too.  The list
+                 * pconfigure found was frozen into the rule, and a
+                 * script that started including a file after the
+                 * configure was never rebuilt when that file changed,
+                 * while one that stopped including a file it then
+                 * deleted had make stop on the file. */
+                if (ctx->autodeps == true && ctx->autoreconfigure == true
+                    && this->pastes_includes() == true)
+                    fragments.push_back(
+                        deps_script(ctx, child, target, opts));
+                else if (ctx->autodeps == true)
                     deps = deps + dependencies(path, opts);
             }
 
@@ -318,7 +337,8 @@ language_bash::targets(const context::ptr& ctx) const
         /* Targets that are never installed (TESTEXECs) just get built in
          * place, there's no install rule to go along with them. */
         if (ctx->install == false)
-            return std::vector<makefile::target::ptr>{bin_target} + tests;
+            return std::vector<makefile::target::ptr>{bin_target}
+                   + fragments + tests;
 
         auto install_path = "$(DESTDIR)" + ctx->installed(target);
 
@@ -358,7 +378,7 @@ language_bash::targets(const context::ptr& ctx) const
                                                                 comment);
 
         return std::vector<makefile::target::ptr>{bin_target, install_target}
-               + tests;
+               + fragments + tests;
     }
 
     case context_type::TEST:
@@ -371,7 +391,17 @@ language_bash::targets(const context::ptr& ctx) const
                                             {
                                                 return t->without(makefile::global_targets::ALL);
                                             });
-        bin_targets = std::vector<makefile::target::ptr>{bin_targets[0]};
+        /* The compiled test and nothing else of what a BINARY gets,
+         * which is to say no install rule -- except for the fragment
+         * that says what the test reads, which is as much a part of
+         * building it as the rule that does. */
+        {
+            auto kept = std::vector<makefile::target::ptr>{bin_targets[0]};
+            for (size_t i = 1; i < bin_targets.size(); ++i)
+                if (bin_targets[i]->included() == true)
+                    kept.push_back(bin_targets[i]);
+            bin_targets = kept;
+        }
         /* A test under a PHONY has nothing it's testing, so there's
          * no program to wait for and none to hand it.  Everywhere
          * else this is the thing the test exercises. */
@@ -564,9 +594,10 @@ pbashc_options(const std::vector<std::string>& opts,
     return out;
 }
 
-std::vector<makefile::target::ptr>
-language_bash::dependencies(const std::string& path,
-                            const std::vector<std::string>& opts) const
+std::vector<std::string>
+script_includes_read_by(const std::string& path,
+                        const std::vector<std::string>& opts,
+                        pinclude::syntax syntax)
 {
     /* pbashc is run with the target's options, and it searches the
      * "-I" directories for an "#include" and reads the "-D" names in
@@ -582,7 +613,7 @@ language_bash::dependencies(const std::string& path,
     for (const auto& define: pbashc_flag_arguments(opts, "-D"))
         defined.push_back(define.substr(0, define.find('=')));
 
-    std::vector<makefile::target::ptr> out;
+    std::vector<std::string> out;
     /* A script's # is a comment leader, so nothing but the bare
      * "#include" that pbashc expands may be read as a directive here,
      * the lines are read the way pbashc reads them rather than the
@@ -595,11 +626,131 @@ language_bash::dependencies(const std::string& path,
                    include_dirs,
                    defined,
                    [&](std::string p) {
-                       auto t = std::make_shared<makefile::target>(p);
-                       out.push_back(t);
+                       out.push_back(p);
                        return 0;
-                   }, true, script_syntax(), {}, true);
+                   }, true, syntax, {}, true);
     return out;
+}
+
+std::vector<makefile::target::ptr>
+language_bash::dependencies(const std::string& path,
+                            const std::vector<std::string>& opts) const
+{
+    auto out = std::vector<makefile::target::ptr>();
+    for (const auto& p: script_includes_read_by(path, opts, script_syntax()))
+        out.push_back(std::make_shared<makefile::target>(p));
+    return out;
+}
+
+/* The name pdeps writes a script's answer under, and the context it
+ * reads to do it, have to tell apart every way one script is
+ * compiled: a script can be the SOURCES of a binary and of a test of
+ * something else, with other options and another output, and two of
+ * those sharing a fragment would be each of them rewriting it for the
+ * other.  The output and the whole command line are what differ, so
+ * they are what is hashed -- the same arithmetic pdeps and
+ * language_cxx name things with. */
+static std::string script_hash(const std::vector<std::string>& words)
+{
+    std::hash<std::string> hash_fn;
+    uint32_t seed = 5831;
+    for (const auto& word: words)
+        seed ^= hash_fn(word) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    return std::to_string(seed);
+}
+
+makefile::target::ptr
+language_bash::deps_script(const context::ptr& ctx,
+                           const context::ptr& child,
+                           const std::string& target,
+                           const std::vector<std::string>& opts) const
+{
+    auto name = child->cmd->data();
+    auto source_path = child->src_dir + "/" + name;
+    auto hash = script_hash(
+        std::vector<std::string>{target, this->compiler_command(ctx)}
+        + opts);
+
+    /* Halves rather than whole paths, as language_cxx writes them,
+     * because that is what pdeps puts a name between. */
+    auto dep_prefix =
+        child->obj_dir + "/" + child->in_source_tree(child->src_dir) + "/";
+    auto dep_suffix = "/" + hash + "-script.d";
+    auto deps_path = dep_prefix + name + dep_suffix;
+
+    /* Spelled with the writer in the name, for the reason
+     * project::base_suffix() gives: a subproject is configured from
+     * the top and from inside itself, each of those describes the
+     * script from where it stands, and one file shared between them
+     * would be rewritten by whichever ran last. */
+    auto context_path = dep_prefix + name + "/" + hash + "-script-context"
+        + project::base_suffix(child->base);
+
+    auto say = [](const std::string& key, const std::string& value)
+        { return key + " " + value + "\n"; };
+
+    auto out = std::string();
+    out += say("src-prefix", child->src_dir + "/");
+    out += say("dep-prefix", dep_prefix);
+    out += say("dep-suffix", dep_suffix);
+
+    /* What makes this a script rather than a C source to pdeps, and
+     * which of the two readings of one it is. */
+    out += say("syntax",
+               script_syntax() == pinclude::syntax::PERL ? "perl" : "shell");
+    out += say("target", target);
+
+    out += say("pdeps", makefile::tool_command("pdeps"));
+    out += say("quiet", child->verbose ? "false" : "true");
+
+    /* Where pdeps is standing is worked out the way it is for C: see
+     * language_cxx::write_deps_context(). */
+    if (child->base.size() > 0) {
+        out += say("base", child->base);
+        out += say("variable", project::prefix_variable(child->base));
+        out += say("self", context_path);
+    }
+
+    for (const auto& opt: opts)
+        out += say("opt", opt);
+
+    /* Written only when it says something new, because it is a
+     * prerequisite of the fragment: a context rewritten by every
+     * configure is every script's includes looked for again. */
+    file_utils::mkdir_p(dep_prefix + name);
+    file_utils::write_configure_output(context_path, out);
+
+    /* Through "$(wildcard)" for the reasons language_cxx::deps_source()
+     * gives at length, which are all as true of a script: a deleted
+     * source must not stop the build, and pdeps is named because a
+     * fragment is what one version of it made of the script. */
+    auto deps = std::vector<makefile::target::ptr>{
+        std::make_shared<makefile::target>("$(wildcard " + source_path + ")"),
+        std::make_shared<makefile::target>(context_path),
+        std::make_shared<makefile::target>(
+            "$(wildcard " + makefile::tool_command("pdeps") + ")")
+    };
+
+    auto commands = std::vector<std::string>{
+        "mkdir -p $(dir $@)",
+        makefile::tool_command("pdeps")
+            + " --context " + context_path
+            + " --source " + name
+    };
+
+    return std::make_shared<makefile::target>(
+        deps_path,
+        "DEPS\t" + name,
+        deps,
+        std::vector<makefile::global_targets>{
+            makefile::global_targets::CLEAN
+        },
+        commands,
+        std::vector<std::string>{
+            std::to_string(child->cmd->debug()),
+            "language_bash::deps_script()"
+        }
+    )->as_included();
 }
 
 static void install_bash(void) __attribute__((constructor));
