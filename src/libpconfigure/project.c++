@@ -1416,6 +1416,18 @@ makefile::target::ptr project::cache_clean_target(const std::vector<ptr>& projec
          * would cost a relink of everything. */
         prune += " -not -name 'link-inputs'";
 
+        /* And the record a GENERATE keeps of the recipe that wrote its
+         * dependency fragment.  It is written at configure time with
+         * no rule behind it, so the Makefile never names it, and the
+         * next configure reads a missing record the same way it reads
+         * a mismatched one: as a fragment some other recipe wrote.
+         * That fragment is thrown away and the script's "--deps" runs
+         * again, so a cache clean would cost every GENERATE in the
+         * project being asked its dependencies over -- and those
+         * scripts are run by somebody else's code, which is not
+         * something to be doing for nothing. */
+        prune += " -not -name '*.d-context'";
+
         /* And the scratch a test was given, which the Makefile names
          * as an argument to ptest rather than as something it knows
          * how to build -- so reading it back decides every byte in
