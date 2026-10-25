@@ -60,12 +60,9 @@ static std::vector<std::string> reroot_link_opts(const std::vector<std::string>&
                                                  const std::string& base)
 {
     auto words = std::vector<std::string>();
-    for (const auto& opt: opts) {
-        std::istringstream ss(opt);
-        std::string word;
-        while (ss >> word)
+    for (const auto& opt: opts)
+        for (const auto& word: string_utils::shell_words(opt))
             words.push_back(word);
-    }
 
     if (base.size() == 0)
         return words;
@@ -126,7 +123,10 @@ split_flag(const std::string& word, const std::vector<std::string>& flags)
 }
 
 /* Every argument of one of "flags", in either spelling: stuck on to
- * the flag, or the word after a flag that stands alone. */
+ * the flag, or the word after a flag that stands alone.  Each comes
+ * back as the text it stands for rather than as the shell would be
+ * handed it, since what's asked of these is where to look on the
+ * disk. */
 static std::vector<std::string>
 flag_arguments(const std::vector<std::string>& opts,
                const std::vector<std::string>& flags)
@@ -135,7 +135,7 @@ flag_arguments(const std::vector<std::string>& opts,
     auto pending = false;
     for (const auto& opt: opts) {
         if (pending == true) {
-            out.push_back(opt);
+            out.push_back(string_utils::shell_unescape(opt));
             pending = false;
             continue;
         }
@@ -146,7 +146,7 @@ flag_arguments(const std::vector<std::string>& opts,
         if (split.second.size() == 0)
             pending = true;
         else
-            out.push_back(split.second);
+            out.push_back(string_utils::shell_unescape(split.second));
     }
     return out;
 }
@@ -1362,12 +1362,9 @@ language_cxx::link_objects(const context::ptr& ctx,
 
     auto dedup_link_opts = [](std::vector<std::string> opts) {
         std::vector<std::string> tokens;
-        for (const auto& opt : opts) {
-            std::istringstream ss(opt);
-            std::string tok;
-            while (ss >> tok)
+        for (const auto& opt : opts)
+            for (const auto& tok: string_utils::shell_words(opt))
                 tokens.push_back(tok);
-        }
         /* A library can be asked for as "-lfoo" or as "-l foo", and
          * the second spelling is two words that only mean something
          * together.  Deduplicating word by word would see every bare
@@ -1584,14 +1581,15 @@ language_cxx::compile_options(const context::ptr& ctx,
              * the "-I" of "-I inc" for a flag with no directory on
              * it.  Splitting it here is not a change to what the
              * compiler is handed, since these are joined back up with
-             * spaces on the way into the Makefile. */
+             * spaces on the way into the Makefile -- which is also why
+             * a space with a backslash in front of it, the way
+             * pkg-config spells a path with a space in it, has to stay
+             * inside its word rather than being taken for the gap
+             * between two. */
             auto words = std::vector<std::string>();
-            for (const auto& opt: compile_opts) {
-                std::istringstream ss(opt);
-                std::string word;
-                while (ss >> word)
+            for (const auto& opt: compile_opts)
+                for (const auto& word: string_utils::shell_words(opt))
                     words.push_back(word);
-            }
 
             /* What the word after a flag that stands alone is
              * rerooted with, or nothing when the last word was no
@@ -2263,14 +2261,20 @@ static std::vector<std::string> link_dirs(const std::vector<std::string>& args)
     auto out = std::vector<std::string>();
     auto pending = false;
 
+    /* These are compared with the directories this build puts its
+     * libraries in, so it's the path that's wanted rather than the
+     * shell's spelling of it: pkg-config hands back the "-L" for a
+     * subproject checked out under "R&D" as ".../R\&D/sub/lib", and
+     * with the backslash left in that's nowhere in this build, so the
+     * binary got no rpath to find the library at. */
     for (const auto& arg: args) {
         if (pending == true) {
-            out.push_back(arg);
+            out.push_back(string_utils::shell_unescape(arg));
             pending = false;
         } else if (arg == "-L") {
             pending = true;
         } else if (arg.compare(0, 2, "-L") == 0) {
-            out.push_back(arg.substr(2));
+            out.push_back(string_utils::shell_unescape(arg.substr(2)));
         }
     }
 
@@ -2369,13 +2373,15 @@ language_cxx::provides(const makefile::target::ptr& target) const
 std::vector<std::string>
 language_cxx::needs(const makefile::target::ptr& target) const
 {
+    /* Read the way the shell that runs these commands will read them,
+     * and then taken back to the text each word stands for, since
+     * what's wanted out of them is files and directories: a "-L" for
+     * a subproject checked out somewhere with a space in its name is
+     * one word with a backslash in it, not two. */
     auto args = std::vector<std::string>();
-    for (const auto& cmd: target->cmds()) {
-        std::istringstream ss(cmd);
-        std::string arg;
-        while (ss >> arg)
-            args.push_back(arg);
-    }
+    for (const auto& cmd: target->cmds())
+        for (const auto& arg: string_utils::shell_words(cmd))
+            args.push_back(string_utils::shell_unescape(arg));
 
     auto search_dirs = std::vector<std::string>();
     auto library_names = std::vector<std::string>();

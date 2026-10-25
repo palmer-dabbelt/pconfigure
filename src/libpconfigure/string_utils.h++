@@ -38,6 +38,26 @@ namespace string_utils {
     std::vector<std::string> split_char(const std::string& in,
                                         const std::string& delims);
 
+    /* Splits a piece of a command line into the words a shell would
+     * see, as far as a backslash goes: white space with a backslash
+     * in front of it is part of a word rather than the gap between
+     * two.  The words keep their backslashes, because they are going
+     * back on to a command line where the shell wants them.
+     *
+     * That is the spelling pkg-config hands back a path with a space
+     * in it, "-I/home/me/my\ checkout/include", and the reason this
+     * exists: split at every space, that is two words, and the second
+     * one looks like a relative path of its own.  Quotes aren't
+     * understood, since nothing that writes these uses them. */
+    std::vector<std::string> shell_words(const std::string& in);
+
+    /* One of the words above as the text it stands for, which is what
+     * a word naming a path has to be before it can be compared with
+     * a path or looked for on the disk.  pkg-config puts a backslash
+     * in front of more than spaces -- "R&D" comes back as "R\&D" --
+     * so every backslash comes off, along with nothing else. */
+    std::string shell_unescape(const std::string& in);
+
     /* Joins the string using delim as the separator between
      * elements. */
     std::string join(const std::vector<std::string>& in,

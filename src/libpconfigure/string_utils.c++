@@ -103,6 +103,46 @@ int main(int argc, char **argv)
 }
 #endif
 
+std::vector<std::string> string_utils::shell_words(const std::string& in)
+{
+    auto out = std::vector<std::string>();
+    auto word = std::string();
+    auto in_word = false;
+
+    for (size_t i = 0; i < in.size(); ++i) {
+        if (in[i] == '\\' && i + 1 < in.size()) {
+            word += in[i];
+            word += in[i+1];
+            in_word = true;
+            ++i;
+        } else if (isspace(in[i])) {
+            if (in_word == true)
+                out.push_back(word);
+            word = "";
+            in_word = false;
+        } else {
+            word += in[i];
+            in_word = true;
+        }
+    }
+
+    if (in_word == true)
+        out.push_back(word);
+
+    return out;
+}
+
+std::string string_utils::shell_unescape(const std::string& in)
+{
+    auto out = std::string();
+    for (size_t i = 0; i < in.size(); ++i) {
+        if (in[i] == '\\' && i + 1 < in.size())
+            ++i;
+        out += in[i];
+    }
+    return out;
+}
+
 bool string_utils::has_extension(const std::string& name,
                                  const std::string& extension)
 {
