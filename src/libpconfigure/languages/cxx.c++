@@ -1618,7 +1618,7 @@ language_cxx::deps_path(const context::ptr& ctx,
                         const shared_target& is_shared)
                         const
 {
-    return child->obj_dir + "/" + child->unbased(child->src_dir) + "/"
+    return child->obj_dir + "/" + child->in_source_tree(child->src_dir) + "/"
         + child->cmd->data() + deps_suffix(ctx, child, link, is_shared);
 }
 
@@ -1650,7 +1650,7 @@ language_cxx::write_deps_context(const context::ptr& ctx,
 {
     auto hash = hash_compile_options(ctx, child);
     auto obj_prefix =
-        child->obj_dir + "/" + child->unbased(child->src_dir) + "/";
+        child->obj_dir + "/" + child->in_source_tree(child->src_dir) + "/";
     auto deps_suffix = this->deps_suffix(ctx, child, link, is_shared);
     auto context_path = deps_context_path(ctx, child, link);
 
@@ -1944,7 +1944,7 @@ language_cxx::compile_source(const context::ptr& ctx,
 
     auto base_out_name =
         child->obj_dir
-        + "/" + child->unbased(child->src_dir)
+        + "/" + child->in_source_tree(child->src_dir)
         + "/" + child->cmd->data()
         + "/" + hash_compile_options(ctx, child);
 
@@ -1991,7 +1991,7 @@ language_cxx::compile_source(const context::ptr& ctx,
 
                 auto dep_out_name =
                     dep_ctx->obj_dir
-                    + "/" + dep_ctx->unbased(dep)
+                    + "/" + dep_ctx->in_source_tree(dep)
                     + "/" + owner->hash_compile_options(ctx, dep_ctx);
 
                 bool should_process = true;

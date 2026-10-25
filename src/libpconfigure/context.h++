@@ -381,6 +381,30 @@ public:
         return dir;
     }
 
+    /* Strips whatever is between where pconfigure was run and the top
+     * of the source tree off a directory, which is the base plus any
+     * SRCPATH or "--srcpath": the directory as it sits in the source
+     * tree, as opposed to how to get there from here.
+     *
+     * That's the spelling a source's object is named with under the
+     * object directory.  unbased() leaves a srcpath on, and a srcpath
+     * is a route to the checkout rather than a part of it: pasted
+     * under "obj", the ".." in "../checkout" cancels the "obj" and the
+     * objects land in "checkout/src" in the build directory, and a
+     * second ".." takes them out of the build directory altogether --
+     * which is the one place a separate build directory promises they
+     * won't go.  Without a srcpath src_path is just the base, so this
+     * is unbased() and object paths are what they always were.  A
+     * directory that isn't under the source tree at all, which is
+     * what a SRCDIR after a SRCPATH gives, falls back to unbased(). */
+    std::string in_source_tree(const std::string& dir) const
+    {
+        if (src_path.size() > 0
+            && dir.compare(0, src_path.size(), src_path) == 0)
+            return dir.substr(src_path.size());
+        return unbased(dir);
+    }
+
     /* Where one of this project's directories ends up once installed:
      * the prefix with the directory, as unbased() spells it, hung off
      * the end.  This is the one place a directory gets joined onto the
