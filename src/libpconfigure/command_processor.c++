@@ -1467,6 +1467,14 @@ void command_processor::process_one(const command::ptr& cmd)
             abort();
         }
 
+        /* The tree is built as a subproject, under the same
+         * normalized directory a SUBPROJECTS would give it, and so for
+         * the same reason. */
+        refuse_leading_dash(cmd, path,
+                            "check the tree out under a name that doesn't"
+                            " start with a '-', like 'BOOTSTRAP ="
+                            " vendor/pconfigure'");
+
         /* Everything here is named relative to where pconfigure ran,
          * and this one ends up in a Makefile that gets committed --
          * so a path that leaves the tree is a path that only means
@@ -2657,6 +2665,19 @@ void command_processor::process_one(const command::ptr& cmd)
                       << "'\n";
             abort();
         }
+
+        /* Asked of the normalized path, which is the one that becomes
+         * the subproject's directory in every recipe it gets: the
+         * "./" of a "./-dep" is gone by then, so it is no way around
+         * this, and the only spelling that works is a directory with
+         * another name.  A subproject's "../-dep" lands here too, since
+         * from the top that is a "-dep" all the same. */
+        refuse_leading_dash(cmd, path,
+                            "check the tree out under a name that doesn't"
+                            " start with a '-', like 'SUBPROJECTS +="
+                            " vendor/dep' -- a './' in front doesn't help,"
+                            " since the directory is normalized before"
+                            " any path is built from it");
 
         /* A directory that contains this project is the same mistake
          * one step removed: "SUBPROJECTS += .." in "a" names the
