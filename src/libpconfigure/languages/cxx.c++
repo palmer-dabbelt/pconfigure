@@ -54,6 +54,10 @@ static std::string relative_to_here(const std::string& dir);
  * equal. */
 static std::string canonical_dir(const std::string& dir);
 
+/* The files already on disk that a set of link arguments has the
+ * linker read, as the names to make them prerequisites under. */
+static std::vector<std::string> link_input_files(const std::vector<std::string>& args);
+
 /* Splits link arguments into words and re-roots the relative "-L"
  * directories among them at the project they were written in.
  *
@@ -901,6 +905,29 @@ language_cxx::link_target::generate_makefile_target(void) const
     if (_link_inputs_path.size() > 0)
         deps.push_back(std::make_shared<makefile::target>(_link_inputs_path));
 
+    /* The files a LINKOPTS has the linker read are inputs to the link
+     * as much as the objects are: a version script decides what a
+     * library exports, and a prebuilt archive or object is copied
+     * into whatever links it.  A file this build makes was already
+     * waited on, through needs() matching it up with the rule that
+     * makes it, but one that was only ever on disk -- which is what
+     * a version script or a vendored archive usually is -- was a
+     * prerequisite of nothing, and editing it relinked nothing.
+     *
+     * Through "$(wildcard)" for the reason a source is in
+     * deps_source(): a file that has gone away since pconfigure ran
+     * is the linker's to complain about, naming the file, rather than
+     * make's "No rule to make target", which names no Configfile line
+     * at all.  It also leaves a file this build does make to the rule
+     * that makes it, since $(wildcard) hands make back the bare
+     * name. */
+    auto input_files = link_input_files(_opts);
+    for (const auto& file: input_files)
+        deps.push_back(std::make_shared<makefile::target>(
+                           "$(wildcard "
+                           + makefile::function_argument(file)
+                           + ")"));
+
     /* Whether what comes out of this link is a Mach-O.  That's a
      * question about the machine being built for rather than the one
      * doing the building, and the two are the same machine right up
@@ -1124,6 +1151,23 @@ language_cxx::link_target::generate_makefile_target(void) const
     auto object_args = _ctx->autoreconfigure
         ? std::string("$(filter %.o,$^)")
         : vector_util::join(vector_util::map(_objects, target2name), " ");
+
+    /* ... except for a prebuilt object a LINKOPTS named, which is a
+     * prerequisite now as well, and is on the link line already as
+     * the word it was written as.  A second copy of it is every
+     * symbol in it defined twice.
+     *
+     * The space before the comma is for needs(), which reads this
+     * recipe a shell word at a time and takes any word with a '/' in
+     * it for a file the link wants.  With the paths standing as words
+     * of their own that is just the files themselves, which the
+     * LINKOPTS words already ask for, rather than a path glued onto
+     * the make syntax after it.  To make, the space is just one more
+     * separator between the filter's patterns. */
+    if (_ctx->autoreconfigure && input_files.size() > 0)
+        object_args = "$(filter-out "
+            + makefile::function_argument(vector_util::join(input_files, " "))
+            + " ," + object_args + ")";
 
     auto cmds = std::vector<std::string>{
         "mkdir -p $(dir $@)",
@@ -2557,6 +2601,150 @@ static std::vector<std::string> link_dirs(const std::vector<std::string>& args)
         } else if (arg.compare(0, 2, "-L") == 0) {
             out.push_back(string_utils::shell_unescape(arg.substr(2)));
         }
+    }
+
+    return out;
+}
+
+/* Whether a path is a file the linker could read, as opposed to a
+ * directory or nothing at all. */
+static bool is_regular_file(const std::string& path)
+{
+    struct stat st;
+    if (stat(path.c_str(), &st) != 0)
+        return false;
+    return S_ISREG(st.st_mode);
+}
+
+/* The flags a linker reads a file for, which are all of them that
+ * name an input rather than an output.  "-Map" and "--out-implib"
+ * name a file too, but the link writes those, and an output taken for
+ * an input is a link that is never up to date: the map is written a
+ * moment after the program is.  So this is a list of the ones known
+ * to be read rather than a guess from the shape of the argument, and
+ * something missing from it is a file that changes without a relink,
+ * which is what everything was before. */
+static const std::vector<std::string>& linker_file_flags(void)
+{
+    static const auto out = std::vector<std::string>{
+        "version-script",
+        "script",
+        "dynamic-list",
+        "retain-symbols-file",
+        "just-symbols",
+        "export-dynamic-symbol-list",
+    };
+    return out;
+}
+
+static std::vector<std::string>
+link_input_files(const std::vector<std::string>& args)
+{
+    auto candidates = std::vector<std::string>();
+
+    /* What the linker itself is handed, a word at a time, whichever
+     * way the compiler driver was asked to pass it along.  A file can
+     * be the word after its flag, and that word can come in through a
+     * different "-Wl," or "-Xlinker" than the flag did -- "-Xlinker
+     * --version-script -Xlinker x.map" is the only way that spelling
+     * has of saying it -- so whether a file is due carries over from
+     * one to the next. */
+    auto linker_pending = false;
+    auto linker_word = [&](const std::string& word) {
+        if (linker_pending == true) {
+            candidates.push_back(word);
+            linker_pending = false;
+            return;
+        }
+
+        /* "-T" is the one short flag, and the only one that takes its
+         * file stuck straight on. */
+        if (word == "-T") {
+            linker_pending = true;
+            return;
+        }
+        if (word.compare(0, 2, "-T") == 0) {
+            candidates.push_back(word.substr(2));
+            return;
+        }
+
+        /* GNU ld takes a long option with either one dash or two, and
+         * its argument either after an '=' or as the next word. */
+        if (word.size() < 2 || word[0] != '-')
+            return;
+        auto name = word.substr(word[1] == '-' ? 2 : 1);
+        auto equals = name.find('=');
+        auto flag = name.substr(0, equals);
+        if (std::find(linker_file_flags().begin(),
+                      linker_file_flags().end(),
+                      flag) == linker_file_flags().end())
+            return;
+        if (equals == std::string::npos)
+            linker_pending = true;
+        else
+            candidates.push_back(name.substr(equals + 1));
+    };
+
+    auto pending = std::string();
+    for (const auto& arg: args) {
+        if (pending == "-Xlinker") {
+            linker_word(arg);
+            pending = "";
+            continue;
+        }
+        if (pending == "-T") {
+            candidates.push_back(arg);
+            pending = "";
+            continue;
+        }
+
+        if (arg == "-Xlinker" || arg == "-T") {
+            pending = arg;
+            continue;
+        }
+
+        if (arg.compare(0, 4, "-Wl,") == 0) {
+            auto pieces = std::stringstream(arg.substr(4));
+            auto piece = std::string();
+            while (std::getline(pieces, piece, ','))
+                linker_word(piece);
+            continue;
+        }
+
+        if (arg.compare(0, 2, "-T") == 0) {
+            candidates.push_back(arg.substr(2));
+            continue;
+        }
+
+        /* A file named outright, which is how a prebuilt archive or
+         * object gets linked in.  Requiring a '/' is what needs() does
+         * for the same words, and keeps a flag's argument -- the
+         * "Foo" of "-framework Foo", the symbol of "-u sym" -- from
+         * being taken for a file that happens to share its name. */
+        if (arg.size() > 0
+            && arg[0] != '-'
+            && arg.find('/') != std::string::npos)
+            candidates.push_back(arg);
+    }
+
+    /* Only what is there now.  A file this build makes and hasn't
+     * yet is found through needs() instead, and one that is nowhere
+     * is a link that fails and says so.  A name make would split in
+     * two can't be a prerequisite at all, so it is left as it was:
+     * unwatched, but linked. */
+    auto out = std::vector<std::string>();
+    for (const auto& raw: candidates) {
+        auto path = string_utils::shell_unescape(raw);
+        if (path.find_first_of(" \t\n") != std::string::npos)
+            continue;
+        if (is_regular_file(path) == false)
+            continue;
+
+        /* Spelled the way a rule that makes it would spell it, so
+         * that the two are one file to make. */
+        auto name = file_utils::normalize_path(relative_to_here(path));
+        if (std::find(out.begin(), out.end(), name) == out.end())
+            out.push_back(name);
     }
 
     return out;
