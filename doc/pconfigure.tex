@@ -5045,6 +5045,15 @@ A bash ``compiler'', which really just does the following
   way when it works out what a script depends on, so a file found
   only through a \texttt{-I}, or included only under a defined name,
   is one whose edits rebuild the script.
+\item Refuses an \texttt{\#if}, naming the file and line.  Its
+  expression is never worked out, so \texttt{\#ifdef} and
+  \texttt{\#ifndef} are the only conditionals a script has: to switch
+  an \texttt{\#include} off, put it under an \texttt{\#ifdef} of a
+  name nothing defines.  This applies in a branch that isn't taken
+  too, and \pconfigure\ refuses the same line when it works out what
+  the script depends on, or reads a test written in bash for its
+  \texttt{\#pconfigure} lines.  A comment that starts with the word
+  is caught as well, and is written \texttt{\# if} instead.
 \item Leaves a heredoc's body alone.  The lines between a
   \texttt{<<EOF} and the \texttt{EOF} that ends it are text the script
   writes out rather than script, so a C file written that way keeps
