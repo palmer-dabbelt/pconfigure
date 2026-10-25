@@ -1499,23 +1499,61 @@ language_cxx::link_objects(const context::ptr& ctx,
          * as a unit, and keyed as the one-word spelling they mean, so
          * that "-l foo" and "-lfoo" count as the same request.  A "-l"
          * with nothing after it is passed along as written, for the
-         * linker to complain about. */
-        std::set<std::string> seen;
+         * linker to complain about.
+         *
+         * Only a repeat that can't matter is dropped, though.  A
+         * linker reads a static archive once, where it is named,
+         * taking just the members that satisfy what is undefined at
+         * that point, so naming one again later is how a link line
+         * asks for a second look: "-la -lb -la" is the usual way to
+         * link two archives that need each other, and dropping the
+         * second "-la" leaves whatever libb wanted from liba
+         * undefined.  What ld64 warns about, and what this filter is
+         * for, is a library named twice with nothing in between that
+         * could want anything from it: another library could, and so
+         * could any word this doesn't recognize (a file, or a "-Wl,"
+         * that passes the linker who knows what), but a "-L" or an
+         * rpath only says where to look.  So the last library kept is
+         * remembered until something that could need it comes along,
+         * and a "-l" is dropped only when it names that one again. */
+        std::set<std::string> seen_rpaths;
+        std::string last_lib;
         std::vector<std::string> out;
+        auto keep_lib = [&](const std::string& key) {
+            if (key == last_lib)
+                return false;
+            last_lib = key;
+            return true;
+        };
         for (size_t i = 0; i < tokens.size(); ++i) {
             const auto& tok = tokens[i];
             if (tok == "-l" && i + 1 < tokens.size()) {
-                if (seen.insert("-l" + tokens[i + 1]).second) {
+                if (keep_lib("-l" + tokens[i + 1])) {
                     out.push_back(tok);
                     out.push_back(tokens[i + 1]);
                 }
                 ++i;
                 continue;
             }
-            if (tok.substr(0, 11) != "-Wl,-rpath," && tok.substr(0, 2) != "-l")
+            if (tok.substr(0, 2) == "-l" && tok != "-l") {
+                if (keep_lib(tok))
+                    out.push_back(tok);
+                continue;
+            }
+            if (tok.substr(0, 11) == "-Wl,-rpath,") {
+                if (seen_rpaths.insert(tok).second)
+                    out.push_back(tok);
+                continue;
+            }
+            if (tok == "-L" && i + 1 < tokens.size()) {
                 out.push_back(tok);
-            else if (seen.insert(tok).second)
-                out.push_back(tok);
+                out.push_back(tokens[i + 1]);
+                ++i;
+                continue;
+            }
+            if (tok.substr(0, 2) != "-L")
+                last_lib.clear();
+            out.push_back(tok);
         }
         return out;
     };
