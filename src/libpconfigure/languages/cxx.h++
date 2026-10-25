@@ -223,7 +223,15 @@ private:
      * because the walk crosses languages: the answer has to be the
      * same from a C++ source as it is from the C source it led to, or
      * one file is compiled twice under two names. */
-    typedef std::map<std::string, const language_cxx*> behind_languages;
+    struct behind_languages:
+        public std::map<std::string, const language_cxx*>
+    {
+        /* The target's own language, which is the one its COMPILER
+         * was said to.  Kept with the map because that is what goes
+         * down the walk, and every step of the walk has to know it
+         * -- see foreign_context(). */
+        const language_cxx* target = nullptr;
+    };
     behind_languages languages_behind_headers(const context::ptr& ctx) const;
 
     /* Hashes the link options that are relevant to this command's linking
@@ -475,6 +483,13 @@ protected:
     context::ptr behind_header_context(const context::ptr& ctx,
                                        const std::string& name,
                                        const debug_info::ptr& debug) const;
+
+    /* The context the language "owner" compiles a source found behind
+     * one of this target's headers in: the one it was handed, less the
+     * target's COMPILER when the owner isn't the target's language. */
+    static context::ptr foreign_context(const context::ptr& plain,
+                                        const language_cxx* owner,
+                                        const behind_languages& behind);
 
     /* Lists the dependencies of a since source file. */
     std::vector<std::string> dependencies(

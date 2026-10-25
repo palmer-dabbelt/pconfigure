@@ -408,6 +408,22 @@ public:
         return std::vector<std::string>(opts.begin() + shared, opts.end());
     }
 
+    /* Duplicates this context, forgetting the COMPILER it was told to
+     * use -- for a source the target's language isn't the one
+     * compiling, like a C++ file found behind a C program's header.
+     * A COMPILER is said to whichever language builds the target, and
+     * "cc -x c" handed a C++ file is a compiler being asked to read a
+     * language it was told not to.  Unlike without_clopts() this
+     * keeps the CROSS_COMPILE, because that names the machine the
+     * target is for rather than a program, and every object linked
+     * into the target has to be built for that same machine. */
+    ptr without_compiler(void) const
+    {
+        auto o = this->dup();
+        o->compiler = "";
+        return o;
+    }
+
     /* Forgets which toolchain builds this context, and everything
      * under it.
      *

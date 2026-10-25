@@ -347,6 +347,7 @@ language_cxx::behind_languages
 language_cxx::languages_behind_headers(const context::ptr& ctx) const
 {
     auto out = behind_languages();
+    out.target = this;
 
     for (const auto& extension: cxx_header_source_extensions()) {
         /* A name to ask about rather than a bare ending, which
@@ -2018,9 +2019,16 @@ language_cxx::write_deps_context(const context::ptr& ctx,
      * context for those options.  That is this file whenever this
      * source has no options of its own, and another file, written
      * here too, when it does -- nothing else need ever have asked
-     * for one. */
+     * for one.
+     *
+     * When this isn't the target's language, those options are the
+     * target's less its COMPILER, the same as compile_source() builds
+     * them with (see foreign_context()).  Its own COMPILER left in,
+     * the file is named the way the target language's own one is, and
+     * one of them overwrites the other. */
     {
-        auto plain = ctx->dup(context_type::SOURCE, child->cmd, {});
+        auto plain = foreign_context(
+            ctx->dup(context_type::SOURCE, child->cmd, {}), this, behind);
         auto plain_path = deps_context_path(ctx, plain, link);
         if (plain_path != context_path)
             write_deps_context(ctx, plain, link, is_shared, behind, named);
@@ -2043,8 +2051,11 @@ language_cxx::write_deps_context(const context::ptr& ctx,
             if (entry.second != this)
                 out += say("behind-language",
                            entry.first + " "
-                           + entry.second->deps_context_path(ctx, plain,
-                                                             link));
+                           + entry.second->deps_context_path(
+                                 ctx,
+                                 foreign_context(plain, entry.second,
+                                                 behind),
+                                 link));
     }
 
     /* Written only when it would say something new, because it is a
@@ -2093,8 +2104,11 @@ language_cxx::deps_source(const context::ptr& ctx,
     auto written = std::set<const language_cxx*>{this};
     for (const auto& entry: behind)
         if (written.insert(entry.second).second == true)
-            entry.second->write_deps_context(ctx, plain, link, is_shared,
-                                             behind, named);
+            entry.second->write_deps_context(ctx,
+                                             foreign_context(plain,
+                                                             entry.second,
+                                                             behind),
+                                             link, is_shared, behind, named);
 
     /* Through "$(wildcard)", which is how pdeps names the sources it
      * finds behind a header, and for the same reason: a source that
@@ -2239,9 +2253,6 @@ language_cxx::compile_source(const context::ptr& ctx,
                 if (dep.compare(0, src_prefix.size(), src_prefix) != 0)
                     continue;
                 std::string stripped_dep = dep.substr(src_prefix.size());
-                auto dep_ctx = behind_header_context(ctx,
-                                                     stripped_dep,
-                                                     child->cmd->debug());
 
                 /* Compiled by the language whose file it is, which
                  * isn't necessarily this one.  That language's
@@ -2252,6 +2263,13 @@ language_cxx::compile_source(const context::ptr& ctx,
                 for (const auto& entry: behind)
                     if (string_utils::has_extension(dep, entry.first))
                         owner = entry.second;
+
+                auto dep_ctx = foreign_context(
+                    behind_header_context(ctx,
+                                          stripped_dep,
+                                          child->cmd->debug()),
+                    owner,
+                    behind);
 
                 auto dep_out_name =
                     dep_ctx->obj_dir
@@ -2348,6 +2366,36 @@ language_cxx::behind_header_context(const context::ptr& ctx,
                                          name,
                                          debug);
     return ctx->dup(context_type::SOURCE, cmd, {});
+}
+
+/* The context a source found behind a header is compiled in by the
+ * language that owns it.  A COMPILER written on the target was said to
+ * the target's language, so a source some other language compiles goes
+ * back to that language's own compiler -- whatever it was told under
+ * its LANGUAGES line, or its default -- which is what the manual
+ * promises for a C++ file behind a C program's header.  Leaving the
+ * target's in place compiles that file with a C compiler, which fails
+ * on the first line that is C++ and reads like a mistake in the source
+ * rather than in the Configfile.
+ *
+ * It is the target's language that is compared against rather than
+ * whichever one is doing the walking, because the walk crosses
+ * languages: from a C++ source behind the header, a C source behind
+ * the next one is back in the target's language, and the target's
+ * COMPILER is the one for it.
+ *
+ * Every route to such a source has to come through here, because the
+ * compiler is also in the hash that names the object: the walk this
+ * pconfigure does and the one pdeps does under AUTORECONFIGURE have to
+ * agree on the name, or the target links an object nothing builds. */
+context::ptr
+language_cxx::foreign_context(const context::ptr& plain,
+                              const language_cxx* owner,
+                              const behind_languages& behind)
+{
+    if (owner == behind.target)
+        return plain;
+    return plain->without_compiler();
 }
 
 std::vector<std::string> language_cxx::dependencies(
