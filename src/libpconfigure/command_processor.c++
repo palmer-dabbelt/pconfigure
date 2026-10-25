@@ -2181,6 +2181,46 @@ void command_processor::process_one(const command::ptr& cmd)
             abort();
         }
 
+        /* The characters make itself reads specially are refused for
+         * the same reason the whitespace is.  The prefix is pasted raw
+         * into the name of every install and uninstall target, so it
+         * is as much a target name as a BINARIES is, and gets the same
+         * list a BINARIES does: a ':' or a '#' leaves a Makefile make
+         * won't read, a '$' installs into whatever the expansion comes
+         * to, and a quote is left unbalanced in every compile line's
+         * -D__PCONFIGURE__PREFIX.  None of those ever built, so there
+         * is nothing to keep working by only warning.
+         *
+         * A '%' is refused here and not for a BINARIES.  A target
+         * name with one in it happens to build, since the rule is the
+         * only thing that names it; a prefix with one is in the names
+         * of the rules "make uninstall" depends on, which make reads
+         * as patterns that nothing matches, so the uninstall says
+         * there's nothing to be done and removes nothing.  That works
+         * right up until somebody needs it to, which is worse than
+         * not working. */
+        for (const auto& c: cmd->data()) {
+            auto why = make_special_character(c);
+            if (c == '%') {
+                why = "make reads a '%' in a target's name as a pattern"
+                      " rather than as text, so the rules 'make uninstall'"
+                      " is made of match nothing and it quietly removes"
+                      " nothing";
+            }
+            if (why.size() == 0)
+                continue;
+
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: PREFIX has a '" << c << "' in it: '"
+                      << cmd->data() << "'\n"
+                      << "  the prefix is pasted into the name of every"
+                      << " file 'make install' writes, and " << why
+                      << "\n"
+                      << "  install to a directory without a '" << c
+                      << "' in its name, like 'PREFIX = /opt/my-thing'\n";
+            abort();
+        }
+
         /* An install prefix is an absolute path by definition: it is
          * where the installed program finds itself, compiled into it
          * as __PCONFIGURE__PREFIX and __PCONFIGURE__LIBEXEC and linked
