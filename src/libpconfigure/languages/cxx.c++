@@ -1465,8 +1465,13 @@ language_cxx::link_objects(const context::ptr& ctx,
         if (ctx->install == false)
             return {archive, cp_local_archive};
 
+        /* The prefix goes on through installed(), like every other
+         * install path, rather than being pasted on with a '/' either
+         * side: that spelled the archive "$(DESTDIR)//usr/local/lib",
+         * and "$(DESTDIR)///lib" under "PREFIX = /", a different make
+         * target from the shared library installed right beside it. */
         auto archive_install_path =
-            "$(DESTDIR)/" + ctx->prefix + "/" + ctx->unbased(bin_dir)
+            "$(DESTDIR)" + ctx->installed(bin_dir)
             + "/" + ctx->cmd->data();
         auto cp_install_archive = std::make_shared<cp_target>(
             archive_install_path,

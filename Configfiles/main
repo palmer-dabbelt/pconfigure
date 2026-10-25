@@ -810,6 +810,7 @@ TESTSRC     += testsrc-dot-slash-duplicate-runs-once.bash
 TESTSRC     += link-separate-l-words-keep-every-flag.bash
 TESTSRC     += link-separate-l-repeat-drops-both-words.bash
 TESTSRC     += static-library-is-an-archive.bash
+TESTSRC     += static-archive-install-path-single-slash.bash
 TESTSRC     += static-library-not-needed-at-runtime.bash
 TESTSRC     += static-library-linked-into-shared-library.bash
 TESTSRC     += static-library-members-have-distinct-names.bash
