@@ -559,7 +559,10 @@ language_bash::dependencies(const std::string& path,
     /* A script's # is a comment leader, so nothing but the bare
      * "#include" that pbashc expands may be read as a directive here,
      * and what is text rather than script depends on which language
-     * the script is written in. */
+     * the script is written in.  And an "#if" is refused, because
+     * pbashc refuses it in either language: a scan that worked one
+     * out could leave off a file pbashc would have pasted in, or list
+     * one it would have stopped at. */
     pinclude::list(path,
                    include_dirs,
                    defined,
@@ -567,7 +570,7 @@ language_bash::dependencies(const std::string& path,
                        auto t = std::make_shared<makefile::target>(p);
                        out.push_back(t);
                        return 0;
-                   }, true, script_syntax());
+                   }, true, script_syntax(), {}, true);
     return out;
 }
 

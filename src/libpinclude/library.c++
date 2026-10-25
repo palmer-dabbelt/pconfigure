@@ -33,7 +33,8 @@ int pinclude::list(std::string filename,
                    std::function<int(std::string)> callback,
                    bool skip_missing_files,
                    pinclude::syntax language,
-                   pinclude::directive_callback on_directive)
+                   pinclude::directive_callback on_directive,
+                   bool refuse_if)
 {
     std::unordered_set<std::string> define_set;
     for (const auto& define: defines)
@@ -45,7 +46,8 @@ int pinclude::list(std::string filename,
                 callback,
                 skip_missing_files,
                 language,
-                on_directive);
+                on_directive,
+                refuse_if);
 }
 
 /* OUTPUT and ELSE are the two halves of a conditional whose
@@ -146,7 +148,8 @@ int list_overwrite_defines(std::string filename,
                            std::function<int(std::string)> callback,
                            bool skip_missing_files,
                            pinclude::syntax language,
-                           const pinclude::directive_callback& on_directive);
+                           const pinclude::directive_callback& on_directive,
+                           bool refuse_if);
 
 int pinclude::list(std::string filename,
                    std::vector<std::string> include_dirs_without_cwd,
@@ -154,7 +157,8 @@ int pinclude::list(std::string filename,
                    std::function<int(std::string)> callback,
                    bool skip_missing_files,
                    pinclude::syntax language,
-                   pinclude::directive_callback on_directive)
+                   pinclude::directive_callback on_directive,
+                   bool refuse_if)
 {
     return list_overwrite_defines(
         filename,
@@ -163,7 +167,8 @@ int pinclude::list(std::string filename,
         callback,
         skip_missing_files,
         language,
-        on_directive
+        on_directive,
+        refuse_if
     );
 }
 
@@ -173,7 +178,8 @@ int list_overwrite_defines(std::string filename,
                            std::function<int(std::string)> callback,
                            bool skip_missing_files,
                            pinclude::syntax language,
-                           const pinclude::directive_callback& on_directive)
+                           const pinclude::directive_callback& on_directive,
+                           bool refuse_if)
 {
     /* Every script is read the strict way, which is the question
      * check_line() asks. */
@@ -254,12 +260,23 @@ int list_overwrite_defines(std::string filename,
         return filename.substr(0, last_slash) + "/";
     };
 
+    /* "raw" is the line as it was written, before anything below
+     * blanks a comment out of it -- the first line of it, for one
+     * continued with a backslash, since pbashc joins nothing and
+     * that is the line it quotes.  What is read is the blanked copy,
+     * but what is quoted back at whoever wrote the file has to be
+     * what they wrote: "#if 0 // off for now" said back to them as
+     * "#if 0" and a run of spaces is a line they can't find, and it
+     * isn't what pbashc says about the same line, which never strips
+     * a C comment out of anything. */
     static const auto next_logical_line = [](std::ifstream& file, std::string& out,
+                                             std::string& raw,
                                              int& comment, int& lineno) {
         std::string line;
         if (!std::getline(file, line))
             return false;
         out = line;
+        raw = line;
         lineno++;
 
         /* An empty line has no last character, and asking for one
@@ -335,7 +352,8 @@ int list_overwrite_defines(std::string filename,
     int comment = 0;
     std::vector<heredoc> heredocs;
     auto in_data = false;
-    while (next_logical_line(file, line, comment, lineno)) {
+    std::string raw;
+    while (next_logical_line(file, line, raw, comment, lineno)) {
         /* Below a Perl script's "__DATA__" or "__END__" is data the
          * script reads, or nothing at all, and never script -- so an
          * "#include" there is no file the script reads, for the same
@@ -374,6 +392,30 @@ int list_overwrite_defines(std::string filename,
         }
 
         check_line(line, "if", [&](std::string rest) {
+            /* pbashc refuses an "#if" in a script rather than working
+             * out what it says, and the list of what a script reads
+             * has to be found the way pbashc finds it.  Evaluating
+             * one here would let "#if 0" leave an include off this
+             * list that pbashc either pastes in or stops at, so the
+             * answer here is the same refusal, made at configure time
+             * rather than at the make that would have failed anyway.
+             *
+             * The same refusal also covers a comment that starts with
+             * the word: "#if you want..." is no expression either,
+             * and handed to the reader below it aborts without saying
+             * which file it was in. */
+            if (refuse_if == true) {
+                std::cerr << filename << ":" << lineno << ": '"
+                          << raw << "' can't be used in a script\n"
+                          << "  only '#ifdef NAME' and '#ifndef NAME'"
+                          << " decide what is pasted in, and an '#if'"
+                          << " expression is never worked out\n"
+                          << "  write '#ifdef NAME' with the name given"
+                          << " as a '-D' in COMPILEOPTS, or '# if' with"
+                          << " a space if this is a comment\n";
+                abort();
+            }
+
             auto resolved = resolve_pp_function(rest, defines);
             push_conditional(resolved);
         }, bare_directives);
@@ -562,7 +604,8 @@ int list_overwrite_defines(std::string filename,
                     callback,
                     skip_missing_files,
                     language,
-                    on_directive
+                    on_directive,
+                    refuse_if
                 );
                 if (rout != 0) {
                     std::cerr << "Early out no longer supported in pinclude::list\n";

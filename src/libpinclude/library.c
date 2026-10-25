@@ -89,11 +89,11 @@ static void open_heredocs(const char *line, size_t lineno,
 
 static bool closes_heredoc(const char *line, const struct heredoc *open);
 
+static bool is_directive(const char *line, const char *directive);
+
 static bool reads_as_directive(const char *line);
 
 static bool ends_perl_script(const char *line);
-
-static bool is_directive(const char *line, const char *directive);
 
 static bool includable(const char *path);
 
@@ -319,10 +319,54 @@ static int _pinclude_lines(const char *input,
 #endif
         }
 
-        /* FIXME: I'm just faking support for #if here because I don't
-         * want to solve equations.  This keeps the stack correct but
-         * doesn't actually handle the check. */
-        if (strncmp(buffer, "#if ", strlen("#if ")) == 0) {
+        /* An "#if" in a file being expanded is refused rather than
+         * read.  This used to take every one of them as true, which
+         * kept the "#endif" count straight and nothing else: "#if 0",
+         * the obvious way to switch an include off, pasted the
+         * include in anyway.  pconfigure's scan of the same script
+         * evaluates the expression, so the two disagreed about which
+         * files the script was made of, and make was never told about
+         * the one that got pasted in.
+         *
+         * Evaluating it here instead would mean two expression
+         * readers that have to agree on everything an "#if" can say,
+         * for a script whose only names are the "-D"s it was given --
+         * which "#ifdef" and "#ifndef" already ask about.  Refusing
+         * it in both places is the one answer they can't drift apart
+         * on.  It also catches a comment that happens to start with
+         * the word, "#if you want...", which is better told about
+         * than quietly opening a conditional nothing closes.
+         *
+         * It is refused wherever it turns up, taken branch or not, so
+         * that whether a script is accepted doesn't depend on which
+         * "-D"s it was built with this time. */
+        if (is_directive(buffer, "#if") == true && per_line != NULL) {
+            char *line;
+
+            line = strdup(buffer);
+            str_chomp(line);
+
+            fprintf(stderr, "%s:%zu: '%s' can't be used in a script\n",
+                    input, lineno, line);
+            fprintf(stderr, "  only '#ifdef NAME' and '#ifndef NAME' decide"
+                    " what is pasted in, and an '#if' expression is never"
+                    " worked out\n");
+            fprintf(stderr, "  write '#ifdef NAME' with the name given as a"
+                    " '-D' in COMPILEOPTS, or '# if' with a space if this"
+                    " is a comment\n");
+
+            free(line);
+            fclose(infile);
+
+            return -1;
+        }
+
+        /* Only listing gets this far with an "#if", and listing can
+         * afford to take every one of them as true: a file listed
+         * that turns out not to be read costs a rebuild, where one
+         * left off is an edit that never causes one.  pbashc never
+         * lists, so nothing it builds depends on this guess. */
+        if (is_directive(buffer, "#if") == true) {
             state_i++;
             taken[state_i] = true;
             state[state_i] = state[state_i - 1];
@@ -893,6 +937,25 @@ bool closes_heredoc(const char *line, const struct heredoc *open)
     return line[i] == '\0';
 }
 
+bool is_directive(const char *line, const char *directive)
+{
+    size_t length;
+    char after;
+
+    length = strlen(directive);
+    if (strncmp(line, directive, length) != 0)
+        return false;
+
+    /* A directive's name ends where an identifier ends, so that
+     * "#included" is a word which starts with one rather than one of
+     * them, and "#ifdef" is not an "#if". */
+    after = line[length];
+    if (isalnum((unsigned char)after) || after == '_')
+        return false;
+
+    return true;
+}
+
 bool reads_as_directive(const char *line)
 {
     static const char *const directives[] = {
@@ -905,25 +968,6 @@ bool reads_as_directive(const char *line)
             return true;
 
     return false;
-}
-
-bool is_directive(const char *line, const char *directive)
-{
-    size_t length;
-    char after;
-
-    length = strlen(directive);
-    if (strncmp(line, directive, length) != 0)
-        return false;
-
-    /* A directive's name ends where an identifier ends, so that
-     * "#included" is a word which starts with one rather than one of
-     * them. */
-    after = line[length];
-    if (isalnum((unsigned char)after) || after == '_')
-        return false;
-
-    return true;
 }
 
 /* TRUE for the line that ends a Perl script, after which perl reads

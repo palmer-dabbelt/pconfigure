@@ -2219,8 +2219,18 @@ void command_processor::process_one(const command::ptr& cmd)
          * because what it says lands on the test: a SOURCE is a copy
          * of the test's context that nothing ever asks for a check
          * target. */
-        if (_stack.top()->check_type({context_type::TEST}) == true)
-            process_directives(_stack.top()->src_dir + "/" + source->data());
+        if (_stack.top()->check_type({context_type::TEST}) == true) {
+            /* A ".bash" test is one pbashc expands, when bash is a
+             * language this test can be built in -- the same thing
+             * language_bash::can_process() asks of the test's sources,
+             * asked before this one has been added to them. */
+            auto script =
+                string_utils::has_extension(source->data(), ".bash")
+                && _stack.top()->languages->search("bash") != NULL;
+
+            process_directives(_stack.top()->src_dir + "/" + source->data(),
+                               script);
+        }
 
         dup_tos_and_push(context_type::SOURCE, source);
 
@@ -3094,7 +3104,8 @@ context::ptr command_processor::enclosing_test(void) const
     return NULL;
 }
 
-void command_processor::process_directives(const std::string& path)
+void command_processor::process_directives(const std::string& path,
+                                           bool script)
 {
     /* A TESTDEPS is read out of this file rather than out of a
      * Configfile, but it's the same kind of fact: a line here decides
@@ -3227,7 +3238,17 @@ void command_processor::process_directives(const std::string& path)
                 not_a_command();
 
             process(cmd);
-        }
+        },
+
+        /* This is the first look anything takes at a test, before
+         * language_bash::dependencies() scans it, so a script's
+         * "#if" has to be refused here the way that scan refuses it.
+         * Read as C instead, an "#if 0" would be worked out quietly,
+         * and a comment that starts "#if you want..." would be handed
+         * to the expression reader, which aborts naming neither the
+         * file nor the line.  A C test's "#if" is the compiler's
+         * business and is read as one. */
+        script
     );
 }
 

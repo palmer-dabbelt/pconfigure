@@ -85,14 +85,23 @@ namespace pinclude {
      *
      * on_directive is handed every "#pconfigure" line found on the way
      * through, and defaults to nothing at all for the callers that
-     * only ever wanted the file list. */
+     * only ever wanted the file list.
+     *
+     * refuse_if says the file is a script pbashc is going to expand,
+     * which refuses an "#if" outright -- so this has to as well,
+     * rather than working the expression out and listing a different
+     * set of files from the one pbashc would have pasted in.  It is
+     * not the same question as language: a C test is read the
+     * script way for its "#pconfigure" lines, and its "#if"s are as
+     * ordinary as any other C file's. */
     int list(std::string filename,
              std::vector<std::string> include_dirs,
              std::vector<std::string> defined,
              std::function<int(std::string)> callback,
              bool skip_missing_files,
              syntax language = syntax::C,
-             directive_callback on_directive = {});
+             directive_callback on_directive = {},
+             bool refuse_if = false);
 
     int list(std::string filename,
              std::vector<std::string> include_dirs,
@@ -100,14 +109,16 @@ namespace pinclude {
              std::function<int(std::string)> callback,
              bool skip_missing_files,
              syntax language = syntax::C,
-             directive_callback on_directive = {});
+             directive_callback on_directive = {},
+             bool refuse_if = false);
 
     static inline
     int list(std::string filename,
              std::function<int(std::string)> callback,
              bool skip_missing_files,
              syntax language = syntax::C,
-             directive_callback on_directive = {})
+             directive_callback on_directive = {},
+             bool refuse_if = false)
     {
         return list(filename,
                     std::vector<std::string>{},
@@ -115,7 +126,8 @@ namespace pinclude {
                     callback,
                     skip_missing_files,
                     language,
-                    on_directive
+                    on_directive,
+                    refuse_if
                 );
     }
 }

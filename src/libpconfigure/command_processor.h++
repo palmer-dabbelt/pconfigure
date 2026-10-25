@@ -325,8 +325,11 @@ private:
      * a line read here lands on the test that carried it rather than
      * on whatever else happened to be nearby.  A Configfile saying
      * the same thing has to say it somewhere both the test and the
-     * reader can be got to from, which is somewhere else. */
-    void process_directives(const std::string& path);
+     * reader can be got to from, which is somewhere else.
+     *
+     * "script" says the test is one pbashc is going to expand, and
+     * so a file in which an "#if" is refused rather than read. */
+    void process_directives(const std::string& path, bool script);
 
     /* The test that's open right now, or NULL when none is.  A
      * TESTSRC is a TESTS and then a SOURCES, so the line written
