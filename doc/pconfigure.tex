@@ -165,6 +165,15 @@ be read, or that is a directory, is a fatal error naming it, since
 reading it as empty would write a \texttt{Makefile} missing everything
 it declares.
 
+Skipping is per file, though: if none of the four exists, \pconfigure\
+refuses to run, names the files it looked for, and writes nothing.
+That is almost always a run from the wrong directory (a project's
+\texttt{src/} instead of its top, say), and carrying on would write a
+\texttt{Makefile} for an empty project and exit successfully.  A run
+that is given something else to read is not refused: a
+\texttt{--config} names a file of its own, and Configfile lines given
+on the command line describe a project with no file behind them.
+
 \subsection{Writing your first \texttt{Configfile}}
 
 The \texttt{Configfile} format is designed to be as terse as possible.
