@@ -372,6 +372,30 @@ void makefile::makefile::write_to_file(const std::string& filename)
      * suffixes they are built out of. */
     fprintf(file, ".SUFFIXES:\n\n");
 
+    /* The C and C++ recipes name their compilers as ${CC} and ${CXX},
+     * and archive with ${AR}, so that whoever runs make can pick the
+     * toolchain -- but nothing defined them except make's own
+     * built-in variables.  "make -R" takes those away, and so does a
+     * parent build with -R in its MAKEFLAGS, the way kbuild runs
+     * everything underneath it.  The recipe line then expands to one
+     * starting with "-x c", and make reads a leading '-' on an
+     * expanded recipe line as "ignore errors": the compile fails,
+     * make says "(ignored)", nothing relinks, and the build exits 0
+     * with the program from before the edit still in bin/.
+     *
+     * "?=" is what keeps them defaults rather than settings.  A CC on
+     * make's command line or in the environment is still the one
+     * that runs, and without -R make's built-in is already defined,
+     * so this changes nothing for a build that wasn't broken.  The
+     * values are the names a Unix toolchain answers to whoever made
+     * it; CXX's "c++" rather than GNU make's "g++" only ever shows up
+     * where GNU make's default is gone.
+     * A CROSS_COMPILE names its toolchain outright and never reads
+     * these at all. */
+    fprintf(file, "CC ?= cc\n");
+    fprintf(file, "CXX ?= c++\n");
+    fprintf(file, "AR ?= ar\n\n");
+
     /* A project that a parent can include finds itself through a
      * variable, which is empty when make is run here and set by the
      * parent when it isn't.  Everything below is written in terms of
