@@ -468,13 +468,24 @@ std::vector<configfile_line> lines_from_file(const std::string& srcpath,
         else
             directory = ".";
 
+        /* Both halves are one word each to the shell, whatever is in
+         * them.  A Configfile's name has no reason to avoid a space or
+         * an apostrophe, nor the --srcpath it sits under an apostrophe
+         * (whitespace there is refused long before this), and each is
+         * fine as a path everywhere else.  Pasted in as they were, a
+         * CONFIG called "my conf" ran "./Configfiles/my" with "conf"
+         * as its argument and an apostrophe in either half was an
+         * unterminated quote -- and every one of those read the same
+         * as a program that printed nothing. */
+        auto command = "cd " + string_utils::quoted(directory)
+                       + " && exec ./" + string_utils::quoted(script);
+
         /* popen() only fails when no shell could be started at all,
          * which says nothing about the program itself.  The one thing
          * that can be changed from here is not needing a shell: a
          * Configfile that was never meant to be a program reads fine
          * once its executable bit is gone. */
-        file = popen(("cd " + directory + " && exec ./" + script).c_str(),
-                     "r");
+        file = popen(command.c_str(), "r");
         if (file == NULL)
             refuse("is executable, but no shell could be started to run"
                    " it: " + std::string(strerror(errno)),
