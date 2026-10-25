@@ -278,6 +278,26 @@ int list_overwrite_defines(std::string filename,
         return true;
     };
 
+    /* Labelling an "#else" or an "#endif" with the condition it
+     * belongs to is a habit carried over from C, and in a script the
+     * label is a shell comment: "#endif # WITH_EXTRAS".  The C
+     * spelling never gets this far, since its comments have already
+     * been blanked out by the time a line is matched, but a script's
+     * comments start with the same '#' a directive does and nothing
+     * blanks those.  pbashc only looks at the start of the line for
+     * these two and compiles the labelled form happily, so refusing
+     * it here would leave a script the compiler accepts as one the
+     * project can't be configured around.
+     *
+     * Only a comment, and only in a script: anything else after the
+     * keyword is still a mistake worth stopping for, and in C there
+     * is no '#' comment for it to be. */
+    const auto only_shell_comment = [&](const std::string& rest) {
+        return bare_directives == true
+            && rest.size() > 0
+            && rest[0] == '#';
+    };
+
     /* Counted up as a line is read rather than after it has been
      * dealt with, so the count starts one behind what it names: the
      * first line of a file is line 1, and the counter has to have
@@ -337,6 +357,9 @@ int list_overwrite_defines(std::string filename,
         }, bare_directives);
 
         check_line(line, "else", [&](std::string rest) {
+            if (only_shell_comment(rest))
+                rest = "";
+
             for (const auto r: rest) {
                 if (!isspace(r)) {
                     std::cerr << "There shouldn't be anything after an else\n";
@@ -364,6 +387,9 @@ int list_overwrite_defines(std::string filename,
         }, bare_directives);
 
         check_line(line, "endif", [&](std::string rest) {
+            if (only_shell_comment(rest))
+                rest = "";
+
             if (rest != "") {
                 std::cerr << "There shouldn't be anything after an endif\n";
                 abort();
