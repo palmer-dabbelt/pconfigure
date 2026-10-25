@@ -259,6 +259,30 @@ build_system::targets(const std::vector<ptr>& peers,
             abort();
         }
 
+        /* A file the glue above already has a rule for is a target
+         * already, and is the one kind of named output that must not
+         * get a rule here.  A kconfig tree's ".config" and an
+         * autotools tree's "config.status" are both written by the
+         * configure step, and both are things somebody reasonably
+         * names to read back what the tree was configured with.  A
+         * second rule for one of them is two recipes for one target:
+         * make keeps this one, which only checks the file is there,
+         * drops the one that would have made it, and the build then
+         * stops saying the tree didn't produce it -- every time, in a
+         * tree that is fine.
+         *
+         * Skipped rather than refused, since the line asks for
+         * something true: the file is one the tree's build makes, and
+         * it can be waited on by name.  The rule that makes it says
+         * so already, and says it with the right recipe.  The stamp
+         * still depends on it, so a plain "make" still builds it. */
+        auto already_built = false;
+        for (const auto& glue: out)
+            if (glue->name() == target)
+                already_built = true;
+        if (already_built)
+            continue;
+
         /* Every word of this that came out of a Configfile is quoted,
          * and the quoting is single because a SUBPROJECT_TARGETS is
          * text: this recipe used to be written with double quotes
