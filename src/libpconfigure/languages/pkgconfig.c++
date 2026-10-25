@@ -24,6 +24,7 @@
 #include "../string_utils.h++"
 #include <assert.h>
 #include <iostream>
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -302,10 +303,9 @@ language_pkgconfig::targets(const context::ptr& ctx) const
                 makefile::global_targets::CLEAN,
             },
             std::vector<std::string>{
-                /* Spelled out rather than "$(dir $@)", because a
-                 * copy of these commands gets run below by
-                 * pconfigure itself, where there's no make around to
-                 * say what that means. */
+                /* Spelled out rather than "$(dir $@)", to match the
+                 * copy pconfigure writes itself below, where there's
+                 * no make around to say what that means. */
                 "mkdir -p " + pkgconfig_dir,
                 build(absolute_base(ctx->base), true, build_path)
             },
@@ -320,28 +320,42 @@ language_pkgconfig::targets(const context::ptr& ctx) const
          * about. */
         add_pkgconfig_dep(build_path);
 
-        /* Without a template the commands only say so and fail, and
-         * the project has already said that once here. */
-        if (sources.size() > 0 && access(build_path.c_str(), R_OK) != 0) {
-            auto have_sources = true;
-            for (const auto& source: prerequisites)
-                if (access(source->name().c_str(), R_OK) != 0)
-                    have_sources = false;
+        /* The copy is rewritten on every configure, not just when
+         * there isn't one yet.  One left over from the last run was
+         * written out of whatever the .pc and its "-S" scripts said
+         * then, and rerunning pconfigure after editing one of them
+         * is exactly how somebody asks for the new answer: believing
+         * the old copy configured the consumer without the edit and
+         * left a second configure to notice it.  Comparing times
+         * instead would miss an edit made in the same second as the
+         * last configure, and running a few seds costs nothing next
+         * to the rest of a configure.
+         *
+         * Without a template the commands only say so and fail, and
+         * the project has already said that once here.  Anything
+         * it's built from that isn't there yet will be by the time
+         * make runs, so this is worth trying and not worth failing
+         * over -- and in that case whatever copy is already there is
+         * the best answer there is, so it's left alone.  The new copy
+         * is written beside the old one and only moved over it once
+         * it's complete, so a sed that fails part way through doesn't
+         * replace a working copy with half of one. */
+        auto have_sources = sources.size() > 0;
+        for (const auto& source: prerequisites)
+            if (access(source->name().c_str(), R_OK) != 0)
+                have_sources = false;
 
-            /* Anything it's built from that isn't there yet will be
-             * by the time make runs, so this is worth trying and not
-             * worth failing over. */
-            /* The same two commands as the target's, but spelled
-             * for a shell rather than for make: see build() above. */
-            auto configure_commands = std::vector<std::string>{
-                "mkdir -p " + pkgconfig_dir,
-                build(absolute_base(ctx->base), false, build_path)
-            };
-
-            if (have_sources == true)
-                for (const auto& cmd: configure_commands)
-                    if (system(cmd.c_str()) != 0)
-                        break;
+        if (have_sources == true) {
+            /* The same two commands as the target's, but spelled for
+             * a shell rather than for make: see build() above. */
+            auto temp_path = build_path + ".pconfigure-tmp";
+            auto mkdir_cmd = "mkdir -p " + pkgconfig_dir;
+            auto write_cmd = build(absolute_base(ctx->base), false, temp_path);
+            if (system(mkdir_cmd.c_str()) == 0
+                && system(write_cmd.c_str()) == 0)
+                rename(temp_path.c_str(), build_path.c_str());
+            else
+                unlink(temp_path.c_str());
         }
 
         auto install_path = "$(DESTDIR)" + ctx->installed(target);
