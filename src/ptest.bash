@@ -309,9 +309,16 @@ then
                 echo -e "* FAIL\t$name"
                 fail=$(expr $fail + 1)
 
+                # What somebody asking for --verbose wants is what
+                # the test printed.  The result is a tarball that
+                # also holds the return code and whatever else the
+                # test left in its scratch directory, so printing the
+                # file itself buries that output in tar headers, other
+                # files and NUL padding: pull out just the output, the
+                # same way an EROR below does.
                 if [[ "$verbose" == "true" ]]
                 then
-                    cat "$f"
+                    tar -xOf "$f" ptest__output
                 fi
             elif [[ "$ret" == "134" ]] && dir_abrt_is_fail "$dir"
             then
@@ -320,7 +327,7 @@ then
 
                 if [[ "$verbose" == "true" ]]
                 then
-                    cat "$f"
+                    tar -xOf "$f" ptest__output
                 fi
             else
                 echo -e "! EROR\t$name"
