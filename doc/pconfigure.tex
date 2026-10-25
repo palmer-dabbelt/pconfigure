@@ -2993,6 +2993,22 @@ its own.  A target with no \texttt{SOURCES} gets the usual warning,
 and its rules then fail when \texttt{make} reaches them rather than
 writing out an empty \texttt{.pc}.
 
+The values \pconfigure\ substitutes itself ---
+\texttt{@@pconfigure\_prefix@@}, \texttt{@@pconfigure\_libdir@@} and
+\texttt{@@pconfigure\_hdrdir@@} --- are written into the file as
+\texttt{pkg-config} values rather than as bare text, which matters for
+the copy that describes the build tree: its prefix is the absolute path
+of the checkout, and that is whatever directory somebody chose.  A
+space, a \texttt{\#}, a quote or a backslash in it gets a backslash in
+front, the way \texttt{pkg-config} spells those inside a value, so
+\texttt{/home/me/my checkout} is written
+\texttt{/home/me/my\textbackslash\ checkout} and comes back out of
+\texttt{ppkg-config} as one flag.  A \texttt{.pc} that pastes one of
+these into something other than a path --- a \texttt{Description},
+say --- shows the backslashes too.  Characters only \texttt{sed} cares
+about, such as \texttt{\&} and \texttt{\^{}}, are passed through as
+themselves.
+
 pkgconfig supports linking against pkgconfig.
 
 \subsection{\texttt{scala}: Scala \label{lang:scala}}
