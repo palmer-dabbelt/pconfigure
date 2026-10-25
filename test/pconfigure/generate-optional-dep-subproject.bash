@@ -92,8 +92,12 @@ grep -qxF '$(pconfigure_subdir_sub)obj/proc/gen.h: $(pconfigure_subdir_sub)src/g
 
 # The sed that re-derives the fragment writes "$$" where the fragment
 # has to end up holding a "$", twice over: once for the target's
-# variable and once for the path's.
-grep -qF 's|^?[[:space:]]*\(.*\)|$$(pconfigure_subdir_sub)obj/proc/gen.h: $$(foreach f,$$(wildcard $$(pconfigure_subdir_sub)\1),$$(if $$(realpath $$(f)),$$(f),))|' sub/obj/Makefile.sub
+# variable and once for the path's.  The path's is put on by the
+# expression that roots an optional line's first word, rather than by
+# the one that wraps the line in the filter, so that a line naming an
+# absolute path or several paths is rooted a word at a time.
+grep -qF 's|^?\([^/[:space:]]\)|?$$(pconfigure_subdir_sub)\1|' sub/obj/Makefile.sub
+grep -qF 's|^?[[:space:]]*\(.*\)|$$(pconfigure_subdir_sub)obj/proc/gen.h: $$(foreach f,$$(wildcard \1),$$(if $$(realpath $$(f)),$$(f),))|' sub/obj/Makefile.sub
 
 # And the generate recipe brackets the "cd" and the script together and
 # hangs the redirect off the group.  Without the brackets a "cd" that

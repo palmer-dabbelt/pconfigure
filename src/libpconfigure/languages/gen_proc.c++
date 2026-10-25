@@ -176,16 +176,47 @@ language_gen_proc::targets(const context::ptr& ctx) const
                 ? std::string() : rest.substr(start);
         };
 
-        /* The path a --deps line names, spelled the way the Makefile
-         * spells it: relative to where pconfigure ran, with the
+        /* The paths a --deps line names, spelled the way the Makefile
+         * spells them: relative to where pconfigure ran, with the
          * owning project on the front, and with the optional marker
-         * off.  Everything downstream of here wants the path rather
+         * off.  Everything downstream of here wants the paths rather
          * than the line, and the marker left on one of them is a
          * prerequisite named "?src/thing" that nothing will ever
-         * build. */
-        auto dep_path = [&](const std::string& line) {
-            return ctx->base + (optional_dep(line) == true
-                                ? optional_path(line) : line);
+         * build.
+         *
+         * PATHS, and rooted one at a time, because a line is not a
+         * path.  At the top of a tree the line goes into a
+         * prerequisite list as written, and make reads whitespace there
+         * as a separator: "  src/a" is src/a, "src/a src/b" is two
+         * inputs, a blank line is nothing, and "/opt/x" is /opt/x.  A
+         * subproject used to paste its prefix onto the front of the
+         * line instead, so each of those meant something else one
+         * level down -- "sub/" and a top-level src/a, a second path
+         * left naming a file in the parent, a blank line that hung the
+         * output off the subproject's own directory, and "sub//opt/x",
+         * which is no file at all.  Splitting the line into words and
+         * rooting each one is what makes a script mean the same thing
+         * wherever its project sits.  An absolute path is rooted
+         * already and is left alone: it names one file whoever reads
+         * it, and that is the reason a script spells it that way. */
+        auto root_path = [&](const std::string& path) {
+            return path[0] == '/' ? path : ctx->base + path;
+        };
+        auto dep_paths = [&](const std::string& line) {
+            auto text = optional_dep(line) == true
+                ? optional_path(line) : line;
+            auto out = std::vector<std::string>();
+            auto end = std::string::size_type(0);
+            while (true) {
+                auto start = text.find_first_not_of(" \t\v\f\r", end);
+                if (start == std::string::npos)
+                    break;
+                end = text.find_first_of(" \t\v\f\r", start);
+                out.push_back(root_path(text.substr(start, end - start)));
+                if (end == std::string::npos)
+                    break;
+            }
+            return out;
         };
 
         /* How an optional path is spelled once it reaches a
@@ -373,12 +404,24 @@ language_gen_proc::targets(const context::ptr& ctx) const
                 abort();
             }
 
-            /* What it printed is relative to itself. */
-            sources.push_back(
-                std::make_shared<makefile::target>(
-                    optional_dep(line) == true
-                    ? present_only(dep_path(line), "$")
-                    : dep_path(line)));
+            /* What it printed is relative to itself.  An optional
+             * line naming several paths keeps them inside the one
+             * filter, the way the fragment below spells it, since
+             * $(wildcard) takes a list as readily as a single
+             * pattern. */
+            auto paths = dep_paths(line);
+            if (optional_dep(line) == true) {
+                auto joined = std::string();
+                for (const auto& path: paths)
+                    joined += (joined.size() == 0 ? "" : " ") + path;
+                sources.push_back(
+                    std::make_shared<makefile::target>(
+                        present_only(joined, "$")));
+            } else {
+                for (const auto& path: paths)
+                    sources.push_back(
+                        std::make_shared<makefile::target>(path));
+            }
         }
 
         auto global_targets = std::vector<makefile::global_targets>{
@@ -592,10 +635,14 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * costs a build that never installs one precisely nothing. */
         auto watched = std::set<std::string>();
         for (const auto& line: dep_lines) {
-            auto based = dep_path(line);
-            auto slash = based.rfind('/');
-            watched.insert(slash == std::string::npos
-                           ? std::string(".") : based.substr(0, slash));
+            for (const auto& based: dep_paths(line)) {
+                auto slash = based.rfind('/');
+                watched.insert(slash == std::string::npos
+                               ? std::string(".")
+                               : slash == 0
+                               ? std::string("/")
+                               : based.substr(0, slash));
+            }
         }
 
         /* And the script's own directory, for a script whose glob was
@@ -657,11 +704,15 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * error the whole convention exists to avoid.
          *
          * The ORDER is the trick, and it is upside down from the
-         * obvious one.  The expression that rewrites optional lines
-         * runs LAST, and the two that handle ordinary lines each carry
-         * a "/^?/!" address so an optional line walks past them
-         * untouched.  Each line therefore gets exactly one rewrite,
-         * and no expression has to undo another's work.
+         * obvious one.  The expression that turns an optional line
+         * into a rule runs LAST, and the one that does the same for an
+         * ordinary line carries a "/^?/!" address so an optional line
+         * walks past it untouched.  Each line therefore becomes a rule
+         * exactly once, and no expression has to undo another's work.
+         * (In a subproject the paths on a line are rooted before
+         * either of those runs; that part is the same for both kinds
+         * of line apart from where the first word starts, and is
+         * explained where it is written.)
          *
          * Written the other way round -- optional first, then a "t" to
          * branch the finished line away from the rest -- it also works,
@@ -702,8 +753,8 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * A '?' cannot collide with a real path in those addresses.  An
          * ordinary line beginning with one would have been an optional
          * line -- that is what the convention spent the character on --
-         * and by the time the second address is tested a subproject's
-         * line is already carrying its variable on the front.
+         * and rooting a line's words, below, never puts a '?' on the
+         * front of a line that did not start with one.
          *
          * Two spellings are load-bearing and neither is obvious.  "$$("
          * is what a literal "$(" has to be written as, because make
@@ -715,13 +766,44 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * pattern it did not mean, while a greedy ".*" already reaches
          * the end of the line and asks make for nothing. */
         auto dep_sed = std::string();
-        if (variable.size() > 0)
-            dep_sed += "-e '/^?/!s|^|" + variable + "|' ";
+
+        /* A subproject roots each path a line names, the way
+         * dep_paths() above does for the snapshot, and the two have to
+         * agree: they are both prerequisites of the one rule, so a
+         * path the snapshot roots correctly and the fragment does not
+         * is the same failure with one step of indirection.  Pasting
+         * the variable onto the front of the LINE is what used to
+         * happen here, and it went wrong in the same four ways that
+         * comment lists -- worst for an optional absolute path, which
+         * became "$(wildcard sub//opt/x)", a glob that can never match,
+         * so the input arriving regenerated nothing and nobody was
+         * told.
+         *
+         * So a word gets the variable when it starts at the front of
+         * the line or after whitespace, and its first character is
+         * neither whitespace nor a '/'.  That is three expressions
+         * rather than one because POSIX BRE has no alternation to
+         * spell "start of line or whitespace" with -- "\|" is a GNU
+         * extension -- and an optional line's first word sits behind
+         * its '?'.  The first expression squeezes the whitespace after
+         * a '?' away so that the second has one spelling to look for.
+         * The "g" on the last one is safe because each match consumes
+         * the whitespace it starts at, so a run of words is rooted one
+         * word per match and none of them twice. */
+        if (variable.size() > 0) {
+            dep_sed += "-e 's|^?[[:space:]]*|?|' ";
+            dep_sed += "-e '/^?/!s|^\\([^/[:space:]]\\)|"
+                     + variable + "\\1|' ";
+            dep_sed += "-e 's|^?\\([^/[:space:]]\\)|?"
+                     + variable + "\\1|' ";
+            dep_sed += "-e 's|\\([[:space:]]\\)\\([^/[:space:]]\\)|\\1"
+                     + variable + "\\2|g' ";
+        }
         dep_sed += "-e '/^?/!s|.*|" + variable + ctx->unbased(target)
                  + ": &|' ";
         dep_sed += "-e 's|^?[[:space:]]*\\(.*\\)|" + variable
                  + ctx->unbased(target) + ": "
-                 + present_only(variable + "\\1", "$$") + "|'";
+                 + present_only("\\1", "$$") + "|'";
 
         /* The same refusal the configure-time guard above makes, on
          * the path where it actually matters.  That guard reads the
