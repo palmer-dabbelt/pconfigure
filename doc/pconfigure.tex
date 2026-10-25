@@ -122,6 +122,18 @@ name is not a name: an empty \texttt{LIBDIR} would put every library at
 the root of the filesystem.  The command and its operator are checked
 first either way, so a misspelled command is still reported as one.
 
+A shell out that fails --- exits with anything other than 0, is killed
+by a signal, or names a command that isn't installed --- stops
+\pconfigure\ with an error naming the line and the command's exit
+status.  This is how a \texttt{Configfile} finds out that a package it
+needs isn't there: \texttt{ppkg-config foo --cflags} fails when
+\texttt{foo} is missing, and carrying on would write a
+\texttt{Makefile} that builds without \texttt{foo}'s flags.  A command
+that is allowed to fail says so itself, with \texttt{ppkg-config}'s
+\texttt{--optional} (see Section~\ref{prog:ppkg-config}) or by ending
+it with \texttt{|| true}.  An unterminated \texttt{`} is an error
+naming the line too.
+
 A UTF-8 byte order mark at the very start of a \texttt{Configfile},
 which some editors write without being asked, is ignored.  Anywhere
 else in the file those bytes are an error on the line they appear on.
@@ -5088,7 +5100,12 @@ command-line options:
 
 \begin{itemize}
 \item \texttt{--optional}: returns success regardless of whether the
-  given \texttt{pkg-config} invocation succeeds or fails.
+  given \texttt{pkg-config} invocation succeeds or fails, and keeps
+  quiet about a failure.  Without it a package that isn't there is
+  required: \texttt{pkg-config}'s explanation is passed through on
+  stderr and \texttt{ppkg-config} exits with \texttt{pkg-config}'s
+  status, which stops \pconfigure\ when it was run as a shell out in
+  a \texttt{Configfile}.
 \item \texttt{--have \$name}: adds \texttt{-DHAVE\_\$name} to the
   compile-time arguments if the given \texttt{pkg-config} invocation
   succeeds, otherwise does nothing.
