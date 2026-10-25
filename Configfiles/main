@@ -225,6 +225,7 @@ TESTSRC     += bash-deps-follow-compileopts-defines.bash
 TESTSRC     += bash-include-of-directory-refused.bash
 TESTSRC     += bash-include-skips-directory-for-include-dir.bash
 TESTSRC     += bash-binary-test.bash
+TESTSRC     += bash-test-under-c-binary-ignores-c-defines.bash
 TESTSRC     += bash-compileopts-include-dir-separate-word.bash
 TESTSRC     += bash-subproject-compileopts-include-dir-separate-word.bash
 TESTSRC     += bash-subproject-compileopts-include-dir-glued.bash
