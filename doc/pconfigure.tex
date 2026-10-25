@@ -2409,7 +2409,12 @@ with \texttt{\$cmd}.
 
 When \pconfigure\ has no current source but a current target, every
 source linked into that target -- both the ones written down and the
-ones found -- is compiled with \texttt{\$cmd}.
+ones found -- is compiled with \texttt{\$cmd}.  The exception is a
+source found behind a header that some other language compiles, like
+a \texttt{.c++} behind a C program's header: \texttt{\$cmd} was said to
+the target's language, so that source is compiled with its own
+language's compiler instead (see Section~\ref{lang:cxx}).  A
+\texttt{CROSS\_COMPILE} on the target still applies to it.
 
 When \pconfigure\ has no current source or target, every source built
 with the current language is compiled with \texttt{\$cmd}.
@@ -3095,6 +3100,8 @@ what lets one C source be built a second time into a C++ library
 whose header wraps the same declarations in a namespace.  C can't
 compile C++, so a \texttt{.c++} behind a C program's header is
 compiled as C++, with C++'s compiler and the options given to C++.
+A \texttt{COMPILER} written on the C program was said to C and isn't
+used for it, though the program's \texttt{CROSS\_COMPILE} is.
 That takes C++ being in the project's \texttt{LANGUAGES}; when it
 isn't, the target's own language compiles the file, there being
 nothing else to hand it to.  The order of
