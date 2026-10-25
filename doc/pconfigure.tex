@@ -2616,7 +2616,11 @@ Section~\ref{prog:pnasm} for more information.
 This uses \texttt{pbashc}, a dummy BASH compiler to build BASH code.
 See Section~\ref{prog:pbashc} for more information.  BASH parses
 \texttt{pbashc} \texttt{\#include} directives to discover a list of
-implicit dependencies.  A test written in BASH is also the one place a
+implicit dependencies, searching the \texttt{-I} directories in its
+\texttt{COMPILEOPTS} the way \texttt{pbashc} does.  A relative one a
+subproject names is written from that subproject's own directory and
+gets the subproject's directory put on the front, just as it does for
+C (see Section~\ref{cmd:compileopts}).  A test written in BASH is also the one place a
 \texttt{\#pconfigure} directive (see Section~\ref{directive}) can be
 written, since a \texttt{\#} against the first column is a line the
 shell reads as a comment and every other language reads as something
