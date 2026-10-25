@@ -100,7 +100,15 @@ static int _pinclude_lines(const char *input,
     size_t i;
     size_t lineno;
     bool found;
+    /* Two answers per level of nesting, because an "#else" needs
+     * both.  "taken" is what the conditional's own test said, flipped
+     * by each "#else"; "state" is whether lines at that level are
+     * live, which also needs every enclosing branch to be.  Keeping
+     * only the second loses what an "#else" inside a dead branch has
+     * to flip, and keeping only the first lets a branch nested in a
+     * dead one come back to life on its own test. */
     bool state[NEST_MAX];
+    bool taken[NEST_MAX];
     int state_i;
     struct heredoc heredocs[NEST_MAX];
     int heredocs_open;
@@ -117,6 +125,7 @@ static int _pinclude_lines(const char *input,
 
     state_i = 0;
     state[state_i] = true;
+    taken[state_i] = true;
     lineno = 0;
     heredocs_open = 0;
 
@@ -195,7 +204,8 @@ static int _pinclude_lines(const char *input,
                     matched = true;
 
             state_i++;
-            state[state_i] = matched;
+            taken[state_i] = matched;
+            state[state_i] = state[state_i - 1] && taken[state_i];
 
 #ifdef DEBUG_LIBPINCLUDE_DEFINE
             fprintf(stderr, "ifdef: '%s' (%d -> %d)\n",
@@ -217,7 +227,8 @@ static int _pinclude_lines(const char *input,
                     matched = true;
 
             state_i++;
-            state[state_i] = !matched;
+            taken[state_i] = !matched;
+            state[state_i] = state[state_i - 1] && taken[state_i];
 
 #ifdef DEBUG_LIBPINCLUDE_DEFINE
             fprintf(stderr, "ifndef: '%s' (%d -> %d)\n",
@@ -233,7 +244,17 @@ static int _pinclude_lines(const char *input,
          * silently dropping every include after it -- and disagreed
          * with the dependency scan, which wants the word to end. */
         if (is_directive(buffer, "#else") == true) {
-            state[state_i] = !state[state_i];
+            /* An "#else" works out its branch from the one around it,
+             * and at the top of the file there isn't one: there is
+             * nothing for it to be the other half of. */
+            if (state_i == 0) {
+                fprintf(stderr, "%s:%zu: #else without an #if before it\n",
+                        input, lineno);
+                abort();
+            }
+
+            taken[state_i] = !taken[state_i];
+            state[state_i] = state[state_i - 1] && taken[state_i];
 
 #ifdef DEBUG_LIBPINCLUDE_DEFINE
             fprintf(stderr, "else: (%d -> %d)\n", state_i, state[state_i]);
@@ -245,7 +266,8 @@ static int _pinclude_lines(const char *input,
          * doesn't actually handle the check. */
         if (strncmp(buffer, "#if ", strlen("#if ")) == 0) {
             state_i++;
-            state[state_i] = true;
+            taken[state_i] = true;
+            state[state_i] = state[state_i - 1];
         }
 
         if (is_directive(buffer, "#endif") == true) {

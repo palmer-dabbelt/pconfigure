@@ -47,9 +47,14 @@ int pinclude::list(std::string filename,
                 on_directive);
 }
 
+/* OUTPUT and ELSE are the two halves of a conditional whose
+ * enclosing branches are all taken.  DEAD is any conditional inside one
+ * that isn't: its own test doesn't matter, and neither does an "#else"
+ * in it, because nothing can be live inside a branch that is off. */
 enum class state {
     OUTPUT,
     ELSE,
+    DEAD,
 };
 
 template<typename T> class option {
@@ -167,6 +172,18 @@ int list_overwrite_defines(std::string filename,
 
     std::stack<state> state_stack;
     state_stack.push(state::OUTPUT);
+
+    /* Whether a line is live depends on every conditional around it,
+     * not just the innermost one.  Rather than walk the stack on every
+     * line, the answer is worked out once as each conditional opens:
+     * one opened where lines are live goes by its own test, and one
+     * opened anywhere else is dead along with everything inside it. */
+    auto push_conditional = [&](bool resolved) {
+        if (state_stack.top() != state::OUTPUT)
+            state_stack.push(state::DEAD);
+        else
+            state_stack.push(resolved ? state::OUTPUT : state::ELSE);
+    };
 
     static const auto split = [](std::string str, std::string delim) {
         std::vector<size_t> slashes;
@@ -329,17 +346,17 @@ int list_overwrite_defines(std::string filename,
 
         check_line(line, "if", [&](std::string rest) {
             auto resolved = resolve_pp_function(rest, defines);
-            state_stack.push(resolved ? state::OUTPUT : state::ELSE);
+            push_conditional(resolved);
         }, bare_directives);
 
         check_line(line, "ifdef", [&](std::string rest) {
             auto resolved = resolve_pp_function("defined(" + rest + ")", defines);
-            state_stack.push(resolved ? state::OUTPUT : state::ELSE);
+            push_conditional(resolved);
         }, bare_directives);
 
         check_line(line, "ifndef", [&](std::string rest) {
             auto resolved = resolve_pp_function("!defined(" + rest + ")", defines);
-            state_stack.push(resolved ? state::OUTPUT : state::ELSE);
+            push_conditional(resolved);
         }, bare_directives);
 
         check_line(line, "define", [&](std::string rest) {
@@ -382,6 +399,9 @@ int list_overwrite_defines(std::string filename,
                 break;
             case state::ELSE:
                 state_stack.push(state::OUTPUT);
+                break;
+            case state::DEAD:
+                state_stack.push(state::DEAD);
                 break;
             }
         }, bare_directives);
