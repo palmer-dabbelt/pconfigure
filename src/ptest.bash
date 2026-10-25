@@ -475,6 +475,45 @@ do
     fi
 done
 
+# The line of a check rule that runs this starts with a "+", which is
+# how make knows to hand a test its jobserver: a test that runs a make
+# of its own then shares the outer "-j" rather than either running
+# serially or multiplying it.  But "+" also tells make that the line is
+# a recursive make, and make runs those even under "-n", "-t" and "-q"
+# -- they're how a dry run of a sub-make finds out what the sub-make
+# would do.  A test is not that.  It's the most expensive thing a build
+# runs and the one most likely to reach outside the tree, and a dry run
+# that starts it, and then writes a result saying it's done, is the
+# opposite of what was asked for.
+#
+# So this is the half of the "+" that make can't do: make has already
+# printed this command for a "-n" and will touch the result itself for
+# a "-t", and all that's left is not to run.  Splitting the decision
+# into the Makefile instead -- a "+" that only some expansions of the
+# line carry -- does stop the test, but make only clears a line to
+# share its jobserver by the "+" it sees before expanding anything, so
+# that loses the very thing the "+" is there for.
+#
+# The modes are single letters bunched together at the very start of
+# $MAKEFLAGS -- "n", or "ns" for "make -s -n" -- which GNU make writes
+# with no dash in front.  When there are none, make starts $MAKEFLAGS
+# with a space instead, and whatever follows is an option of its own:
+# " -Iinclude", " -Otarget", " -j2 --jobserver-auth=...", or the " --"
+# before a variable set on the command line.  Those are full of "n"s
+# and "t"s that are only letters of a directory name or an argument,
+# so the match is against $MAKEFLAGS exactly as make wrote it, with
+# neither the leading space stripped nor a dash allowed: taking
+# "make -I include check" for a dry run would skip every test and
+# report a clean check without having run one.
+#
+# $MAKELEVEL is how this knows make put them there: a ptest run by
+# hand from a shell with some MAKEFLAGS of its own exported is not a
+# dry run of anything.
+if [[ "$MAKELEVEL" != "" && "$MAKEFLAGS" =~ ^[[:alpha:]]*[ntq][[:alpha:]]*( |$) ]]
+then
+    exit 0
+fi
+
 abs_path() {
     case "$1" in
         /*) echo "$1" ;;

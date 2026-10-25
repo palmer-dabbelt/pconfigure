@@ -593,7 +593,14 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
              * directory left ptest writing to a path that wasn't there, so
              * the test never got a result at all.  The check directory itself
              * is still what --checkdir names, since that is where every test
-             * of this target looks for the others' results. */
+             * of this target looks for the others' results.
+             *
+             * The "+" on ptest is what hands a test the jobserver, so a test
+             * running a make of its own shares the outer "-j".  It also has make
+             * run the line under "-n", "-t" and "-q", as it would a sub-make;
+             * ptest is what declines to run the test then, because only a "+"
+             * make can see before it expands the line gets the jobserver, so it
+             * can't be left off for a dry run here. */
             auto commands = std::vector<std::string>{
                 "mkdir -p $(dir $@)",
                 "+" + makefile::tool_command("ptest") + " --test " + test_name + " --out " + target_name
