@@ -661,6 +661,7 @@ TESTSRC     += tgenerate-runs-test-script.bash
 TESTSRC     += tgenerate-subproject.bash
 TESTSRC     += tgenerate-outside-project-refused-as-tgenerate.bash
 TESTSRC     += generate-angle-bracket-include.bash
+TESTSRC     += c-angle-include-skips-includers-directory.bash
 TESTSRC     += generate-consumed-by-c-and-cxx.bash
 TESTSRC     += generate-header-includes-source-header.bash
 TESTSRC     += generate-duplicate-line-one-rule.bash

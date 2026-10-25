@@ -870,9 +870,22 @@ int list_overwrite_defines(std::string filename,
                     || promised.count(strip_dd(path)) > 0;
             };
 
+            /* The C preprocessor looks beside the includer only for
+             * the quoted spelling: "#include <time.h>" goes straight
+             * to the include path and on to the system's headers, so
+             * a project's own src/time.h is no part of what it reads.
+             * Looking beside the includer anyway would list that
+             * header as a dependency, and the source next to it would
+             * be compiled and linked into a program that never asked
+             * for it.  pbashc is another matter: it reads the angled
+             * spelling as the quoted one, so a script's angled include
+             * is still looked for beside the script. */
+            auto searches_includer = rest[0] == '"'
+                || language != pinclude::syntax::C;
+
             auto full_path = [&]() {
                 auto cwd_relative = get_relative_cwd(filename) + rest_path;
-                if (findable(cwd_relative))
+                if (searches_includer && findable(cwd_relative))
                     return option<std::string>(strip_dd(cwd_relative));
 
                 for (const auto& dir: include_dirs) {
