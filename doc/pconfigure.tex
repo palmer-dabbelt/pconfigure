@@ -317,8 +317,13 @@ in the land of GNU tools.
 there is read as an empty one, so a path that doesn't exist would
 otherwise configure an empty project and exit successfully; instead
 \pconfigure\ refuses it, naming the path and saying whether it is
-missing or isn't a directory.  The same goes for a \texttt{SRCPATH}
-written in a Configfile.
+missing or isn't a directory.  It can't have whitespace in it either:
+the source tree's path goes on the front of every target the
+\texttt{Makefile} names, and \texttt{make} would split each of them
+in two, so a directory with a space in its name is refused rather than
+configured into a \texttt{Makefile} that can't build anything.
+Rename it, or name a symlink to it that has no space in its name.  The
+same goes for a \texttt{SRCPATH} written in a Configfile.
 
 \section{\texttt{make} Targets \label{make}}
 
