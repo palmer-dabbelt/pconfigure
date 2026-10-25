@@ -53,8 +53,8 @@ cxx_sources_for_header(const std::string& full_header_path);
  * asks for, read the way the compiler reads them.
  *
  * Every flag that adds a directory to the search counts: "-I",
- * "-isystem", "-iquote" and "-idirafter" all decide where a
- * "#include" is found, so a header in any of them is one the object
+ * "-isystem", "-iquote", "-idirafter" and clang's "-isystem-after"
+ * all decide where a "#include" is found, so a header in any of them is one the object
  * was compiled against.  Each of them, and "-D", may have its
  * argument stuck on or as the word after it.  The options are words
  * already -- a line of COMPILEOPTS split on its spaces -- which is

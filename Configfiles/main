@@ -352,6 +352,7 @@ TESTSRC     += subproject-compileopts-include-after-other-flag.bash
 TESTSRC     += subproject-compileopts-isystem-relative.bash
 TESTSRC     += subproject-compileopts-isystem-header-edit-rebuilds.bash
 TESTSRC     += subproject-compileopts-iquote-idirafter-from-inside.bash
+TESTSRC     += compileopts-isystem-after-not-split.bash
 TESTSRC     += subprojects-same-tree-two-spellings.bash
 TESTSRC     += subproject-named-by-parent-and-grandparent.bash
 TESTSRC     += subproject-inner-dotdot-staying-inside-accepted.bash

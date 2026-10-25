@@ -96,18 +96,25 @@ static std::vector<std::string> reroot_link_opts(const std::vector<std::string>&
  * the ones whose argument a subproject writes from its own directory
  * and the ones whose directories the header search has to look in.
  * "-I" is the only one of them short enough to be the two-character
- * flag that path_prefix knows takes its argument stuck on. */
+ * flag that path_prefix knows takes its argument stuck on.
+ *
+ * clang's "-isystem-after" is one of them in its own right, not
+ * "-isystem" with "-after" stuck on: it adds the next word to the end
+ * of the system search.  It comes before "-isystem" here because the
+ * flags are matched by what a word starts with, and the longer name
+ * has to get the first look at a word or the shorter one takes it. */
 static const std::vector<std::string>& include_flags(void)
 {
     static const auto out = std::vector<std::string>{
-        "-I", "-isystem", "-iquote", "-idirafter"
+        "-I", "-isystem-after", "-isystem", "-iquote", "-idirafter"
     };
     return out;
 }
 
 /* Splits an option into the flag it starts with, out of "flags", and
  * whatever is stuck on after it.  An empty flag means the word isn't
- * any of them. */
+ * any of them.  The first flag a word starts with wins, so a flag
+ * whose name starts with another's goes ahead of it in "flags". */
 static std::pair<std::string, std::string>
 split_flag(const std::string& word, const std::vector<std::string>& flags)
 {
