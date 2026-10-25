@@ -343,6 +343,14 @@ and \texttt{\$OBJDIR/check-suite-\$name-scope}, and the next
 rewritten when what they say changes, so a reconfigure that leaves
 every set as it was leaves \texttt{make check} with nothing to do.
 
+A test is run so that it shares the jobserver of the \texttt{make}
+that ran it, which is what lets a test that runs a \texttt{make} of
+its own fit inside the outer \texttt{-j}.  It still runs nothing under
+\texttt{make -n check}, which prints the \texttt{ptest} command of
+each test that is out of date and leaves its result alone, nor under
+\texttt{make -t check}, which marks the old results current without
+running anything.
+
 \subsection{\texttt{make check-\$suite} \label{make:check_suite}}
 
 Builds and runs the tests of one test suite (see
