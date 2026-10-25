@@ -918,6 +918,17 @@ directory put on the front.  Those same directories are where
 \pconfigure\ looks for the headers a source reads, so editing a header
 found in any of them rebuilds what was compiled against it.
 
+A file named by \texttt{-include} or \texttt{-imacros}, which the
+compiler reads ahead of every source, is a header of every source
+too: editing it, or a header it includes, rebuilds what was compiled
+with it, and what it \texttt{\#define}s is seen by the
+\texttt{\#ifdef}s \pconfigure\ follows in the source.  It is looked
+for where the compiler looks, in the top of the tree and then along
+the include path.  A subproject's relative one that names a file in
+the subproject's own directory gets that directory put on the front;
+one that doesn't is left to be found along the include path by the
+name it was written with.
+
 \subsection{\texttt{LINKOPTS += \$opt}}
 
 \texttt{LINKOPTS} is just like \texttt{COMPILEOPTS}, but it sets
