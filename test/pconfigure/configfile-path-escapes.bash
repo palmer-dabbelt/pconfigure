@@ -281,6 +281,7 @@ then
     exit 1
 fi
 cat $top/hdrdir.out
-grep -q "Command HDRDIR not implemented" $top/hdrdir.out
+grep -q "HDRDIR is accepted by the parser but not implemented" $top/hdrdir.out
+grep -q "Configfile:3" $top/hdrdir.out
 
 exit 0

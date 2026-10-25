@@ -2831,12 +2831,7 @@ void command_processor::process_one(const command::ptr& cmd)
     }
 
     case command_type::TGENERATE:
-        unimplemented:
-        std::cerr << "Command "
-                  << std::to_string(cmd->type())
-                  << " not implemented\n";
-        abort();
-        break;
+        goto unimplemented;
 
     /* These two look like they take a value and don't: writing one
      * at all turns the thing on, and "= false" turns it on just as
@@ -2915,6 +2910,22 @@ void command_processor::process_one(const command::ptr& cmd)
     std::cerr << "Bad command index on '"
               << std::to_string(cmd->debug())
               << "'\n";
+    abort();
+
+/* A command the parser knows the name of and nothing here does
+ * anything with.  It is still a fatal error like any other, so it
+ * says which line asked for it: in a tree with several Configfiles,
+ * the name of the command alone leaves whoever reads this grepping
+ * for it.  There is nothing to write instead that would do the same
+ * thing -- if there were, the command would be implemented as that
+ * -- so the advice is the one thing that gets past it. */
+unimplemented:
+    std::cerr << std::to_string(cmd->debug()) << "\n"
+              << "  error: "
+              << std::to_string(cmd->type())
+              << " is accepted by the parser but not implemented\n"
+              << "  remove the line; this version of pconfigure does"
+              << " nothing with it\n";
     abort();
 
 bad_op_eq:
