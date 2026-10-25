@@ -5766,6 +5766,13 @@ which lines are Perl's text rather than its code:
   Perl.  To \texttt{pbashc} that spelling is still a heredoc that
   ends at \texttt{\textasciitilde EOT}, because that is what it means
   to the shell.
+\item A \texttt{<<} opens a heredoc only where Perl would read one:
+  with a word written right against it, as in \texttt{<<EOT}, or a
+  quoted terminator with or without blanks before it, as in
+  \texttt{<< "EOT"}.  So \texttt{1 << 4} and \texttt{\$x <<= 2} are
+  shifts, and the lines after them are still script.  The shell takes
+  a bare word after blanks as a terminator too, and \texttt{pbashc}
+  still does.
 \item Everything after a \texttt{\_\_DATA\_\_} or
   \texttt{\_\_END\_\_} line is data rather than script, so it goes
   out as it came in, \texttt{\#include} lines and all, and
