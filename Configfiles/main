@@ -285,6 +285,7 @@ TESTSRC     += prefix.bash
 TESTSRC     += gitdate.bash
 TESTSRC     += implicit_h.bash
 TESTSRC     += header-install.bash
+TESTSRC     += sourceless-headers-no-language-warning.bash
 TESTSRC     += destdir-with-space-refuses-install.bash
 TESTSRC     += destdir-with-space-refuses-uninstall.bash
 TESTSRC     += extensionless-header.bash

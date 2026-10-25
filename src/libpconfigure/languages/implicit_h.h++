@@ -43,6 +43,18 @@ public:
     virtual std::string name(void) const { return "implicit_h"; }
     virtual language_implicit_h* clone(void) const;
     virtual bool can_process(const context::ptr& ctx) const;
+
+    /* Ahead of every other language.  What this claims is a HEADERS
+     * with nothing under it, and a language that decides by the
+     * names of a target's sources has nothing to decide on there:
+     * every name it was given matched, because it was given none.
+     * So "h" and "c++" both say yes to exactly the targets this one
+     * exists for, and without this every such header was a tie,
+     * warned about on every configure as "Multiple valid languages",
+     * and settled by which language happened to be added first.
+     * Nothing else this could claim, so outranking the others costs
+     * them nothing. */
+    virtual int priority(void) const { return -1; }
     virtual std::vector<makefile::target::ptr> targets(const context::ptr& ctx) const;
 };
 

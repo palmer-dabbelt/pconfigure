@@ -128,8 +128,9 @@ public:
     virtual bool can_process(const context::ptr& ctx) const = 0;
 
     /* Returns an arbitrary integer.  When multiple languages are
-     * capable of processing a context then the one of largest
-     * priority will be picked. */
+     * capable of processing a context then the one of smallest
+     * priority will be picked, and only a tie for the smallest is
+     * warned about. */
     virtual int priority(void) const { return 0; }
 
     /* TRUE when an AUTODEPS decides what gets linked into a target as
