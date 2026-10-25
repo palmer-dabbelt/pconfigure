@@ -156,10 +156,31 @@ std::vector<command::ptr> commands(int argc, const char **argv)
      * understood, because what it is kept for is running pconfigure
      * again: the words that mean the same thing tomorrow are the ones
      * that were given today, and an option this run read one way is
-     * an option the next run gets to read for itself. */
-    command_line.assign(argv + 1, argv + argc);
+     * an option the next run gets to read for itself.
+     *
+     * The one exception is --debug, which is about this run of
+     * pconfigure rather than about the build, and which the manual
+     * promises leaves the Makefile as it would have been without it.
+     * Kept, it became the Makefile's default PCONFIGURE_ARGS, and
+     * every reconfigure after it -- the ones AUTORECONFIGURE starts
+     * from inside somebody's build included -- printed the debugging
+     * dump.  It's dropped below, where the words are walked one option
+     * at a time, rather than here: a "--debug" that is the argument
+     * to another option is a path or a name, and has to be kept. */
+    command_line.clear();
 
     for (auto i = 1; i < argc; ++i) {
+        /* The words from "first" to wherever "i" has got to once this
+         * option is parsed are the option and its argument, if it
+         * takes one. */
+        auto first = i;
+        auto record = [&](void) {
+            if (strcmp(argv[first], "--debug") == 0)
+                return;
+            command_line.insert(command_line.end(),
+                                argv + first, argv + i + 1);
+        };
+
         /* FIXME: This doesn't fit into the regular argument parsing framework,
          * so instead I'm just doing this here. */
         if (strcmp(argv[i], "--ppkg-config") == 0) {
@@ -178,6 +199,7 @@ std::vector<command::ptr> commands(int argc, const char **argv)
 
             ppkg_config_option = argv[i+1];
             ++i;
+            record();
             continue;
         }
 
@@ -220,6 +242,7 @@ std::vector<command::ptr> commands(int argc, const char **argv)
             abort();
         }
 
+        record();
         out.push_back(ecmd);
     }
 
