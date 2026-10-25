@@ -908,7 +908,12 @@ Written as \texttt{TESTS[\$suite]} the test joins a test suite (see
 Section~\ref{cmd:test_suites}) rather than only being part of every
 test the project has.  The name in the brackets belongs to the command
 rather than to the value: what comes after the operator is a filename
-either way.
+either way.  It is written after the command and against it, with no
+space before the \texttt{[} and nothing after the \texttt{]} but the
+space before the operator.  A line that gets any of that wrong is
+refused saying which, and when the name's place or the spacing round
+it and the operator was its only mistake it is given back written the
+way it should have been.
 
 A test runs with its working directory set to the directory
 \texttt{make} was run in, which is not necessarily the directory the
