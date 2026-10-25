@@ -78,6 +78,15 @@ necessary to run \texttt{make install} before running \texttt{make
 case, so be sure to consult your project's documentation before
 attempting that.
 
+A \texttt{CDPATH} in your environment is ignored.  \pconfigure\
+removes it before running anything while it configures --- an
+executable \texttt{Configfile}, a \texttt{GENERATE} script, a
+backtick --- and every \texttt{Makefile} it writes says
+\texttt{unexport CDPATH}, so no recipe sees it either.  Those all
+\texttt{cd} into relative paths, and under a \texttt{CDPATH} such a
+\texttt{cd} can end up in some other directory of the same name and
+prints where it went into output that is being read.
+
 \subsection{Using \pconfigure\ in your project}
 
 In order to use \pconfigure\ in your project you'll need a bit more
