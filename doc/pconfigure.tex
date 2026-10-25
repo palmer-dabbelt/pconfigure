@@ -2974,6 +2974,13 @@ This generates \texttt{pkg-config} files by passing them through
   an argument
 \end{itemize}
 
+Either way it is a single argument, holding exactly what was written:
+spaces, quotes and a \texttt{\$} reach \texttt{sed} as they are,
+without the shell splitting them or \texttt{make} expanding them.
+The one exception is an option that starts with a backtick, which is
+a command for the shell to run, and whose output is split into
+arguments the way the shell would split it.
+
 Note that one \texttt{sed} process is run for each argument provided
 as a compile option.
 
