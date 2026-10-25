@@ -69,6 +69,14 @@ private:
     /* The projects this one pulled in with SUBPROJECTS. */
     std::vector<ptr> _children;
 
+    /* The Configfiles whose lines are being read right now, outermost
+     * first, each beside the CONFIG that opened it -- NULL for one of
+     * the files every project reads, which nothing had to ask for.  A
+     * CONFIG naming one of these would read its own line again, and
+     * nothing used to notice: the recursion went on until the stack
+     * ran out, and pconfigure died of SIGSEGV having said nothing. */
+    std::vector<std::pair<std::string, command::ptr>> _reading;
+
 public:
     project(const std::string& base,
             const command_processor::ptr& processor,
@@ -329,6 +337,13 @@ private:
     static void read_file(const ptr& self,
                           const std::string& filename,
                           std::set<std::string>& seen);
+
+    /* Processes every line of the Configfiles one CONFIG names, where
+     * the CONFIG is.  A CONFIG that names a file still being read is
+     * a cycle and refused, at the CONFIG's own line. */
+    static void read_config(const ptr& self,
+                            const command::ptr& config,
+                            std::set<std::string>& seen);
 
     /* The targets that don't come from any context: cleaning out the
      * object cache, and undoing a configure. */

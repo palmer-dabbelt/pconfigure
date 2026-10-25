@@ -162,9 +162,7 @@ void project::process_line(const ptr& self,
         if (config == NULL)
             break;
 
-        for (const auto& included: config_lines(processor->srcpath(),
-                                                config))
-            process_line(self, included, seen);
+        read_config(self, config, seen);
     }
 
     /* A CONFIG_DEPS is registered the same way and in the same place,
@@ -201,9 +199,83 @@ void project::read_file(const ptr& self,
                         const std::string& filename,
                         std::set<std::string>& seen)
 {
+    /* One of the files every project reads is being read as much as
+     * one a CONFIG named, so a CONFIG of "../Configfile" from inside
+     * it is the same cycle as a file naming itself. */
+    auto normalized = file_utils::normalize_path(filename);
+    self->_reading.push_back(std::make_pair(normalized, command::ptr(NULL)));
+
     for (const auto& line: lines_from_file(self->_processor->srcpath(),
                                            filename))
         process_line(self, line, seen);
+
+    self->_reading.pop_back();
+}
+
+void project::read_config(const ptr& self,
+                          const command::ptr& config,
+                          std::set<std::string>& seen)
+{
+    const auto& processor = self->_processor;
+
+    /* The same two names config_lines() reads, spelled the one way
+     * every other name of the file is, so that "../Configfile" from
+     * Configfiles/ and the "./Configfile" read at the top are one
+     * file.  Only the ones that are there count: a name with nothing
+     * behind it reads nothing, and config_lines() has its own
+     * complaint for a CONFIG where neither is. */
+    auto names = std::vector<std::string>();
+    for (const auto& name: std::vector<std::string>{
+             processor->srcpath() + "/Configfiles/" + config->data(),
+             processor->srcpath() + "/Configfile." + config->data()}) {
+        struct stat st;
+        if (stat(name.c_str(), &st) == 0)
+            names.push_back(file_utils::normalize_path(name));
+    }
+
+    /* A file that is still being read can't be read again from inside
+     * itself: its lines include this one, so it would get here again,
+     * and so on until the stack runs out.  That used to be a SIGSEGV
+     * with nothing printed, which is the least helpful thing a
+     * Configfile mistake can come out as.  The complaint walks back
+     * through the CONFIGs that got here, since the line that closes
+     * a loop of several files is rarely the one that needs to go. */
+    for (const auto& name: names) {
+        size_t open = self->_reading.size();
+        for (size_t i = 0; i < self->_reading.size(); ++i)
+            if (self->_reading[i].first == name)
+                open = i;
+        if (open == self->_reading.size())
+            continue;
+
+        std::cerr << std::to_string(config->debug()) << "\n"
+                  << "  error: CONFIG names " << name
+                  << ", which is already being read -- reading it again"
+                  << " would reach this line again, and never finish\n";
+        for (size_t i = self->_reading.size(); i-- > open; ) {
+            const auto& reading = self->_reading[i];
+            if (reading.second != NULL)
+                std::cerr << "  " << reading.first << " is being read because of "
+                          << std::to_string(reading.second->debug()) << "\n";
+            else
+                std::cerr << "  " << reading.first << " is being read as one"
+                          << " of the Configfiles every project reads\n";
+        }
+        std::cerr << "  remove this CONFIG, or move what both files need"
+                  << " into a Configfile of its own that each of them"
+                  << " CONFIGs and that CONFIGs neither of them\n";
+        abort();
+    }
+
+    for (const auto& name: names) {
+        self->_reading.push_back(std::make_pair(name, config));
+    }
+
+    for (const auto& line: config_lines(processor->srcpath(), config))
+        process_line(self, line, seen);
+
+    for (size_t i = 0; i < names.size(); ++i)
+        self->_reading.pop_back();
 }
 
 project::ptr project::read(const command_processor::ptr& processor,
@@ -214,16 +286,23 @@ project::ptr project::read(const command_processor::ptr& processor,
                                          asked_by);
 
     /* Anything the command line asked for comes first, since that's
-     * the order it was processed in. */
+     * the order it was processed in.  Every one of them is taken off
+     * the queue before any is read: reading a file drains the queue
+     * after each of its lines, so a second "--config" left there would
+     * be read from inside the first one's file, while that file is
+     * still open -- which reads as a cycle, and "--config debugsym
+     * --config debug" is nothing of the sort.  Each "--config" is a
+     * sibling of the others, not nested in the one before it. */
+    auto command_line = std::vector<command::ptr>();
     while (true) {
         auto config = processor->take_pending_config();
         if (config == NULL)
             break;
 
-        for (const auto& line: config_lines(processor->srcpath(),
-                                            config))
-            process_line(out, line, seen);
+        command_line.push_back(config);
     }
+    for (const auto& config: command_line)
+        read_config(out, config, seen);
 
     /* A CONFIG_DEPS is registered the same way and in the same place,
      * so that "test/glade-vm" means the same directory whichever of
