@@ -5159,6 +5159,16 @@ don't warn.  The comparison is within one project, since two projects
 that both build a \texttt{libutil.so} each build it into their own
 \texttt{LIBDIR}.
 
+A target that comes out \emph{inside} another one's output is a
+different matter: \texttt{BINARIES += tools} beside
+\texttt{BINARIES += tools/run} asks for \texttt{bin/tools} to be both
+the first program and the directory the second one lands in.  No
+build can make both true, so that is always an error rather than a
+warning, whatever \texttt{STRICT} says and whichever of the two lines
+comes first.  The message names both lines; rename one of the
+targets, to \texttt{tools-run} say, so that neither is the other's
+directory.
+
 \subsection{\texttt{AUTODEPS = false} where nothing is linked}
 
 \begin{verbatim}
