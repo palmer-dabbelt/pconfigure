@@ -2344,7 +2344,11 @@ compiled into every program as \texttt{\_\_PCONFIGURE\_\_PREFIX} and
 the run-time library search path, so a relative prefix would be looked
 up from whatever directory the program was started in; and it is
 pasted unquoted into compile lines and install recipes, where a space
-splits it in two.  Repeated slashes and a trailing one are dropped, so
+splits it in two.  For the same reason a prefix can't have any of the
+characters \texttt{make} or the shell read specially in it ---
+\texttt{:}, \texttt{\#}, \texttt{=}, \texttt{\$}, \texttt{\%},
+a backslash or a quote among them --- since it is part of the name of
+every file \texttt{make install} writes.  Repeated slashes and a trailing one are dropped, so
 \texttt{/opt/thing/} and \texttt{/opt//thing} mean exactly what
 \texttt{/opt/thing} does; a prefix of \texttt{/} on its own is kept,
 and installs to \texttt{/bin} and \texttt{/lib} rather than
