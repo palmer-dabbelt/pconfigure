@@ -1228,6 +1228,10 @@ out as \texttt{-dep} is refused rather than left to fail inside
 \texttt{make}.  Writing it \texttt{./-dep} does not get around this,
 since the directory is normalized before anything is built from it;
 check the tree out under another name.
+A vendored tree is the exception: its directory reaches its recipes
+only as the argument of a \texttt{\$(MAKE) -C}, which takes the word
+after it whatever it looks like, so a vendored tree checked out as
+\texttt{-k} builds.
 
 It may not be the project itself or any directory that contains it,
 it may not climb out of the project, and it may not be inside an object
