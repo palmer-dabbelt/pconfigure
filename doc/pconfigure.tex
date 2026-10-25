@@ -2477,8 +2477,18 @@ the one that would have come out anyway.
 
 A project that would rather be told loudly writes the \texttt{STRICT}
 line, and the same message comes out saying \texttt{error} where it
-said \texttt{warning}, followed by the version that did it.  Nothing else
-changes about it, and \pconfigure\ stops there rather than writing a
+said \texttt{warning}, followed by the version that did it and where
+that was asked for -- the \texttt{Configfile} and line of the
+\texttt{STRICT}, or the command line for a \texttt{--strict}:
+
+\begin{verbatim}
+./Configfile:5 'COMPAT = 1.0'
+  error: COMPAT is read and then thrown away -- it has never done anything
+  delete the line; a project that wants to say which pconfigure it was written against wants STRICT
+  ('STRICT = v0.13' at ./Configfile:1 is what makes this an error)
+\end{verbatim}
+
+Nothing else changes about it, and \pconfigure\ stops there rather than writing a
 \texttt{Makefile}: a warning that a project has asked to be an error
 is an error, and half a \texttt{Makefile} is worse than none.
 
