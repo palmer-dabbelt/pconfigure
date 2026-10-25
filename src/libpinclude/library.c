@@ -80,7 +80,8 @@ static void str_chomp(char *str);
 static int streqcmp(const char *str, const char *eq);
 
 static void open_heredocs(const char *line, size_t lineno,
-                          struct heredoc *open, int *count);
+                          struct heredoc *open, int *count,
+                          enum pinclude_language language);
 
 static bool closes_heredoc(const char *line, const struct heredoc *open);
 
@@ -101,7 +102,8 @@ static int _pinclude_lines(const char *input,
                            void *include_priv, pinclude_lineback_t per_line,
                            void *line_priv, const char **include_dirs,
                            const char **defined, char **included,
-			   int skip_missing_files)
+			   int skip_missing_files,
+                           enum pinclude_language language)
 {
     int err;
     FILE *infile;
@@ -313,7 +315,7 @@ static int _pinclude_lines(const char *input,
          * the body of.  Asked after the line has been let through the
          * #ifdef state above, since a heredoc written in a branch
          * that isn't taken is one whose body never arrives. */
-        open_heredocs(buffer, lineno, heredocs, &heredocs_open);
+        open_heredocs(buffer, lineno, heredocs, &heredocs_open, language);
 
         /* Here's a hack: treat <> includes just like "" includes.
          *
@@ -513,7 +515,8 @@ static int _pinclude_lines(const char *input,
                                        per_include, include_priv,
                                        per_line, line_priv,
                                        include_dirs, defined, included,
-                                       skip_missing_files)) != 0) {
+                                       skip_missing_files,
+                                       language)) != 0) {
                 free(dir_path);
                 free(filename);
                 free(full_path);
@@ -591,6 +594,22 @@ int pinclude_lines(const char *filename,
                    const char **include_dirs, const char **defined,
 		   int skip_missing_files)
 {
+    return pinclude_lines_language(filename,
+                                   per_include, include_priv,
+                                   per_line, line_priv,
+                                   include_dirs, defined,
+                                   skip_missing_files,
+                                   PINCLUDE_SHELL);
+}
+
+int pinclude_lines_language(const char *filename,
+                            pinclude_callback_t per_include,
+                            void *include_priv,
+                            pinclude_lineback_t per_line, void *line_priv,
+                            const char **include_dirs, const char **defined,
+                            int skip_missing_files,
+                            enum pinclude_language language)
+{
     int err;
     int i;
     char *included[FILE_MAX];
@@ -606,7 +625,8 @@ int pinclude_lines(const char *filename,
                           per_include, include_priv,
                           per_line, line_priv,
                           include_dirs, defined, included,
-                          skip_missing_files);
+                          skip_missing_files,
+                          language);
 
     for (i = 0; i < FILE_MAX; i++)
         if (included[i] != NULL)
@@ -685,7 +705,8 @@ static bool ends_shell_word(char c)
 }
 
 void open_heredocs(const char *line, size_t lineno,
-                   struct heredoc *open, int *count)
+                   struct heredoc *open, int *count,
+                   enum pinclude_language language __attribute__((unused)))
 {
     size_t i;
     char quoted;

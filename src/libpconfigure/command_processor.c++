@@ -3078,7 +3078,7 @@ void command_processor::process_directives(const std::string& path)
          * line of shell is a comment, and it's the only way a C file
          * could write one that its own compiler wouldn't choke on
          * first. */
-        true,
+        pinclude::syntax::SHELL,
 
         [&](const pinclude::directive& directive) {
             /* The directive can be reached through an "#include"

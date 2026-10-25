@@ -39,6 +39,24 @@ int pinclude_lines(const char *filename,
                    const char **include_dirs, const char **defined,
 		   int skip_missing_files);
 
+/* Which language the file being expanded is written in.  The
+ * directives are the same in every one of them; what differs is which
+ * of a script's lines are text it carries around rather than script,
+ * and so are never directives whatever they look like.
+ * pinclude_lines() reads a file as shell. */
+enum pinclude_language {
+    PINCLUDE_SHELL,
+    PINCLUDE_PERL,
+};
+
+int pinclude_lines_language(const char *filename,
+                            pinclude_callback_t per_include,
+                            void *include_priv,
+                            pinclude_lineback_t per_line, void *line_priv,
+                            const char **include_dirs, const char **defined,
+                            int skip_missing_files,
+                            enum pinclude_language language);
+
 #ifdef __cplusplus
 }
 #endif

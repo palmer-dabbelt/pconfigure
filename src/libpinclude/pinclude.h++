@@ -53,16 +53,35 @@ namespace pinclude {
      * expanded, since that is how they are found. */
     typedef std::function<void(const directive&)> directive_callback;
 
+    /* What a file is written in, which decides what counts as a
+     * directive and which lines can't be one whatever they look
+     * like.
+     *
+     * C is the relaxed reading, where a directive may be indented
+     * and may have space between its '#' and its name -- this tree's
+     * own sources indent a "# ifdef" inside a conditional.  A script
+     * gets the stricter one: a '#' in the first column with the
+     * keyword written against it, and nothing else, since anywhere
+     * else a '#' starts a comment.  A script also carries text that
+     * isn't script at all, a heredoc's body, and what that looks
+     * like is where the two scripting languages part: Perl writes
+     * an indented heredoc as "<<~", which to the shell is a heredoc
+     * ending at "~", and Perl ends the script itself at a
+     * "__DATA__" or "__END__" line. */
+    enum class syntax {
+        C,
+        SHELL,
+        PERL,
+    };
+
     /* Looks through the given file for #include lines, calling the given
      * callback for any included file that exists inside one of the given
      * include_dirs.  This handles some simple CPP #define-related things, the
      * list of default definitions is given in defined.  Any non-zero return
      * value from the callback stops parsing and returns that value.
      *
-     * bare_directives asks for the stricter reading of what counts as a
-     * directive: a # in the first column with the keyword written
-     * against it, and nothing else.  That is what a shell script needs,
-     * where # otherwise starts a comment.
+     * language says which of the readings above to use, and is C
+     * unless the caller knows better.
      *
      * on_directive is handed every "#pconfigure" line found on the way
      * through, and defaults to nothing at all for the callers that
@@ -72,7 +91,7 @@ namespace pinclude {
              std::vector<std::string> defined,
              std::function<int(std::string)> callback,
              bool skip_missing_files,
-             bool bare_directives = false,
+             syntax language = syntax::C,
              directive_callback on_directive = {});
 
     int list(std::string filename,
@@ -80,14 +99,14 @@ namespace pinclude {
              std::unordered_set<std::string> defined,
              std::function<int(std::string)> callback,
              bool skip_missing_files,
-             bool bare_directives = false,
+             syntax language = syntax::C,
              directive_callback on_directive = {});
 
     static inline
     int list(std::string filename,
              std::function<int(std::string)> callback,
              bool skip_missing_files,
-             bool bare_directives = false,
+             syntax language = syntax::C,
              directive_callback on_directive = {})
     {
         return list(filename,
@@ -95,7 +114,7 @@ namespace pinclude {
                     std::vector<std::string>{},
                     callback,
                     skip_missing_files,
-                    bare_directives,
+                    language,
                     on_directive
                 );
     }

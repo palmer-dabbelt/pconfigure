@@ -40,6 +40,11 @@
 #error "Where does Perl live on this system?"
 #endif
 
+/* The two are expanded the same way, but they don't agree on which
+ * lines are text rather than script -- a heredoc is written
+ * differently in each, and only Perl has a "__DATA__". */
+#define LANGUAGE PINCLUDE_PERL
+
 #elif defined(LANG_BASH)
 
 #if defined(__gnu_linux__) || defined(__APPLE__)
@@ -47,6 +52,8 @@
 #else
 #error "Where does Bash live on this system?"
 #endif
+
+#define LANGUAGE PINCLUDE_SHELL
 
 #else
 #error "No language defined"
@@ -198,7 +205,9 @@ int main(int argc, char **argv)
 
     fprintf(outfile, SHEBANG "\n");
 
-    if (pinclude_lines(input, NULL, NULL, &write_line, defs, (const char **)dirs, (const char **)defs, 1) != 0) {
+    if (pinclude_lines_language(input, NULL, NULL, &write_line, defs,
+                                (const char **)dirs, (const char **)defs, 1,
+                                LANGUAGE) != 0) {
         fprintf(stderr, "unable to expand '%s'\n", input);
 
         fclose(outfile);

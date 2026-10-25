@@ -23,6 +23,7 @@
 
 #include "../language.h++"
 #include <libmakefile/self_path.h++>
+#include <pinclude.h++>
 #include <memory>
 
 /* BASH is the first language I have that doesn't need a compile
@@ -48,6 +49,13 @@ public:
     const
         { return makefile::tool_command("pbashc"); }
     virtual std::string compiler_pretty(void) const { return "BASH"; }
+
+    /* How the compiler reads a source, which is how the list of what
+     * that source includes has to be found too.  The two have to
+     * agree about which lines are text rather than script, or make
+     * is told about a file other than the one that gets compiled. */
+    virtual pinclude::syntax script_syntax(void) const
+        { return pinclude::syntax::SHELL; }
 
     /* Lists all the dependencies of a bash-like file -- these can be any sort
      * of makefile target because they might have dependencies themselves.

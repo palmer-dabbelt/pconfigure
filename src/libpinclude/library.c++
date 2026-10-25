@@ -32,7 +32,7 @@ int pinclude::list(std::string filename,
                    std::vector<std::string> defines,
                    std::function<int(std::string)> callback,
                    bool skip_missing_files,
-                   bool bare_directives,
+                   pinclude::syntax language,
                    pinclude::directive_callback on_directive)
 {
     std::unordered_set<std::string> define_set;
@@ -44,7 +44,7 @@ int pinclude::list(std::string filename,
                 define_set,
                 callback,
                 skip_missing_files,
-                bare_directives,
+                language,
                 on_directive);
 }
 
@@ -90,7 +90,8 @@ struct heredoc {
 };
 
 static void open_heredocs(const std::string& line,
-                          std::vector<heredoc>& open);
+                          std::vector<heredoc>& open,
+                          pinclude::syntax language);
 
 static bool closes_heredoc(const std::string& line, const heredoc& open);
 
@@ -138,7 +139,7 @@ int list_overwrite_defines(std::string filename,
                            std::unordered_set<std::string>& defines,
                            std::function<int(std::string)> callback,
                            bool skip_missing_files,
-                           bool bare_directives,
+                           pinclude::syntax language,
                            const pinclude::directive_callback& on_directive);
 
 int pinclude::list(std::string filename,
@@ -146,7 +147,7 @@ int pinclude::list(std::string filename,
                    std::unordered_set<std::string> defines,
                    std::function<int(std::string)> callback,
                    bool skip_missing_files,
-                   bool bare_directives,
+                   pinclude::syntax language,
                    pinclude::directive_callback on_directive)
 {
     return list_overwrite_defines(
@@ -155,7 +156,7 @@ int pinclude::list(std::string filename,
         defines,
         callback,
         skip_missing_files,
-        bare_directives,
+        language,
         on_directive
     );
 }
@@ -165,9 +166,13 @@ int list_overwrite_defines(std::string filename,
                            std::unordered_set<std::string>& defines,
                            std::function<int(std::string)> callback,
                            bool skip_missing_files,
-                           bool bare_directives,
+                           pinclude::syntax language,
                            const pinclude::directive_callback& on_directive)
 {
+    /* Every script is read the strict way, which is the question
+     * check_line() asks. */
+    auto bare_directives = language != pinclude::syntax::C;
+
     std::ifstream file(filename);
     std::string line;
 
@@ -342,7 +347,7 @@ int list_overwrite_defines(std::string filename,
                 continue;
             }
 
-            open_heredocs(line, heredocs);
+            open_heredocs(line, heredocs, language);
         }
 
         check_line(line, "if", [&](std::string rest) {
@@ -533,7 +538,7 @@ int list_overwrite_defines(std::string filename,
                     defines,
                     callback,
                     skip_missing_files,
-                    bare_directives,
+                    language,
                     on_directive
                 );
                 if (rout != 0) {
@@ -574,7 +579,8 @@ static bool ends_shell_word(char c)
  * more, which is the same reading pbashc does -- the two have to
  * agree about where a body starts and ends, or the file make is told
  * about is not the file that gets compiled. */
-void open_heredocs(const std::string& line, std::vector<heredoc>& open)
+void open_heredocs(const std::string& line, std::vector<heredoc>& open,
+                   pinclude::syntax language __attribute__((unused)))
 {
     char quoted = '\0';
 

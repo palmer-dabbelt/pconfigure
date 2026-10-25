@@ -43,6 +43,8 @@ public:
     const
         { return makefile::tool_command("pperlc"); }
     virtual std::string compiler_pretty(void) const { return "PERL"; }
+    virtual pinclude::syntax script_syntax(void) const
+        { return pinclude::syntax::PERL; }
 
     /* Virtual methods from language. */
     virtual std::string name(void) const { return "perl"; }

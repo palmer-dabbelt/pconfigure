@@ -403,8 +403,10 @@ language_bash::dependencies(const std::string& path,
         defined.push_back(define.substr(0, define.find('=')));
 
     std::vector<makefile::target::ptr> out;
-    /* A shell script's # is a comment leader, so nothing but the bare
-     * "#include" that pbashc expands may be read as a directive here. */
+    /* A script's # is a comment leader, so nothing but the bare
+     * "#include" that pbashc expands may be read as a directive here,
+     * and what is text rather than script depends on which language
+     * the script is written in. */
     pinclude::list(path,
                    include_dirs,
                    defined,
@@ -412,7 +414,7 @@ language_bash::dependencies(const std::string& path,
                        auto t = std::make_shared<makefile::target>(p);
                        out.push_back(t);
                        return 0;
-                   }, true, true);
+                   }, true, script_syntax());
     return out;
 }
 
