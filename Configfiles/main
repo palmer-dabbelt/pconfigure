@@ -503,6 +503,7 @@ TESTSRC     += autoreconfigure-comment-only-edit-settles.bash
 TESTSRC     += autoreconfigure-turned-off-by-edit-settles.bash
 TESTSRC     += autoreconfigure-config-script-edit-reconfigures.bash
 TESTSRC     += autoreconfigure-subproject-configfile-local-noticed.bash
+TESTSRC     += autoreconfigure-broken-edit-keeps-makefile.bash
 TESTSRC     += compileopts-two-flags-one-line-define-seen.bash
 TESTSRC     += compileopts-two-flags-one-line-define-seen-autoreconfigure.bash
 TESTSRC     += define-with-value-pulls-in-header-source.bash
