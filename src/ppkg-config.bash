@@ -32,8 +32,19 @@ do
     shift
 done
 
-# Actually runs pkg-config
-stdout="$($cmd $args 2> /dev/null)"
+# Actually runs pkg-config.  Its stderr is only thrown away for
+# --optional, which asks for a missing package to be no news at all.
+# Without it the package is required, and pkg-config's own "Package
+# foo was not found in the pkg-config search path", with its hint
+# about PKG_CONFIG_PATH, is the only thing that says which package it
+# was and where it was looked for: throwing that away too left a
+# required package that was missing failing without a word.
+if [[ "$optional" == "true" ]]
+then
+    stdout="$($cmd $args 2> /dev/null)"
+else
+    stdout="$($cmd $args)"
+fi
 retval="$?"
 stdout="$(echo "$stdout" | sed 's^-L/usr/lib64^^g' | sed 's^-Wl,-rpath,/usr/lib64^^g' | sed 's^-L/usr/lib^^g' | sed 's^-Wl,-rpath,/usr/lib^^g')"
 if [[ "$(uname)" == "Darwin" ]]
