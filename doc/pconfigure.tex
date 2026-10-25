@@ -1030,7 +1030,13 @@ subproject's own directory: the relative directory of a \texttt{-I},
 word, gets the subproject's
 directory put on the front.  Those same directories are where
 \pconfigure\ looks for the headers a source reads, so editing a header
-found in any of them rebuilds what was compiled against it.
+found in any of them rebuilds what was compiled against it.  They are
+searched in the order the compiler searches them, which goes by the
+kind of flag rather than by the order the lines were written in: a
+quoted \texttt{\#include} looks in the includer's directory and then
+every \texttt{-iquote}, and an angled one in neither; then both look
+along every \texttt{-I}, every \texttt{-isystem}, every
+\texttt{-isystem-after} and last every \texttt{-idirafter}.
 
 A file named by \texttt{-include} or \texttt{-imacros}, which the
 compiler reads ahead of every source, is a header of every source
@@ -1038,7 +1044,7 @@ too: editing it, or a header it includes, rebuilds what was compiled
 with it, and what it \texttt{\#define}s is seen by the
 \texttt{\#ifdef}s \pconfigure\ follows in the source.  It is looked
 for where the compiler looks, in the top of the tree and then along
-the include path.  A subproject's relative one that names a file in
+the include path the way a quoted \texttt{\#include} is.  A subproject's relative one that names a file in
 the subproject's own directory gets that directory put on the front;
 one that doesn't is left to be found along the include path by the
 name it was written with.
