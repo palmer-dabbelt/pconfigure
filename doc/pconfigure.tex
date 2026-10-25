@@ -941,6 +941,12 @@ will copy \texttt{\$HDRDIR/libname.h} into \texttt{\$PREFIX/\$HDRDIR}
 when \texttt{make install} is run, and will do nothing else at any
 other time.
 
+\texttt{\$HDRDIR} here is the one in the source tree: with
+\texttt{--srcpath} (see Section~\ref{cl:srcpath}) or a
+\texttt{SRCPATH} the header is read out of the checkout, which is
+where a compile that includes it finds it too, rather than out of the
+build directory.
+
 As with \texttt{BINARIES} (see Section~\ref{cmd:binaries}), the name
 may have a directory in it but may not climb out of the project, start
 from the root or be a \texttt{make} expansion.
