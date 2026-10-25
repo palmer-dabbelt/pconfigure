@@ -340,6 +340,29 @@ void project::generate_targets(void)
      * name and two homes, which is a thing somebody meant. */
     auto by_output = std::map<std::string, context::ptr>();
 
+    /* A GENERATE writes its output while its targets are being worked
+     * out, and a source's targets are worked out by scanning it for
+     * the headers that are on disk at that moment.  So every GENERATE
+     * is asked first, whichever line it was written on.  One written
+     * below the BINARIES whose source includes its output used to be
+     * generated only after that source had been scanned, which left
+     * the object with no dependency on the header -- an edited input
+     * regenerated it and nothing recompiled -- and a second
+     * pconfigure, finding the header the first had left behind, wrote
+     * a different Makefile.  Refusing the line would have been the
+     * other way out, but it would also have refused the generator
+     * binary shape, where the tool a GENERATE runs is a BINARIES
+     * written above it.  Only the generating moves: the rules still
+     * come out in the order the Configfile wrote them. */
+    auto generated = std::map<context::ptr, std::vector<makefile::target::ptr>>();
+    for (const auto& context: _processor->output_contexts()) {
+        if (context->check_type({context_type::GENERATE}) == false)
+            continue;
+
+        auto language = pick_language(context->languages, context);
+        generated[context] = language->targets(context);
+    }
+
     for (const auto& context: _processor->output_contexts()) {
         if (context->debug == true)
             std::cerr << "Building Context: " << context->cmd->data() << "\n";
@@ -347,7 +370,11 @@ void project::generate_targets(void)
         check_target_shape(context, by_output);
 
         auto language = pick_language(context->languages, context);
-        for (const auto& target: language->targets(context)) {
+        auto found_generated = generated.find(context);
+        auto targets = (found_generated != generated.end())
+            ? found_generated->second
+            : language->targets(context);
+        for (const auto& target: targets) {
             auto found = _by_name.find(target->name());
             if (found == _by_name.end()) {
                 if (context->debug == true)
