@@ -106,6 +106,12 @@ static void looked_in(const char *dir, const char *filename);
 
 static bool at_eof(FILE *file);
 
+static char *file_identity(const char *path);
+
+static bool already_included(char **included, const char *path);
+
+static void mark_included(char **included, const char *path);
+
 static int _pinclude_lines(const char *input,
                            pinclude_callback_t per_include,
                            void *include_priv, pinclude_lineback_t per_line,
@@ -464,21 +470,13 @@ static int _pinclude_lines(const char *input,
                     abort();
             }
 
-            for (i = 0; i < FILE_MAX; i++)
-                if (included[i] != NULL
-                    && strcmp(full_path, included[i]) == 0)
-                    goto skip_file;
+            if (already_included(included, full_path) == true)
+                goto skip_file;
 
             found = false;
 
             if (includable(full_path) == true) {
-                for (i = 0; i < FILE_MAX; i++) {
-                    if (included[i] != NULL)
-                        continue;
-
-                    included[i] = strdup(full_path);
-                    break;
-                }
+                mark_included(included, full_path);
 
 #ifdef DEBUG_LIBPINCLUDE_INCLUDE
                 fprintf(stderr, "inc: '%s'\n", full_path);
@@ -511,29 +509,16 @@ static int _pinclude_lines(const char *input,
 
             /* Check each additional include directory */
             for (i = 0; include_dirs[i] != NULL; i++) {
-                size_t fi;
-
                 free(full_path);
                 if (asprintf(&full_path, "%s/%s", include_dirs[i], filename) <
                     0)
                     abort();
 
-                for (fi = 0; fi < FILE_MAX; fi++)
-                    if (included[fi] != NULL
-                        && strcmp(full_path, included[fi]) == 0)
-                        goto skip_file;
+                if (already_included(included, full_path) == true)
+                    goto skip_file;
 
                 if (includable(full_path) == true) {
-                    /* A separate index from the one this loop is
-                     * walking: they were the same variable, which
-                     * only worked because control left immediately. */
-                    for (fi = 0; fi < FILE_MAX; fi++) {
-                        if (included[fi] != NULL)
-                            continue;
-
-                        included[fi] = strdup(full_path);
-                        break;
-                    }
+                    mark_included(included, full_path);
 
                     if (per_include != NULL) {
                         if ((err = per_include(full_path, include_priv)) != 0) {
@@ -706,6 +691,13 @@ int pinclude_lines_language(const char *filename,
     for (i = 0; i < FILE_MAX; i++)
         included[i] = NULL;
 
+    /* The file being expanded is the first thing in the output, so it
+     * is the first thing on the list of what has been pasted.  Left
+     * off, a helper that includes the script it was included from
+     * pastes the whole script in again inside itself, and every line
+     * of the program runs twice. */
+    mark_included(included, filename);
+
     /* Passing what the caller asked for rather than a 1: written the
      * other way the argument was accepted and then ignored, so
      * pinclude_list()'s promise to report the files that aren't there
@@ -722,6 +714,66 @@ int pinclude_lines_language(const char *filename,
             free(included[i]);
 
     return err;
+}
+
+/* What says two paths name the same file, for the list of what has
+ * already been pasted.  The path as it was spelled doesn't: an
+ * include is spelled from the directory of the file it's in, so one
+ * common file is "src/common.bash" from one place and
+ * "src/lib/../common.bash" from another, and "./helper.bash" is
+ * "helper.bash".  Each of those used to be pasted once per spelling.
+ *
+ * realpath() rather than taking the dots out by hand, the way the
+ * scan in library.c++ does: this is only ever asked about a file that
+ * is there, and resolving it properly means a ".." after a symlinked
+ * directory goes where the kernel would send it rather than to
+ * whichever file happens to sit beside the link.  A path realpath()
+ * can't resolve is kept as written, which is no worse than before;
+ * opening it is about to fail and say so anyway. */
+static char *file_identity(const char *path)
+{
+    char *resolved;
+
+    resolved = realpath(path, NULL);
+    if (resolved != NULL)
+        return resolved;
+
+    resolved = strdup(path);
+    if (resolved == NULL)
+        abort();
+
+    return resolved;
+}
+
+static bool already_included(char **included, const char *path)
+{
+    char *identity;
+    bool found;
+    size_t i;
+
+    identity = file_identity(path);
+
+    found = false;
+    for (i = 0; i < FILE_MAX; i++)
+        if (included[i] != NULL && strcmp(identity, included[i]) == 0)
+            found = true;
+
+    free(identity);
+
+    return found;
+}
+
+static void mark_included(char **included, const char *path)
+{
+    size_t i;
+
+    for (i = 0; i < FILE_MAX; i++) {
+        if (included[i] != NULL)
+            continue;
+
+        included[i] = file_identity(path);
+        return;
+    }
 }
 
 /* Whether an "#include" may be satisfied by PATH.  Being readable is
