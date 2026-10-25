@@ -209,6 +209,15 @@ public:
     /* The path to the header compiler. */
     std::string phc;
 
+    /* Where that path was given -- the PHC line or the "--phc" on the
+     * command line -- or NULL when it's still the phc that came with
+     * pconfigure.  A header copy that can't find its tool is a
+     * mistake in that line rather than in the header, and this is
+     * what lets the complaint point at it.  Not one of the
+     * constructor's arguments, like build_made below: only the PHC
+     * command sets it, and dup() carries it along. */
+    debug_info::ptr phc_debug;
+
     /* The entitlements this target's code signature should carry,
      * named as a path to a plist relative to the project it belongs
      * to, or empty when it should carry none.  This only means

@@ -202,6 +202,7 @@ context::ptr context::dup(const context_type& type,
                                          this->lib_dir_built,
                                          this->autoreconfigure);
     out->build_made = this->build_made;
+    out->phc_debug = this->phc_debug;
     return out;
 }
 

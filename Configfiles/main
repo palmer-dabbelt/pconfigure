@@ -704,6 +704,7 @@ TESTSRC     += deplibs-without-target-names-line.bash
 TESTSRC     += subproject-wrong-operator-names-line.bash
 TESTSRC     += phc-wrong-operator-refused.bash
 TESTSRC     += cmdline-phc-empty-refused.bash
+TESTSRC     += phc-missing-tool-names-phc.bash
 TESTSRC     += configureopts-without-build-system-names-line.bash
 TESTSRC     += compileopts-without-target-names-the-line.bash
 TESTSRC     += deplibs-after-sources-names-the-line.bash

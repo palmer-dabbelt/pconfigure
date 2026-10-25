@@ -68,6 +68,7 @@ command_processor::command_processor(const std::string& base,
     if (defaults != NULL) {
         _root->prefix = defaults->prefix;
         _root->phc = defaults->phc;
+        _root->phc_debug = defaults->phc_debug;
         _root->verbose = defaults->verbose;
         _root->debug = defaults->debug;
         _root->cross_compile = defaults->cross_compile;
@@ -3157,6 +3158,7 @@ void command_processor::process_one(const command::ptr& cmd)
         }
 
         _stack.top()->phc = cmd->data();
+        _stack.top()->phc_debug = cmd->debug();
         return;
     }
 

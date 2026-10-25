@@ -24,6 +24,7 @@
 #include "../file_utils.h++"
 #include <assert.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <iostream>
 
@@ -178,6 +179,43 @@ language_h::targets(const context::ptr& ctx) const
 
         for (const auto& cmd: t->cmds()) {
             auto status = system(cmd.c_str());
+
+            /* The shell exits 127 when it found nothing to run and 126
+             * when what it found couldn't be executed.  Said about the
+             * command that runs the PHC, that is the tool itself
+             * missing: the include directory is fine, and advice about
+             * it sends the reader to the one thing that isn't the
+             * problem.  So this names the tool instead, and where it
+             * was chosen -- the PHC line, the "--phc" on the command
+             * line, or nowhere, when it is the phc this pconfigure was
+             * built with. */
+            auto code = WIFEXITED(status) ? WEXITSTATUS(status) : 0;
+            auto runs_phc = cmd.compare(0, ctx->phc.size(), ctx->phc) == 0;
+            if (runs_phc && (code == 127 || code == 126)) {
+                std::cerr << std::to_string(ctx->cmd->debug()) << "\n"
+                          << "  error: '" << cmd << "' "
+                          << file_utils::describe_wait_status(status)
+                          << "\n";
+                if (ctx->phc_debug != NULL) {
+                    auto spelling = ctx->phc_debug->from_command_line()
+                        ? std::string("'--phc'")
+                        : std::string("that PHC");
+                    std::cerr << "  the header compiler '" << ctx->phc
+                              << "' was set by PHC at "
+                              << std::to_string(ctx->phc_debug) << "\n"
+                              << "  make " << spelling << " name a program"
+                              << " that can be run, or leave it out to use"
+                              << " the phc that came with pconfigure\n";
+                } else
+                    std::cerr << "  the header compiler '" << ctx->phc
+                              << "' is the phc that came with pconfigure,"
+                              << " and it couldn't be run\n"
+                              << "  install pconfigure's phc there, or"
+                              << " write 'PHC = <path>' (or give"
+                              << " '--phc <path>') to use another\n";
+                abort();
+            }
+
             if (status != 0) {
                 std::cerr << std::to_string(ctx->cmd->debug()) << "\n"
                           << "  error: '" << cmd << "' "
