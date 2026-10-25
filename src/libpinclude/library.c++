@@ -54,13 +54,19 @@ int pinclude::list(std::string filename,
                 promised);
 }
 
-/* OUTPUT and ELSE are the two halves of a conditional whose
- * enclosing branches are all taken.  DEAD is any conditional inside one
- * that isn't: its own test doesn't matter, and neither does an "#else"
- * in it, because nothing can be live inside a branch that is off. */
+/* OUTPUT, ELSE and DONE are the states of a conditional whose
+ * enclosing branches are all taken.  OUTPUT is the branch being read
+ * now; ELSE is one that is off while no branch of the chain has been
+ * taken yet, so the next "#elif" or "#else" may still be; DONE is
+ * every branch after the one that was taken, which stays off whatever
+ * an "#elif" says.  DEAD is any conditional inside a branch that is
+ * off: its own test doesn't matter, and neither does an "#elif" or an
+ * "#else" in it, because nothing can be live inside a branch that is
+ * off. */
 enum class state {
     OUTPUT,
     ELSE,
+    DONE,
     DEAD,
 };
 
@@ -563,6 +569,73 @@ int list_overwrite_defines(std::string filename,
                 break;
             case state::ELSE:
                 state_stack.push(state::OUTPUT);
+                break;
+            case state::DONE:
+                state_stack.push(state::DONE);
+                break;
+            case state::DEAD:
+                state_stack.push(state::DEAD);
+                break;
+            }
+        }, bare_directives);
+
+        /* An "#elif" ends the branch before it and opens another in the
+         * same conditional, and which one is read is the first whose
+         * test holds: once a branch has been taken, every one after it
+         * is off, however its own test comes out.  Without this the
+         * lines after an "#elif" went by the "#if" that opened the
+         * chain, so an include in the "#elif" that was taken went
+         * unlisted and one after a taken "#if" was followed.
+         *
+         * Only in C.  pbashc knows nothing of an "#elif": to it the
+         * line is a comment and the lines after it go by the "#ifdef"
+         * above, and the list of what a script reads has to be found
+         * the way pbashc finds it.
+         *
+         * The test is only worked out for a branch that could be the
+         * one taken.  After a branch has been, or inside one that is
+         * off, the compiler doesn't evaluate it either, and an
+         * expression this reader can't follow is no reason to stop. */
+        check_line(line, "elif", [&](std::string rest) {
+            if (language != pinclude::syntax::C)
+                return;
+
+            /* The bottom of the stack is the file itself rather than a
+             * conditional, and there is nothing for an "#elif" there
+             * to be the next branch of.  Taken as one, it would turn
+             * off the rest of the file. */
+            if (state_stack.size() <= 1) {
+                std::cerr << filename << ":" << lineno << ": '"
+                          << raw << "' has no '#if' before it\n"
+                          << "  an '#elif' is the next branch of an"
+                          << " '#if', '#ifdef' or '#ifndef' that is"
+                          << " still open\n"
+                          << "  open the conditional before it, or write"
+                          << " '#if' if this is where it starts\n";
+                abort();
+            }
+
+            auto ss = state_stack.top();
+            state_stack.pop();
+            switch (ss) {
+            case state::OUTPUT:
+            case state::DONE:
+                state_stack.push(state::DONE);
+                break;
+            case state::ELSE:
+                if (rest == "") {
+                    std::cerr << filename << ":" << lineno << ": '"
+                              << raw << "' has no expression\n"
+                              << "  write the test this branch is"
+                              << " taken on after it, or '#else' if it"
+                              << " is taken whenever the ones before it"
+                              << " aren't\n";
+                    abort();
+                }
+
+                state_stack.push(resolve_pp_function(rest, defines)
+                                 ? state::OUTPUT
+                                 : state::ELSE);
                 break;
             case state::DEAD:
                 state_stack.push(state::DEAD);
