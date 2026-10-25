@@ -976,6 +976,7 @@ TESTSRC     += subproject-standalone-configure-keeps-bash-binary-recipe-record.b
 TESTSRC     += subproject-same-test-name-as-parent-reported-separately.bash
 TESTSRC     += subproject-check-through-parent-written-makefile.bash
 TESTSRC     += subproject-default-test-suite-not-applied-from-top.bash
+TESTSRC     += subproject-config-suffix-read-from-subproject.bash
 
 # The half of pconfigure that a build can run on its own, one source
 # at a time.  It is a BINARY rather than a LIBEXEC because pconfigure
