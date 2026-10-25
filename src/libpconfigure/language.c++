@@ -19,6 +19,7 @@
  */
 
 #include "language.h++"
+#include "project.h++"
 #include "string_utils.h++"
 #include <errno.h>
 #include <iostream>
@@ -108,7 +109,18 @@ bool language::all_sources_match(const context::ptr& ctx,
  * An output that is already in the object directory, like the compiled
  * copy of a test, gets its record beside it rather than under a second
  * "obj"; a directory named after the output can't be used there, since
- * the output itself is the file of that name. */
+ * the output itself is the file of that name.
+ *
+ * And it has the run that wrote it on the very end, the way a
+ * Makefile.<path> or a deps-context-* does, for the reason
+ * project::base_suffix() gives: a subproject is configured from the
+ * top and from inside itself, and each of those spells the recipe from
+ * where it stands -- "sub/obj/..." from one, "obj/..." from the other.
+ * A record both shared would hold whichever ran last, so every
+ * configure of one would rebuild the output (and run the test again)
+ * in the other's next make, with nothing about either having changed.
+ * The top of a run gets no suffix at all, so a project configured only
+ * on its own keeps the name it always had. */
 makefile::target::ptr
 language::recipe_record(const context::ptr& ctx,
                         const std::string& output,
@@ -117,7 +129,8 @@ language::recipe_record(const context::ptr& ctx,
     auto name = file_utils::inside(output, ctx->obj_dir)
         ? output.substr(ctx->obj_dir.size() + 1)
         : ctx->unbased(output);
-    auto recipe_path = ctx->obj_dir + "/" + name + ".recipe-inputs";
+    auto recipe_path = ctx->obj_dir + "/" + name + ".recipe-inputs"
+        + project::base_suffix(ctx->base);
     auto recipe = std::string();
     for (const auto& line: commands)
         recipe += line + "\n";
