@@ -21,6 +21,7 @@
 #include "autotools.h++"
 #include "../file_utils.h++"
 #include "../string_utils.h++"
+#include "vendored.h++"
 #include <sys/stat.h>
 #include <dirent.h>
 #include <unistd.h>
@@ -958,9 +959,15 @@ build_system_autotools::vendored_targets(
      * handed several goals is allowed to run them at the same time,
      * and "all install" run at the same time is an install of a tree
      * that is still being built.  The stamp still gets written last,
-     * so it says every target that was asked for succeeded. */
-    auto submake = with_env("$(MAKE) --no-print-directory -C " + output
-                          + makeopt_flags());
+     * so it says every target that was asked for succeeded.
+     *
+     * Through vendored::submake(), which is what lets a "make -n" on
+     * a tree that has never been configured get past here: see there
+     * for why. */
+    auto submake = vendored::submake(
+        output,
+        with_env("$(MAKE) --no-print-directory -C " + output
+                 + makeopt_flags()));
 
     auto build_commands = std::vector<std::string>();
     if (_make_targets.size() == 0)

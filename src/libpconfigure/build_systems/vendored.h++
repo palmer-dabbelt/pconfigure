@@ -82,6 +82,12 @@ namespace vendored {
      * waits on.  See the definition for why that's two
      * "$(wildcard)"s rather than one. */
     std::string globbed(const std::vector<std::string>& globs);
+
+    /* A recursive make into "dir", a build directory that another
+     * line of the same rule creates.  "command" is the whole of the
+     * line that runs it, environment and all.  See the definition
+     * for what this adds to it and why only a dry run sees it. */
+    std::string submake(const std::string& dir, const std::string& command);
 }
 
 #endif

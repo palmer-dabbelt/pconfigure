@@ -266,3 +266,37 @@ std::string vendored::globbed(const std::vector<std::string>& globs)
 {
     return "$(wildcard $(wildcard " + string_utils::join(globs, " ") + "))";
 }
+
+/* A "make -n" runs every line with a $(MAKE) in it, so that the
+ * sub-make can say what it would do, and only prints the rest.  The
+ * line that creates a vendored tree's build directory -- configure,
+ * or cmake -- is one of the rest, so on a tree that has never been
+ * built a dry run went on to start the sub-make in a directory that
+ * wasn't there, and stopped with "No such file or directory" rather
+ * than describing the build it was asked about.
+ *
+ * So under -n, and only under -n, the sub-make is skipped when its
+ * directory is missing: the configure line make has just printed is
+ * the answer to what would happen there, and there is nothing yet for
+ * a sub-make to read.  A tree that has been configured is still gone
+ * into, because what its own build would do is the part of a dry run
+ * worth having.
+ *
+ * Not the same check made always.  A real build cannot get here
+ * without the configure that made the directory having succeeded, so
+ * a missing one there is something gone wrong, and a sub-make that
+ * stops on it is the right answer; one that quietly skipped would let
+ * the rule write its stamp over a build that never happened.  Nor a
+ * '+' on the configure line, which would make a dry run configure the
+ * tree for real -- the thing meson's rules leave the '+' off to avoid.
+ *
+ * The test for -n is make's own idiom: the single-letter flags are
+ * the first word of MAKEFLAGS, and the '-' in front stands in for
+ * them when there are none, so that a long option such as
+ * --no-print-directory is never what gets searched for an 'n'. */
+std::string vendored::submake(const std::string& dir,
+                              const std::string& command)
+{
+    return "$(if $(findstring n,$(firstword -$(MAKEFLAGS))),test ! -d "
+         + dir + " || )" + command;
+}

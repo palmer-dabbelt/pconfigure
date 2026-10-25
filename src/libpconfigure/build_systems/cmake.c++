@@ -201,13 +201,15 @@ std::string build_system_cmake::build_command(const std::string& target) const
      * make hand this build its jobserver, so a "make -j8" up here is
      * eight jobs in total rather than eight plus however many the
      * tree decides to start.  It's also the only shape a MAKEOPS
-     * means anything in. */
+     * means anything in.  Through vendored::submake(), because the
+     * cmake that makes this directory is a line a "make -n" only
+     * prints: see there for what that does to a dry run. */
     if (make_generator() == true) {
         auto out = "$(MAKE) --no-print-directory -C " + cmake_build_dir()
                  + makeopt_flags();
         if (target.size() > 0)
             out += " " + string_utils::quoted(target);
-        return with_env(out);
+        return vendored::submake(cmake_build_dir(), with_env(out));
     }
 
     /* And for everything else, cmake's own way of asking for a build
