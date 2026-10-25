@@ -241,12 +241,20 @@ project::ptr project::read(const command_processor::ptr& processor,
         add_config_dep_from(processor->srcpath(), dep);
     }
 
+    /* A "--srcpath" is asked about before its Configfiles are read,
+     * since a tree that isn't there has none and reads as an empty
+     * project -- and again once they have been, for a SRCPATH one of
+     * them wrote. */
+    processor->check_srcpath();
+
     for (const auto& filename: std::vector<std::string>{
              processor->srcpath() + "/Configfiles/local",
              processor->srcpath() + "/Configfile.local",
              processor->srcpath() + "/Configfiles/main",
              processor->srcpath() + "/Configfile"})
         read_file(out, filename, seen);
+
+    processor->check_srcpath();
 
     out->generate_targets();
     return out;

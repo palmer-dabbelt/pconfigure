@@ -30,6 +30,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <iostream>
+#include <sys/stat.h>
 #include <unistd.h>
 
 command_processor::command_processor(const std::string& base,
@@ -55,7 +56,9 @@ command_processor::command_processor(const std::string& base,
       _given_srcpath(false),
       _srcpath(base.size() == 0 ? "." : base.substr(0, base.size() - 1)),
       _base(base),
-      _root(std::make_shared<context>(base))
+      _root(std::make_shared<context>(base)),
+      _srcpath_tree(base),
+      _srcpath_cmd(NULL)
 {
     /* A subproject is its own project, with its own languages and its
      * own directories, but it does get built and installed as part of
@@ -2923,6 +2926,8 @@ void command_processor::process_one(const command::ptr& cmd)
         tos->test_dir = path + "/" + tos->test_dir.substr(_base.size());
         tos->src_path = path + "/";
         _srcpath = path;
+        _srcpath_tree = path + "/" + _srcpath_tree.substr(_base.size());
+        _srcpath_cmd = cmd;
         return;
     }
 
@@ -2992,6 +2997,38 @@ no_configure_target:
               << " opened one\n"
               << "  write it below the BUILD_SYSTEMS or SUBPROJECTS line"
               << " it is meant for\n";
+    abort();
+}
+
+void command_processor::check_srcpath(void) const
+{
+    if (_srcpath_cmd == NULL)
+        return;
+
+    /* Nothing later would notice: a Configfile that isn't there is
+     * read as an empty one, and sources that aren't there are only
+     * missed when make goes looking for them -- so a source tree that
+     * isn't there configured as an empty project, with an empty
+     * Makefile, exit 0 and a "make" that had nothing to do.  A
+     * misspelled "--srcpath" is far more likely than a project that
+     * really is nothing, and it's the SRCPATH line that knows which
+     * path was meant to be the tree. */
+    auto tree = _srcpath_tree.substr(0, _srcpath_tree.size() - 1);
+    struct stat buf;
+    auto missing = stat(tree.c_str(), &buf) != 0;
+    if (missing == false && S_ISDIR(buf.st_mode) == true)
+        return;
+
+    std::cerr << std::to_string(_srcpath_cmd->debug()) << "\n"
+              << "  error: SRCPATH names '" << tree << "', which "
+              << (missing == true ? "doesn't exist" : "isn't a directory")
+              << "\n"
+              << "  SRCPATH is the directory the sources and Configfiles"
+              << " are read from, so without one there is no project to"
+              << " configure\n"
+              << "  name the directory the sources are in, relative to"
+              << " the project's own directory -- for '--srcpath', the"
+              << " one pconfigure was run from\n";
     abort();
 }
 

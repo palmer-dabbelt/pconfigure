@@ -179,6 +179,13 @@ private:
      * project's defaults. */
     context::ptr _root;
 
+    /* The directory every SRCPATH so far adds up to, ending in a
+     * '/', and the last line that moved it.  That isn't _srcpath: a
+     * second SRCPATH is read relative to the first, so after "a" and
+     * then "b" the sources are under "b/a" while _srcpath says "b". */
+    std::string _srcpath_tree;
+    command::ptr _srcpath_cmd;
+
     /* The subprojects that have been asked for but not read yet.
      * They're handed back one at a time rather than read here,
      * because reading a project is the job of whoever owns this.
@@ -283,6 +290,13 @@ public:
     /* Processes a single command, performing the action that should
      * be associated with that command. */
     void process(const command::ptr& command);
+
+    /* Refuses a SRCPATH that doesn't name a directory.  It's asked
+     * once the lines that could have moved the source tree have been
+     * read rather than at each one, because a second SRCPATH is read
+     * relative to the first: the first alone can name a directory that
+     * only exists under the second. */
+    void check_srcpath(void) const;
 
 private:
     /* The half of process() that does the work.  The split exists
