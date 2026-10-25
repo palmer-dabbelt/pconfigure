@@ -35,7 +35,7 @@
 #if defined(LANG_PERL)
 
 #if defined(__gnu_linux__) || defined(__APPLE__)
-#define SHEBANG "#!" SHEBANG_PREFIX "/usr/bin/perl\n"
+#define SHEBANG "#!" SHEBANG_PREFIX "/usr/bin/perl"
 #else
 #error "Where does Perl live on this system?"
 #endif
@@ -48,7 +48,7 @@
 #elif defined(LANG_BASH)
 
 #if defined(__gnu_linux__) || defined(__APPLE__)
-#define SHEBANG "#!" SHEBANG_PREFIX "/bin/bash\n"
+#define SHEBANG "#!" SHEBANG_PREFIX "/bin/bash"
 #else
 #error "Where does Bash live on this system?"
 #endif
@@ -61,6 +61,17 @@
 
 /* The output file is a global file. */
 static FILE *outfile;
+
+/* Set when the input's first line is a "#!" line of its own, which
+ * write_line() then leaves out: the compiled program's "#!" line takes
+ * its place rather than sitting above it. */
+static int skip_first_line;
+
+/* Reads the input's own "#!" line, if it has one, and returns the
+ * options on it for the compiled program's "#!" line to carry --
+ * an empty string when there are none, and NULL when the input
+ * doesn't start with "#!" at all. */
+static char *shebang_options(const char *input);
 
 /* Writes a line out to the output file. */
 static int write_line(const char *line, void *unused);
@@ -203,7 +214,32 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    fprintf(outfile, SHEBANG "\n");
+    /* The interpreter is always pbashc's own, since that is where
+     * SHEBANG_PREFIX puts a cross build's, but whatever options the
+     * script's "#!" line gave it come along onto the line that
+     * replaces it.  Options are only ever read from the first line:
+     * this used to write its own "#!" and a blank line above the
+     * script's, which left "#!/bin/bash -e" on line three as a comment
+     * -- a script that stops at the first failure compiled into one
+     * that carries on -- and Perl's "-w" quietly gone the same way.
+     * Replacing the line rather than adding one also keeps every line
+     * of the program on the line it has in the source, which is what
+     * an error message or $LINENO names.  A script with no "#!" line
+     * of its own gets the line and the blank one after it as before:
+     * it moves down either way, and nothing it asked for is lost. */
+    {
+        char *options = shebang_options(input);
+
+        if (options == NULL)
+            fprintf(outfile, SHEBANG "\n\n");
+        else if (options[0] != '\0')
+            fprintf(outfile, SHEBANG " %s\n", options);
+        else
+            fprintf(outfile, SHEBANG "\n");
+
+        skip_first_line = (options != NULL);
+        free(options);
+    }
 
     if (pinclude_lines_language(input, NULL, NULL, &write_line, defs,
                                 (const char **)dirs, (const char **)defs, 1,
@@ -249,7 +285,17 @@ int main(int argc, char **argv)
 int write_line(const char *line, void *defs_uncast)
 {
     const char **defs = defs_uncast;
-    char *new_line = strdup(line);
+    char *new_line;
+
+    /* The first line pinclude hands over is the input's first line:
+     * a "#!" line is never an "#include", so nothing comes before it
+     * that could take its place. */
+    if (skip_first_line) {
+        skip_first_line = 0;
+        return 0;
+    }
+
+    new_line = strdup(line);
     while (*defs != NULL) {
         char *old_line = new_line;
         if (strstr(*defs, "=") != NULL) {
@@ -333,4 +379,70 @@ char *replace(const char *line, const char *pair)
 
     free(from);
     return out;
+}
+
+char *shebang_options(const char *input)
+{
+    FILE *file;
+    char *line;
+    size_t line_size;
+    char *cursor;
+    char *end;
+    char *interpreter;
+    size_t interpreter_length;
+
+    file = fopen(input, "r");
+    if (file == NULL)
+        return NULL;
+
+    line = NULL;
+    line_size = 0;
+    if (getline(&line, &line_size, file) < 0
+        || strncmp(line, "#!", 2) != 0) {
+        free(line);
+        fclose(file);
+        return NULL;
+    }
+    fclose(file);
+
+    /* The line ending goes, and with it any trailing blanks -- the
+     * kernel ignores them, and so the options shouldn't grow any
+     * either.  A "\r" from a file written on Windows goes too. */
+    end = line + strlen(line);
+    while (end > line + 2 && strchr(" \t\r\n", end[-1]) != NULL)
+        end--;
+    *end = '\0';
+
+    /* Then the interpreter itself, which is pbashc's to choose. */
+    cursor = line + 2;
+    cursor += strspn(cursor, " \t");
+    interpreter = cursor;
+    cursor += strcspn(cursor, " \t");
+    interpreter_length = cursor - interpreter;
+    cursor += strspn(cursor, " \t");
+
+    /* "#!/usr/bin/env bash" names env as the interpreter, and the
+     * word after it is the program env runs rather than an option.
+     * Carried over that would make "/bin/bash bash", a shell running
+     * a script called "bash", so it and any options env was given
+     * ("-S" is how "env -S bash -e" gets its "-e" through) are
+     * skipped, and what comes after the program is what that program
+     * was asked for. */
+    if (interpreter_length >= 3
+        && strncmp(interpreter + interpreter_length - 3, "env", 3) == 0
+        && (interpreter_length == 3
+            || interpreter[interpreter_length - 4] == '/')) {
+        while (*cursor == '-') {
+            cursor += strcspn(cursor, " \t");
+            cursor += strspn(cursor, " \t");
+        }
+        cursor += strcspn(cursor, " \t");
+        cursor += strspn(cursor, " \t");
+    }
+
+    /* Everything left is one string, which is how the kernel hands
+     * it to the interpreter too: it doesn't split "-e -u" into two
+     * arguments, so neither does this. */
+    memmove(line, cursor, strlen(cursor) + 1);
+    return line;
 }

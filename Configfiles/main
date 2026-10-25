@@ -224,6 +224,9 @@ TESTSRC     += bash-binary-test.bash
 TESTSRC     += bash-compileopts-include-dir-separate-word.bash
 TESTSRC     += bash-compileopts-define-separate-word.bash
 TESTSRC     += bash-compileopts-stray-word-refused.bash
+TESTSRC     += bash-shebang-options-kept.bash
+TESTSRC     += bash-shebang-line-numbers-kept.bash
+TESTSRC     += bash-env-shebang-takes-no-options.bash
 TESTSRC     += c-cxx.bash
 TESTSRC     += c-binary-cxx-source-behind-header-compiled-as-cxx.bash
 TESTSRC     += cxx-binary-c-source-behind-header-compiled-as-cxx.bash
@@ -469,6 +472,7 @@ TESTSRC     += compileopts-without-target-names-the-line.bash
 TESTSRC     += deplibs-after-sources-names-the-line.bash
 TESTSRC     += unknown-language-names-the-line.bash
 TESTSRC     += perl-library-names-the-line.bash
+TESTSRC     += perl-shebang-options-kept.bash
 TESTSRC     += header-only-library-names-the-line.bash
 
 # Incremental-rebuild behavior, one dependency type per test, the
