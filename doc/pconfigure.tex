@@ -580,7 +580,9 @@ here, the bookkeeping an \texttt{AUTORECONFIGURE} build keeps for
 working its dependencies out, the record each \texttt{GENERATE} keeps
 of the recipe that wrote its dependency fragment (without which the
 next configure would throw the fragment away and run \texttt{--deps}
-again), and the scratch directory a test was
+again) --- though only for the \texttt{GENERATE}s configured now, so
+that one deleted from the \texttt{Configfile} has its record reclaimed
+along with its output --- and the scratch directory a test was
 given --- which is a fixture somebody deliberately did not want copied
 around, and usually one that is expensive to make twice.
 \texttt{make clean} is what removes that last one, along with the
