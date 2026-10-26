@@ -375,6 +375,30 @@ language_gen_proc::targets(const context::ptr& ctx) const
                 "declare should do."
         };
 
+        /* The complaint about a ';', likewise written once for the
+         * same two guards.  On a rule line a ';' ends the prerequisites
+         * and starts a recipe, so a path with one in it was not merely
+         * a wrong file: "src/a;touch PWNED" handed make the input
+         * "src/a" and a recipe of "touch PWNED", which overrode the
+         * GENERATE recipe -- whatever the script printed after the ';'
+         * was run by make as a shell command, in place of the script.
+         * Unlike a '#', a '$' or a ':' there is no way to spell one
+         * that make reads back as part of a file name: "\;" still ends
+         * the list, and so does a ';' inside "$(wildcard ...)", since
+         * make looks for it before expanding anything.  So it is
+         * refused, on an optional line as much as a mandatory one, and
+         * what to do instead is rename the file, since the name is the
+         * only thing that can change. */
+        auto semicolon_lines = std::vector<std::string>{
+            "'" + ctx->unbased(procfile)
+                + " --deps' printed a path with a ';' in it",
+            "  make reads a ';' on a rule line as the start of a recipe, "
+                "and has no way to",
+            "  spell one that is part of a file name.  Rename the input "
+                "so its name has no",
+            "  ';' in it -- or, if it is not an input, stop printing it."
+        };
+
         /* Every way of running the script wrong is fatal, and a fatal
          * error has to name the GENERATE line that asked for it: a
          * tree with a dozen of these is not one where the reader can
@@ -491,6 +515,21 @@ language_gen_proc::targets(const context::ptr& ctx) const
                 for (const auto& l: bare_optional_lines)
                     std::cerr << l << "\n";
                 std::cerr << std::to_string(ctx->cmd->debug()) << "\n";
+                abort();
+            }
+
+            /* Checked before the line is split into paths, because the
+             * line is what lands on the rule line and a ';' anywhere
+             * in it -- in a path or between two -- ends it there.  The
+             * GENERATE line comes first, as it does when the script
+             * fails, and the line the script printed last, so the
+             * reader can see which of its inputs has the name to
+             * change. */
+            if (line.find(';') != std::string::npos) {
+                std::cerr << std::to_string(ctx->cmd->debug()) << "\n";
+                for (const auto& l: semicolon_lines)
+                    std::cerr << l << "\n";
+                std::cerr << "  it printed: " << line << "\n";
                 abort();
             }
 
@@ -1000,6 +1039,18 @@ language_gen_proc::targets(const context::ptr& ctx) const
         for (const auto& l: bare_optional_lines)
             bare_optional_echo += "echo \"" + l + "\"; ";
 
+        /* The ';' refusal, made here for the same reason the bare '?'
+         * one is: an edited script reaches this recipe and never the
+         * configure-time guard, and this is where a ';' would reach a
+         * rule line.  The fragment is included, so it is the Makefile
+         * as far as make is concerned, and a ';' let through into it
+         * is a recipe make runs on the next pass.  The offending lines
+         * are printed after the explanation, as the configure-time
+         * message prints its one. */
+        auto semicolon_echo = std::string();
+        for (const auto& l: semicolon_lines)
+            semicolon_echo += "echo \"" + l + "\"; ";
+
         auto dep_commands = std::vector<std::string>{
             "mkdir -p $(dir $@)",
             "(" + in_project("\"" + ctx->unbased(procfile) + "\" --deps")
@@ -1007,6 +1058,10 @@ language_gen_proc::targets(const context::ptr& ctx) const
             "if grep -q '^?[[:space:]]*$$' $@.raw; then "
             "{ " + bare_optional_echo + "} >&2; "
             "rm -f $@.raw; exit 1; fi",
+            "if grep -q ';' $@.raw; then "
+            "{ " + semicolon_echo
+                 + "sed -n 's|^|  it printed: |p' $@.raw | grep ';'; "
+            "} >&2; rm -f $@.raw; exit 1; fi",
             "sed " + dep_sed + " $@.raw > $@.tmp"
                   + " && mv $@.tmp $@"
                   + " || (rm -f $@.raw $@.tmp; exit 1)"

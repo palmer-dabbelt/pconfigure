@@ -913,6 +913,7 @@ TESTSRC     += generate-deps-path-with-dollar-watched.bash
 TESTSRC     += generate-deps-path-with-hash-and-dollar-in-subproject.bash
 TESTSRC     += generate-deps-path-with-colon-watched.bash
 TESTSRC     += generate-optional-dep-path-with-colon-watched.bash
+TESTSRC     += generate-deps-path-with-semicolon-refused.bash
 TESTSRC     += generate-identical-output-does-not-cascade.bash
 TESTSRC     += generate-failed-generate-leaves-no-target.bash
 TESTSRC     += generate-failing-deps-names-line.bash
