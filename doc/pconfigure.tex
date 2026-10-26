@@ -3122,6 +3122,16 @@ refused, at whichever of the two lines comes second, naming the other.
 A name that merely ends the same way --- \texttt{rules.d} with no
 \texttt{rules} beside it --- is fine.
 
+Nor may one of those files, or the output itself, need another's path
+to be a directory: \texttt{GENERATE += sub/x.h} needs \texttt{sub} in
+the generated-files directory to be a directory, so a
+\texttt{GENERATE += sub} beside it is refused, and so is a
+\texttt{GENERATE += gen.h.d/inner.h} beside a \texttt{GENERATE +=
+gen.h}, whose dependency fragment is \texttt{gen.h.d}.  Again it is
+the second of the two lines that is refused, naming the first.  Names
+that only start the same way --- \texttt{sub.h} or \texttt{sub-x.h}
+next to \texttt{sub/x.h} --- are fine.
+
 A \texttt{\$name} may have a directory in it, which carries over to
 both the script and its output.  \texttt{GENERATE += sub/gen.h} calls
 \texttt{\$SRCDIR/sub/gen.h.proc} in the two ways above and writes its
