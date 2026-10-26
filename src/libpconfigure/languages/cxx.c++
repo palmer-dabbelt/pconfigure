@@ -1477,13 +1477,15 @@ language_cxx::cp_target::cp_target(const std::string& target_path,
                                    const target::ptr& source,
                                    const install_target& install,
                                    const std::string& install_mode,
-                                   const std::vector<std::string> comments)
+                                   const std::vector<std::string> comments,
+                                   const makefile::target::ptr& record)
 : _target_path(target_path),
   _pretty_path(pretty_path),
   _source(source),
   _install(install),
   _install_mode(install_mode),
-  _comments(comments)
+  _comments(comments),
+  _record(record)
 {
 }
 
@@ -1491,6 +1493,7 @@ makefile::target::ptr
 language_cxx::cp_target::generate_makefile_target(void) const
 {
     auto deps = vector_util::make(_source->generate_makefile_target());
+    deps.push_back(_record);
 
     auto cmds = copy_commands(_source->path(), _install, _install_mode);
 
@@ -1676,6 +1679,43 @@ language_cxx::link_objects(const context::ptr& ctx,
         abort();
     }
 
+    /* The copies out of the link directory need a record of their
+     * own.  The directory is named by hash_link_options(), which
+     * takes in the LINKOPTS and the target's COMPILEOPTS both, since
+     * those go on the link line too -- so an edit that puts either
+     * back to what an earlier build used goes back to the directory
+     * that build linked in.  The link there is still on disk and up
+     * to date, and it is older than the bin/ copy the build in
+     * between made out of the other directory.  A copy is only redone
+     * when what it copies is newer than it, so the program in bin/,
+     * the library in lib/, and whatever "make install" puts under
+     * $(DESTDIR) all went on being the in-between link under a
+     * Makefile that says otherwise.  A record of the copy's recipe,
+     * which names the directory it copies from, changes with every
+     * move from one directory to another, a move back included; see
+     * recipe_record().
+     *
+     * There is one record for both copies, kept under the name of the
+     * one in the build tree: a "$(DESTDIR)" path is make's to expand
+     * and has no place to be written at configure time, and the two
+     * copies always come out of the same directory, so they always
+     * move together.  The recipes are worked out by cp_target itself,
+     * so the record says what the rules run. */
+    auto copy_record = [&](const target::ptr& local_source,
+                           const target::ptr& install_source,
+                           const std::string& install_mode) {
+        auto commands = cp_target::copy_commands(local_source->path(),
+                                                 install_target::FALSE,
+                                                 install_mode);
+        if (ctx->install == true)
+            commands = commands + cp_target::copy_commands(
+                install_source->path(),
+                install_target::TRUE,
+                install_mode);
+        return recipe_record(ctx, bin_dir + "/" + ctx->cmd->data(),
+                             commands);
+    };
+
     auto dedup_link_opts = [](std::vector<std::string> opts) {
         std::vector<std::string> tokens;
         for (const auto& opt : opts)
@@ -1805,13 +1845,16 @@ language_cxx::link_objects(const context::ptr& ctx,
             link_inputs_path
         );
 
+        auto archive_record = copy_record(archive, archive, "0644");
+
         auto cp_local_archive = std::make_shared<cp_target>(
             bin_dir + "/" + ctx->cmd->data(),
             ctx->unbased(bin_dir) + "/" + ctx->cmd->data(),
             archive,
             language_cxx::install_target::FALSE,
             "0644",
-            shared_comments + std::vector<std::string>{"cp_local_target"}
+            shared_comments + std::vector<std::string>{"cp_local_target"},
+            archive_record
         );
 
         if (ctx->install == false)
@@ -1831,7 +1874,8 @@ language_cxx::link_objects(const context::ptr& ctx,
             archive,
             language_cxx::install_target::TRUE,
             "0644",
-            shared_comments + std::vector<std::string>{"cp_install_target"}
+            shared_comments + std::vector<std::string>{"cp_install_target"},
+            archive_record
         );
 
         return {archive, cp_install_archive, cp_local_archive};
@@ -1871,6 +1915,8 @@ language_cxx::link_objects(const context::ptr& ctx,
     /* In order to keep the local and install targets consistant with the
      * Makefile, we build the "copy" targets that depend on the generated
      * Makefile. */
+    auto record = copy_record(local_target, install_target, "0755");
+
     auto install_path =
         "$(DESTDIR)" + ctx->installed(bin_dir)
         + "/" + ctx->cmd->data();
@@ -1880,7 +1926,8 @@ language_cxx::link_objects(const context::ptr& ctx,
         install_target,
         language_cxx::install_target::TRUE,
         "0755",
-        shared_comments + std::vector<std::string>{"cp_install_target"}
+        shared_comments + std::vector<std::string>{"cp_install_target"},
+        record
     );
 
      auto cp_local_target = std::make_shared<cp_target>(
@@ -1889,7 +1936,8 @@ language_cxx::link_objects(const context::ptr& ctx,
         local_target,
         language_cxx::install_target::FALSE,
         "0755",
-        shared_comments + std::vector<std::string>{"cp_local_target"}
+        shared_comments + std::vector<std::string>{"cp_local_target"},
+        record
     );
 
     /* Here we return all the objects that were generated as part of this

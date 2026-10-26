@@ -1304,6 +1304,13 @@ TESTSRC     += kconfig-env-bad-name-names-line.bash
 TESTSRC     += meson-setup-script-missing-names-line.bash
 TESTSRC     += autotools-prefix-under-build-systems-names-line.bash
 TESTSRC     += cmake-depend-on-missing-file-names-line.bash
+TESTSRC     += compileopts-reverted-define-recompiles-c-binary.bash
+TESTSRC     += compileopts-reverted-define-recompiles-cxx-binary.bash
+TESTSRC     += compileopts-reverted-rebuilds-shared-library.bash
+TESTSRC     += compileopts-reverted-rebuilds-static-library-consumer.bash
+TESTSRC     += compileopts-reverted-reinstalls-binary.bash
+TESTSRC     += compileopts-reverted-autoreconfigure-recompiles.bash
+TESTSRC     += linkopts-reverted-relinks-binary.bash
 
 # The half of pconfigure that a build can run on its own, one source
 # at a time.  It is a BINARY rather than a LIBEXEC because pconfigure

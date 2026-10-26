@@ -394,13 +394,18 @@ protected:
         const std::string _install_mode;
         const std::vector<std::string> _comments;
 
+        /* The record of which link this is a copy of, which rides the
+         * rule as a prerequisite: see link_objects() for why. */
+        const makefile::target::ptr _record;
+
     public:
         cp_target(const std::string& target_path,
                   const std::string& pretty_path,
                   const target::ptr& source,
                   const install_target& install,
                   const std::string& install_mode,
-                  const std::vector<std::string> comments);
+                  const std::vector<std::string> comments,
+                  const makefile::target::ptr& record);
 
         virtual ~cp_target(void) {}
 
@@ -408,7 +413,7 @@ protected:
          * what it needs as arguments rather than from a cp_target, so
          * that the commands a copy runs can be worked out by whatever
          * else needs to know them, and they stay the ones the rule
-         * runs. */
+         * runs.  The record above is written out of these. */
         static std::vector<std::string>
         copy_commands(const std::string& source_path,
                       const install_target& install,
