@@ -312,6 +312,11 @@ int main(int argc, const char **argv)
     for (const auto& project: projects)
         project->check_phony_suite_goals(project::flatten(project));
 
+    /* After every Configfile, too: the SOURCES a PHONY takes the name
+     * of can be further down, or in a project read later. */
+    for (const auto& project: projects)
+        project->check_phony_names_no_input(projects);
+
     /* Before any Makefile, rather than along with each project's own,
      * because the Makefile make is run on carries a rule for every
      * file like these that the run wrote (see

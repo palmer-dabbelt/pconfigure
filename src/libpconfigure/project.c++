@@ -1277,6 +1277,79 @@ void project::check_phony_suite_goals(const std::vector<ptr>& aggregated) const
     }
 }
 
+void project::check_phony_names_no_input(const std::vector<ptr>& run) const
+{
+    /* A PHONY is in .PHONY, and make takes a name there as out of date
+     * on every look, whatever is on disk under it.  That is the point
+     * of one when the name is only a name; when the name is also a
+     * file the build reads, every rule that reads the file is out of
+     * date along with it.  "PHONY += src/hello.c" had every make
+     * recompile and relink hello, and "make -q" never call the tree
+     * current; "PHONY += Configfile" under AUTORECONFIGURE had every
+     * make rerun pconfigure, re-execute on the Makefile that wrote,
+     * and rerun it again, without end.  Two rules that write one file
+     * are refused as a mismatched recipe already, and this is the same
+     * collision from the other side.
+     *
+     * Only the files a line names or the configure reads.  A header
+     * found by following an '#include' is a build input too, but a
+     * PHONY named after one is a far stranger thing to write, and
+     * asking after them means walking every rule the languages wrote.
+     * A directory is deliberately not asked about: "make src" is a
+     * reasonable thing to want, and nothing the build writes depends
+     * on a directory by the directory's bare name.
+     *
+     * Compared as make reads the names, from the top of the run: the
+     * PHONY under its project's directory with any "./" dropped, the
+     * same way refuse_goal_name() does, and the files the way the
+     * distclean check spells them. */
+    auto inputs = std::map<std::string, command::ptr>();
+    for (const auto& project: run)
+        for (const auto& read: project->_processor->read_sources())
+            inputs.emplace(file_utils::normalize_path(read.first),
+                           read.second);
+
+    auto configfiles = std::set<std::string>();
+    for (const auto& path: configfiles_read())
+        configfiles.insert(file_utils::normalize_path(path));
+
+    for (const auto& ctx: _processor->output_contexts()) {
+        if (ctx->type != context_type::PHONY)
+            continue;
+
+        const auto& written = ctx->cmd->data();
+        const auto name = file_utils::normalize_path(
+            string_utils::make_target_name(ctx->base + written));
+
+        auto input = inputs.find(name);
+        auto configfile = configfiles.find(name);
+        if (input == inputs.end() && configfile == configfiles.end())
+            continue;
+
+        std::cerr << std::to_string(ctx->cmd->debug()) << "\n"
+                  << "  error: PHONY can't be called '" << written
+                  << "': ";
+        if (input != inputs.end()) {
+            std::cerr << "that is a file this build reads\n"
+                      << "  " << std::to_string(input->second->debug())
+                      << " reads it\n"
+                      << "  make takes every PHONY as out of date, so"
+                      << " everything built from '" << written << "'"
+                      << " would be rebuilt by every make\n";
+        } else {
+            std::cerr << "that is a file this build's Makefile is"
+                      << " written out of\n"
+                      << "  make takes every PHONY as out of date, so"
+                      << " under AUTORECONFIGURE every make would rerun"
+                      << " pconfigure, and then rerun it again, without"
+                      << " end\n";
+        }
+        std::cerr << "  give the PHONY a name of its own, after what its"
+                  << " tests exercise -- 'integration', say\n";
+        abort();
+    }
+}
+
 void project::check_bootstrap(const std::vector<ptr>& everyone) const
 {
     const auto& srcpath = _processor->bootstrap();

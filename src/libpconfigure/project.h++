@@ -258,6 +258,12 @@ public:
      * written into this Makefile too. */
     void check_phony_suite_goals(const std::vector<ptr>& aggregated) const;
 
+    /* Complains if one of this project's PHONYs has the name of a file
+     * the build reads: a source, a GENERATE's script, or a Configfile
+     * the Makefile is written out of.  "run" is every project in the
+     * run, since the file can belong to any of them. */
+    void check_phony_names_no_input(const std::vector<ptr>& run) const;
+
     /* Complains if a BOOTSTRAP names a tree that doesn't build the
      * pconfigure it promised.  "everyone" is every project in the
      * run, since the tree is one of them by the time this is asked.
