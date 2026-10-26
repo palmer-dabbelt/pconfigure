@@ -416,7 +416,15 @@ rule syntax in those same names: the first two would have stopped
 \texttt{make} with an error that never mentions \texttt{DESTDIR},
 and a \texttt{\%} would have let
 \texttt{make install} work and then \texttt{make uninstall} remove
-nothing.  The \texttt{Makefile} stops with an error saying so instead,
+nothing.  Nor can it have any of \texttt{\textbackslash}, \texttt{\&},
+\texttt{|}, \texttt{(}, \texttt{)}, \texttt{'}, \texttt{"},
+\texttt{\char`\`}, \texttt{<}, \texttt{>}, \texttt{*}, \texttt{?},
+\texttt{[} or \texttt{\{}: \texttt{DESTDIR} is pasted into the install
+and uninstall recipes unquoted, where the shell reads those as syntax,
+so a staging directory under \texttt{R\&D} would have had
+\texttt{make uninstall} delete a file called \texttt{R} beside it, and
+one called \texttt{st?ge} would have uninstalled from \texttt{stage}.
+The \texttt{Makefile} stops with an error saying so instead,
 whatever was being built.  A symlink to the staging directory names
 the same place without the character in the way:
 
