@@ -74,7 +74,8 @@ std::vector<std::string> build_system_buildroot::based(void) const
 
         struct stat buf;
         if (stat(path.c_str(), &buf) != 0 || S_ISDIR(buf.st_mode) == false) {
-            std::cerr << name() << ": '--external " << external << "' names"
+            error_about("--external", external)
+                      << name() << ": '--external " << external << "' names"
                       << " '" << path << "', which isn't a directory\n";
             abort();
         }

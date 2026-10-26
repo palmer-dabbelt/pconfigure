@@ -444,7 +444,8 @@ bool build_system_cargo::handle_configureopt(const std::string& opt)
          * variable this can't expand is a variable that could hold
          * either kind of name. */
         if (cargo.find('$') != std::string::npos) {
-            std::cerr << name() << ": '--cargo " << cargo << "' is a make"
+            error_at_line()
+                      << name() << ": '--cargo " << cargo << "' is a make"
                       << " expression, and this has to resolve the path"
                       << " itself\n"
                       << "  cargo is run from inside the crate, so a"
@@ -476,7 +477,8 @@ bool build_system_cargo::handle_configureopt(const std::string& opt)
          * rule "--profile" and "--target" keep for the same reason:
          * one word, because what it names is one thing. */
         if (cargo.find(' ') != std::string::npos) {
-            std::cerr << name() << ": '--cargo " << cargo << "' isn't a"
+            error_at_line()
+                      << name() << ": '--cargo " << cargo << "' isn't a"
                       << " program: a '--cargo' is one word, a program name"
                       << " or a path to one\n"
                       << "  it is written into the recipe as a single quoted"
@@ -503,7 +505,8 @@ bool build_system_cargo::handle_configureopt(const std::string& opt)
          * build system would never look for it. */
         if (profile.find('/') != std::string::npos
             || profile.find(' ') != std::string::npos) {
-            std::cerr << name() << ": '--profile " << profile << "' isn't a"
+            error_at_line()
+                      << name() << ": '--profile " << profile << "' isn't a"
                       << " profile name: a profile is one word, and it's the"
                       << " name of the directory cargo builds into\n"
                       << "  write something like '--profile release'\n";
@@ -520,7 +523,8 @@ bool build_system_cargo::handle_configureopt(const std::string& opt)
          * directory named after it in front of the profile. */
         if (target.find('/') != std::string::npos
             || target.find(' ') != std::string::npos) {
-            std::cerr << name() << ": '--target " << target << "' isn't a"
+            error_at_line()
+                      << name() << ": '--target " << target << "' isn't a"
                       << " target triple: it's one word, and it's the name"
                       << " of a directory cargo builds into\n"
                       << "  write something like"
@@ -593,7 +597,8 @@ bool build_system_cargo::handle_configureopt(const std::string& opt)
         auto word = arg.substr(0, arg.find_first_of(" ="));
         auto advice = reserved_advice(reserved_flag(word));
         if (advice.size() > 0) {
-            std::cerr << name() << ": '--arg " << arg << "' passes '" << word
+            error_at_line()
+                      << name() << ": '--arg " << arg << "' passes '" << word
                       << "', which this build system decides for itself\n"
                       << "  " << advice << "\n";
             abort();
@@ -631,7 +636,8 @@ bool build_system_cargo::handle_configureopt(const std::string& opt)
          * a name, so this finds one. */
         auto already = reserved_variable(env.substr(0, env.find('=')));
         if (already.sets.size() > 0) {
-            std::cerr << name() << ": '--env " << env << "' "
+            error_at_line()
+                      << name() << ": '--env " << env << "' "
                       << already.sets << "\n"
                       << "  " << already.advice << "\n";
             abort();
@@ -686,7 +692,8 @@ void build_system_cargo::take_configureopt(const std::string& opt)
     if (handle_configureopt(opt) == true)
         return;
 
-    std::cerr << name() << ": unknown CONFIGUREOPTS '" << opt << "'\n"
+    error_at_line()
+              << name() << ": unknown CONFIGUREOPTS '" << opt << "'\n"
               << configureopt_help();
     abort();
 }
@@ -1071,7 +1078,8 @@ build_system_cargo::vendored_targets(
          * and quietly dropping it would install a different member of
          * the workspace than the one that was asked for. */
         if (_packages.size() > 0) {
-            std::cerr << name() << ": '--package " << _packages[0]
+            error_about("--package", _packages[0])
+                      << name() << ": '--package " << _packages[0]
                       << "' and '--install " << _install_root << "' can't"
                       << " both be given\n"
                       << "  'cargo install' has no '--package': it installs"

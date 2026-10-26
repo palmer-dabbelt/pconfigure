@@ -197,7 +197,8 @@ bool build_system_kconfig::handle_configureopt(const std::string& opt)
     if (configure.size() > 0) {
         auto equals = configure.find('=');
         if (equals == std::string::npos) {
-            std::cerr << name() << ": '--configure " << configure
+            error_at_line()
+                      << name() << ": '--configure " << configure
                       << "' has no value: it should look like"
                       << " '--configure CONFIG_FOO=y'\n";
             abort();
@@ -413,7 +414,8 @@ std::string build_system_kconfig::based_file(const std::string& flag,
 
     struct stat buf;
     if (stat(out.c_str(), &buf) != 0 || S_ISREG(buf.st_mode) == false) {
-        std::cerr << name() << ": '" << flag << " " << path << "' names '"
+        error_about(flag, path)
+                  << name() << ": '" << flag << " " << path << "' names '"
                   << out << "', which isn't a file\n";
         abort();
     }
@@ -461,7 +463,8 @@ void build_system_kconfig::take_configureopt(const std::string& opt)
     if (handle_configureopt(opt) == true)
         return;
 
-    std::cerr << name() << ": unknown CONFIGUREOPTS '" << opt << "'\n"
+    error_at_line()
+              << name() << ": unknown CONFIGUREOPTS '" << opt << "'\n"
               << configureopt_help();
     abort();
 }
@@ -595,7 +598,8 @@ build_system_kconfig::vendored_targets(
     if (_merges.size() > 0) {
         auto tool = merge_config_tool();
         if (access(tool.c_str(), X_OK) != 0) {
-            std::cerr << name() << ": '--merge-config' needs '" << tool << "',"
+            error_about("--merge-config", _merges[0])
+                      << name() << ": '--merge-config' needs '" << tool << "',"
                       << " which this tree doesn't have\n";
             abort();
         }
@@ -653,7 +657,9 @@ build_system_kconfig::vendored_targets(
          * something subtly wrong every time. */
         auto tool = config_tool();
         if (access(tool.c_str(), X_OK) != 0) {
-            std::cerr << name() << ": '--configure' needs '" << tool << "',"
+            error_about("--configure",
+                        _options[0].name + "=" + _options[0].value)
+                      << name() << ": '--configure' needs '" << tool << "',"
                       << " which this tree doesn't have\n";
             abort();
         }

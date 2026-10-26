@@ -24,6 +24,7 @@
 #include "context.h++"
 #include "debug_info.h++"
 #include <libmakefile/target.h++>
+#include <map>
 #include <memory>
 #include <ostream>
 #include <string>
@@ -103,6 +104,30 @@ private:
      * every function that might refuse something, since those
      * include every take_configureopt() there is. */
     debug_info::ptr _reading;
+
+    /* The Configfile line each option's value was written on, keyed
+     * by the option as a diagnostic spells it and by the value
+     * option_value() read out of it.
+     *
+     * _reading covers a refusal made while the line is being read,
+     * and is NULL again by the time a check that has to wait gets to
+     * run: a prefix is resolved against a project, a setup script is
+     * looked for inside a tree and a --depend is matched against the
+     * other trees, and none of those exist yet while an option
+     * written under a BUILD_SYSTEMS is being read.  Those checks
+     * still owe the line -- with two trees vendored, "'--prefix
+     * /usr/local' is an absolute path" doesn't say which of two
+     * SUBPROJECTS to go and fix -- so the line is written down here
+     * as the option is taken apart, and found again by what the
+     * refusal quotes.
+     *
+     * Keyed by what is quoted rather than kept beside each value in
+     * each build system, because the quoting is the one thing every
+     * refusal already has in hand: a check that names its option the
+     * way it was written is a check that can find its line, and one
+     * that doesn't would have quoted the wrong thing anyway. */
+    std::map<std::pair<std::string, std::string>, debug_info::ptr>
+        _written_at;
 
     /* The files a SUBPROJECT_TARGETS said this tree produces, named
      * relative to the directory it builds into. */
@@ -348,6 +373,15 @@ protected:
      * which can also be reached from somewhere other than a line still
      * gets an error rather than a crash. */
     std::ostream& error_at_line(void) const;
+
+    /* The same, for a refusal of one option's value that quotes it as
+     * "flag written".  While a line is being handled that line is the
+     * one named, exactly as above; once reading has moved on, the
+     * line is the one that wrote that flag with that value, which is
+     * how a check that can only run after the tree is bound still
+     * points at the line to fix.  See _written_at. */
+    std::ostream& error_about(const std::string& flag,
+                              const std::string& written) const;
 
     /* The variables a MAKEOPS put on the command line of the make
      * that builds this tree, with a leading space and in the order
@@ -712,9 +746,15 @@ protected:
      * allowed to look like, and a build system that decided that
      * slightly differently would be a build system whose options are
      * spelled slightly differently for no reason anybody could
-     * explain. */
-    static std::string option_value(const std::string& opt,
-                                    const std::string& flag);
+     * explain.
+     *
+     * It is also the one place an option is taken apart into a flag
+     * and a value, so it is where the line that wrote them is written
+     * down for error_about() to find later.  That is why this isn't
+     * static: every take_configureopt() already asks it, so none of
+     * them has to remember to say where its options came from. */
+    std::string option_value(const std::string& opt,
+                             const std::string& flag);
 
     /* What one of the --depend paths actually names.  A path that
      * turns out to be another vendored tree in this run becomes that

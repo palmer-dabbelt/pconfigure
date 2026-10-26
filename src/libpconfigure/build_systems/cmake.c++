@@ -416,7 +416,8 @@ void build_system_cmake::take_configureopt(const std::string& opt)
     auto define = option_value(opt, "--define");
     if (define.size() > 0) {
         if (define.find('=') == std::string::npos) {
-            std::cerr << name() << ": '--define " << define
+            error_at_line()
+                      << name() << ": '--define " << define
                       << "' has no value: it should look like"
                       << " '--define LLVM_TARGETS_TO_BUILD=RISCV'\n";
             abort();
@@ -584,7 +585,8 @@ void build_system_cmake::take_configureopt(const std::string& opt)
         return;
     }
 
-    std::cerr << name() << ": unknown CONFIGUREOPTS '" << opt << "'\n"
+    error_at_line()
+              << name() << ": unknown CONFIGUREOPTS '" << opt << "'\n"
               << configureopt_help();
     abort();
 }
@@ -657,7 +659,8 @@ build_system_cmake::vendored_targets(
      * variable quietly dropped, which is a build that is wrong in
      * exactly the way the variable was meant to prevent. */
     if (make_generator() == false && makeopts().size() > 0) {
-        std::cerr << name() << ": MAKEOPS '" << makeopts()[0] << "' has no"
+        error_about("MAKEOPS", makeopts()[0])
+                  << name() << ": MAKEOPS '" << makeopts()[0] << "' has no"
                   << " make to go on the command line of: the '" << _generator
                   << "' generator doesn't build by running one\n"
                   << "  a variable this would have set is a cache variable"
@@ -686,7 +689,8 @@ build_system_cmake::vendored_targets(
      * would be read by the next person as the reason the build is
      * slow. */
     if (make_generator() == true && _jobs.size() > 0) {
-        std::cerr << name() << ": '--jobs " << _jobs << "' has no build of"
+        error_about("--jobs", _jobs)
+                  << name() << ": '--jobs " << _jobs << "' has no build of"
                   << " its own to run: the '" << _generator << "' generator"
                   << " builds by running make, which takes its parallelism"
                   << " from the make that ran it\n"

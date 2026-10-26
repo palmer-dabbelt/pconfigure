@@ -218,7 +218,8 @@ void build_system_meson::take_configureopt(const std::string& opt)
     auto define = option_value(opt, "--define");
     if (define.size() > 0) {
         if (define.find('=') == std::string::npos) {
-            std::cerr << name() << ": '--define " << define
+            error_at_line()
+                      << name() << ": '--define " << define
                       << "' has no value: it should look like"
                       << " '--define tests=false'\n";
             abort();
@@ -294,7 +295,8 @@ void build_system_meson::take_configureopt(const std::string& opt)
         }
 
         if (bad == true) {
-            std::cerr << name() << ": '--setup-script " << setup_script
+            error_at_line()
+                      << name() << ": '--setup-script " << setup_script
                       << "' isn't a file inside the tree: it should be a"
                       << " path relative to the top of it, made of"
                       << " letters, digits and '._/+-', like"
@@ -324,7 +326,8 @@ void build_system_meson::take_configureopt(const std::string& opt)
             /* Through an unsigned char, which is all isdigit() is
              * defined over: see build_system_cmake's --jobs. */
             if (isdigit((unsigned char)c) == 0) {
-                std::cerr << name() << ": '--jobs " << jobs << "' isn't a"
+                error_at_line()
+                          << name() << ": '--jobs " << jobs << "' isn't a"
                           << " number of jobs: it should look like"
                           << " '--jobs 8'\n";
                 abort();
@@ -377,7 +380,8 @@ void build_system_meson::take_configureopt(const std::string& opt)
         return;
     }
 
-    std::cerr << name() << ": unknown CONFIGUREOPTS '" << opt << "'\n"
+    error_at_line()
+              << name() << ": unknown CONFIGUREOPTS '" << opt << "'\n"
               << configureopt_help();
     abort();
 }
@@ -454,7 +458,8 @@ build_system_meson::vendored_targets(
         /* Asked here rather than where the option arrived, since only
          * a bound build system knows which tree the path is inside. */
         if (access((base() + _setup_script).c_str(), X_OK) != 0) {
-            std::cerr << name() << ": '--setup-script " << _setup_script
+            error_about("--setup-script", _setup_script)
+                      << name() << ": '--setup-script " << _setup_script
                       << "' isn't a program in " << srcdir << "\n"
                       << "  it names a file relative to the top of the"
                       << " tree, which has to be there and executable\n";

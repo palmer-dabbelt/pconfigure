@@ -1294,6 +1294,16 @@ TESTSRC     += language-compileopts-after-target-reach-only-later-targets.bash
 TESTSRC     += language-include-dir-searched-before-target-include-dir.bash
 TESTSRC     += tests-under-static-archive-take-their-own-linkopts.bash
 TESTSRC     += linkopts-in-tree-archive-by-path-waits-for-it.bash
+TESTSRC     += meson-jobs-not-a-number-names-line.bash
+TESTSRC     += cmake-unknown-configureopt-names-line.bash
+TESTSRC     += cargo-profile-with-slash-names-line.bash
+TESTSRC     += autotools-configure-flag-without-dash-names-line.bash
+TESTSRC     += meson-define-prefix-second-answer-names-line.bash
+TESTSRC     += cmake-prefix-outside-objdir-names-line.bash
+TESTSRC     += kconfig-env-bad-name-names-line.bash
+TESTSRC     += meson-setup-script-missing-names-line.bash
+TESTSRC     += autotools-prefix-under-build-systems-names-line.bash
+TESTSRC     += cmake-depend-on-missing-file-names-line.bash
 
 # The half of pconfigure that a build can run on its own, one source
 # at a time.  It is a BINARY rather than a LIBEXEC because pconfigure

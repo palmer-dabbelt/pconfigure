@@ -239,7 +239,8 @@ bool build_system_autotools::handle_configureopt(const std::string& opt)
     auto flag = option_value(opt, "--configure-flag");
     if (flag.size() > 0) {
         if (flag[0] != '-') {
-            std::cerr << name() << ": '--configure-flag " << flag << "' isn't"
+            error_at_line()
+                      << name() << ": '--configure-flag " << flag << "' isn't"
                       << " a flag: it should look like"
                       << " '--configure-flag --enable-foo'\n"
                       << "  a NAME=VALUE for configure's command line is a"
@@ -269,7 +270,8 @@ bool build_system_autotools::handle_configureopt(const std::string& opt)
          * flag it has never heard of is a warning and a build that
          * carries on without it. */
         if (var.find('=') == std::string::npos) {
-            std::cerr << name() << ": '--configure-var " << var << "' has no"
+            error_at_line()
+                      << name() << ": '--configure-var " << var << "' has no"
                       << " value: it should look like"
                       << " '--configure-var YACC=/opt/bin/bison'\n";
             abort();
@@ -429,7 +431,8 @@ void build_system_autotools::take_configureopt(const std::string& opt)
     if (handle_configureopt(opt) == true)
         return;
 
-    std::cerr << name() << ": unknown CONFIGUREOPTS '" << opt << "'\n"
+    error_at_line()
+              << name() << ": unknown CONFIGUREOPTS '" << opt << "'\n"
               << configureopt_help();
     abort();
 }

@@ -41,6 +41,7 @@ build_system::build_system(const std::string& name)
   _makeopt_from_option(),
   _taking_configureopt(false),
   _reading(NULL),
+  _written_at(),
   _subproject_targets()
 {
 }
@@ -49,6 +50,22 @@ std::ostream& build_system::error_at_line(void) const
 {
     if (_reading != NULL)
         std::cerr << std::to_string(_reading) << "\n" << "  error: ";
+
+    return std::cerr;
+}
+
+std::ostream& build_system::error_about(const std::string& flag,
+                                        const std::string& written) const
+{
+    /* The line being read wins when there is one.  It is the line
+     * that is wrong whenever there is one, and it is also the only
+     * answer for a MAKEOPS refused before it was ever written down. */
+    if (_reading != NULL)
+        return error_at_line();
+
+    auto found = _written_at.find(std::make_pair(flag, written));
+    if (found != _written_at.end())
+        std::cerr << std::to_string(found->second) << "\n" << "  error: ";
 
     return std::cerr;
 }
@@ -107,6 +124,12 @@ void build_system::add_makeopt(const std::string& opt,
     checked_make_word("MAKEOPS +=", opt, "ARCH=arm64");
 
     take_makeopt(opt);
+
+    /* Written down for a check that can only look at the whole list,
+     * which is one that runs once the tree is bound: see cmake's,
+     * which needs to know the generator before it can say whether a
+     * MAKEOPS means anything. */
+    _written_at[std::make_pair(std::string("MAKEOPS"), opt)] = line;
 
     _makeopts.push_back(opt);
     _makeopt_from_option.push_back(_taking_configureopt);
@@ -472,7 +495,8 @@ build_system::checked_project_path(const std::string& flag,
     auto relative = file_utils::normalize_path(written);
 
     if (relative.size() > 0 && relative[0] == '/') {
-        std::cerr << name() << ": '" << flag << " " << written << "' is an"
+        error_about(flag, written)
+                  << name() << ": '" << flag << " " << written << "' is an"
                   << " absolute path\n"
                   << "  a path in a Configfile is read relative to the"
                   << " project that wrote it, so that the line means the same"
@@ -514,7 +538,8 @@ build_system::checked_project_path(const std::string& flag,
      * tree unread, which is what an --env and a --configure-var are
      * for and where "$(abspath x)" goes on meaning what it says. */
     if (written.find('$') != std::string::npos) {
-        std::cerr << name() << ": '" << flag << " " << written << "' is a"
+        error_about(flag, written)
+                  << name() << ": '" << flag << " " << written << "' is a"
                   << " make expansion rather than a path\n"
                   << "  what a path in a Configfile names has to be decided"
                   << " here, from the text as it was written: this one is"
@@ -546,7 +571,8 @@ build_system::checked_project_path(const std::string& flag,
      * sight. */
     auto metachar = unsafe_metacharacter(written);
     if (metachar.size() > 0) {
-        std::cerr << name() << ": '" << flag << " " << written << "' has a"
+        error_about(flag, written)
+                  << name() << ": '" << flag << " " << written << "' has a"
                   << " '" << metachar << "' in it\n"
                   << "  this reaches a Makefile recipe as text, and a shell"
                   << " -- which is what runs that recipe -- reads a '"
@@ -567,7 +593,8 @@ build_system::checked_project_path(const std::string& flag,
      * while ".." names the directory the project was checked out
      * into, which is everything. */
     if (relative == ".." || relative.compare(0, 3, "../") == 0) {
-        std::cerr << name() << ": '" << flag << " " << written << "' reaches"
+        error_about(flag, written)
+                  << name() << ": '" << flag << " " << written << "' reaches"
                   << " outside the project that wrote it\n"
                   << "  the Makefile names a path inside the project through"
                   << " that project's own prefix, which is what makes one"
@@ -626,7 +653,8 @@ build_system::checked_project_path(const std::string& flag,
         for (const auto& word: string_utils::split_char(written, " "))
             split += "[" + word + "] ";
 
-        std::cerr << name() << ": '" << flag << " " << written << "' has a"
+        error_about(flag, written)
+                  << name() << ": '" << flag << " " << written << "' has a"
                   << " space in it\n"
                   << "  make reads a path out of a Makefile as a word: a"
                   << " target line, a prerequisite list and the argument of"
@@ -712,7 +740,8 @@ std::string build_system::checked_install_dir(const std::string& flag,
     auto out = checked_project_path(flag, written, example);
 
     if (out == obj) {
-        std::cerr << name() << ": '" << flag << " " << written << "' is the"
+        error_about(flag, written)
+                  << name() << ": '" << flag << " " << written << "' is the"
                   << " object directory itself rather than a directory"
                   << " inside it\n"
                   << "  'make cache-clean' spares an install prefix, since it"
@@ -726,7 +755,8 @@ std::string build_system::checked_install_dir(const std::string& flag,
     }
 
     if (file_utils::inside(out, obj) == false) {
-        std::cerr << name() << ": '" << flag << " " << written << "' names '"
+        error_about(flag, written)
+                  << name() << ": '" << flag << " " << written << "' names '"
                   << out << "', which is outside '" << obj << "'\n"
                   << "  a vendored tree installs into the object directory of"
                   << " the project that vendored it, because that is the one"
@@ -751,7 +781,8 @@ std::string build_system::checked_install_dir(const std::string& flag,
             && file_utils::inside(ours, out) == false)
             continue;
 
-        std::cerr << name() << ": '" << flag << " " << written << "' names '"
+        error_about(flag, written)
+                  << name() << ": '" << flag << " " << written << "' names '"
                   << out << "', which is where this project builds\n"
                   << "  '" << ours << "' is pconfigure's own: it holds what"
                   << " this project compiled, linked or generated, and every"
@@ -923,14 +954,16 @@ namespace {
 
     /* The first line of every one of these, which quotes the
      * Configfile line back and says which of the tree's own names it
-     * sets. */
-    void refused(const std::string& system,
+     * sets.  "out" is the stream the refusal was started on, which is
+     * what has already named the line. */
+    void refused(std::ostream& out,
+                 const std::string& system,
                  const std::string& flag,
                  const std::string& written,
                  const std::string& set,
                  const std::string& decides)
     {
-        std::cerr << system << ": '" << flag << " " << written << "' sets '"
+        out << system << ": '" << flag << " " << written << "' sets '"
                   << set << "', which " << decides << "\n";
     }
 
@@ -1007,7 +1040,8 @@ void build_system::refuse_second_answer(const std::string& flag,
             if (same_word(word, directory.name) == false)
                 continue;
 
-            refused(name(), flag, written, directory.name, directory.decides);
+            refused(error_about(flag, written), name(), flag, written,
+                    directory.name, directory.decides);
             already_named();
             abort();
         }
@@ -1051,7 +1085,8 @@ void build_system::refuse_second_answer(const std::string& flag,
         if (equals != std::string::npos
             && (named.find('$') != std::string::npos
                 || named.find('`') != std::string::npos)) {
-            std::cerr << name() << ": '" << flag << " " << written << "' sets"
+            error_about(flag, written)
+                      << name() << ": '" << flag << " " << written << "' sets"
                       << " a variable whose name make works out: '" << named
                       << "'\n"
                       << "  what a word on the tree's command line sets has to"
@@ -1106,7 +1141,8 @@ void build_system::refuse_second_answer(const std::string& flag,
          * for a value that really does have to be computed, and nothing
          * above takes it away. */
         if (named.find_first_of("{}*?[`") != std::string::npos) {
-            std::cerr << name() << ": '" << flag << " " << written << "' sets"
+            error_about(flag, written)
+                      << name() << ": '" << flag << " " << written << "' sets"
                       << " a variable whose name is not the text written"
                       << " down: '" << named << "'\n"
                       << "  this is pasted into a recipe unquoted, and a"
@@ -1138,7 +1174,8 @@ void build_system::refuse_second_answer(const std::string& flag,
             if (same_name(named, directory.name, abbreviated) == false)
                 continue;
 
-            refused(name(), flag, written, directory.name, directory.decides);
+            refused(error_about(flag, written), name(), flag, written,
+                    directory.name, directory.decides);
             already_named();
             abort();
         }
@@ -1147,8 +1184,8 @@ void build_system::refuse_second_answer(const std::string& flag,
             if (same_name(named, destination.name, abbreviated) == false)
                 continue;
 
-            refused(name(), flag, written, destination.name,
-                    destination.decides);
+            refused(error_about(flag, written), name(), flag, written,
+                    destination.name, destination.decides);
             why_it_matters();
 
             if (tree.prefix_option.size() > 0)
@@ -1175,8 +1212,8 @@ void build_system::refuse_second_answer(const std::string& flag,
                 && stays_under_prefix(value) == true)
                 continue;
 
-            refused(name(), flag, written, subdirectory.name,
-                    subdirectory.decides);
+            refused(error_about(flag, written), name(), flag, written,
+                    subdirectory.name, subdirectory.decides);
             why_it_matters();
 
             if (tree.relative_subdirectories == true)
@@ -1212,7 +1249,8 @@ void build_system::checked_env(const std::string& flag,
 {
     auto equals = written.find('=');
     if (equals == std::string::npos) {
-        std::cerr << name() << ": '" << flag << " " << written << "' has no"
+        error_about(flag, written)
+                  << name() << ": '" << flag << " " << written << "' has no"
                   << " value: it should look like '" << flag << " " << example
                   << "'\n";
         abort();
@@ -1222,7 +1260,8 @@ void build_system::checked_env(const std::string& flag,
     if (is_shell_name(variable) == true)
         return;
 
-    std::cerr << name() << ": '" << flag << " " << written << "' doesn't"
+    error_about(flag, written)
+              << name() << ": '" << flag << " " << written << "' doesn't"
               << " start with a variable name: '" << variable << "' isn't"
               << " one\n"
               << "  the name goes in front of the command as a shell"
@@ -1270,7 +1309,8 @@ void build_system::refuse_unnamed(const std::string& flag,
     if (named.size() > 0)
         return;
 
-    error_at_line() << name() << ": '" << flag << " " << written << "' has"
+    error_about(flag, written)
+                    << name() << ": '" << flag << " " << written << "' has"
                     << " no name in front of its '='\n"
                     << "  a NAME=VALUE without the NAME sets nothing, and the"
                     << " tree is handed it as written: it is refused only"
@@ -1321,7 +1361,15 @@ std::string build_system::option_value(const std::string& opt,
     if (rest[0] != ' ' && rest[0] != '=')
         return "";
 
-    return string_utils::clean_white(rest.substr(1));
+    auto value = string_utils::clean_white(rest.substr(1));
+
+    /* Only while a line is being handled, which is the only time
+     * anything asks: a NULL written down here would replace a line
+     * that was known with one that isn't. */
+    if (_reading != NULL && value.size() > 0)
+        _written_at[std::make_pair(flag, value)] = _reading;
+
+    return value;
 }
 
 std::string build_system::resolve_depend(
@@ -1356,7 +1404,8 @@ std::string build_system::resolve_depend(
     auto dir = file_utils::normalize_directory(file);
 
     if (dir == base()) {
-        std::cerr << name() << ": '" << flag << " " << path << "' names this"
+        error_about(flag, path)
+                  << name() << ": '" << flag << " " << path << "' names this"
                   << " subproject\n";
         abort();
     }
@@ -1388,7 +1437,8 @@ std::string build_system::resolve_depend(
      * run rather than built by one -- so it always lands here, which
      * is where a typo lands too and both want the same advice. */
     if (stat(dir.c_str(), &buf) == 0 && S_ISDIR(buf.st_mode) == true) {
-        std::cerr << name() << ": '" << flag << " " << path << "' names '"
+        error_about(flag, path)
+                  << name() << ": '" << flag << " " << path << "' names '"
                   << dir << "', which isn't a vendored subproject\n"
                   << "  a pconfigure subproject has no one file that says"
                   << " it's been built,\n"
@@ -1396,7 +1446,8 @@ std::string build_system::resolve_depend(
         abort();
     }
 
-    std::cerr << name() << ": '" << flag << " " << path << "' names '"
+    error_about(flag, path)
+              << name() << ": '" << flag << " " << path << "' names '"
               << file << "', which is neither a file nor a vendored"
               << " subproject\n";
     abort();

@@ -553,12 +553,16 @@ second_answer()
 # own make through MAKEFLAGS, so a DESTDIR at the top of buildroot is
 # a DESTDIR in front of every install it runs.
 second_answer sa-destdir "MAKEOPS += DESTDIR=$tempdir/elsewhere"
-grep -q "^buildroot: 'MAKEOPS DESTDIR=$tempdir/elsewhere' sets 'DESTDIR'" \
+grep -q \
+    "^  error: buildroot: 'MAKEOPS DESTDIR=$tempdir/elsewhere' sets 'DESTDIR'" \
     sa-destdir.out
+grep -q "Configfile:4 'MAKEOPS += DESTDIR=" sa-destdir.out
 grep -q "says where an install target of this tree writes" sa-destdir.out
 
 second_answer sa-o "CONFIGUREOPTS += --make-var O=$tempdir/elsewhere"
-grep -q "^buildroot: '--make-var O=$tempdir/elsewhere' sets 'O'" sa-o.out
+grep -q "^  error: buildroot: '--make-var O=$tempdir/elsewhere' sets 'O'" \
+    sa-o.out
+grep -q "Configfile:4 'CONFIGUREOPTS += --make-var O=" sa-o.out
 
 # And what it adds.  TARGET_DIR is the filesystem buildroot assembles
 # -- which is what a project vendoring buildroot is after -- and it is
