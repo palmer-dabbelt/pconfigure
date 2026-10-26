@@ -32,10 +32,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#ifndef LINE_MAX
-#define LINE_MAX 1024
-#endif
-
 #define FILE_MAX 1024
 #define NEST_MAX 32
 
@@ -104,8 +100,6 @@ static bool is_directory(const char *path);
 
 static void looked_in(const char *dir, const char *filename);
 
-static bool at_eof(FILE *file);
-
 static char *file_identity(const char *path);
 
 static bool already_included(char **included, const char *path);
@@ -122,7 +116,17 @@ static int _pinclude_lines(const char *input,
 {
     int err;
     FILE *infile;
-    char buffer[LINE_MAX];
+    /* Whole lines, however long.  This used to be a fixed buffer
+     * filled by fgets(), and every piece of a line too long for it was
+     * then read as a line of its own: a "-D" name that straddled two
+     * pieces wasn't replaced, a "<<EOF" cut into "<<EO" and "F" opened
+     * a heredoc that never closed, and an "#include" in the middle of
+     * a long string became a directive when it happened to start a
+     * piece.  pconfigure's scan reads the same file a whole line at a
+     * time, and the two have to agree about what a line is. */
+    char *buffer;
+    size_t buffer_size;
+    ssize_t length;
     size_t i;
     size_t lineno;
     bool found;
@@ -157,8 +161,10 @@ static int _pinclude_lines(const char *input,
     lineno = 0;
     heredocs_open = 0;
     in_data = false;
+    buffer = NULL;
+    buffer_size = 0;
 
-    while (fgets(buffer, LINE_MAX, infile) != NULL) {
+    while ((length = getline(&buffer, &buffer_size, infile)) != -1) {
         lineno++;
 
 #ifdef DEBUG_LIBPINCLUDE_EACHLINE
@@ -182,6 +188,9 @@ static int _pinclude_lines(const char *input,
             if (in_heredoc == true || in_data == true
                 || strncmp(buffer, "#include", 8) != 0) {
                 if ((err = per_line(buffer, line_priv)) != 0) {
+                    free(buffer);
+                    fclose(infile);
+
                     return err;
                 }
 
@@ -190,12 +199,13 @@ static int _pinclude_lines(const char *input,
                  * the next line of the file that included it -- has
                  * to start a line of its own rather than being glued
                  * onto this one, so the end of the file ends the line.
-                 * Checking for the end of the file rather than just
-                 * for a missing newline is what keeps a line too long
-                 * for the buffer, which arrives in pieces that have
-                 * no newline either, in one piece. */
-                if (strchr(buffer, '\n') == NULL && at_eof(infile) == true) {
+                 * getline() hands back whole lines, so the only one
+                 * that can be missing its newline is the last. */
+                if (buffer[length - 1] != '\n') {
                     if ((err = per_line("\n", line_priv)) != 0) {
+                        free(buffer);
+                        fclose(infile);
+
                         return err;
                     }
                 }
@@ -372,6 +382,7 @@ static int _pinclude_lines(const char *input,
                     " is a comment\n");
 
             free(line);
+            free(buffer);
             fclose(infile);
 
             return -1;
@@ -487,6 +498,7 @@ static int _pinclude_lines(const char *input,
                         free(dir_path);
                         free(filename);
                         free(full_path);
+                        free(buffer);
                         fclose(infile);
 
                         return err;
@@ -501,6 +513,8 @@ static int _pinclude_lines(const char *input,
                         free(dir_path);
                         free(filename);
                         free(full_path);
+                        free(buffer);
+                        fclose(infile);
 
                         return err;
                     }
@@ -525,6 +539,7 @@ static int _pinclude_lines(const char *input,
                             free(dir_path);
                             free(filename);
                             free(full_path);
+                            free(buffer);
                             fclose(infile);
 
                             return err;
@@ -576,6 +591,7 @@ static int _pinclude_lines(const char *input,
                 free(dir_path);
                 free(filename);
                 free(full_path);
+                free(buffer);
                 fclose(infile);
 
                 return -1;
@@ -594,6 +610,7 @@ static int _pinclude_lines(const char *input,
                 free(dir_path);
                 free(filename);
                 free(full_path);
+                free(buffer);
                 fclose(infile);
 
                 return err;
@@ -635,6 +652,7 @@ static int _pinclude_lines(const char *input,
             free(heredocs[i].swallowed);
         }
 
+        free(buffer);
         fclose(infile);
 
         return -1;
@@ -645,6 +663,7 @@ static int _pinclude_lines(const char *input,
         free(heredocs[i].swallowed);
     }
 
+    free(buffer);
     fclose(infile);
 
 #ifdef DEBUG_LIBPINCLUDE_DEFINE
@@ -778,7 +797,7 @@ static void mark_included(char **included, const char *path)
 
 /* Whether an "#include" may be satisfied by PATH.  Being readable is
  * not enough: access() says yes to a directory, fopen() opens one,
- * and fgets() then reads nothing from it, so a directory that shared
+ * and getline() then reads nothing from it, so a directory that shared
  * an include's name used to be pasted in as an empty file -- a script
  * with a piece silently missing and an exit status of zero.  A
  * directory is never the file an include means, so it is passed over
@@ -1252,7 +1271,7 @@ bool closes_heredoc(const char *line, const struct heredoc *open)
         return false;
     i += strlen(open->delim);
 
-    /* The line still has the newline fgets read, and the last line of
+    /* The line still has the newline getline read, and the last line of
      * a file needn't have one at all. */
     while (line[i] == '\n' || line[i] == '\r')
         i++;
@@ -1363,21 +1382,4 @@ int streqcmp(const char *str, const char *eq)
     if (strlen(str) != len)
         return 1;
     return strncmp(str, eq, len);
-}
-
-bool at_eof(FILE *file)
-{
-    int c;
-
-    /* fgets() stops at the end of the buffer as readily as at the end
-     * of the file, and when a line exactly fills the buffer it hasn't
-     * yet tried to read past the end to find out which it was, so
-     * feof() can't be trusted to say.  Looking at the next character
-     * can. */
-    c = getc(file);
-    if (c == EOF)
-        return true;
-
-    ungetc(c, file);
-    return false;
 }
