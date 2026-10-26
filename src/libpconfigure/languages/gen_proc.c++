@@ -132,11 +132,31 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * recipe has to say "the project" rather than "sub" for the
          * same reason every other line in that file does.  It reads
          * as "sub/." from a parent and as "." from inside the
-         * project, and both of those are the directory meant. */
+         * project, and both of those are the directory meant.
+         *
+         * The top of the project is the top of its SOURCE tree, which
+         * is the base only until a SRCPATH or "--srcpath" moves it.
+         * The script is found under "../tree" then, and the files it
+         * reads sit beside it, so running it from the build directory
+         * left "cat src/answer.txt" looking somewhere the build
+         * directory has nothing -- and a project builds one way in
+         * place and another way out of it, which is the one thing a
+         * separate build directory may not do.  A script that is not
+         * under the source tree at all is what a SRCDIR after a
+         * SRCPATH gives, since that SRCDIR is read from the base; it
+         * keeps the base as its top, which is where its SRCDIR was
+         * spelled from. */
+        auto under = [&](const std::string& dir) {
+            return procfile.compare(0, dir.size(), dir) == 0;
+        };
+        auto top = under(ctx->src_path) ? ctx->src_path
+            : under(ctx->base) ? ctx->base
+            : std::string();
+        auto script = procfile.substr(top.size());
         auto in_project = [&](const std::string& command) {
-            if (ctx->base.size() == 0)
+            if (top.size() == 0)
                 return command;
-            return "cd " + ctx->base + "." + " && " + command;
+            return "cd " + top + "." + " && " + command;
         };
 
         /* A line of the --deps answer whose first character is a '?'
@@ -204,9 +224,11 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * rooting each one is what makes a script mean the same thing
          * wherever its project sits.  An absolute path is rooted
          * already and is left alone: it names one file whoever reads
-         * it, and that is the reason a script spells it that way. */
+         * it, and that is the reason a script spells it that way.
+         * The root is the same top the script was run from, so that
+         * what it printed names the file it read. */
         auto root_path = [&](const std::string& path) {
-            return path[0] == '/' ? path : ctx->base + path;
+            return path[0] == '/' ? path : top + path;
         };
         auto dep_paths = [&](const std::string& line) {
             auto text = optional_dep(line) == true
@@ -371,7 +393,7 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * the habit that caused the original incident, and a reader of
          * this message should not have to infer that it is allowed. */
         auto bare_optional_lines = std::vector<std::string>{
-            "'" + ctx->unbased(procfile)
+            "'" + script
                 + " --deps' printed a '?' with no path after it",
             "  a '?' marks the rest of the line as an optional input: "
                 "one that is read when",
@@ -462,9 +484,9 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * stand. */
         auto script_failed = [&](const std::string& run,
                                  const std::string& how) {
-            auto by_hand = ctx->unbased(procfile) + " " + run;
-            if (ctx->base.size() > 0)
-                by_hand = "cd " + ctx->base + " && " + by_hand;
+            auto by_hand = script + " " + run;
+            if (top.size() > 0)
+                by_hand = "cd " + top + " && " + by_hand;
             std::cerr << gen_line << "\n"
                       << "  error: '" << procfile << " " << run << "' "
                       << how << "\n"
@@ -481,7 +503,7 @@ language_gen_proc::targets(const context::ptr& ctx) const
             std::make_shared<makefile::target>(procfile)
         };
         auto dep_lines = file_utils::execlines(
-            in_project("\"" + ctx->unbased(procfile) + "\""),
+            in_project("\"" + script + "\""),
             {"--deps"},
             [&](const std::string& how) { script_failed("--deps", how); });
         for (const auto& line: dep_lines) {
@@ -703,7 +725,7 @@ language_gen_proc::targets(const context::ptr& ctx) const
         auto target_dir = target.substr(0, target.rfind('/'));
         auto commands = std::vector<std::string>{
             "mkdir -p " + target_dir,
-            "(" + in_project(ctx->unbased(procfile) + " --generate")
+            "(" + in_project(script + " --generate")
                 + ") > " + tmp_target
                 + " && { if cmp -s " + tmp_target + " " + target
                 + " 2>/dev/null;"
@@ -976,6 +998,22 @@ language_gen_proc::targets(const context::ptr& ctx) const
             ? std::string()
             : "$$(" + project::prefix_variable(ctx->base) + ")";
 
+        /* What a path the script printed is rooted at in the fragment:
+         * the project's variable, and then whatever lies between the
+         * project and the top the script was run from -- the "../tree/"
+         * of a "--srcpath ../tree", which is no part of the variable
+         * and which root_path() above puts on the snapshot's spelling
+         * of the same path.  Leaving it off made the fragment name
+         * "src/answer.txt" in the build directory, where no rule makes
+         * it, so the build stopped on "No rule to make target" the
+         * first time the fragment was read.
+         *
+         * It goes in as written, unescaped, as it does everywhere else
+         * the Makefile names a source: a SRCPATH with whitespace in it
+         * was refused when it was read, and one with a '#' or a '$' in
+         * it breaks the rule above long before it reaches this one. */
+        auto root = variable + top.substr(ctx->base.size());
+
         /* The '?' of an optional line has to be read here as well as
          * at configure time, and sed is where that happens, because
          * this answer is the script's live one rather than the
@@ -1090,14 +1128,14 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * The "g" on the last one is safe because each match consumes
          * the whitespace it starts at, so a run of words is rooted one
          * word per match and none of them twice. */
-        if (variable.size() > 0) {
+        if (root.size() > 0) {
             dep_sed += "-e 's|^?[[:space:]]*|?|' ";
             dep_sed += "-e '/^?/!s|^\\([^/[:space:]]\\)|"
-                     + variable + "\\1|' ";
+                     + root + "\\1|' ";
             dep_sed += "-e 's|^?\\([^/[:space:]]\\)|?"
-                     + variable + "\\1|' ";
+                     + root + "\\1|' ";
             dep_sed += "-e 's|\\([[:space:]]\\)\\([^/[:space:]]\\)|\\1"
-                     + variable + "\\2|g' ";
+                     + root + "\\2|g' ";
         }
         dep_sed += "-e '/^?/!s|.*|" + variable + ctx->unbased(target)
                  + ": &|' ";
@@ -1164,7 +1202,7 @@ language_gen_proc::targets(const context::ptr& ctx) const
 
         auto dep_commands = std::vector<std::string>{
             "mkdir -p $(dir $@)",
-            "(" + in_project("\"" + ctx->unbased(procfile) + "\" --deps")
+            "(" + in_project("\"" + script + "\" --deps")
                   + ") > $@.raw || (rm -f $@.raw; exit 1)",
             "if grep -q '^?[[:space:]]*$$' $@.raw; then "
             "{ " + bare_optional_echo + "} >&2; "
