@@ -355,10 +355,19 @@ bool build_system_autotools::handle_configureopt(const std::string& opt)
 
     auto make_target = option_value(opt, "--target");
     if (make_target.size() > 0) {
-        /* A goal and a variable share the sub-make's command line and
-         * are told apart by an '=', so a '--target' with one in it is
-         * a variable -- and one with nothing in front of the '=' is
-         * make's "empty variable name", at build time. */
+        /* A --target is a word on the same make command line a
+         * --make-var is, and make tells a goal from a variable by
+         * whether the word has an '=' in it -- not by which option
+         * put it there.  So '--target DESTDIR=/tmp/x' asks for no
+         * goal at all: it is that --make-var under another name,
+         * building the default goal with an install destination
+         * nobody here decided, and it gets the same question. */
+        refuse_second_answer("--target", make_target);
+
+        /* That check reads what is in front of the '=' as the name,
+         * and an empty one is no destination, so "--target =check"
+         * gets past it -- to make's "empty variable name", at build
+         * time. */
         checked_make_word("--target", make_target, "check");
 
         _make_targets.push_back(make_target);

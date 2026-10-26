@@ -649,6 +649,20 @@ build_system_cmake::vendored_targets(
         abort();
     }
 
+    /* A --target with the make generator is a word on the sub-make's
+     * command line, where an '=' makes it a variable rather than a
+     * goal: '--target DESTDIR=/tmp/x' is the MAKEOPS this build
+     * system refuses, written as an option.  Asked here rather than
+     * where it was read for the reason the MAKEOPS above is: the
+     * --generator that decides whether there is a make to read it may
+     * be written below it.  The other generators hand a --target to
+     * "cmake --build --target", which reads it as the name of a
+     * target and nothing else, so there it is left alone. */
+    if (make_generator() == true) {
+        for (const auto& make_target: _make_targets)
+            refuse_second_answer("--target", make_target);
+    }
+
     /* And the other way around: a build that is a sub-make takes its
      * parallelism from the make that ran it, and a "-j" of its own
      * is how a "make -j8" turns into sixty-four compilers.  Told
