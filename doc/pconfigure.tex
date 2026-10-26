@@ -5754,6 +5754,8 @@ usage.
 
 The simplest helper program: essentially it just performs \texttt{rm
   *~} recursively.  It's just a small wrapper around \texttt{find}.
+Like \texttt{rm}, it tries every backup it finds and fails if any of
+them couldn't be removed, not just the last one it tried.
 
 \subsection{\texttt{ptest} \label{prog:ptest}}
 
