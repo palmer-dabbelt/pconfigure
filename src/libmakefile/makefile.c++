@@ -628,17 +628,25 @@ std::string makefile::makefile::write_to_file(const std::string& filename)
      * same block is in a subproject's Makefile too, which is simpler
      * than leaving it out and costs nothing: a parent only gets as far
      * as including one once its own copy has found nothing to split,
-     * and then the subproject's finds nothing either. */
+     * and then the subproject's finds nothing either.
+     *
+     * The two recipes are hidden like every other one, and shown like
+     * every other one under --verbose: a verbose build promises that no
+     * recipe line is kept from the log, and the one that starts each
+     * goal's make is exactly what someone reading that log wants to
+     * see. */
+    auto split_q = _verbose ? "" : "@";
     fprintf(file, "ifneq ($(and $(filter clean distclean,$(MAKECMDGOALS)),"
                   "$(filter-out clean distclean,$(MAKECMDGOALS))),)\n\n");
     fprintf(file, ".PHONY: $(MAKECMDGOALS) __pconfigure__one-goal-at-a-time\n");
     fprintf(file, "$(MAKECMDGOALS): __pconfigure__one-goal-at-a-time\n");
-    fprintf(file, "\t@:\n");
+    fprintf(file, "\t%s:\n", split_q);
     fprintf(file, "__pconfigure__one-goal-at-a-time:\n");
-    fprintf(file, "\t@+$(foreach goal,$(MAKECMDGOALS),"
+    fprintf(file, "\t%s+$(foreach goal,$(MAKECMDGOALS),"
                   "$(MAKE) --no-print-directory"
                   " -f '$(subst ','\\'',$(firstword $(MAKEFILE_LIST)))'"
-                  " '$(subst ','\\'',$(goal))' && ) true\n\n");
+                  " '$(subst ','\\'',$(goal))' && ) true\n\n",
+            split_q);
     fprintf(file, "else\n\n");
 
     /* Where every other project in the run is.  These are defaults,
