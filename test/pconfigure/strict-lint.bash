@@ -58,9 +58,17 @@ cat >test/app/t.c <<EOF
 int main(void) { return 0; }
 EOF
 
+# The script answers --deps with nothing, as a GENERATE script with no
+# inputs should: pconfigure runs it with --deps at configure time and
+# reads every line it prints as an input path, so one that printed the
+# C below to both questions would be refused for the ';' in it before
+# the warnings this section counts were ever weighed.
 cat >src/gen.c.proc <<'EOF'
 #!/bin/bash
-echo "int gen(void) { return 0; }"
+case "$1" in
+--deps)     ;;
+--generate) echo "int gen(void) { return 0; }" ;;
+esac
 EOF
 chmod +x src/gen.c.proc
 
