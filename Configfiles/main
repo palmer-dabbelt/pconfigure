@@ -586,6 +586,7 @@ TESTSRC     += autotools-autoreconf-unbalanced-quote-refused.bash
 TESTSRC     += kconfig-opts.bash
 TESTSRC     += kconfig-deps.bash
 TESTSRC     += kconfig-build-deps.bash
+TESTSRC     += kconfig-configure-string-values-with-equals-and-empty.bash
 TESTSRC     += vendored-depend.bash
 TESTSRC     += autotools-target-with-equals-refused-like-make-var.bash
 TESTSRC     += cmake-make-generator-target-with-equals-refused.bash
