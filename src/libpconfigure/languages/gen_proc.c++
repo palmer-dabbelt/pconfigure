@@ -50,6 +50,86 @@ static std::string fragment_context_path(const std::string& output)
     return output + ".d-context";
 }
 
+/* One path from a --deps answer, spelled the way the rule that builds
+ * it spells its target.  make compares prerequisites with targets by
+ * name, not by the file the name resolves to, and the only tidying it
+ * does on its own is to drop a LEADING "./".  So "obj/./proc/a.h" and
+ * "src/../obj/proc/a.h" are both files nothing builds, even though the
+ * script meant obj/proc/a.h by each of them -- and in a subproject,
+ * where the project's directory goes on the front, the "./" that make
+ * would have dropped at the top of a tree ends up in the middle as
+ * well, so a script that works on its own stops working once
+ * something pulls its project in.
+ *
+ * Three things, and no more, because the same three are done again by
+ * sed in the build-time recipe below and the two spellings have to
+ * agree word for word: they are both prerequisites of the one rule,
+ * and one of them naming a file the other does not is the failure
+ * this exists to remove.  That is why this is not
+ * file_utils::normalize_path(), which does more than a few lines of
+ * portable sed comfortably can.
+ *
+ *   - A run of slashes is one slash.
+ *   - A "." component is dropped when something follows it.
+ *   - A component followed by ".." is dropped along with the "..",
+ *     when something follows the "..".  A ".." with nothing before it
+ *     to absorb it -- one that climbs out of the directory the path
+ *     started in -- is kept as written, since what it names depends
+ *     on where make reads it from, which the rooting that follows this
+ *     takes care of.
+ *
+ * "When something follows" keeps a path from ever being tidied into
+ * nothing, so "./" or "a/../" stays what it was rather than vanishing
+ * or turning into the project's directory.  Folding ".." is lexical,
+ * as make's own idea of a name is: through a symlinked directory
+ * "a/../b" is not where the kernel would go, but a script that prints
+ * that and means the kernel's answer is asking for a name no rule
+ * could ever match anyway. */
+static std::string tidy_dep_path(const std::string& path)
+{
+    auto parts = std::vector<std::string>();
+    auto part = std::string();
+    for (size_t i = 0; i <= path.size(); ++i) {
+        if (i < path.size() && path[i] != '/') {
+            part += path[i];
+            continue;
+        }
+
+        /* An empty part in the middle is a doubled slash.  The first
+         * and last are kept: they are the leading slash of an absolute
+         * path and the trailing one of a directory. */
+        if (part.size() > 0 || parts.size() == 0 || i == path.size())
+            parts.push_back(part);
+        part = "";
+    }
+
+    auto followed = [&](size_t i) {
+        return i + 1 < parts.size()
+            && !(i + 2 == parts.size() && parts.back().size() == 0);
+    };
+
+    auto out = std::vector<std::string>();
+    for (size_t i = 0; i < parts.size(); ++i) {
+        const auto& p = parts[i];
+        if (p == "." && followed(i))
+            continue;
+        if (p == ".." && followed(i)
+            && out.size() > 0
+            && out.back().size() > 0
+            && out.back() != "."
+            && out.back() != "..") {
+            out.pop_back();
+            continue;
+        }
+        out.push_back(p);
+    }
+
+    auto joined = std::string();
+    for (size_t i = 0; i < out.size(); ++i)
+        joined += (i == 0 ? "" : "/") + out[i];
+    return joined;
+}
+
 std::vector<std::pair<std::string, std::string>>
 language_gen_proc::scratch_files(const context::ptr& ctx,
                                  const std::string& output)
@@ -228,7 +308,8 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * The root is the same top the script was run from, so that
          * what it printed names the file it read. */
         auto root_path = [&](const std::string& path) {
-            return path[0] == '/' ? path : top + path;
+            auto tidy = tidy_dep_path(path);
+            return tidy[0] == '/' ? tidy : top + tidy;
         };
         auto dep_paths = [&](const std::string& line) {
             auto text = optional_dep(line) == true
@@ -1104,6 +1185,53 @@ language_gen_proc::targets(const context::ptr& ctx) const
         dep_sed += "-e 's|\\$$|$$$$|g' ";
         dep_sed += "-e '/^?/!s|\\(\\\\*\\)#|\\1\\1\\\\#|g' ";
         dep_sed += "-e '/^?/!s|\\(\\\\*\\):|\\1\\1\\\\:|g' ";
+
+        /* Each path is then tidied the way tidy_dep_path() tidies the
+         * snapshot's, before anything is put on its front: the two are
+         * prerequisites of the one rule, so "obj/./proc/a.h" tidied in
+         * one and not the other leaves the rule waiting on a file
+         * nothing builds all the same.  The rules are the ones listed
+         * there, and are spelled here one expression each.
+         *
+         * A space goes in front of every path first -- after the '?'
+         * of an optional line, at the start of any other -- so that
+         * the start of a path is always "after a '/' or whitespace",
+         * which one bracket expression can say.  Without it each rule
+         * would need a second copy for the first word of a line, and
+         * a third for the first word behind a '?', since POSIX BRE has
+         * no alternation.  It comes off an ordinary line again once
+         * the tidying is done, so the line reaches the rest of this
+         * list exactly as the script wrote it apart from its paths;
+         * an optional line's whitespace after the '?' is dropped by
+         * whatever reads it next either way.
+         *
+         * Folding a ".." is a loop, because "a/b/../../c" only shows
+         * its outer pair once the inner one is gone.  That is the one
+         * place a "t" is used in this list, and it branches BACKWARD
+         * to the label just above it, so nothing written after it can
+         * be skipped by it.  It may go round once more than it needs
+         * to, when an earlier expression made a substitution on the
+         * same line; the extra pass finds nothing to fold and falls
+         * through.  The component being folded is never "." or "..",
+         * which without alternation takes three spellings: one that
+         * starts with something other than a dot, one that is a dot
+         * followed by something other than a dot, and one that is two
+         * dots followed by something more. */
+        dep_sed += "-e 's|^?[[:space:]]*|? |' ";
+        dep_sed += "-e '/^?/!s|^| |' ";
+        dep_sed += "-e 's|//*|/|g' ";
+        dep_sed += "-e 's|\\([/[:space:]]\\)\\./\\(\\./\\)*"
+                   "\\([^[:space:]]\\)|\\1\\3|g' ";
+        dep_sed += "-e ':fold' ";
+        for (const auto& component: {
+                "[^./[:space:]][^/[:space:]]*",
+                "\\.[^./[:space:]][^/[:space:]]*",
+                "\\.\\.[^/[:space:]][^/[:space:]]*" }) {
+            dep_sed += "-e 's|\\([/[:space:]]\\)" + std::string(component)
+                     + "/\\.\\./\\([^[:space:]]\\)|\\1\\2|' ";
+        }
+        dep_sed += "-e 't fold' ";
+        dep_sed += "-e '/^?/!s|^ ||' ";
 
         /* A subproject roots each path a line names, the way
          * dep_paths() above does for the snapshot, and the two have to
