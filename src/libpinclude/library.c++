@@ -122,6 +122,8 @@ static void check_line(
     bool bare_directives
 );
 
+static size_t c_hash_at(const std::string& line, size_t i);
+
 static bool resolve_pp_function(
     const std::string& f,
     const std::unordered_set<std::string>& defines
@@ -383,6 +385,23 @@ int list_overwrite_defines(std::string filename,
         if (language != pinclude::syntax::C)
             return true;
 
+        /* A UTF-8 byte order mark at the very start of a file is how
+         * plenty of Windows editors say what encoding they saved it
+         * in, and gcc and clang skip it as no part of the source.
+         * Left on the line it stood in front of the first '#', and a
+         * directive with anything but whitespace before it is no
+         * directive: the scan passed over a first line the compiler
+         * read as an #include, and whatever implemented the header
+         * was left out of the link.  Only the start of the file, as
+         * the compilers have it; the same bytes anywhere else are a
+         * character in the text.  It goes from "raw" too, since it
+         * is no more visible quoted back than it was in the editor. */
+        if (lineno == 1 && line.compare(0, 3, "\xEF\xBB\xBF") == 0) {
+            line = line.substr(3);
+            out = line;
+            raw = line;
+        }
+
         /* An empty line has no last character, and asking for one
          * indexes off the front of the string.  Blank lines turn up in
          * every header there is, so this is worth a guard rather than
@@ -429,9 +448,9 @@ int list_overwrite_defines(std::string filename,
             size_t j = 0;
             while (j < i && isspace((unsigned char)out[j]))
                 j++;
-            if (j >= i || out[j] != '#')
+            if (j >= i || c_hash_at(out, j) == 0)
                 return false;
-            j++;
+            j += c_hash_at(out, j);
             while (j < i && isspace((unsigned char)out[j]))
                 j++;
             if (out.compare(j, 7, "include") != 0)
@@ -1468,10 +1487,13 @@ static void check_line(const std::string& line, const std::string& pp, const std
 {
     size_t i = 0;
 
-    /* The first non-whitespace character must be a # */
+    /* The first non-whitespace character must be a #, or for C the
+     * "%:" digraph that is the same token to the preprocessor. */
     while (i < line.size() && isspace(line[i]))
         i++;
-    if (line[i] != '#')
+    auto hash = bare_directives ? (line[i] == '#' ? 1 : 0)
+                                : c_hash_at(line, i);
+    if (hash == 0)
         return;
 
     /* In a shell script a # starts a comment, and the only thing that
@@ -1487,7 +1509,7 @@ static void check_line(const std::string& line, const std::string& pp, const std
         return;
 
     /* After the # there can be any number of spaces, so we just skip them. */
-    i++;
+    i += hash;
     if (bare_directives == false)
         while (i < line.size() && isspace(line[i]))
             i++;
@@ -1531,6 +1553,27 @@ static void check_line(const std::string& line, const std::string& pp, const std
         end--;
 
     return on_match(line.substr(i, end - i));
+}
+
+/* How many characters of a line of C, from "i" on, are the '#' that
+ * starts a directive: one for a '#', two for "%:", and none if it is
+ * neither.  "%:" has been the digraph for '#' since C95 and is in
+ * every C++ there has been, so "%:include" is an #include to the
+ * compiler, and one the scan passed over left the header it named
+ * out of the prerequisites and the source behind that header out of
+ * the link.
+ *
+ * Only ever asked of C.  pbashc and pperlc look for a '#' and nothing
+ * else, so in a script "%:include" is a line of shell or Perl, and a
+ * scan that followed it would be making a dependency of a file the
+ * script never pastes in. */
+static size_t c_hash_at(const std::string& line, size_t i)
+{
+    if (i < line.size() && line[i] == '#')
+        return 1;
+    if (line.compare(i, 2, "%:") == 0)
+        return 2;
+    return 0;
 }
 
 static bool resolve_pp_function(
