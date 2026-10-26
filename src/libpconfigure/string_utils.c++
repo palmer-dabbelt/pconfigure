@@ -226,7 +226,7 @@ std::string string_utils::shell_quoting_problem(const std::string& in)
 bool string_utils::has_extension(const std::string& name,
                                  const std::string& extension)
 {
-    if (name.size() <= extension.size())
+    if (name.size() < extension.size())
         return false;
 
     return name.compare(name.size() - extension.size(),

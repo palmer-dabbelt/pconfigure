@@ -435,9 +435,9 @@ language_cxx::languages_behind_headers(const context::ptr& ctx) const
     out.target = this;
 
     for (const auto& extension: cxx_header_source_extensions()) {
-        /* A name to ask about rather than a bare ending, which
-         * has_extension() doesn't count as having one. */
-        auto example = "source" + extension;
+        /* The bare ending is itself the name of a file of whichever
+         * language owns it, so it is what gets asked about. */
+        const auto& example = extension;
 
         /* Every ending belongs to at most one language, so this is
          * the same answer whatever order LANGUAGES named them in.  The

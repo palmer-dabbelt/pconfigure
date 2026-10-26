@@ -90,8 +90,10 @@ namespace string_utils {
     std::string hash(const std::vector<std::string>& in);
 
     /* TRUE when a filename ends with the given extension.  A name
-     * that is nothing but the extension has no stem, so it isn't
-     * one. */
+     * that is nothing but the extension has one too: the compiler
+     * takes a hidden file called ".c" as C, and so does pconfigure
+     * wherever else it meets one -- as "d/.c", or behind an
+     * '#include ".h"' -- so "SOURCES += .c" has to be C as well. */
     bool has_extension(const std::string& name, const std::string& extension);
 
     /* A target's name the way make reads it: every "./" on the front
