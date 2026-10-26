@@ -898,6 +898,18 @@ subproject's directory.  A \texttt{./} in front makes no difference:
 make drops it from every target it reads, so \texttt{./clean} is
 \texttt{clean} to make and is refused the same way.
 
+Nor can the name be a file the build reads: a source a
+\texttt{SOURCES}, \texttt{TESTSRC} or \texttt{HEADERSRC} names, a
+\texttt{GENERATE}'s script, or a Configfile the Makefile is written
+out of.  make takes a phony target as out of date every time it looks,
+so everything built from such a file would be built again by every
+\texttt{make}, and a phony Configfile under \texttt{AUTORECONFIGURE}
+would rerun pconfigure without end.  These are refused once every
+Configfile has been read, pointing at the \texttt{PHONY}'s line and at
+the line that reads the file.  A directory is fine: \texttt{PHONY +=
+src} beside a \texttt{src/} of sources and scripts works, because
+nothing the build writes depends on a directory by its bare name.
+
 \subsection{\texttt{SOURCES += \$name} \label{cmd:sources}}
 
 Adds a \texttt{\$SRCDIR/\$name} to the list of sources that will be
