@@ -580,13 +580,30 @@ void makefile::makefile::write_to_file(const std::string& filename)
      * the failure.  Which results are in the set is something only the
      * Configfiles say, and this file is where that gets a timestamp.
      *
-     * The empty rule is for a scope file that isn't there, which is a
-     * tree somebody cleared out by hand: make takes a file with no
-     * rule and no file as remade, so the stamp is too, and the next
-     * report scores everything rather than stopping on "No rule to
-     * make target". */
+     * The rule is for a scope file that isn't there, which is an
+     * object directory somebody deleted, and it writes back what the
+     * configure that wrote this Makefile put there.  It used to be an
+     * empty rule, which kept make from stopping on "No rule to make
+     * target" but put nothing back: make takes a file with no rule
+     * and no file as remade on every run, so the stamp was out of date
+     * on every "make check" after, every report was scored again, and
+     * ptest warned that "make check" was stale however recently it
+     * had run.  Written back, the scope is newer than the stamp once,
+     * which scores everything the one time a deleted directory says
+     * to, and then settles. */
+    auto scope_contents = std::map<std::string, std::string>();
+    for (const auto& scope: check_scopes())
+        scope_contents[scope.first] = scope.second;
+    auto write_scope_rule = [&](const std::string& suite) {
+        auto path = check_scope_path(suite);
+        fprintf(file, "%s:\n", _prefix.rewrite(path).c_str());
+        fprintf(file, "\t%smkdir -p $(dir $@)\n", q);
+        for (const auto& line: write_recipe(scope_contents[path]))
+            fprintf(file, "\t%s%s\n", q, line.c_str());
+    };
+
     auto all_scope = _prefix.rewrite(check_scope_path(""));
-    fprintf(file, "%s:\n", all_scope.c_str());
+    write_scope_rule("");
     fprintf(file, "%s: %s\n", stamp.c_str(), all_scope.c_str());
     fprintf(file, "%s:", stamp.c_str());
     for (const auto& check_stamp: _check_stamps)
@@ -808,7 +825,7 @@ void makefile::makefile::write_to_file(const std::string& filename)
          * same reason: a suite is exactly the set a Configfile edit
          * can change without touching any result in it. */
         auto suite_scope = _prefix.rewrite(check_scope_path(suite.first));
-        fprintf(file, "%s:\n", suite_scope.c_str());
+        write_scope_rule(suite.first);
         fprintf(file, "%s: %s\n", suite_stamp.c_str(), suite_scope.c_str());
         fprintf(file, "%s:", suite_stamp.c_str());
         for (const auto& result: suite.second)
