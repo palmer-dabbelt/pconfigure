@@ -13,8 +13,20 @@ fi
 # would remove some other file, or fail to remove anything, while the
 # backup it found stays put.  The empty IFS keeps read from trimming
 # whitespace off either end of the name for the same reason.
-find . $args -iname "*~" -print0 | while IFS= read -r -d '' file
-do
-    echo "$file"
-    rm "$file"
-done
+#
+# A backup that can't be removed has to make pclean fail, as it would
+# make "rm *~" fail, even when others after it are removed fine.  The
+# loop runs once per backup, though, and its status is only that of
+# the last rm, so a failure is remembered and the loop exits
+# with it once everything has been tried.  The loop is a subshell on
+# the far end of a pipe, which is why it carries its own exit rather
+# than setting a variable for the script to look at afterwards.
+find . $args -iname "*~" -print0 | {
+    status=0
+    while IFS= read -r -d '' file
+    do
+        echo "$file"
+        rm "$file" || status=$?
+    done
+    exit $status
+}

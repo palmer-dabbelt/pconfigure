@@ -95,6 +95,7 @@ SOURCES	    += pclean.bash
 TESTSRC     += simple.bash
 TESTSRC     += backslash-in-backup-name.bash
 TESTSRC     += backslash-newline-in-backup-name.bash
+TESTSRC     += failed-removal-fails-even-when-not-last.bash
 
 BINARIES    += pbashc
 DEPLIBS     += pinclude
