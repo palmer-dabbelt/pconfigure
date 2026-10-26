@@ -900,6 +900,11 @@ Instead, it is run at \texttt{make check} and the results are
 collected into \texttt{\$CHECKDIR}.  These results can then be listed
 by running \texttt{ptest} (see Section~\ref{prog:ptest}).
 
+A test is run with nothing on its standard input, so one that reads it
+sees end-of-file at once rather than waiting on the terminal of
+whoever typed \texttt{make check} or taking the input of the script
+that ran it.
+
 A test that finds it cannot run at all --- a cross compiler that is
 not installed, a hypervisor the host does not have --- says so instead
 of passing or failing.  It prints a line of its own beginning
