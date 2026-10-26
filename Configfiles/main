@@ -1306,9 +1306,12 @@ TESTSRC     += autotools-prefix-under-build-systems-names-line.bash
 TESTSRC     += cmake-depend-on-missing-file-names-line.bash
 TESTSRC     += compileopts-reverted-define-recompiles-c-binary.bash
 TESTSRC     += compileopts-reverted-define-recompiles-cxx-binary.bash
+TESTSRC     += per-source-compileopts-reverted-recompiles-source.bash
 TESTSRC     += compileopts-reverted-rebuilds-shared-library.bash
 TESTSRC     += compileopts-reverted-rebuilds-static-library-consumer.bash
 TESTSRC     += compileopts-reverted-reinstalls-binary.bash
+TESTSRC     += compileopts-reverted-reruns-c-test.bash
+TESTSRC     += compiler-reverted-recompiles-binary.bash
 TESTSRC     += compileopts-reverted-autoreconfigure-recompiles.bash
 TESTSRC     += linkopts-reverted-relinks-binary.bash
 

@@ -1652,15 +1652,39 @@ language_cxx::link_objects(const context::ptr& ctx,
      * input relinks nothing, and the recipe's "filter %.o" below
      * keeps the file itself off the link line.
      *
-     * What goes into the hash is the sources as the Configfile named
-     * them, which is the same list the objects above were compiled
-     * from: a link input that leaves the build leaves this list, and
-     * an option change was already an input to the directory this
-     * file sits in, through hash_link_options(). */
+     * What goes into the hash is each source as the Configfile named
+     * it, along with the hash its object is named by, and then the
+     * path of every object this link is handed.  The source names are
+     * what a link input leaving the build takes off this list.  The
+     * object hashes are what catch an edit that goes back: an object
+     * is named by its compile line and its COMPILER, so trying
+     * "-DX=2" on one source and then putting "-DX=1" back names the
+     * very object the first build left, which is still there and
+     * older than the program the build in between linked.  Neither
+     * a per-source COMPILEOPTS nor a COMPILER goes into the name of
+     * the directory this file sits in, so that stays the same either
+     * way, and nothing on the rule was newer than that program: make
+     * kept it, and its "2", under a Makefile that says "1".  With the
+     * hashes in here, every change of compile options is a change to
+     * this file, a revert included.
+     *
+     * The hashes come from the sources rather than from the objects
+     * alone, because a project that works its dependencies out during
+     * the build hands this nothing in "objects": what it links is
+     * written down by make, and only the options it is compiled with
+     * are known here.  Where there are objects, which includes the
+     * ones built from behind a header and compiled the way their own
+     * language says, their paths go in as well.  A change to the link
+     * options, the target's COMPILEOPTS among them, was already an
+     * input to the directory this file sits in, through
+     * hash_link_options(). */
     auto link_inputs = std::vector<std::string>();
     for (const auto& child: ctx->children)
         if (child->type == context_type::SOURCE)
-            link_inputs.push_back(child->src_dir + "/" + child->cmd->data());
+            link_inputs.push_back(child->src_dir + "/" + child->cmd->data()
+                                  + ":" + hash_compile_options(ctx, child));
+    for (const auto& object: objects)
+        link_inputs.push_back(object->path());
 
     auto link_inputs_path = shared_link_dir + "link-inputs";
     /* Spelled the way the project spells them, for the same reason
