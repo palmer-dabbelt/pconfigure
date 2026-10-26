@@ -76,13 +76,21 @@ command::ptr command::with_type(const command_type& type)
 
 command::ptr command::with_data(const std::string& data)
 {
-    return std::make_shared<command>(
+    auto out = std::make_shared<command>(
         this->_type,
         this->_op,
         data,
         this->_debug_info,
         this->_qualifier,
         this->_printed_nothing);
+
+    /* What the line was written as is part of the line, and a
+     * HEADERSRC whose HEADERS half is given a new name is still a
+     * HEADERSRC to everything that asks -- the header-copy checks in
+     * project.c++ most of all, which tell it from a plain HEADERS
+     * with this. */
+    out->_written_as = this->_written_as;
+    return out;
 }
 
 command::ptr command::parse_option(const std::string& str,
