@@ -5774,6 +5774,18 @@ comes first.  The message names both lines; rename one of the
 targets, to \texttt{tools-run} say, so that neither is the other's
 directory.
 
+Nor may one target be another's temporary.  Every program, library
+and header is copied into place --- in \texttt{bin}, \texttt{lib} and
+\texttt{include}, and again under the prefix --- through a file of the
+same name with \texttt{.tmp} on the end, which is then renamed over
+it, so that anything with the old file open keeps the old file.  A
+\texttt{BINARIES += x.tmp} beside a \texttt{BINARIES += x} is that
+file, and every build or install of \texttt{x} would overwrite it and
+rename it away, so the later of the two lines is refused, whichever
+of them comes first, naming the other.  The same goes for
+\texttt{LIBRARIES} and \texttt{HEADERS}.  A target that merely ends in
+\texttt{.tmp}, with nothing of the matching name beside it, is fine.
+
 \subsection{\texttt{AUTODEPS = false} where nothing is linked}
 
 \begin{verbatim}
