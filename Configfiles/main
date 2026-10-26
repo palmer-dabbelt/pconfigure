@@ -96,6 +96,9 @@ TESTSRC     += simple.bash
 TESTSRC     += backslash-in-backup-name.bash
 TESTSRC     += backslash-newline-in-backup-name.bash
 TESTSRC     += failed-removal-fails-even-when-not-last.bash
+TESTSRC     += removes-backups-recursively-keeps-other-files.bash
+TESTSRC     += r-stays-in-current-directory.bash
+TESTSRC     += does-not-follow-symlinked-directory.bash
 
 BINARIES    += pbashc
 DEPLIBS     += pinclude
