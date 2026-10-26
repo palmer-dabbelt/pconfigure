@@ -1208,6 +1208,7 @@ TESTSRC     += bash-compileopts-reverted-rebuilds-script.bash
 TESTSRC     += bash-compileopts-include-dir-change-rebuilds-script.bash
 TESTSRC     += perl-compileopts-include-dir-change-rebuilds-script.bash
 TESTSRC     += sources-reverted-relinks-binary.bash
+TESTSRC     += shadowing-header-beside-source-recompiles-after-reconfigure.bash
 TESTSRC     += bash-binary-source-switch-rebuilds-script.bash
 TESTSRC     += headers-source-switch-recopies-header.bash
 TESTSRC     += headers-source-reverted-recopies-header.bash
