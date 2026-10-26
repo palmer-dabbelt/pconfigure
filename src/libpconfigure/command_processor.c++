@@ -878,10 +878,22 @@ static bool names_a_make_target(const command_type& type)
  * make_wildcard_character() and a warning instead.  And only names are
  * asked at all, since a COMPILEOPTS or a LINKOPTS is a
  * command line that never becomes a target and has every right to an
- * "-DX=a:b" or a '#' in it. */
-static std::string make_special_character(char c)
+ * "-DX=a:b" or a '#' in it.
+ *
+ * Whitespace never reaches here from a Configfile, which splits its
+ * lines into words before anything is a name.  It is in the list
+ * anyway because a Configfile is not the only place a name comes
+ * from: a source found behind a header is built under the name it has
+ * on disk, and language_cxx asks this of that name too. */
+std::string make_special_character(char c)
 {
     switch (c) {
+    case ' ':
+    case '\t':
+    case '\n':
+        return "make splits a rule line into names at whitespace, and"
+               " the shell splits the recipes the name is pasted into"
+               " bare at it, so neither ever sees one name";
     case '#':
         return "make reads a '#' anywhere on a rule line as the start of"
                " a comment, so everything after it -- the rest of the name"

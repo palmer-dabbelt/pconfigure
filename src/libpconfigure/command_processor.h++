@@ -418,4 +418,9 @@ private:
     context::ptr enclosing_test(void) const;
 };
 
+/* Why "c" can't be in the name of something the Makefile builds, or
+ * "" when it can: a sentence for a diagnostic.  The reasoning, and
+ * why these are refused rather than escaped, is over its definition. */
+std::string make_special_character(char c);
+
 #endif

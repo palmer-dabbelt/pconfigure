@@ -2517,6 +2517,47 @@ language_cxx::compile_source(const context::ptr& ctx,
                     continue;
                 std::string stripped_dep = dep.substr(src_prefix.size());
 
+                /* A source found here is built, which a header is
+                 * not: its name goes on the left of the rule for its
+                 * object, into the object's own name, and bare into
+                 * the compile recipe -- every place a SOURCES line's
+                 * name goes, so it is held to what one of those is
+                 * held to.  A header with a space or a '#' in its name
+                 * is spelled for make and builds; the source beside it
+                 * cannot be, since the shell half of that is a rewrite
+                 * of every recipe, which make_special_character()
+                 * explains turning down.  Said here rather than left to
+                 * make, which would otherwise stop on a rule line
+                 * nobody wrote, or hang restarting under
+                 * AUTORECONFIGURE. */
+                for (const auto& c: stripped_dep) {
+                    auto why = make_special_character(c);
+                    if (why.size() == 0)
+                        continue;
+
+                    std::cerr << std::to_string(child->cmd->debug())
+                              << "\n"
+                              << "  error: '" << source_path
+                              << "' reads '" << header_dep
+                              << "', and the source behind it, '" << dep
+                              << "', has a '"
+                              << (c == '\n' ? std::string("\\n")
+                                  : c == '\t' ? std::string("\\t")
+                                  : std::string(1, c))
+                              << "' in its name\n"
+                              << "  a source found behind a header is"
+                              << " built into this target, which makes it"
+                              << " the name of something the Makefile"
+                              << " builds, and " << why << "\n"
+                              << "  rename the source without it --"
+                              << " letters, digits, '-', '_' and '.' are"
+                              << " all safe -- and the header beside it to"
+                              << " match, or, if it was never meant to be"
+                              << " built into this target, set AUTODEPS ="
+                              << " false on the target\n";
+                    abort();
+                }
+
                 /* Compiled by the language whose file it is, which
                  * isn't necessarily this one.  That language's
                  * compiler is in the object's name, so asking it here

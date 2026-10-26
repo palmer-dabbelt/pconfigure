@@ -44,6 +44,7 @@
 #include <libmakefile/path_prefix.h++>
 #include <libmakefile/recipe_quote.h++>
 #include <libmakefile/target.h++>
+#include <libpconfigure/command_processor.h++>
 #include <libpconfigure/context_file.h++>
 #include <libpconfigure/file_utils.h++>
 #include <libpconfigure/languages/bash.h++>
@@ -749,6 +750,32 @@ int main(int argc, const char **argv)
 
                 auto sibling = found.substr(ctx.src_prefix.size());
                 auto named = ctx.named.find(sibling);
+
+                /* A source found here is built, so its name lands
+                 * everywhere a SOURCES line's does -- on the left of
+                 * rules, in an object's name, bare in a recipe -- and
+                 * is held to what one of those is held to, the way
+                 * language_cxx holds it when it does this walk itself.
+                 * The header in front of it is spelled for make and
+                 * is fine; this is not. */
+                for (const auto& c: sibling) {
+                    auto why = make_special_character(c);
+                    if (why.size() == 0)
+                        continue;
+
+                    auto shown = c == '\n' ? std::string("\\n")
+                               : c == '\t' ? std::string("\\t")
+                               : std::string(1, c);
+                    die("'" + source + "' reads '" + header + "', and"
+                        " the source behind it, '" + found + "', has a"
+                        " '" + shown + "' in its name: it is built into"
+                        " this target, which makes it the name of"
+                        " something the Makefile builds, and " + why
+                        + ".  Rename the source without it, and the"
+                        " header beside it to match, or set AUTODEPS ="
+                        " false on the target if it was never meant to"
+                        " be built into it.");
+                }
 
                 /* What the sibling is compiled as is a matter of its
                  * own name rather than this source's, so the fragment
