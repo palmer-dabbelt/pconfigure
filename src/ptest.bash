@@ -639,7 +639,24 @@ export PTEST_TMPDIR="$tmpdir"
 export PTEST_SCRATCH_DIR="$scratchdir"
 
 "$test" "$@" >&"$tmpdir"/ptest__output
-echo "$?" >"$tmpdir"/ptest__return
+status="$?"
+
+# The directory is the test's to do what it likes with until it exits,
+# and taking permissions away is one of the things a test does on
+# purpose: "chmod a-w" on the one directory it owns is how it checks
+# that a program refuses to write somewhere it can't.  Everything after
+# this point is ptest's, though -- the status is written into that
+# directory, the cd goes into it and tar reads every file in it -- so
+# the permissions come back now, the same way and for the same reason
+# as they do before removing it.  Left until the removal, a read-only
+# directory had no room for the status and a test that passed was
+# scored as an EROR, one at mode 000 couldn't be entered and failed
+# the check target outright, and an unreadable file was dropped from
+# the result with tar's complaint printed in the middle of make's
+# output.  This is what the test left, not how it left it: the modes
+# in the result are the restored ones.
+chmod -R u+rwX "$tmpdir" 2>/dev/null
+echo "$status" >"$tmpdir"/ptest__return
 
 # A cd that fails leaves ptest wherever make started it, and the tar
 # then collects that directory as though it were this test's result --
