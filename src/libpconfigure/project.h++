@@ -457,8 +457,10 @@ private:
      * GENERATE keeps beside its own -- the temporary its output is
      * written through, its dependency fragment and that fragment's
      * leftovers -- or whose own such files are another GENERATE's
-     * output.  "claimed" maps each of those paths to the line that
-     * claimed it and what the path is to that line. */
+     * output, or that needs one of those paths to be a directory when
+     * it is a file or a file when it is a directory.  "claimed" maps
+     * each of those paths to the line that claimed it and what the path
+     * is to that line. */
     static void check_generate_names(
         const context::ptr& ctx,
         std::map<std::string,

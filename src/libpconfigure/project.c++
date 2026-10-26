@@ -3005,6 +3005,70 @@ void project::check_generate_names(
         abort();
     }
 
+    /* Two lines can fight over one path without either naming it
+     * exactly, since every output lands in the one generated-files
+     * directory: "GENERATE += sub/x.h" needs obj/proc/sub to be a
+     * directory, and "GENERATE += sub" needs it to be a file.  So does
+     * "GENERATE += gen.h.d/inner.h" next to "GENERATE += gen.h", whose
+     * dependency fragment is obj/proc/gen.h.d.  Neither order works.
+     * With the directory first, the other output is never written at
+     * all -- its script only runs when the output is missing, and the
+     * directory is there -- so the build goes green without it; with
+     * the file first, the "mkdir" fails with a message that sends the
+     * reader off to check permissions and doesn't name the other line.
+     *
+     * Asked both ways, as the target-shape check asks it for BINARIES:
+     * the paths above each of this line's files that are already
+     * another line's file, and the other lines' files already filed
+     * under one of this line's as a directory.  The second is the range
+     * of the map from "<path>/", which holds exactly the paths inside
+     * it and none that merely share its name as a prefix. */
+    auto refuse_nesting = [&](const std::string& file,
+                              const std::string& file_role,
+                              const context::ptr& file_ctx,
+                              const std::string& inside,
+                              const std::string& inside_role,
+                              const context::ptr& inside_ctx)
+        {
+            std::cerr << std::to_string(ctx->cmd->debug()) << "\n"
+                      << "  error: '" << file << "' is " << file_role
+                      << " of the GENERATE on "
+                      << std::to_string(file_ctx->cmd->debug())
+                      << ", but '" << inside << "' is " << inside_role
+                      << " of the GENERATE on "
+                      << std::to_string(inside_ctx->cmd->debug())
+                      << ", which needs it to be a directory\n"
+                      << "  one path can't be both a file and a"
+                      << " directory, so rename one of the two outputs so"
+                      << " that neither it nor the '<name>.tmp',"
+                      << " '<name>.d', '<name>.d.raw', '<name>.d.tmp' and"
+                      << " '<name>.d-context' kept beside it comes out"
+                      << " inside the other -- 'sub.h' and 'sub/x.h',"
+                      << " say, rather than 'sub' and 'sub/x.h'\n";
+            abort();
+        };
+
+    for (const auto& path: mine) {
+        auto key = file_utils::normalize_path(path.first);
+
+        for (auto slash = key.find('/');
+             slash != std::string::npos;
+             slash = key.find('/', slash + 1)) {
+            auto parent = claimed.find(key.substr(0, slash));
+            if (parent != claimed.end())
+                refuse_nesting(parent->first, parent->second.second,
+                               parent->second.first,
+                               key, path.second, ctx);
+        }
+
+        auto below = claimed.lower_bound(key + "/");
+        if (below != claimed.end()
+            && below->first.compare(0, key.size() + 1, key + "/") == 0)
+            refuse_nesting(key, path.second, ctx,
+                           below->first, below->second.second,
+                           below->second.first);
+    }
+
     for (const auto& path: mine)
         claimed[file_utils::normalize_path(path.first)]
             = std::make_pair(ctx, path.second);
