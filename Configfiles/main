@@ -820,6 +820,7 @@ TESTSRC     += autoreconfigure-compiler-edit-recompiles.bash
 TESTSRC     += autoreconfigure-cross-compile-edit-recompiles.bash
 TESTSRC     += autoreconfigure-source-deleted-with-its-line.bash
 TESTSRC     += autoreconfigure-subproject-deleted-with-its-line.bash
+TESTSRC     += autoreconfigure-watches-subproject-that-says-false.bash
 TESTSRC     += compileopts-two-flags-one-line-define-seen.bash
 TESTSRC     += compileopts-two-flags-one-line-define-seen-autoreconfigure.bash
 TESTSRC     += define-with-value-pulls-in-header-source.bash
