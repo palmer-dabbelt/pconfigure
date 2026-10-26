@@ -5690,6 +5690,14 @@ A bash ``compiler'', which really just does the following
   the script depends on, or reads a test written in bash for its
   \texttt{\#pconfigure} lines.  A comment that starts with the word
   is caught as well, and is written \texttt{\# if} instead.
+\item Refuses a NUL byte, naming the file and line it is on, in the
+  script or in anything it includes.  Every line is read as text, and
+  a NUL would end the line early with the rest of it lost, so an
+  archive appended to a self-extracting script can't be carried
+  through \texttt{pbashc} as it is: keep the binary data in a file of
+  its own for the script to read, or write it into the script
+  encoded, with \texttt{base64} for instance.  The same goes for
+  \texttt{pperlc}.
 \item Leaves a heredoc's body alone.  The lines between a
   \texttt{<<EOF} and the \texttt{EOF} that ends it are text the script
   writes out rather than script, so a C file written that way keeps
