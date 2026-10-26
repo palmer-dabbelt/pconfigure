@@ -4033,7 +4033,18 @@ void command_processor::process_directives(const std::string& path,
                 abort();
             };
 
-            auto split = string_utils::split_char(directive.data, " ");
+            /* A directive is a Configfile line written somewhere
+             * else, so its white space is tidied the way every
+             * Configfile line's is before anything reads it.  Without
+             * that, "TESTDEPS  +=  path" splits into empty words and
+             * is refused for an operator of '', and one with tabs
+             * between its words is a single word that isn't a
+             * command -- both of them lines a Configfile reads without
+             * a second look.  It's done once, here, so the split
+             * below and the parse at the end see the same words. */
+            auto data = string_utils::clean_white(directive.data);
+
+            auto split = string_utils::split_char(data, " ");
             if (split.size() == 0 || split[0].size() == 0) {
                 std::cerr << std::to_string(debug) << "\n"
                           << "  error: this #pconfigure says nothing\n"
@@ -4104,7 +4115,7 @@ void command_processor::process_directives(const std::string& path,
              * everything the parser could turn its nose up at -- so
              * this is here to keep a parser that grows a new opinion
              * from being answered with a null dereference. */
-            auto cmd = command::parse(directive.data, debug);
+            auto cmd = command::parse(data, debug);
             if (cmd == NULL)
                 not_a_command();
 
