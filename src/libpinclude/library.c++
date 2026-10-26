@@ -361,19 +361,28 @@ int list_overwrite_defines(std::string filename,
      * what they wrote: "#if 0 // off for now" said back to them as
      * "#if 0" and a run of spaces is a line they can't find, and it
      * isn't what pbashc says about the same line, which never strips
-     * a C comment out of anything. */
+     * a C comment out of anything.
+     *
+     * "lineno" is the line the logical line starts on, which is where
+     * its "#" is and so where anything said about it has to point.
+     * "physical" is how many lines of the file have been read so far,
+     * continuations included.  The two are only different after a
+     * line continued with a backslash, and a single counter bumped
+     * once per logical line falls one behind for every line joined:
+     * a directive on line 4, after a macro written over three, was
+     * reported on line 2. */
     static const auto next_logical_line = [](std::ifstream& file, std::string& out,
                                              std::string& raw,
                                              int& comment,
                                              std::string& raw_close,
-                                             int& lineno,
+                                             int& lineno, int& physical,
                                              pinclude::syntax language) {
         std::string line;
         if (!std::getline(file, line))
             return false;
         out = line;
         raw = line;
-        lineno++;
+        lineno = ++physical;
 
         /* Everything below is how the C preprocessor reads a line:
          * backslash-newline splicing first, then comments.  None of
@@ -412,6 +421,7 @@ int list_overwrite_defines(std::string filename,
         while (line.size() > 0 && line[line.size() - 1] == '\\') {
             if (!std::getline(file, line))
                 return true;
+            physical++;
 
             out = out.substr(0, out.size() - 1) + line;
         }
@@ -683,6 +693,7 @@ int list_overwrite_defines(std::string filename,
      * first line of a file is line 1, and the counter has to have
      * reached it by the time anything is said about that line. */
     int lineno = 0;
+    int physical = 0;
     int comment = 0;
     std::string raw_close;
     std::vector<heredoc> heredocs;
@@ -763,7 +774,7 @@ int list_overwrite_defines(std::string filename,
     };
 
     while (next_logical_line(file, line, raw, comment, raw_close,
-                             lineno, language)) {
+                             lineno, physical, language)) {
         /* Below a Perl script's "__DATA__" or "__END__" is data the
          * script reads, or nothing at all, and never script -- so an
          * "#include" there is no file the script reads, for the same
