@@ -3049,7 +3049,8 @@ ready, so plan accordingly!
 
 \pconfigure\ runs it when \texttt{make} would: when there is no output
 yet, or when the script or any input its \texttt{--deps} answer names
-is newer than the output there is.  That is what makes rerunning
+is newer than the output there is --- and, as below, when the output
+was written by a different script.  That is what makes rerunning
 \pconfigure\ after editing a script enough on its own.  The headers a
 generated file includes are read off the output on disk, to work out
 what a program links and what its objects depend on, so an output left
@@ -3085,9 +3086,19 @@ while staying older than its consumers.  It is made this way round
 because what it buys back is bounded by the cost of the consumers rather
 than of the script.
 
+Which script writes the output is the \texttt{Configfile}'s to say,
+and changing it --- a \texttt{GENERATE} turned into a
+\texttt{TGENERATE}, or moved under a different \texttt{SRCDIR} ---
+regenerates the output on the next \pconfigure\ run, even though the
+new script is older than the output the old one wrote.  The new script's
+answer goes through the same comparison as any other, so one that
+prints what the old one did leaves the output, and everything built
+from it, alone.
+
 Beside \texttt{\$name} \pconfigure\ keeps a few files of its own, all
 named after it: \texttt{\$name.tmp}, which the output is written
-through before it is moved into place, and \texttt{\$name.d},
+through before it is moved into place, \texttt{\$name.recipe-inputs},
+which records the recipe that wrote it, and \texttt{\$name.d},
 \texttt{\$name.d.raw}, \texttt{\$name.d.tmp} and
 \texttt{\$name.d-context}, which hold and record the dependency
 fragment that keeps \texttt{--deps} current during the build.  No
