@@ -1337,6 +1337,10 @@ TESTSRC     += autoreconfigure-second-program-sharing-source-leaves-first-alone.
 TESTSRC     += linkopts-reverted-relinks-binary.bash
 TESTSRC     += linkopts-change-with-colliding-option-hash-relinks.bash
 TESTSRC     += parallel-install-of-every-kind-into-fresh-destdir.bash
+TESTSRC     += autoreconfigure-clean-all-one-make-rebuilds-copied-header.bash
+TESTSRC     += autoreconfigure-clean-all-one-make-regenerates-header.bash
+TESTSRC     += autoreconfigure-clean-check-one-make-runs-tests.bash
+TESTSRC     += autoreconfigure-clean-all-one-make-in-subproject.bash
 
 # The half of pconfigure that a build can run on its own, one source
 # at a time.  It is a BINARY rather than a LIBEXEC because pconfigure

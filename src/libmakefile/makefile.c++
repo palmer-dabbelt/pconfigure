@@ -503,6 +503,47 @@ void makefile::makefile::write_to_file(const std::string& filename)
                   " symlink to it)\n");
     fprintf(file, "endif\n\n");
 
+    /* "make clean all" is how people ask for a build from scratch,
+     * and one make cannot give them that.  make decides whether each
+     * file is current once per run, and for the files that feed the
+     * makefiles it read -- a dependency fragment's headers, a HEADERSRC
+     * copy, a GENERATE output, a CONFIG_DEPS tool -- it decides before
+     * any goal has started, while it remakes those makefiles.  "clean"
+     * then deletes them, and "all" goes on believing what it was told:
+     * a compile against an include/x.h that is no longer there, under
+     * -j1 as much as under -j, and only under AUTORECONFIGURE, which is
+     * what makes the fragments makefiles.
+     *
+     * So when a clean is asked for alongside anything else, this make
+     * builds none of it.  It reads nothing past here, and runs each
+     * goal in a make of its own, in the order they were given: the
+     * same thing as typing "make clean; make all", which is what the
+     * command line meant.  Every goal names one rule that does the
+     * lot, so that make -j can't start a second copy of the sequence,
+     * and stopping at the first goal that fails is what the separate
+     * commands would have done too.  The goals themselves get an empty
+     * recipe, which is only there so that this make doesn't go on to
+     * say there was nothing to be done for them.
+     *
+     * Only a clean splits the goals.  Every other mix keeps what make
+     * learned while remaking the makefiles true for the whole run, and
+     * a second make is a second walk of the graph for no reason.  The
+     * same block is in a subproject's Makefile too, which is simpler
+     * than leaving it out and costs nothing: a parent only gets as far
+     * as including one once its own copy has found nothing to split,
+     * and then the subproject's finds nothing either. */
+    fprintf(file, "ifneq ($(and $(filter clean distclean,$(MAKECMDGOALS)),"
+                  "$(filter-out clean distclean,$(MAKECMDGOALS))),)\n\n");
+    fprintf(file, ".PHONY: $(MAKECMDGOALS) __pconfigure__one-goal-at-a-time\n");
+    fprintf(file, "$(MAKECMDGOALS): __pconfigure__one-goal-at-a-time\n");
+    fprintf(file, "\t@:\n");
+    fprintf(file, "__pconfigure__one-goal-at-a-time:\n");
+    fprintf(file, "\t@+$(foreach goal,$(MAKECMDGOALS),"
+                  "$(MAKE) --no-print-directory"
+                  " -f '$(subst ','\\'',$(firstword $(MAKEFILE_LIST)))'"
+                  " '$(subst ','\\'',$(goal))' && ) true\n\n");
+    fprintf(file, "else\n\n");
+
     /* Where every other project in the run is.  These are defaults,
      * so the first Makefile make reads is the one that decides -- and
      * that's the project make was run in, which is exactly whose
@@ -894,6 +935,9 @@ void makefile::makefile::write_to_file(const std::string& filename)
 
     if (_prefix.included() == true)
         fprintf(file, "endif\n\n");
+
+    /* The end of what a make running each goal on its own skips. */
+    fprintf(file, "endif\n");
 
     fclose(file);
 }
