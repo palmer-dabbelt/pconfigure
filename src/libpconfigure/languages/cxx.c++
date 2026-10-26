@@ -1566,7 +1566,12 @@ language_cxx::header_target::header_target(const std::string& path)
 makefile::target::ptr
 language_cxx::header_target::generate_makefile_target(void) const
 {
-    return std::make_shared<makefile::target>(_path);
+    /* Only ever a prerequisite, and a path the scan found rather than
+     * one anybody wrote down: a header called "my extra.h" or one
+     * under a "-I" with an escaped space in it is a real file, and the
+     * object has to wait on that file rather than on the halves make
+     * would split it into. */
+    return std::make_shared<makefile::target>(makefile::prerequisite(_path));
 }
 
 std::string language_cxx::output_dir(const context::ptr& ctx) const

@@ -137,8 +137,13 @@ namespace makefile {
      * as that path when it lands bare among a rule's prerequisites.
      * The name of anything this Makefile builds never needs it, since
      * names with a '#' or a '$' are refused at the Configfile line;
-     * this is for the files that are only ever read. */
+     * this is for the files that are only ever read, which includes
+     * every header and script include the scan finds. */
     std::string prerequisite(const std::string& path);
+
+    /* The same path spelled as the target of a rule, which differs
+     * from a prerequisite in what a '%' means. */
+    std::string rule_target(const std::string& path);
 
     /* The same path spelled for the inside of a function call on a
      * rule line, "$(wildcard ...)" and the like, where make reads

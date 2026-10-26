@@ -43,6 +43,7 @@
 
 #include <libmakefile/path_prefix.h++>
 #include <libmakefile/recipe_quote.h++>
+#include <libmakefile/target.h++>
 #include <libpconfigure/context_file.h++>
 #include <libpconfigure/file_utils.h++>
 #include <libpconfigure/languages/bash.h++>
@@ -434,6 +435,21 @@ namespace {
         say("");
     }
 
+    /* What the scan found, spelled for a rule line.  Nobody chose
+     * these names for a Makefile: a header called "my extra.h", or
+     * "v$1.h", is what the "#include" said, and it goes onto the
+     * object's line as the one file it is -- spelled the way
+     * pconfigure spells the same header in its own Makefile.  Left
+     * bare, a '$' in one named some other file, whose empty rule
+     * below "remade" it on every pass, and make restarted for ever. */
+    std::vector<std::string> prerequisites(const std::vector<std::string>& v)
+    {
+        auto out = std::vector<std::string>();
+        for (const auto& path: v)
+            out.push_back(makefile::prerequisite(path));
+        return out;
+    }
+
     /* The piece of Makefile for a script, which is the C one with
      * everything about objects taken out: what the script includes is
      * a prerequisite of the file it is compiled into, and of this
@@ -536,10 +552,10 @@ namespace {
                    + " --source " + name) + "\n";
         out += "\n";
 
-        auto target_deps = includes;
+        auto target_deps = prerequisites(includes);
         target_deps.push_back(stamp);
         say(ctx.target + ": " + join(target_deps));
-        say(deps + ": " + source + " " + join(includes));
+        say(deps + ": " + source + " " + join(prerequisites(includes)));
         out += "\n";
 
         watch_missed(say, deps, missed, prefix);
@@ -553,7 +569,7 @@ namespace {
         say(source + ":");
         for (const auto& include: includes)
             if (said.insert(include).second == true)
-                say(include + ":");
+                say(makefile::rule_target(include) + ":");
 
         write(deps, out);
     }
@@ -885,11 +901,12 @@ int main(int argc, const char **argv)
     out += "\n";
 
     auto object_deps = std::vector<std::string>{source};
-    object_deps.insert(object_deps.end(), headers.begin(), headers.end());
+    for (const auto& header: prerequisites(headers))
+        object_deps.push_back(header);
     object_deps.push_back(stamp);
 
     say(object + ": " + join(object_deps));
-    say(deps + ": " + source + " " + join(headers));
+    say(deps + ": " + source + " " + join(prerequisites(headers)));
     out += "\n";
 
     watch_missed(say, deps, missed, prefix);
@@ -924,7 +941,7 @@ int main(int argc, const char **argv)
 
         for (const auto& header: headers)
             if (said.insert(header).second == true)
-                say(header + ":");
+                say(makefile::rule_target(header) + ":");
     }
     out += "\n";
 

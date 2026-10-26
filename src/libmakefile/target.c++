@@ -279,11 +279,35 @@ static std::string quote_for_glob(const std::string& path)
  * one that is part of a file name: "\;" still ends the list, inside a
  * "$(wildcard ...)" as well as bare.  So a caller that can meet one
  * has to refuse it, naming the Configfile line the path came from.
- * Whitespace and a '%' are their own problems, and nothing this is
- * used for has met them. */
+ *
+ * A space is the fourth, and it got here once the headers the scan
+ * finds were spelled through this -- "my extra.h", or a header under
+ * "-I/opt/my\ dir/include" -- since make splits a rule line into
+ * names at a space and the object then waited on two files, the first
+ * of which no rule made.  "\ " is make's spelling for a space that is
+ * part of a name, with the backslashes in front doubled like the
+ * others and measured the same way: "x\\\ y" is the file "x\ y".  A
+ * '%' needs nothing as a prerequisite of an ordinary rule, where make
+ * takes it as the character it is; on the left of a rule it is
+ * rule_target()'s business. */
 std::string makefile::prerequisite(const std::string& path)
 {
-    return quote_for_make(path, "#:");
+    return quote_for_make(path, "#: ");
+}
+
+/* The same path on the left of a rule, which is where pdeps puts each
+ * header it names so that one which has since been deleted is a file
+ * make can remake rather than the end of the build.  Everything that
+ * goes for a prerequisite goes here too, plus a '%': on the left of a
+ * rule one makes the rule a pattern, and a pattern rule with no recipe
+ * is not a rule for the file at all but the cancelling of an implicit
+ * one.  "\%" is the literal there, and only there -- a prerequisite
+ * spelled that way names a file with a backslash in it, which is why
+ * this is a second function rather than one more character in the
+ * first. */
+std::string makefile::rule_target(const std::string& path)
+{
+    return quote_for_make(path, "#: %");
 }
 
 /* Inside a function call make does not end the line at a '#', so one

@@ -707,9 +707,15 @@ std::vector<makefile::target::ptr>
 language_bash::dependencies(const std::string& path,
                             const std::vector<std::string>& opts) const
 {
+    /* Each include goes onto the script's rule as a prerequisite, and
+     * the name is whatever the "#include" said: pbashc reads it up to
+     * the closing quote, so "my helper.bash" is one file to it and has
+     * to be one file to make, which means spelling it for the rule
+     * line the way language_cxx spells a header. */
     auto out = std::vector<makefile::target::ptr>();
     for (const auto& p: script_includes_read_by(path, opts, script_syntax()))
-        out.push_back(std::make_shared<makefile::target>(p));
+        out.push_back(std::make_shared<makefile::target>(
+                          makefile::prerequisite(p)));
     return out;
 }
 
