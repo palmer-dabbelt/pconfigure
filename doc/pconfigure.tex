@@ -4746,7 +4746,8 @@ CONFIGUREOPTS += --define LLVM_ENABLE_PROJECTS=clang;lld
 
 \item \texttt{--jobs \$n} says how many jobs the build runs at once:
   \texttt{--jobs 8}.  A value that is not digits all the way through
-  is a fatal error, and so is writing this at all for a generator
+  is a fatal error, as is a zero, which \texttt{cmake --build} refuses
+  as a parallel level; and so is writing this at all for a generator
   whose build is a \texttt{make} --- a sub-\texttt{make} takes its
   parallelism from the \texttt{make} that ran it, and telling it a
   number of its own is how a \texttt{make -j8} turns into sixty-four
@@ -5037,10 +5038,10 @@ The options are:
 
 \item \texttt{--jobs \$n} bounds how many jobs cargo runs at once:
   \texttt{--jobs 4}.  A value that is not digits all the way through
-  is a fatal error.  Cargo does not take part in \texttt{make}'s
-  jobserver, so a \texttt{make -j8} that reaches one of these has two
-  pools rather than one, and this is the only thing that bounds the
-  second.
+  is a fatal error, and so is a zero, which cargo refuses.  Cargo does
+  not take part in \texttt{make}'s jobserver, so a \texttt{make -j8}
+  that reaches one of these has two pools rather than one, and this is
+  the only thing that bounds the second.
 
 \item \texttt{--arg \$text} puts one more argument on the command
   line of the \texttt{cargo build} that builds the crate, verbatim:
@@ -5271,6 +5272,7 @@ The options are:
   asked for one at a time in the order they were written.
 
 \item \texttt{--jobs \$n} says how many jobs ninja runs at once.
+  Zero is taken, and is ninja's own way of saying no limit at all.
   Leave it off to have a new enough ninja share the jobserver of the
   \texttt{make} that ran it instead.
 
