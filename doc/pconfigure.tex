@@ -3140,6 +3140,14 @@ directory, which \pconfigure\ makes, so that the source asking for it
 includes it as \texttt{"sub/gen.h"} --- the same spelling it would use
 for a header of its own in that directory.
 
+The \texttt{\$name} has to end in a file name, since it names both the
+output and the script.  One that ends as a directory ---
+\texttt{gen.h/}, \texttt{sub/.} or \texttt{sub/..}, or \texttt{.}
+itself --- is refused at its line rather than having its trailing
+\texttt{/} dropped the way a target's is: the script is something
+you wrote, and guessing which one a directory was meant to name could
+only send you looking for the wrong file.
+
 \subsection{\texttt{TGENERATE += \$name}}
 
 Exactly the same as \texttt{GENERATE}, but runs
