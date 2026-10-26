@@ -2274,6 +2274,14 @@ sources there are is the input nothing was watching.  It covers every
 itself, so its \texttt{Configfile} changing re-runs the \pconfigure\
 at the top of the tree.
 
+That holds whichever project asked.  A subproject that says
+\texttt{AUTORECONFIGURE = true} under a top that does not gets the same
+watch, over every \texttt{Configfile} the run read rather than only its
+own, because what it builds is written out of the \texttt{Configfile}
+above it as well: its \texttt{SUBPROJECTS} line and everything it
+inherits are there.  It is the same list a top that asks watches when
+one of its subprojects says \texttt{false}.
+
 The \pconfigure\ it runs is given the options the last one was, the
 same default \texttt{make reconfigure} has
 (Section~\ref{make:reconfigure}).  A tree configured with
