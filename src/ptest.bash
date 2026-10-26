@@ -182,9 +182,9 @@ then
 
         if [[ "$project" == "." ]]
         then
-            echo "$rest"
+            printf '%s\n' "$rest"
         else
-            echo "$project/$rest"
+            printf '%s\n' "$project/$rest"
         fi
     }
 
@@ -230,7 +230,11 @@ then
         local dir
         for dir in "${existing[@]}"
         do
-            find "$dir" -type f | sort | while read f
+            # Taken a whole line at a time and as written: a plain
+            # read eats the backslashes out of a name like
+            # "C:\cygwin", and the result it then names does not
+            # exist, so a test that passed would be scored an EROR.
+            find "$dir" -type f | sort | while IFS= read -r f
             do
                 printf '%s\t%s\n' "$dir" "$f"
             done
@@ -263,7 +267,9 @@ then
         fail="0"
         error="0"
 
-        while read dir f
+        # Split only at the tab results() put there, and with
+        # backslashes left alone, for the same reason as above.
+        while IFS=$'\t' read -r dir f
         do
             run=$(expr $run + 1)
             name="$(label "$dir" "$f")"
@@ -323,20 +329,28 @@ then
                     # shows up there instead.
                     if [[ "$quiet" != "true" ]]
                     then
+                        # Both the name and the reason are text
+                        # the test chose, so they go out through
+                        # printf's "%s" and not through echo -e:
+                        # as escapes, a "\c" in a path like
+                        # "C:\cygwin" would end the line without its
+                        # newline and glue the next test's verdict
+                        # onto it, and a "\t" or "\n" would add a
+                        # column or a line that is no test's.
                         why="${why#SKIP:}"
-                        echo -e "- SKIP\t$name\t${why# }"
+                        printf -- '- SKIP\t%s\t%s\n' "$name" "${why# }"
                     fi
                     skip=$(expr $skip + 1)
                 else
                     if [[ "$quiet" != "true" ]]
                     then
-                        echo -e "  PASS\t$name"
+                        printf '  PASS\t%s\n' "$name"
                     fi
                     pass=$(expr $pass + 1)
                 fi
             elif [[ "$ret" == "1" ]]
             then
-                echo -e "* FAIL\t$name"
+                printf '* FAIL\t%s\n' "$name"
                 fail=$(expr $fail + 1)
 
                 # What somebody asking for --verbose wants is what
@@ -352,7 +366,7 @@ then
                 fi
             elif [[ "$ret" == "134" ]] && dir_abrt_is_fail "$dir"
             then
-                echo -e "* FAIL\t$name"
+                printf '* FAIL\t%s\n' "$name"
                 fail=$(expr $fail + 1)
 
                 if [[ "$verbose" == "true" ]]
@@ -360,7 +374,7 @@ then
                     tar -xOf "$f" ptest__output
                 fi
             else
-                echo -e "! EROR\t$name"
+                printf '! EROR\t%s\n' "$name"
                 error=$(expr $error + 1)
 
                 if [[ "$verbose" == "true" ]]
