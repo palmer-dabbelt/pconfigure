@@ -226,9 +226,12 @@ awk '/^\t/ { if (p) print; next } { p = 0 } /^obj\/sub\/build-stamp:/ { p = 1 }'
 cat stamp.rule
 
 # ninja directly rather than "meson compile", with no leading '+', and
-# the install as the build directory's own target.
-grep -q "MY_ENV='one two' ninja -C obj/sub/build$" stamp.rule
-grep -q "MY_ENV='one two' ninja -C obj/sub/build 'install'$" stamp.rule
+# the install as the build directory's own target.  Both with DESTDIR
+# out of the environment, which is where "meson install" reads it
+# from: the install is part of building the tree, and a DESTDIR from
+# the outer make would send it somewhere other than the prefix.
+grep -q "env -u DESTDIR MY_ENV='one two' ninja -C obj/sub/build$" stamp.rule
+grep -q "env -u DESTDIR MY_ENV='one two' ninja -C obj/sub/build 'install'$" stamp.rule
 if grep -q "meson compile\|meson install\|^\s*@*+" stamp.rule
 then
     exit 1

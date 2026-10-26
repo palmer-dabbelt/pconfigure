@@ -116,7 +116,21 @@ std::string build_system_meson::build_command(const std::string& target) const
     if (target.size() > 0)
         out += " " + string_utils::quoted(target);
 
-    return with_env(out);
+    /* With DESTDIR taken out of the environment, because the install
+     * this runs is part of building the tree and has to land in the
+     * prefix this build system chose, which is where everything else
+     * looks for it.  "meson install" reads DESTDIR from its
+     * environment, and make puts every variable from its own command
+     * line into the environment of its recipes, so a "make
+     * DESTDIR=/stage" -- the way a packaging script that builds and
+     * installs in one go says it -- or an exported one sent the
+     * install to /stage followed by the whole absolute prefix, while
+     * the stamp said the tree was installed and the prefix was empty.
+     * The same DESTDIR written as an --env is refused for this reason;
+     * one from above arrives after there is anybody left to refuse it,
+     * so it is taken away instead.  ninja reads no MAKEFLAGS, so the
+     * environment is the only way in. */
+    return "env -u DESTDIR " + with_env(out);
 }
 
 std::string build_system_meson::configureopt_help(void) const

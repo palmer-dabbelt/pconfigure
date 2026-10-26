@@ -204,9 +204,32 @@ std::string build_system_cmake::build_command(const std::string& target) const
      * means anything in.  Through vendored::submake(), because the
      * cmake that makes this directory is a line a "make -n" only
      * prints: see there for what that does to a dry run. */
+    /* Either way with no DESTDIR from above, because the install
+     * this runs is part of building the tree and has to land in the
+     * prefix this build system chose, which is where everything else
+     * looks for it.  The cmake_install.cmake script cmake generates
+     * reads DESTDIR out of its environment, and one gets there
+     * without anything here writing it: make puts every variable from
+     * its own command line into the environment of its recipes and
+     * into MAKEFLAGS, so "make DESTDIR=/stage" -- the way a packaging
+     * script that builds and installs in one go says it -- reaches
+     * the install as surely as an exported one does.  The tree then
+     * installed under /stage followed by the whole absolute prefix,
+     * the stamp said it was installed, and the prefix was empty.  The
+     * same DESTDIR written into the Configfile is refused for this
+     * reason; one from above arrives after there is anybody left to
+     * refuse it, so it is overridden instead.
+     *
+     * Overridden two ways, one per build.  A sub-make gets an empty
+     * DESTDIR on its command line, which beats both MAKEFLAGS and the
+     * environment and is what that make hands on to the install.  An
+     * "env -u" would not do there, since it leaves MAKEFLAGS alone and
+     * the sub-make reads the variable straight back out of that.
+     * "cmake --build" reads no MAKEFLAGS, so taking DESTDIR out of its
+     * environment is the whole of it. */
     if (make_generator() == true) {
         auto out = "$(MAKE) --no-print-directory -C " + cmake_build_dir()
-                 + makeopt_flags();
+                 + makeopt_flags() + " DESTDIR=";
         if (target.size() > 0)
             out += " " + string_utils::quoted(target);
         return vendored::submake(cmake_build_dir(), with_env(out));
@@ -227,7 +250,7 @@ std::string build_system_cmake::build_command(const std::string& target) const
      * can do to a command line. */
     if (_jobs.size() > 0)
         out += " --parallel " + _jobs;
-    return with_env(out);
+    return "env -u DESTDIR " + with_env(out);
 }
 
 std::string build_system_cmake::configureopt_help(void) const

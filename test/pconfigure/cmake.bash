@@ -422,8 +422,8 @@ grep -q -- "'MY_VAR=first'" stamp.rule
 # the rest of this build can run it, and the rest of this build
 # happens during "make" rather than during "make install".
 test "$(grep -c -- "--no-print-directory -C obj/sub/build" stamp.rule)" = "2"
-grep -n -- "-C obj/sub/build 'MY_VAR=first'$" stamp.rule | cut -d: -f1 > build.at
-grep -n -- "-C obj/sub/build 'MY_VAR=first' 'install'$" stamp.rule | cut -d: -f1 > install.at
+grep -n -- "-C obj/sub/build 'MY_VAR=first' DESTDIR=$" stamp.rule | cut -d: -f1 > build.at
+grep -n -- "-C obj/sub/build 'MY_VAR=first' DESTDIR= 'install'$" stamp.rule | cut -d: -f1 > install.at
 cat build.at install.at
 test "$(cat build.at)" -lt "$(cat install.at)"
 
@@ -618,7 +618,7 @@ $PTEST_BINARY $PCONFIGURE_ARGS
 awk '/^\t/ { if (p) print; next } { p = 0 } /^obj\/sub\/build-stamp:/ { p = 1 }' \
     Makefile > fourth-stamp.rule
 cat fourth-stamp.rule
-grep -q -- "-C obj/sub/build 'MY_VAR=first' 'extra'$" fourth-stamp.rule
+grep -q -- "-C obj/sub/build 'MY_VAR=first' DESTDIR= 'extra'$" fourth-stamp.rule
 
 make $MAKE_ARGS > fourth.out
 cat fourth.out
@@ -1011,6 +1011,11 @@ grep -q -- " -Wno-dev" nin-config.rule
 # knowing what got generated, and it's told how many jobs to run
 # because nothing else is going to tell it.
 grep -q "cmake --build obj/sub/build --target 'tool' --parallel 4" nin-stamp.rule
+
+# With DESTDIR out of its environment, since an install it runs is
+# part of building the tree and one from the outer make's command line
+# or environment would otherwise send it somewhere else.
+grep -q "env -u DESTDIR cmake --build obj/sub/build" nin-stamp.rule
 
 # Once, not twice: --no-install means the install target isn't asked
 # for.  The count is the assertion -- a missing install would otherwise

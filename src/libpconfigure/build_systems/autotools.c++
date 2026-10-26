@@ -1015,11 +1015,28 @@ build_system_autotools::vendored_targets(
      *
      * Through vendored::submake(), which is what lets a "make -n" on
      * a tree that has never been configured get past here: see there
-     * for why. */
+     * for why.
+     *
+     * And with an empty DESTDIR said on its command line, because
+     * the install below -- or a --target that installs -- is part of
+     * building the tree and has to land in the prefix this build
+     * system chose, which is where everything else looks for it.  A
+     * DESTDIR from above reaches this make two ways nothing here
+     * writes: one on the outer make's command line ("make
+     * DESTDIR=/stage", the way a packaging script that builds and
+     * installs in one go says it) comes down through MAKEFLAGS, and
+     * an exported one comes down through the environment.  Either
+     * sent the install to /stage followed by the whole absolute
+     * prefix, the stamp said the tree was installed, and the prefix
+     * was empty.  A command-line variable beats both of those, and
+     * this make hands its empty one on to whatever it runs.  The
+     * same DESTDIR written into the Configfile is refused for this
+     * reason; one from above arrives after there is anybody left to
+     * refuse it, so it is overridden instead. */
     auto submake = vendored::submake(
         output,
         with_env("$(MAKE) --no-print-directory -C " + output
-                 + makeopt_flags()));
+                 + makeopt_flags() + " DESTDIR="));
 
     auto build_commands = std::vector<std::string>();
     if (_make_targets.size() == 0)
