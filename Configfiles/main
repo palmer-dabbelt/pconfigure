@@ -876,6 +876,7 @@ TESTSRC     += deplibs-after-sources-names-the-line.bash
 TESTSRC     += unknown-language-names-the-line.bash
 TESTSRC     += perl-library-names-the-line.bash
 TESTSRC     += perl-shebang-options-kept.bash
+TESTSRC     += perl-env-split-shebang-several-options-run.bash
 TESTSRC     += perl-test-compiled-by-pperlc-runs-against-script.bash
 TESTSRC     += bash-second-source-refused-with-line.bash
 TESTSRC     += bash-second-source-advice-builds-from-subdirectory.bash
