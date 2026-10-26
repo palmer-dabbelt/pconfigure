@@ -720,6 +720,11 @@ void project::generate_targets(void)
      * Configfile than the line that waits for it. */
     check_test_order();
 
+    /* And for the same reason again: a test named after another's
+     * scratch directory can be written above the test it collides
+     * with. */
+    check_test_scratch();
+
     /* Same reason: what an AUTODEPS = false was worth depends on
      * everything it reached, and one line reaches as far down the
      * file as the target it was written on goes. */
@@ -1606,6 +1611,135 @@ void project::check_autodeps(void) const
             " behind a compiled target's headers from being linked into"
             " it, and there is no such target here");
     }
+}
+
+void project::check_test_scratch(void) const
+{
+    /* A test's scratch directory is the path of its compiled self
+     * with ".scratch" on the end, beside every other test of the same
+     * target -- which is where a consumer finds a predecessor's
+     * fixture, by taking the dirname of its own and adding the other
+     * test's name.  So a sibling called "t.scratch" is compiled to the
+     * very path "t" is given as a directory, and a sibling called
+     * "t.scratch/x" is compiled into the middle of it.  Neither can be
+     * made to work: ptest's mkdir found a program where the directory
+     * should be and "t" failed, or the program was copied into the
+     * directory and ptest was asked to run that, and "make clean" of
+     * "t" removed the other test's program along with its own scratch.
+     *
+     * Moving every scratch directory somewhere no test can be named
+     * was the alternative, and it was not taken: where a test's
+     * scratch is, relative to its siblings', is what the manual tells
+     * a consumer to rely on, and a collision this rare is better
+     * answered with a sentence than with a layout every suite that
+     * shares a fixture has to be rewritten for.  Only the pair is
+     * refused, not the suffix: a "t.scratch" with no "t" beside it
+     * collides with nothing.
+     *
+     * The paths are the compiled tests' own, worked out the way the
+     * languages that write their rules work them out, so that two
+     * targets with one OBJDIR are compared where they actually land
+     * and two with different ones are not.  It is the later of the
+     * two lines that is refused whichever of them owns the scratch --
+     * the only order a reader can predict without knowing which name
+     * is which.  The output contexts come out in the order their
+     * lines were written, and a target's tests in the order of theirs,
+     * so a walk of them is that order. */
+    struct claim {
+        context::ptr ctx;
+        bool scratch;
+    };
+    auto claimed = std::map<std::string, claim>();
+
+    /* Whether a test lands at a scratch directory or somewhere below
+     * it.  The other way round, a scratch directory inside a test, is
+     * only possible when that test also has the scratch's owner inside
+     * it, which is two tests nested in each other and not a question
+     * about scratch at all. */
+    auto within = [](const std::string& test, const std::string& scratch)
+        {
+            if (test.compare(0, scratch.size(), scratch) != 0)
+                return false;
+            return test.size() == scratch.size()
+                || test[scratch.size()] == '/';
+        };
+
+    std::function<void(const context::ptr&)> walk =
+        [&](const context::ptr& ctx)
+        {
+            if (ctx->check_type({context_type::TEST}) == true) {
+                auto test = file_utils::normalize_path(
+                    ctx->obj_dir + "/" + ctx->unbased(ctx->check_dir)
+                    + "/" + ctx->cmd->data());
+                auto mine = std::vector<std::pair<std::string, bool>>{
+                    {test, false},
+                    {test + ".scratch", true},
+                };
+
+                for (const auto& path: mine) {
+                    for (const auto& pair: claimed) {
+                        /* Two tests at one path, or two scratch
+                         * directories, are not this collision: the
+                         * first is one test written twice and the
+                         * second follows from it.  Neither is a test's
+                         * own path against its own scratch. */
+                        if (pair.second.scratch == path.second)
+                            continue;
+                        if (pair.second.ctx == ctx)
+                            continue;
+                        const auto& test_path = path.second ? pair.first
+                                                            : path.first;
+                        const auto& scratch_path = path.second ? path.first
+                                                               : pair.first;
+                        if (within(test_path, scratch_path) == false)
+                            continue;
+
+                        /* Said from the refused line's side, since
+                         * that is the line the reader is pointed at:
+                         * either this test is where the other keeps
+                         * its scratch, or this test's scratch is where
+                         * the other one is. */
+                        auto other = std::to_string(
+                            pair.second.ctx->cmd->debug());
+                        auto inside = (test_path != scratch_path);
+
+                        std::cerr << std::to_string(ctx->cmd->debug())
+                                  << "\n";
+                        if (path.second == false)
+                            std::cerr << "  error: this test is compiled to '"
+                                      << path.first << "', which is "
+                                      << (inside ? "inside " : "")
+                                      << "the scratch directory '"
+                                      << pair.first << "' of the test on "
+                                      << other << "\n";
+                        else
+                            std::cerr << "  error: this test's scratch"
+                                      << " directory is '" << path.first
+                                      << "', and the test on " << other
+                                      << " is compiled to '" << pair.first
+                                      << "'" << (inside ? ", inside it" : "")
+                                      << "\n";
+                        std::cerr << "  every test keeps '<name>.scratch'"
+                                  << " beside its own compiled self, so"
+                                  << " rename one of the two tests so"
+                                  << " that neither is the other's name"
+                                  << " with '.scratch' on the end, or"
+                                  << " inside a directory named that\n";
+                        abort();
+                    }
+                }
+
+                for (const auto& path: mine)
+                    if (claimed.find(path.first) == claimed.end())
+                        claimed[path.first] = claim{ctx, path.second};
+            }
+
+            for (const auto& child: ctx->children)
+                walk(child);
+        };
+
+    for (const auto& ctx: _processor->output_contexts())
+        walk(ctx);
 }
 
 void project::check_test_order(void) const

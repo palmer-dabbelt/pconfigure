@@ -478,6 +478,12 @@ private:
      * neither answer names the Configfile line that caused it. */
     void check_test_order(void) const;
 
+    /* Says so when one test of a target is named after another's
+     * scratch directory, or lives inside it.  Both would be put at
+     * the same path in $OBJDIR, and what make does then depends on
+     * which of them happened to be built first. */
+    void check_test_scratch(void) const;
+
     /* Says so when an AUTODEPS = false reached nothing that links,
      * which is the only thing turning it off was ever meant to
      * change.  What's left is a set of targets that have stopped
