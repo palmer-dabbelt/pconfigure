@@ -3695,13 +3695,20 @@ void command_processor::process_one(const command::ptr& cmd)
          * replacing them, so a second one is read relative to
          * whatever the first one already produced: "SRCPATH = a" then
          * "SRCPATH = b" looks under "b/a".  It's written with an '='
-         * rather than a '+=', which is a promise that it replaces. */
+         * rather than a '+=', which is a promise that it replaces.
+         *
+         * The warning names the directory that comes out, because
+         * "relative to the first" reads just as naturally as "a/b"
+         * and the composition is the whole surprise. */
+        auto path = _base + cmd->data();
+        auto tree = path + "/" + _srcpath_tree.substr(_base.size());
         if (_given_srcpath == true)
             tos->strictness.complain(
                 strict_since::v0_13(),
                 cmd->debug(),
-                "a second SRCPATH doesn't replace the first one, it's read"
-                " relative to it",
+                "a second SRCPATH doesn't replace the first one, it has"
+                " the first one put inside it, so the project is now read"
+                " from '" + tree.substr(0, tree.size() - 1) + "'",
                 "say it once, at the top of the project, and remember that"
                 " '--srcpath' on the command line has already said it");
         _given_srcpath = true;
@@ -3745,12 +3752,19 @@ void command_processor::process_one(const command::ptr& cmd)
                             + "' (or '--srcpath ./" + cmd->data()
                             + "'), which names the same directory");
 
-        auto path = _base + cmd->data();
+        /* Everything that says where the tree is moves to the same
+         * place.  The Configfiles used to be read from the bare new
+         * path while the source directories went under the old one
+         * inside it, so a second SRCPATH read one tree's Configfile
+         * and went looking for its sources in another.  src_path has
+         * to agree with src_dir as well, since it's what gets taken
+         * back off the front of a source directory to find where the
+         * object files go. */
         tos->src_dir = path + "/" + tos->src_dir.substr(_base.size());
         tos->test_dir = path + "/" + tos->test_dir.substr(_base.size());
-        tos->src_path = path + "/";
-        _srcpath = path;
-        _srcpath_tree = path + "/" + _srcpath_tree.substr(_base.size());
+        tos->src_path = tree;
+        _srcpath = tree.substr(0, tree.size() - 1);
+        _srcpath_tree = tree;
         _srcpath_cmd = cmd;
         return;
     }

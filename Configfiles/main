@@ -467,6 +467,7 @@ TESTSRC     += srcpath.bash
 TESTSRC     += srcpath-objects-land-under-objdir.bash
 TESTSRC     += srcpath-objects-stay-in-build-directory.bash
 TESTSRC     += srcpath-missing-directory-refused.bash
+TESTSRC     += cmdline-srcpath-twice-configfile-and-sources-agree.bash
 TESTSRC     += srcpath-naming-a-file-refused.bash
 TESTSRC     += srcpath-configfile-missing-directory-refused.bash
 TESTSRC     += srcpath-with-space-refused.bash

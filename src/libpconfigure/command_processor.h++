@@ -209,9 +209,9 @@ private:
     context::ptr _root;
 
     /* The directory every SRCPATH so far adds up to, ending in a
-     * '/', and the last line that moved it.  That isn't _srcpath: a
-     * second SRCPATH is read relative to the first, so after "a" and
-     * then "b" the sources are under "b/a" while _srcpath says "b". */
+     * '/', and the last line that moved it.  A second SRCPATH has the
+     * first put inside it, so after "a" and then "b" this is "b/a/",
+     * and _srcpath is the same directory without the '/'. */
     std::string _srcpath_tree;
     command::ptr _srcpath_cmd;
 
