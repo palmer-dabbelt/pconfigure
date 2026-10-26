@@ -5994,6 +5994,16 @@ runs, so that a result left behind by a test nobody configures any more
 is not counted.  A bare \texttt{ptest} still reads every result in the
 directories, since what it is asked is what is on disk.
 
+\texttt{--check-results-from \$file} names results the way
+\texttt{--check-result} does, one to a line of the file, up to the
+first empty line.  The reports \texttt{make} runs hand theirs over this
+way, in the file their stamp already waits on
+(\texttt{\$OBJDIR/check-all-scope}, or
+\texttt{\$OBJDIR/check-suite-\$name-scope}): a tree with a few thousand
+tests makes a command line longer than the single argument a recipe
+reaches the shell as is allowed to be, and the report could not run at
+all.
+
 A result is scored by the exit status of the test that left it: zero
 is a pass, one is a failure, and anything else is counted as an error.
 The exception is a test that announced a skip (see
