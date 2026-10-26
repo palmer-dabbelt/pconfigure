@@ -517,6 +517,7 @@ TESTSRC     += pllvm-config-libs-fails-when-llvm-config-libs-fails.bash
 TESTSRC     += pllvm-config-missing-tool-says-why.bash
 TESTSRC     += pgcc-config-search-picks-newest-patch-release.bash
 TESTSRC     += pgcc-config-unknown-test-refused-on-stderr.bash
+TESTSRC     += pllvm-config-optional-failing-cflags-prints-nothing.bash
 TESTSRC     += reconfigure-not-in-path.bash
 TESTSRC     += make-reconfigure-runs-the-pconfigure-that-configured.bash
 TESTSRC     += subprojects-siblings.bash
