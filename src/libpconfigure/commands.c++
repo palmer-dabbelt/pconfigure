@@ -32,6 +32,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <memory>
 #include <regex>
 #include <sstream>
 #include <utility>
@@ -718,6 +719,9 @@ std::string execute(std::string line, const debug_info::ptr& where)
             auto command_str = replace_word(command.str(), "ppkg-config",
                                             string_utils::quoted(ppkg_config_command()));
 
+            bool restore_pkg_config_path = false;
+            std::unique_ptr<std::string> saved_pkg_config_path;
+
             /* A pkg-config that this build produces itself comes
              * first, so that a project linking against a subproject
              * is told where that subproject's build output is rather
@@ -728,25 +732,49 @@ std::string execute(std::string line, const debug_info::ptr& where)
                 for (const auto& dir: pkgconfig_path)
                     path += dir + ":";
 
-                /* Quoted for the same reason as the ppkg-config
-                 * above: these directories are paths, not shell.  The
-                 * caller's own $PKG_CONFIG_PATH stays outside the
-                 * quotes so that it is still expanded, and needs none
-                 * of its own because the right-hand side of an
-                 * assignment is never split into words. */
-                command_str = "PKG_CONFIG_PATH=" + string_utils::quoted(path)
-                              + "$PKG_CONFIG_PATH "
-                              + command_str;
+                /* The directories go into the environment the shell
+                 * is started with, rather than in front of the
+                 * command as a "PKG_CONFIG_PATH=... " assignment.  An
+                 * assignment in front of a command only reaches the
+                 * first simple command on the line, so in "ppkg-config
+                 * foo-ng --cflags || ppkg-config foo --cflags", or two
+                 * questions separated by a ';', everything after the
+                 * first one was asked about the machine alone, and a
+                 * package this very build provides came back missing.
+                 * In front of an 'if' or a '(' it wasn't even shell:
+                 * the 'if' got read as the name of a program and the
+                 * line was a syntax error.  The environment reaches
+                 * every command the shell runs, however the line is
+                 * put together, and needs no quoting because it never
+                 * passes through the shell's parser at all.
+                 *
+                 * The caller's own $PKG_CONFIG_PATH goes after this
+                 * build's directories, the way it always has, and is
+                 * put back once the command is done so that nothing
+                 * else this run starts sees the build tree's. */
+                const char *caller = getenv("PKG_CONFIG_PATH");
+                if (caller != NULL)
+                    saved_pkg_config_path.reset(new std::string(caller));
+                restore_pkg_config_path = true;
+                path += (caller != NULL) ? caller : "";
+                if (setenv("PKG_CONFIG_PATH", path.c_str(), 1) != 0) {
+                    std::cerr << std::to_string(where) << "\n"
+                              << "  error: the command in backticks, '"
+                              << command.str() << "', could not be told"
+                              << " where this build's .pc files are: "
+                              << strerror(errno) << "\n";
+                    abort();
+                }
 
-                /* The PKG_CONFIG_PATH above says this command gets its
-                 * answer out of the build tree, which makes the .pc
-                 * files in it inputs to the expansion they feed: their
-                 * contents end up in the makefile as text, and nothing
-                 * else in the build reads them first.  Written down
-                 * before the command runs, the same way a Configfile
-                 * is written down before it is opened -- which is also
-                 * why this does not try to guess which .pc the command
-                 * will actually name. */
+                /* This command gets its answer out of the build tree,
+                 * which makes the .pc files in it inputs to the
+                 * expansion they feed: their contents end up in the
+                 * makefile as text, and nothing else in the build
+                 * reads them first.  Written down before the command
+                 * runs, the same way a Configfile is written down
+                 * before it is opened -- which is also why this does
+                 * not try to guess which .pc the command will actually
+                 * name. */
                 for (const auto& dep: pkgconfig_deps)
                     add_configfile_dep(dep);
             }
@@ -790,10 +818,16 @@ std::string execute(std::string line, const debug_info::ptr& where)
              * ended -- as an exit status, not the wait status pclose()
              * returns, which shifts the code left by eight and turns
              * "exit 1" into "256".  The command is quoted as it was
-             * typed rather than with ppkg-config's path and
-             * PKG_CONFIG_PATH spliced in, since that is what the
-             * person will go looking for. */
+             * typed rather than with ppkg-config's path spliced
+             * in, since that is what the person will go looking
+             * for. */
             auto status = pclose(f);
+            if (restore_pkg_config_path == true) {
+                if (saved_pkg_config_path)
+                    setenv("PKG_CONFIG_PATH", saved_pkg_config_path->c_str(), 1);
+                else
+                    unsetenv("PKG_CONFIG_PATH");
+            }
             if (status != 0) {
                 std::cerr << std::to_string(where) << "\n"
                           << "  error: the command in backticks, '"
