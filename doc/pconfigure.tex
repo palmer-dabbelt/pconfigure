@@ -853,6 +853,21 @@ target, so two projects in one build can each have one called
 \texttt{PHONY} has nothing to compile, so a \texttt{SOURCES} under one
 is a mistake and gets the warning in Section~\ref{warn:sources-orphan}.
 
+The name can't be one of the goals pconfigure writes into every
+Makefile itself: \texttt{all}, \texttt{clean}, \texttt{distclean},
+\texttt{cache-clean}, \texttt{install}, \texttt{uninstall},
+\texttt{check}, \texttt{report} or \texttt{reconfigure}, nor
+\texttt{check-\$suite} or \texttt{report-\$suite} for a suite the
+build declares (see Section~\ref{cmd:test_suites}).  make would read
+the two rules as one, so \texttt{make clean} would build whatever the
+\texttt{PHONY} stands for before cleaning anything, and asking for the
+\texttt{PHONY} would also clean.  Each of these is refused, pointing
+at the \texttt{PHONY}'s line --- a subproject's too, since its
+Makefile is also run from inside it, where the name is not under the
+subproject's directory.  A \texttt{./} in front makes no difference:
+make drops it from every target it reads, so \texttt{./clean} is
+\texttt{clean} to make and is refused the same way.
+
 \subsection{\texttt{SOURCES += \$name} \label{cmd:sources}}
 
 Adds a \texttt{\$SRCDIR/\$name} to the list of sources that will be
