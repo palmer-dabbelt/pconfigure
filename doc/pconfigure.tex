@@ -5536,8 +5536,10 @@ they are not in \texttt{NPASS}, so the four counts still add up to
 \texttt{NRUN}.  Under \texttt{--quiet}, which prints a line only for a
 result somebody has to act on, the count alone is printed and only
 when it is not zero --- so the quiet report of a run with nothing to
-excuse is still an empty file.  A skip does not change what the report
-exits with: that status still answers only whether anything failed.
+excuse is still an empty file.  \texttt{make check} prints that
+report whether or not the run passed, so a green run with skips in it
+still shows the count, and a clean one prints nothing.  A skip does
+not change what the report exits with: that status still answers only whether anything failed.
 
 Anywhere in the output rather than on the first line, because a test
 that got half way through before finding out it could not finish has
