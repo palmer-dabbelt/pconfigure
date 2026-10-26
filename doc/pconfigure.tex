@@ -3032,16 +3032,19 @@ like the \texttt{llvm-config} a \texttt{CONFIG} asks for LLVM's flags
 plain prerequisite, so \texttt{make} builds the tool before it decides
 whether to reconfigure, and the first build of a fresh tree configures
 against the tool it is about to build rather than against whatever the
-\texttt{CONFIG} found in its absence.  A file \pconfigure\ itself
-links keeps the \texttt{\$(wildcard)}: \texttt{make} remakes the
-\texttt{Makefile} before it has read the dependency fragments that say
-what such a file is linked out of, so it is noticed once it exists and
-not built from there.  Once it does exist it is a file with a rule,
-and \texttt{make} still brings it up to date on the way to the
-\texttt{Makefile}; a link that finds a fragment \texttt{make} has not
-read as it now stands --- one just renamed by a change of options, or
-rewritten to name a source behind a new header --- runs nothing, and
-is done by the \texttt{make} that starts over once it has read them.
+\texttt{CONFIG} found in its absence.  A file one of \pconfigure's own
+rules makes, like a program a subproject links, is built first too,
+but only on a pass of \texttt{make} that has read every dependency
+fragment it includes: those say what such a file is linked out of, and
+\texttt{make} remakes the \texttt{Makefile} before it has read them.
+On a fresh tree the pass that writes the fragments leaves the file
+alone, and the one after it builds the file and reconfigures, all
+within the one \texttt{make}.  A \texttt{make clean} builds none of
+it.  Should a link be reached anyway with a fragment \texttt{make} has
+not read as it now stands --- one just renamed by a change of options,
+or rewritten to name a source behind a new header --- it runs nothing,
+and is done by the \texttt{make} that starts over once it has read
+them.
 
 Without \texttt{AUTORECONFIGURE} only a project that keeps its own
 committed \texttt{Makefile} beside the generated one --- a
