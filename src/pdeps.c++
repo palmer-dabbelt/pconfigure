@@ -268,9 +268,9 @@ namespace {
     std::string hash_of(const std::vector<std::string>& words)
     {
         std::hash<std::string> hash_fn;
-        uint32_t seed = 5831;
+        uint64_t seed = 5831;
         for (const auto& word: words)
-            seed ^= hash_fn(word) + 0x9e3779b9
+            seed ^= hash_fn(word) + 0x9e3779b97f4a7c15ULL
                   + (seed << 6) + (seed >> 2);
         return std::to_string(seed);
     }

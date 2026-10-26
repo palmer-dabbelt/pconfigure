@@ -598,12 +598,27 @@ language_cxx::unbased_options(const context::ptr& ctx,
     });
 }
 
+/* The hash is the whole of what tells two option lists apart, since
+ * it alone names the object or the link directory, and make never
+ * reruns a recipe because its text changed.  Two lists that hash alike
+ * therefore share one output, and switching from one to the other
+ * leaves whatever the first built in place.  So the hash is kept as
+ * wide as std::hash is, which is 64 bits on a 64-bit host.  It used to
+ * be folded into 32, and at 32 bits the birthday bound puts a
+ * colliding pair among a few tens of thousands of values of a single
+ * "-D" -- few enough that a search finds one in well under a second.
+ *
+ * Widening it rather than also recording the full option text beside
+ * each output is a trade: 64 bits makes a collision something no
+ * project will meet, where a record would make one harmless, but the
+ * record is another file per object for make to read on every run. */
 std::string language_cxx::hash_options(const std::vector<std::string>& opts) const
 {
     std::hash<std::string> hash_fn;
-    uint32_t seed = 5831;
+    uint64_t seed = 5831;
     for (const auto& opt: opts)
-        seed ^= hash_fn(opt) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        seed ^= hash_fn(opt) + 0x9e3779b97f4a7c15ULL
+              + (seed << 6) + (seed >> 2);
     return std::to_string(seed);
 }
 

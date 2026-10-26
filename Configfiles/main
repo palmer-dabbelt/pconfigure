@@ -1159,6 +1159,7 @@ TESTSRC     += autoreconfigure-generate-script-edit-links-new-source.bash
 TESTSRC     += generate-dropped-line-output-reclaimed-by-cache-clean.bash
 TESTSRC     += generate-deps-crlf-answer-still-watched.bash
 TESTSRC     += compileopts-change-recompiles-objects.bash
+TESTSRC     += compileopts-define-change-with-colliding-option-hash-recompiles.bash
 TESTSRC     += prefix-change-recompiles-prefix-macro.bash
 TESTSRC     += prefix-change-relinks-installed-rpath.bash
 TESTSRC     += deplibs-removed-relinks-binary.bash
@@ -1328,6 +1329,7 @@ TESTSRC     += compileopts-reverted-reruns-c-test.bash
 TESTSRC     += compiler-reverted-recompiles-binary.bash
 TESTSRC     += compileopts-reverted-autoreconfigure-recompiles.bash
 TESTSRC     += linkopts-reverted-relinks-binary.bash
+TESTSRC     += linkopts-change-with-colliding-option-hash-relinks.bash
 TESTSRC     += parallel-install-of-every-kind-into-fresh-destdir.bash
 
 # The half of pconfigure that a build can run on its own, one source

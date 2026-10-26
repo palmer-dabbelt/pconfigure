@@ -745,13 +745,15 @@ language_bash::dependencies(const context::ptr& child,
  * those sharing a fragment would be each of them rewriting it for the
  * other.  The output and the whole command line are what differ, so
  * they are what is hashed -- the same arithmetic pdeps and
- * language_cxx name things with. */
+ * language_cxx name things with, and 64 bits wide for the reason
+ * language_cxx::hash_options() gives. */
 static std::string script_hash(const std::vector<std::string>& words)
 {
     std::hash<std::string> hash_fn;
-    uint32_t seed = 5831;
+    uint64_t seed = 5831;
     for (const auto& word: words)
-        seed ^= hash_fn(word) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        seed ^= hash_fn(word) + 0x9e3779b97f4a7c15ULL
+              + (seed << 6) + (seed >> 2);
     return std::to_string(seed);
 }
 
