@@ -5971,7 +5971,13 @@ output, which stops \pconfigure\ at the \texttt{Configfile} line.
 \subsection{\texttt{pllvm-config} \label{prog:pllvm-config}}
 
 A wrapper around \texttt{llvm-config} that does the same thing as
-\texttt{ppkg-config}.
+\texttt{ppkg-config}.  It answers \texttt{--cflags} and
+\texttt{--libs}, and when given both it answers both in
+\texttt{pkg-config}'s own order, the cflags ahead of the libs whatever
+order they were asked in, so one line can ask for everything a source
+compiled and linked in one step needs.  A method given twice is
+answered once.  Any other method, or none at all, is refused on
+stderr.
 
 \subsection{\texttt{pbashc} \label{prog:pbashc}}
 
