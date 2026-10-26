@@ -2094,6 +2094,15 @@ makefile::target::ptr project::cache_clean_target(const std::vector<ptr>& projec
               + project->_processor->root_context()->obj_dir
               + "/check-stamp'";
 
+        /* And the list of what the build writes into "bin" and "lib",
+         * which is the only place the name of a target taken out of
+         * the Configfile is still written down: thrown away here, the
+         * output that target left would outlive every "make clean"
+         * after it.  See record_outputs(). */
+        prune += " -not -path '"
+              + project->_processor->root_context()->obj_dir
+              + "/output-names'";
+
         /* And the Makefiles a configure from above left in here, for
          * the same reason and with more at stake.  Only a build run
          * inside a subproject ever reaches one of these, and the
@@ -2859,6 +2868,48 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
         out->add_dep("clean", clean_name);
     }
 
+    /* "make clean" also takes what a target taken out of a Configfile
+     * left in "bin" and "lib".  The clean rules above are written from
+     * the targets there are now, so none of them names it, and
+     * "make cache-clean" only looks inside the object directory -- so
+     * a program or a library whose line went away stayed until a
+     * distclean.  That is worse than clutter for a library, because
+     * "lib" is the first place every link in the tree searches: a
+     * "-lold" left in a LINKOPTS went on linking against a library
+     * the build no longer makes, and went on doing so through every
+     * clean.
+     *
+     * Not by sweeping those directories whole, the way the check
+     * directories are below.  A "bin" or a "lib" can hold things a
+     * clean has no business with -- a subproject's checkout, or a
+     * header somebody wrote, which distclean is careful about too --
+     * so the files are named one at a time, out of the list
+     * record_outputs() keeps of what this project has built there.
+     *
+     * In this project's own Makefile rather than among the rules
+     * only a standalone make reads, so that a parent's "make clean"
+     * reaches a subproject's leftovers through the include the way it
+     * reaches the rest of that subproject's clean rules. */
+    if (_stale_outputs.size() > 0) {
+        auto commands = std::vector<std::string>();
+        /* "rm -fr", for the reason the check-directory sweep below
+         * gives: every removal a clean makes is spelled the one way. */
+        for (const auto& name: _stale_outputs)
+            commands.push_back("rm -fr " + string_utils::quoted(name));
+
+        auto stale_name = "__pconfigure__clean-stale-outputs-"
+                        + makefile_path();
+        out->add_target(std::make_shared<makefile::target>(
+            stale_name,
+            "",
+            std::vector<makefile::target::ptr>{},
+            std::vector<makefile::global_targets>{},
+            commands,
+            std::vector<std::string>{}
+        )->as_phony());
+        out->add_dep("clean", stale_name);
+    }
+
     /* "make clean" also takes the whole of every check directory, and
      * not just the results each test's own clean rule names.  Those
      * rules are written from the tests the Configfiles name today, so
@@ -2918,6 +2969,10 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
      * well, and ptest reports on the same projects, scored the same
      * way and against the same stamp, as "make report" does.  Without
      * them it quietly falls back to this project's results alone.
+     * The list record_outputs() keeps is the same shape, read by the
+     * next configure rather than by ptest, and rides along for the
+     * same reason: without it that configure has forgotten what a
+     * dropped target left in "bin" and "lib".
      *
      * Every project's, not only this one's, because a subproject is a
      * directory somebody can walk into and run ptest in too.  Only
@@ -2929,7 +2984,8 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
             const auto& obj_dir =
                 project->_processor->root_context()->obj_dir;
             for (const auto& record: {obj_dir + "/check-dirs",
-                                      obj_dir + "/check-stamp"}) {
+                                      obj_dir + "/check-stamp",
+                                      obj_dir + "/output-names"}) {
                 out->add_dep("all", record);
                 out->add_dep("check", record);
             }
@@ -3362,6 +3418,140 @@ void project::write_check_records(const std::vector<ptr>& aggregated) const
 {
     write_check_dirs(aggregated);
     write_check_stamp();
+}
+
+void project::record_outputs(const std::vector<ptr>& run)
+{
+    const auto& root = _processor->root_context();
+    auto path = root->obj_dir + "/output-names";
+
+    /* Only what lands in a directory "make distclean" removes whole,
+     * the same ones distclean_dirs() names for an output context: a
+     * file in there is the build's whatever its name, so taking one
+     * at a "make clean" removes nothing a distclean would have left.
+     * The include directory is not one of those -- somebody writes
+     * headers there by hand, and the name of a header that stopped
+     * being copied is exactly the name one would be written under --
+     * and the object and check
+     * directories have a sweep of their own each ("make cache-clean"
+     * and the check-directory rule in write_makefile()).
+     *
+     * Asked of the directories as they are now, not as they were when
+     * the name was written down.  A LIBDIR moved somewhere else makes
+     * the old "lib" a directory this configure has no claim on, and a
+     * file in a directory nothing builds into is not one to delete on
+     * the strength of a list. */
+    auto dirs = std::vector<std::string>();
+    for (const auto& context: _processor->output_contexts()) {
+        if (context->type != context_type::HEADER)
+            dirs.push_back(file_utils::normalize_path(context->bin_dir));
+        dirs.push_back(file_utils::normalize_path(context->lib_dir));
+    }
+    auto in_output_dir = [&](const std::string& name) {
+        for (const auto& dir: dirs)
+            if (name != dir && file_utils::inside(name, dir))
+                return true;
+        return false;
+    };
+
+    auto names = std::set<std::string>();
+    for (const auto& target: _targets) {
+        if (target->has_global_target(makefile::global_targets::CLEAN) == false)
+            continue;
+
+        auto name = file_utils::normalize_path(target->name());
+        if (in_output_dir(name))
+            names.insert(name);
+    }
+
+    /* What a target there is now builds has a clean rule of its own,
+     * whichever project's it is, and a file some line reads is a
+     * source -- distclean already refuses a source in one of these
+     * directories (see check_distclean_spares_sources()), but a clean
+     * that deleted one would be a worse answer than any refusal, so
+     * it is asked again here rather than relied on. */
+    auto current = std::set<std::string>();
+    for (const auto& project: run) {
+        for (const auto& target: project->targets())
+            current.insert(file_utils::normalize_path(target->name()));
+        for (const auto& read: project->_processor->read_sources())
+            current.insert(file_utils::normalize_path(read.first));
+    }
+
+    /* A name stays on the list for as long as the file is there to
+     * remove, and no longer.  The record is written at configure time
+     * rather than by each rule as it runs, so it holds the names of
+     * targets that were never built as well -- but a name that has
+     * nothing at its path by the configure that drops it is let go
+     * right there, so what a clean is left removing is only ever
+     * something that was in the build's directory when its line went
+     * away.  That is the output that line built, short of somebody
+     * writing a file under the name of a target into "bin" by hand,
+     * where the next "make" would have overwritten it anyway.
+     *
+     * Kept across configures rather than handed over once, because
+     * nothing says a clean comes next: a reconfigure in between would
+     * otherwise write the list again from a Configfile that no longer
+     * mentions the name, and the output would be back to outliving
+     * every clean.  A missing record is an empty one, which is what a
+     * first configure or a deleted object directory has to work with:
+     * whatever an earlier build left behind there is distclean's. */
+    _stale_outputs.clear();
+    auto in = fopen(path.c_str(), "r");
+    if (in != NULL) {
+        for (auto line: file_utils::readlines(in)) {
+            /* readlines() hands each line back with its newline. */
+            if (line.size() > 0 && line[line.size() - 1] == '\n')
+                line.erase(line.size() - 1);
+            if (line.size() == 0)
+                continue;
+
+            auto name = file_utils::normalize_path(_base + line);
+            if (current.find(name) != current.end())
+                continue;
+            if (in_output_dir(name) == false)
+                continue;
+            if (names.find(name) != names.end())
+                continue;
+
+            /* A directory is not something any target here ever
+             * built, and the clean of it is an "rm -fr": a directory
+             * at the name of a program that went away is somebody
+             * else's, and would be taken whole. */
+            struct stat buf;
+            if (lstat(name.c_str(), &buf) != 0 || S_ISDIR(buf.st_mode))
+                continue;
+
+            _stale_outputs.push_back(name);
+            names.insert(name);
+        }
+        fclose(in);
+    }
+
+    /* Spelled from this project rather than from where pconfigure ran,
+     * as check-stamp is, so that a configure from inside a subproject
+     * and one from above it read the same list the same way.
+     *
+     * Through write_configure_output(), so that the Makefile carries a
+     * rule that writes it again: an object directory is a thing people
+     * delete, and the list that comes back from the rule still has the
+     * names of whatever the Configfile dropped, which nothing else in
+     * the tree remembers. */
+    auto out = std::string();
+    for (const auto& name: names)
+        out += root->unbased(name) + "\n";
+
+    file_utils::mkdir_p(root->obj_dir);
+    if (file_utils::write_configure_output(path, out))
+        return;
+
+    std::cerr << "can't write '" << path << "': "
+              << strerror(errno) << "\n"
+              << "  this is where the files this project builds into"
+              << " its \"bin\" and \"lib\" get written down,\n"
+              << "  and \"make clean\" needs it to remove the ones a"
+              << " target taken out of a Configfile left behind\n";
+    abort();
 }
 
 void project::write_check_stamp(void) const

@@ -91,6 +91,13 @@ private:
      * as the line that first read the file is that very line. */
     size_t _rereading = 0;
 
+    /* What this project built into its "bin" and "lib" under some
+     * earlier Configfile and builds no longer, and which is still on
+     * disk -- spelled from where pconfigure ran.  Worked out by
+     * record_outputs() and turned into a clean rule by
+     * write_makefile(). */
+    std::vector<std::string> _stale_outputs;
+
 public:
     project(const std::string& base,
             const command_processor::ptr& processor,
@@ -330,6 +337,19 @@ public:
      * write_configureopts(): these go into the object directory too,
      * and the Makefile make is run on is what puts them back. */
     void write_check_records(const std::vector<ptr>& aggregated) const;
+
+    /* Writes down every file this project builds into a directory
+     * "make distclean" removes whole -- its "bin", its "lib" -- and
+     * works out from what the last configure wrote down which of
+     * those files a target that has since been taken out of a
+     * Configfile left behind.  "make clean" removes those as well as
+     * the outputs of the targets there are now, which it can't learn
+     * from the Configfile alone: the line that would have named them
+     * is gone.  "run" is every project in the run, since a path that
+     * stopped being one project's output may have become another's.
+     * Called before any Makefile is written, which is where the
+     * answer goes. */
+    void record_outputs(const std::vector<ptr>& run);
 
 public:
     /* A project and everything below it, parents before children. */

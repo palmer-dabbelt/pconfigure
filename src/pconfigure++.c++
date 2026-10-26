@@ -323,6 +323,9 @@ int main(int argc, const char **argv)
         project->write_check_records(project::flatten(project));
 
     for (const auto& project: projects)
+        project->record_outputs(projects);
+
+    for (const auto& project: projects)
         project->write_makefile(edges[project->base()],
                                 project::flatten(project),
                                 projects);
