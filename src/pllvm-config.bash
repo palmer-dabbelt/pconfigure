@@ -88,8 +88,13 @@ fi
 # component libraries for it to name) still came out as a link line
 # with only libclang on it and a status of 0, and the failure turned up
 # at link time instead.
+#
+# What llvm-config says goes in "stdout" and is passed along as
+# llvm-config spelled it; the words pllvm-config writes itself go in
+# "own", already spelled for the Makefile recipe its answer ends up in.
 stdout=""
 retval="0"
+own=()
 if [[ "$cflags" == "true" ]]
 then
     stdout="$(run_llvm_config --cflags)"
@@ -99,7 +104,38 @@ if [[ "$libs" == "true" && "$retval" == "0" ]]
 then
     if libs_out="$(run_llvm_config --libs core)" && libdir="$(run_llvm_config --libdir)"
     then
-        stdout="$stdout $libs_out -lclang -L$libdir -Wl,-R$libdir"
+        stdout="$stdout $libs_out"
+
+        # The search path and run path come from "llvm-config --libdir",
+        # which prints a bare directory, not a flag meant for a shell.  An
+        # LLVM unpacked under "/opt/my llvm" would otherwise hand the link
+        # "-L/opt/my" and a stray word "llvm/lib", which the compiler
+        # driver reads as the name of an input file.
+        #
+        # What a Configfile's backticks print is pasted into the recipes of
+        # the Makefile as it is, so the directory is spelled for make first
+        # and the shell after it.  Each ASCII character the shell gives a
+        # meaning to gets a backslash, which is how pkg-config spells a
+        # space in a Libs path and what ppkg-config passes along, and a "$"
+        # is doubled as well, since make reads one as the start of a
+        # variable before the shell sees the line.  Every other byte is
+        # left alone, so a directory that needs no quoting, non-ASCII ones
+        # included, comes out exactly as llvm-config printed it.  That's
+        # why this is a fixed list and not bash's printf %q: that writes a
+        # byte it can't print in the current locale as $'\303', which is
+        # not sh and which make turns into a reference to a variable
+        # named "'".
+        #
+        # A newline can't be spelled at all: it would end the recipe line,
+        # so it is a failure like llvm-config's own, which --optional
+        # still turns into no flags at all.
+        if [[ "$libdir" == *$'\n'* ]]
+        then
+            echo "pllvm-config: llvm-config --libdir printed a directory with a newline in it, which can't be written into a Makefile; install LLVM somewhere else" >&2
+            retval=1
+        fi
+        libdir="$(printf '%s\n' "$libdir" | LC_ALL=C sed -e $'s/[][ \t\\\\"\'`;&|<>()*?#~{}!^]/\\\\&/g' -e 's/\$/\\$$/g')"
+        own+=(-lclang "-L$libdir" "-Wl,-R$libdir")
     else
         retval="$?"
     fi
@@ -119,7 +155,7 @@ fi
 # Checks for some special options
 if [[ "$have" != "" ]]
 then
-    stdout="$stdout -DHAVE_$have"
+    own+=("-DHAVE_$have")
 fi
 
 # Outputs the results of pkg-config, without the "-DNDEBUG" LLVM was
@@ -130,7 +166,9 @@ fi
 # define that starts the same way, turning "-DNDEBUG_ASSERTS=1" into
 # the bare word "_ASSERTS=1", which the compiler driver reads as an
 # input file.  Globbing is off so that a word that looks like a pattern
-# is passed along as written.
+# is passed along as written.  Only llvm-config's own words are split
+# here: the ones in "own" have their quoting in them, and splitting
+# "-L/opt/my\ llvm/lib" at its space would undo it.
 set -f
 out=""
 for word in $stdout
@@ -140,5 +178,9 @@ do
         out="$out $word"
     fi
 done
-echo $out
+for word in "${own[@]}"
+do
+    out="$out $word"
+done
+printf '%s\n' "${out# }"
 exit 0
