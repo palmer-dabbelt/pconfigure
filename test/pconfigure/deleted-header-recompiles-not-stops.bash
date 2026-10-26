@@ -11,7 +11,7 @@
 # "header:" with no recipe for every header it has ever seen, so make
 # has a rule to run and does not stop with "No rule to make target",
 # and does not loop.  The stamp is the new half: the object's
-# prerequisite line names the header-list stamp beside the fragment,
+# prerequisite line names the header-list stamp beside the object,
 # so a re-derived fragment that has dropped the header changes the
 # stamp, and the object restales exactly once -- the recompile lands,
 # and the next plain make has nothing to do.

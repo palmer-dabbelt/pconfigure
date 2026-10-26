@@ -1328,6 +1328,7 @@ TESTSRC     += compileopts-reverted-reinstalls-binary.bash
 TESTSRC     += compileopts-reverted-reruns-c-test.bash
 TESTSRC     += compiler-reverted-recompiles-binary.bash
 TESTSRC     += compileopts-reverted-autoreconfigure-recompiles.bash
+TESTSRC     += autoreconfigure-second-program-sharing-source-leaves-first-alone.bash
 TESTSRC     += linkopts-reverted-relinks-binary.bash
 TESTSRC     += linkopts-change-with-colliding-option-hash-relinks.bash
 TESTSRC     += parallel-install-of-every-kind-into-fresh-destdir.bash

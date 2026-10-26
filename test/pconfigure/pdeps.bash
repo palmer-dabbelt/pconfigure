@@ -96,13 +96,13 @@ grep -q "^obj/bin/app/L/local: obj/src/app.c++/OPTS-static.o$" $d
 
 # Both headers are prerequisites of the object, which is what makes
 # make rebuild it when one of them changes.  So is the stamp beside
-# this fragment, which is what makes make rebuild it when one of them
+# the object, which is what makes make rebuild it when one of them
 # stops resolving -- a deleted header comes off the line, and the
 # stamp is the only memory of it the build has left.  The stamp is a
 # target of the fragment too, which is what keeps cache-clean from
 # taking it out from under the line that names it.
-grep -q "^obj/src/app.c++/OPTS-static.o: src/app.c++ src/helper.h++ src/plain.h++ $d.headers$" $d
-grep -q "^$d.headers:$" $d
+grep -q "^obj/src/app.c++/OPTS-static.o: src/app.c++ src/helper.h++ src/plain.h++ obj/src/app.c++/OPTS-static.o.headers$" $d
+grep -q "^obj/src/app.c++/OPTS-static.o.headers:$" $d
 
 # And of this file, which is what makes make ask the question again
 # when a header that might have grown an include of its own changes.
@@ -295,7 +295,7 @@ rm -rf obj/src
 $pdeps --context obj/bin/app/L/deps-context-OPTS --source app.c++
 cat $d
 
-grep -q "^obj/src/app.c++/OPTS-static.o: src/app.c++ src/ring.h++ $d.headers$" $d
+grep -q "^obj/src/app.c++/OPTS-static.o: src/app.c++ src/ring.h++ obj/src/app.c++/OPTS-static.o.headers$" $d
 if grep -q "^include " $d
 then
     exit 1

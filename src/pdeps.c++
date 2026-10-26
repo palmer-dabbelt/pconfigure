@@ -893,7 +893,7 @@ int main(int argc, const char **argv)
      * which is how a binary goes on carrying the contents of a file
      * that is no longer in the tree.
      *
-     * So the list is hashed into a stamp beside this fragment, and
+     * So the list is hashed into a stamp beside the object, and
      * the object reads the stamp as a prerequisite.  The hash changes
      * exactly when the list does, the stamp moves exactly once, and
      * the object is remade against the include graph that is actually
@@ -924,11 +924,27 @@ int main(int argc, const char **argv)
      * the context files: its rules take fragments and objects by
      * name, and a stamp whose content still describes the headers
      * says nothing new.  The object it belongs to is coming back
-     * regardless. */
-    auto stamp = deps + ".headers";
+     * regardless.
+     *
+     * The stamp is the object's rather than this fragment's, and sits
+     * beside the object under its name.  Two targets that compile a
+     * source the same way share the object and each get a fragment of
+     * their own, and a stamp per fragment was a stamp born with every
+     * new consumer: adding a second program built from a source the
+     * first already used wrote that program's stamp after the object,
+     * and the object -- with every link already using it -- was
+     * rebuilt for a list of headers it had been compiled against all
+     * along.  The list is a property of the compile, which every
+     * fragment of this object describes identically, so they all
+     * share one stamp and the first of them to be read gives it its
+     * rule.  For the same reason the body names the source and not
+     * the context it was asked through: a stamp that said which
+     * fragment wrote it last would change with whoever got there
+     * first, and move the object every time they took turns. */
+    auto stamp = object + ".headers";
     {
         auto body = std::string();
-        body += "# Written by pdeps, from " + ctx.path + "\n";
+        body += "# Written by pdeps\n";
         body += "#\n";
         body += "# The headers '" + source + "' reads, under the hash\n";
         body += "# the object is restaled on.  Editing it achieves\n";
@@ -942,11 +958,18 @@ int main(int argc, const char **argv)
             die("unable to write '" + stamp + "'");
     }
 
-    say(stamp + ":");
-    out += "\t" + ctx.at + "test -f $@ || " + prefix.rewrite(
-               makefile::recipe_quoted(ctx.pdeps)
-               + " --context " + ctx.path
-               + " --source " + name) + "\n";
+    {
+        auto g = guard("stamp", prefix.rewrite(stamp));
+
+        say("ifndef " + g);
+        say(g + " := 1");
+        say(stamp + ":");
+        out += "\t" + ctx.at + "test -f $@ || " + prefix.rewrite(
+                   makefile::recipe_quoted(ctx.pdeps)
+                   + " --context " + ctx.path
+                   + " --source " + name) + "\n";
+        say("endif");
+    }
     out += "\n";
 
     auto object_deps = std::vector<std::string>{source};
