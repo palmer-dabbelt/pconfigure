@@ -860,20 +860,39 @@ static bool names_a_make_target(const command_type& type)
  * Several characters are on both sides, and are listed once with the
  * reason that bites first.
  *
- * It is the same shell half that build_system::unsafe_metacharacter()
+ * The recipes run under SHELL=/bin/bash rather than a plain sh, and
+ * bash reads two more things in a bare word.  A brace list or sequence
+ * is expanded into several words, so "a{b,c}" and "v{1..2}" reach the
+ * linker as two outputs and the compiler as two inputs.  A lone brace
+ * is left alone and would build, but whether bash pairs one brace with
+ * another is a question of its grammar -- the comma or the "..", the
+ * nesting, a '$' in front -- that nobody writing a name should have to
+ * answer, so both braces are refused wherever they are.  A '`' runs
+ * what follows it up to the next one as a command, on every build.
+ * The Configfile reader runs the backticks written on a line itself,
+ * or refuses the line when there is only one, but that doesn't keep
+ * one out of a name: the command's output is pasted in unexamined, so
+ * "BINARIES += `printf 'a\140b'`" names "a`b", and a source found
+ * behind a header is named by whatever file is on disk.  Both reach
+ * this check, as a brace from either place does too.
+ *
+ * The shell half began as the list build_system::unsafe_metacharacter()
  * asks of a path, written out again here rather than asked of that
  * function, because a name needs more than a path does: a path never
  * lands on the left of a rule, so it has no reason to fear a '#' or an
- * '='.  A '`' isn't here because the Configfile reader has already run
- * everything between two of them as a command, or refused the line
- * when there was only one, by the time any name gets this far.
+ * '='.  The two no longer agree on the shell either, since that list
+ * has no braces: a directory such as "LIBDIR = lib{a,b}" still gets
+ * through to the recipes, and is left for a change of its own to the
+ * paths' list, where every directory variable will feel it.
  *
  * That none of these ever built is what makes this a refusal rather
  * than one of strict.h++'s warnings: there is no old Configfile that
  * works today and would stop working, only ones that configure quietly
  * and then fail inside make with an error about a line of generated
  * text, or that build a file with a different name from the one asked
- * for.
+ * for.  A lone brace is the one exception, and a name with a single
+ * '{' or '}' and nothing for it to pair with is rare enough that
+ * telling its author to rename it is worth a rule anyone can predict.
  *
  * Quoting or escaping them was the other way out, and doesn't go far
  * enough to be worth starting.  make has a backslash escape for a '#'
@@ -959,6 +978,17 @@ std::string make_special_character(char c)
         return std::string("the name is pasted bare into the recipes that")
                + " build it, where the shell reads a '" + c + "' as the"
                + " start of a quoted string that never ends";
+    case '{':
+    case '}':
+        return std::string("the name is pasted bare into the recipes that")
+               + " build it, which run under bash, and bash reads a"
+               + " brace list like 'a{b,c}' or a brace sequence like"
+               + " 'v{1..2}' as several words rather than as one name";
+    case '`':
+        return "the name is pasted bare into the recipes that build it,"
+               " where the shell runs whatever is between two '`'s as a"
+               " command on every build and puts its output in the"
+               " name's place";
     default:
         return "";
     }
@@ -2639,9 +2669,13 @@ void command_processor::process_one(const command::ptr& cmd)
          * is as much a target name as a BINARIES is, and gets the same
          * list a BINARIES does: a ':' or a '#' leaves a Makefile make
          * won't read, a '$' installs into whatever the expansion comes
-         * to, and a quote is left unbalanced in every compile line's
-         * -D__PCONFIGURE__PREFIX.  None of those ever built, so there
-         * is nothing to keep working by only warning.
+         * to, a quote is left unbalanced in every compile line's
+         * -D__PCONFIGURE__PREFIX, and a brace list like "/opt/{a,b}"
+         * is expanded by the bash running the install recipes into
+         * two directories, one mkdir'd for nothing and both handed to
+         * a cp that then has too many arguments.  None of those ever
+         * built, so there is nothing to keep working by only
+         * warning.
          *
          * A '%' is refused here and not for a BINARIES.  A target
          * name with one in it happens to build, since the rule is the
