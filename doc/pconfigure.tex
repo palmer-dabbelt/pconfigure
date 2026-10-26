@@ -3047,6 +3047,16 @@ opposed to \texttt{--deps} which will only be called when
 it's possible that the script will be run before its dependencies are
 ready, so plan accordingly!
 
+\pconfigure\ runs it when \texttt{make} would: when there is no output
+yet, or when the script or any input its \texttt{--deps} answer names
+is newer than the output there is.  That is what makes rerunning
+\pconfigure\ after editing a script enough on its own.  The headers a
+generated file includes are read off the output on disk, to work out
+what a program links and what its objects depend on, so an output left
+over from before the edit would answer those questions for the old
+script.  An output that is up to date is left alone, and the script is
+not run.
+
 What the script prints is compared against the file already on disk, and
 the output is replaced only when the two differ.  A regeneration whose
 answer is the bytes that were already there therefore leaves the
