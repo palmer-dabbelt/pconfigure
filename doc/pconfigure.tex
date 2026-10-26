@@ -2775,6 +2775,13 @@ information.
 Sets the \texttt{LIBDIR} variable to \texttt{\$val}.  By default it is
 set to \texttt{lib}.
 
+The directory is read as a path rather than as text, so
+\texttt{lib}, \texttt{lib/} and \texttt{./lib} are one
+\texttt{LIBDIR}: each library in it is the \texttt{make} target
+\texttt{lib/libfoo.so}, which a \texttt{TESTDEPS} names the ordinary
+way, and two libraries of one name written under two spellings of it
+are the one output they look like.
+
 It may not start with a \texttt{-}, which the \texttt{mkdir} in front
 of every library copied there would read as an option.  Writing
 \texttt{./-lib} does not help, because \texttt{make} takes the
