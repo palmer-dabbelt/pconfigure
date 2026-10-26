@@ -172,7 +172,7 @@ grep -q "^DEPS	gen.h$" fourth.out
 
 cat obj/proc/gen.h.d
 grep -qxF 'obj/proc/gen.h: src/base.txt' obj/proc/gen.h.d
-grep -qxF 'obj/proc/gen.h: $(foreach f,$(wildcard src/opt/answer.txt),$(if $(realpath $(f)),$(f),))' obj/proc/gen.h.d
+grep -qxF 'obj/proc/gen.h: $(foreach f,$(wildcard src/opt/answer.txt),$(if $(realpath $(f)),$(subst :,\:,$(f)),))' obj/proc/gen.h.d
 
 timeout 60 make $MAKE_ARGS > fifth.out 2>&1 || { cat fifth.out; exit 1; }
 cat fifth.out

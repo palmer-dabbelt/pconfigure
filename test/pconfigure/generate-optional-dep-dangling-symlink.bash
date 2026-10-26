@@ -107,7 +107,7 @@ grep -q "Nothing to be done" settled.out
 # reason.  The filter wraps the glob rather than replacing it: the glob
 # is still what finds the candidates, and $(realpath) is only what drops
 # the ones that cannot be stat'ed.
-grep -qxF 'obj/proc/gen.h: src/gen.h.proc $(foreach f,$(wildcard obj/toolchain/bin/aarch64-*linux*-gcc),$(if $(realpath $(f)),$(f),))' Makefile
+grep -qxF 'obj/proc/gen.h: src/gen.h.proc $(foreach f,$(wildcard obj/toolchain/bin/aarch64-*linux*-gcc),$(if $(realpath $(f)),$(subst :,\:,$(f)),))' Makefile
 
 ##############################################################################
 # A live match beside the dangling ones is still heard                       #
@@ -233,7 +233,7 @@ grep -q "Nothing to be done" ninth.out
 rm -rf obj/proc bin
 $PTEST_BINARY $PCONFIGURE_ARGS
 cat Makefile
-grep -qF 'obj/proc/gen.h.d: $(wildcard src/gen.h.proc) $(foreach f,$(wildcard obj/toolchain/bin),$(if $(realpath $(f)),$(f),))' Makefile
+grep -qF 'obj/proc/gen.h.d: $(wildcard src/gen.h.proc) $(foreach f,$(wildcard obj/toolchain/bin),$(if $(realpath $(f)),$(subst :,\:,$(f)),))' Makefile
 
 timeout 60 make $MAKE_ARGS > tenth.out 2>&1 || { cat tenth.out; exit 1; }
 cat tenth.out

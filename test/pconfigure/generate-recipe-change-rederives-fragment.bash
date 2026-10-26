@@ -81,7 +81,7 @@ test "$(./sub/bin/app)" = "1"
 
 cat sub/obj/proc/gen.h.d
 grep -qxF '$(pconfigure_subdir_sub)obj/proc/gen.h: $(pconfigure_subdir_sub)src/base.txt' sub/obj/proc/gen.h.d
-grep -qxF '$(pconfigure_subdir_sub)obj/proc/gen.h: $(foreach f,$(wildcard $(pconfigure_subdir_sub)src/opt.txt),$(if $(realpath $(f)),$(f),))' sub/obj/proc/gen.h.d
+grep -qxF '$(pconfigure_subdir_sub)obj/proc/gen.h: $(foreach f,$(wildcard $(pconfigure_subdir_sub)src/opt.txt),$(if $(realpath $(f)),$(subst :,\:,$(f)),))' sub/obj/proc/gen.h.d
 
 # The sed that decides the fragment's whole format is in the record,
 # which is what makes everything below a statement about the recipe
@@ -155,7 +155,7 @@ grep -q "^DEPS	gen.h$" recovered.out
 
 cat sub/obj/proc/gen.h.d
 grep -qxF '$(pconfigure_subdir_sub)obj/proc/gen.h: $(pconfigure_subdir_sub)src/base.txt' sub/obj/proc/gen.h.d
-grep -qxF '$(pconfigure_subdir_sub)obj/proc/gen.h: $(foreach f,$(wildcard $(pconfigure_subdir_sub)src/opt.txt),$(if $(realpath $(f)),$(f),))' sub/obj/proc/gen.h.d
+grep -qxF '$(pconfigure_subdir_sub)obj/proc/gen.h: $(foreach f,$(wildcard $(pconfigure_subdir_sub)src/opt.txt),$(if $(realpath $(f)),$(subst :,\:,$(f)),))' sub/obj/proc/gen.h.d
 
 # And the line that stopped the tree is nowhere in it.
 if grep -q '?src/opt.txt' sub/obj/proc/gen.h.d
@@ -229,7 +229,7 @@ grep -q "^DEPS	gen.h$" standalone.out
 
 cat obj/proc/gen.h.d
 grep -qxF 'obj/proc/gen.h: src/base.txt' obj/proc/gen.h.d
-grep -qxF 'obj/proc/gen.h: $(foreach f,$(wildcard src/opt.txt),$(if $(realpath $(f)),$(f),))' obj/proc/gen.h.d
+grep -qxF 'obj/proc/gen.h: $(foreach f,$(wildcard src/opt.txt),$(if $(realpath $(f)),$(subst :,\:,$(f)),))' obj/proc/gen.h.d
 if grep -q 'pconfigure_subdir_sub' obj/proc/gen.h.d
 then
     exit 1

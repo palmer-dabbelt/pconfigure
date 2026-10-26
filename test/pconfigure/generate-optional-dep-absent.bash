@@ -82,13 +82,13 @@ test "$(./bin/app)" = "0"
 # that answer is the script's live one, and a line reaching the
 # fragment bare is the same hard error by a later route.
 cat obj/proc/gen.h.d
-grep -qxF 'obj/proc/gen.h: $(foreach f,$(wildcard src/opt/answer.txt),$(if $(realpath $(f)),$(f),))' obj/proc/gen.h.d
+grep -qxF 'obj/proc/gen.h: $(foreach f,$(wildcard src/opt/answer.txt),$(if $(realpath $(f)),$(subst :,\:,$(f)),))' obj/proc/gen.h.d
 
 # Now the spelling that bought all of that, which is worth pinning
 # separately because it is what a future change would break quietly.
 # The configure-time snapshot names the optional input through a
 # wildcard, and the '?' is not part of the path.
-grep -qxF 'obj/proc/gen.h: src/gen.h.proc $(foreach f,$(wildcard src/opt/answer.txt),$(if $(realpath $(f)),$(f),))' Makefile
+grep -qxF 'obj/proc/gen.h: src/gen.h.proc $(foreach f,$(wildcard src/opt/answer.txt),$(if $(realpath $(f)),$(subst :,\:,$(f)),))' Makefile
 
 # The directory it would arrive in is watched, deliberately.  The
 # wildcard above is what hears a file the script named by hand, so the

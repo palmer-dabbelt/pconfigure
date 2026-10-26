@@ -259,20 +259,31 @@ static std::string quote_for_glob(const std::string& path)
     return out;
 }
 
-/* make reads two characters on a rule line as its own wherever they
+/* make reads three characters on a rule line as its own wherever they
  * sit in a word: a '#' starts a comment that runs to the end of the
- * line, taking the rest of this path and every prerequisite after it,
- * and a '$' starts an expansion, so "cost$1.txt" is "cost" followed by
- * whatever the variable "1" holds.  Either way make goes looking for a
- * file nobody named and stops on "No rule to make target".
+ * line, taking the rest of this path and every prerequisite after it;
+ * a '$' starts an expansion, so "cost$1.txt" is "cost" followed by
+ * whatever the variable "1" holds; and a ':' is the separator of a
+ * static pattern rule, so "src/a:b.txt" makes the line one with two
+ * colons in it, which make stops on as "multiple target patterns".
+ * The first two send make looking for a file nobody named; the third
+ * leaves a Makefile that does not parse at all.
  *
- * A '$' is written "$$" and a '#' "\#", which are the spellings make
- * has for each.  Every other character is left as it is: whitespace,
- * a ':' and a '%' are their own problems, and nothing this is used for
- * has met them. */
+ * A '$' is written "$$", a '#' "\#" and a ':' "\:", which are the
+ * spellings make has for each, with the backslashes in front of either
+ * doubled as quote_for_make() says.  Measured with GNU make 4.4.1: a
+ * prerequisite spelled "x\\\:y" is the file "x\:y".
+ *
+ * A ';' would belong in that list too -- on a rule line it ends the
+ * prerequisites and starts a recipe -- but make has no spelling for
+ * one that is part of a file name: "\;" still ends the list, inside a
+ * "$(wildcard ...)" as well as bare.  So a caller that can meet one
+ * has to refuse it, naming the Configfile line the path came from.
+ * Whitespace and a '%' are their own problems, and nothing this is
+ * used for has met them. */
 std::string makefile::prerequisite(const std::string& path)
 {
-    return quote_for_make(path, "#");
+    return quote_for_make(path, "#:");
 }
 
 /* Inside a function call make does not end the line at a '#', so one

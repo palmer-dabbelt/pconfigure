@@ -72,7 +72,7 @@ test "$(./bin/app)" = "0"
 # than before it so that a regression shows up as the build failing,
 # which is what actually went wrong, rather than as a grep that did not
 # match.
-grep -qxF 'obj/proc/gen.h: src/gen.h.proc $(foreach f,$(wildcard obj/toolchain/bin/aarch64-*linux*-gcc),$(if $(realpath $(f)),$(f),))' Makefile
+grep -qxF 'obj/proc/gen.h: src/gen.h.proc $(foreach f,$(wildcard obj/toolchain/bin/aarch64-*linux*-gcc),$(if $(realpath $(f)),$(subst :,\:,$(f)),))' Makefile
 timeout 60 make $MAKE_ARGS > settled.out 2>&1 || { cat settled.out; exit 1; }
 cat settled.out
 grep -q "Nothing to be done" settled.out

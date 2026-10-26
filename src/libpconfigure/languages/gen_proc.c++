@@ -327,12 +327,29 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * before the shell sees it.  One spelling of the filter with
          * the dollar handed in beats two spellings that have to be
          * kept in step by hand, which is the mistake this entire bug
-         * is made of. */
+         * is made of.
+         *
+         * What the filter hands back is read for colons a second time.
+         * make finds a rule's colon before it expands anything, which
+         * is why a ':' inside the $(wildcard ...) is safe as written,
+         * but it reads the expanded prerequisites again for a static
+         * pattern rule's -- so a "src/a:b.txt" that the filter found
+         * comes back bare and ends in "multiple target patterns", for
+         * an input the script marked as one the build can do without.
+         * Each survivor is therefore named through a $(subst) that
+         * spells its ':' the way makefile::prerequisite() does.  A '#'
+         * and a '$' need no such care: a comment is gone before
+         * anything is expanded, and what an expansion produces is not
+         * expanded again.  "bs" is a backslash as it has to be written
+         * where this lands: itself in the Makefile, and doubled in the
+         * replacement half of the sed below, where a lone one would
+         * escape the ':' away. */
         auto present_only = [](const std::string& path,
-                               const std::string& d) {
+                               const std::string& d,
+                               const std::string& bs) {
             return d + "(foreach f," + d + "(wildcard " + path + "),"
                  + d + "(if " + d + "(realpath " + d + "(f)),"
-                 + d + "(f),))";
+                 + d + "(subst :," + bs + ":," + d + "(f)),))";
         };
 
         /* The complaint about a bare '?', written once because it is
@@ -486,9 +503,11 @@ language_gen_proc::targets(const context::ptr& ctx) const
              * Each path is whatever the script printed, so it is
              * spelled for where it lands, which the two kinds of line
              * do differently: a mandatory path lands bare on the rule
-             * line, where a '#' cuts it short and a '$' expands, and
-             * an optional one lands inside the filter's function
-             * calls, where only the '$' does. */
+             * line, where a '#' cuts it short, a '$' expands and a ':'
+             * makes a second rule separator, and an optional one lands
+             * inside the filter's function calls, where only the '$'
+             * does -- the filter itself sees to the ':' in what it
+             * finds. */
             auto paths = dep_paths(line);
             if (optional_dep(line) == true) {
                 auto joined = std::string();
@@ -497,7 +516,7 @@ language_gen_proc::targets(const context::ptr& ctx) const
                             + makefile::function_argument(path);
                 sources.push_back(
                     std::make_shared<makefile::target>(
-                        present_only(joined, "$")));
+                        present_only(joined, "$", "\\")));
             } else {
                 for (const auto& path: paths)
                     sources.push_back(
@@ -800,7 +819,8 @@ language_gen_proc::targets(const context::ptr& ctx) const
         for (const auto& dir: watched)
             dep_deps.push_back(
                 std::make_shared<makefile::target>(
-                    present_only(makefile::function_argument(dir), "$")));
+                    present_only(makefile::function_argument(dir),
+                                 "$", "\\")));
 
         auto variable = ctx->base.size() == 0
             ? std::string()
@@ -879,10 +899,11 @@ language_gen_proc::targets(const context::ptr& ctx) const
 
         /* What the script printed is spelled for make before anything
          * else touches it, the way makefile::prerequisite() spells it
-         * for the snapshot above: a '$' doubled, and a '#' escaped
-         * with its leading backslashes doubled, on an ordinary line
-         * only -- an optional line's paths land inside function
-         * calls, where a '#' is an ordinary character.  First,
+         * for the snapshot above: a '$' doubled, and a '#' or a ':'
+         * escaped with its leading backslashes doubled, on an ordinary
+         * line only -- an optional line's paths land inside function
+         * calls, where a '#' is an ordinary character and a ':' is
+         * looked after by the filter's $(subst).  First,
          * because every expression after this one writes make syntax
          * of its own onto the line -- the subproject's variable, the
          * filter's "$(" -- and escaping after them would escape that
@@ -894,6 +915,7 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * recipe. */
         dep_sed += "-e 's|\\$$|$$$$|g' ";
         dep_sed += "-e '/^?/!s|\\(\\\\*\\)#|\\1\\1\\\\#|g' ";
+        dep_sed += "-e '/^?/!s|\\(\\\\*\\):|\\1\\1\\\\:|g' ";
 
         /* A subproject roots each path a line names, the way
          * dep_paths() above does for the snapshot, and the two have to
@@ -931,7 +953,7 @@ language_gen_proc::targets(const context::ptr& ctx) const
                  + ": &|' ";
         dep_sed += "-e 's|^?[[:space:]]*\\(.*\\)|" + variable
                  + ctx->unbased(target) + ": "
-                 + present_only("\\1", "$$") + "|'";
+                 + present_only("\\1", "$$", "\\\\") + "|'";
 
         /* The same refusal the configure-time guard above makes, on
          * the path where it actually matters.  That guard reads the

@@ -88,7 +88,7 @@ test "$(./sub/bin/app)" = "0"
 # rather than one spelled from the top of the tree, which is what makes
 # the same line mean the right file from either directory -- and the
 # mandatory line beside it is spelled the way it always was.
-grep -qxF '$(pconfigure_subdir_sub)obj/proc/gen.h: $(pconfigure_subdir_sub)src/gen.h.proc $(pconfigure_subdir_sub)src/base.txt $(foreach f,$(wildcard $(pconfigure_subdir_sub)src/opt/answer.txt),$(if $(realpath $(f)),$(f),))' sub/obj/Makefile.sub
+grep -qxF '$(pconfigure_subdir_sub)obj/proc/gen.h: $(pconfigure_subdir_sub)src/gen.h.proc $(pconfigure_subdir_sub)src/base.txt $(foreach f,$(wildcard $(pconfigure_subdir_sub)src/opt/answer.txt),$(if $(realpath $(f)),$(subst :,\:,$(f)),))' sub/obj/Makefile.sub
 
 # The sed that re-derives the fragment writes "$$" where the fragment
 # has to end up holding a "$", twice over: once for the target's
@@ -97,7 +97,7 @@ grep -qxF '$(pconfigure_subdir_sub)obj/proc/gen.h: $(pconfigure_subdir_sub)src/g
 # the one that wraps the line in the filter, so that a line naming an
 # absolute path or several paths is rooted a word at a time.
 grep -qF 's|^?\([^/[:space:]]\)|?$$(pconfigure_subdir_sub)\1|' sub/obj/Makefile.sub
-grep -qF 's|^?[[:space:]]*\(.*\)|$$(pconfigure_subdir_sub)obj/proc/gen.h: $$(foreach f,$$(wildcard \1),$$(if $$(realpath $$(f)),$$(f),))|' sub/obj/Makefile.sub
+grep -qF 's|^?[[:space:]]*\(.*\)|$$(pconfigure_subdir_sub)obj/proc/gen.h: $$(foreach f,$$(wildcard \1),$$(if $$(realpath $$(f)),$$(subst :,\\:,$$(f)),))|' sub/obj/Makefile.sub
 
 # And the generate recipe brackets the "cd" and the script together and
 # hangs the redirect off the group.  Without the brackets a "cd" that
@@ -110,7 +110,7 @@ grep -q '(cd .*sub.* && src/gen.h.proc --generate) > .*obj/proc/gen.h.tmp && { i
 # directory, so the subproject's own make reads the same file and means
 # its own files by it.
 cat sub/obj/proc/gen.h.d
-grep -qxF '$(pconfigure_subdir_sub)obj/proc/gen.h: $(foreach f,$(wildcard $(pconfigure_subdir_sub)src/opt/answer.txt),$(if $(realpath $(f)),$(f),))' sub/obj/proc/gen.h.d
+grep -qxF '$(pconfigure_subdir_sub)obj/proc/gen.h: $(foreach f,$(wildcard $(pconfigure_subdir_sub)src/opt/answer.txt),$(if $(realpath $(f)),$(subst :,\:,$(f)),))' sub/obj/proc/gen.h.d
 
 # And the mandatory line in the same fragment came out the way it
 # always did: one variable, one path, no wildcard.  This is the half
@@ -172,7 +172,7 @@ rm -rf obj bin
 $PTEST_BINARY $PCONFIGURE_ARGS
 timeout 60 make $MAKE_ARGS > own.out 2>&1 || { cat own.out; exit 1; }
 cat own.out
-grep -qxF 'obj/proc/gen.h: src/gen.h.proc src/base.txt $(foreach f,$(wildcard src/opt/answer.txt),$(if $(realpath $(f)),$(f),))' Makefile
+grep -qxF 'obj/proc/gen.h: src/gen.h.proc src/base.txt $(foreach f,$(wildcard src/opt/answer.txt),$(if $(realpath $(f)),$(subst :,\:,$(f)),))' Makefile
 test "$(./bin/app)" = "42"
 cd ..
 

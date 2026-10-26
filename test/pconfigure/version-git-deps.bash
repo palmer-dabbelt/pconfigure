@@ -145,8 +145,8 @@ test "$(./src/proj/bin/app)" = "$version-git"
 # is the superproject's own .git -- inside the build, for all that the
 # path leaves the project.
 cat src/proj/obj/proc/version.h.d
-grep -qxF '$(pconfigure_subdir_src_proj)obj/proc/version.h: $(foreach f,$(wildcard $(pconfigure_subdir_src_proj)../../.git/modules/src/proj/HEAD),$(if $(realpath $(f)),$(f),))' src/proj/obj/proc/version.h.d
-grep -qxF '$(pconfigure_subdir_src_proj)obj/proc/version.h: $(foreach f,$(wildcard $(pconfigure_subdir_src_proj)../../.git/modules/src/proj/refs/heads/trunk),$(if $(realpath $(f)),$(f),))' src/proj/obj/proc/version.h.d
+grep -qxF '$(pconfigure_subdir_src_proj)obj/proc/version.h: $(foreach f,$(wildcard $(pconfigure_subdir_src_proj)../../.git/modules/src/proj/HEAD),$(if $(realpath $(f)),$(subst :,\:,$(f)),))' src/proj/obj/proc/version.h.d
+grep -qxF '$(pconfigure_subdir_src_proj)obj/proc/version.h: $(foreach f,$(wildcard $(pconfigure_subdir_src_proj)../../.git/modules/src/proj/refs/heads/trunk),$(if $(realpath $(f)),$(subst :,\:,$(f)),))' src/proj/obj/proc/version.h.d
 
 # And it is live, which is the only thing that makes the spelling worth
 # anything: a commit in the submodule moves the version on the next
