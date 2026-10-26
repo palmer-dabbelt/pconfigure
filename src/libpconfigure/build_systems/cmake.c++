@@ -487,6 +487,15 @@ void build_system_cmake::take_configureopt(const std::string& opt)
 
     auto jobs = option_value(opt, "--jobs");
     if (jobs.size() > 0) {
+        /* Digits, and not only zeros: "cmake --build --parallel 0" is
+         * refused ("requires a positive integer argument"), and a zero
+         * that gets past here is a build that fails from inside a
+         * recipe, long after the line that said it was read.  "00" is
+         * the same zero.  Cargo's --jobs refuses it for the same
+         * reason; meson's doesn't, since ninja reads "-j 0" as no
+         * limit at all. */
+        bool digits = true;
+        bool zero = true;
         for (const auto& c: jobs) {
             /* Through an unsigned char, which is the only thing
              * isdigit() is defined for: it is specified over the
@@ -501,12 +510,17 @@ void build_system_cmake::take_configureopt(const std::string& opt)
              * two.  It is the same cast cargo's --jobs makes, and the
              * reason to write it here is that one of the two making
              * it and the other not is how a rule stops being a rule. */
-            if (isdigit((unsigned char)c) == 0) {
-                std::cerr << name() << ": '--jobs " << jobs << "' isn't a"
-                          << " number of jobs: it should look like"
-                          << " '--jobs 8'\n";
-                abort();
-            }
+            if (isdigit((unsigned char)c) == 0)
+                digits = false;
+            if (c != '0')
+                zero = false;
+        }
+
+        if (digits == false || zero == true) {
+            error_at_line() << name() << ": '--jobs " << jobs << "' isn't a"
+                            << " number of jobs: it should look like"
+                            << " '--jobs 8', and be at least one\n";
+            abort();
         }
 
         _jobs = jobs;

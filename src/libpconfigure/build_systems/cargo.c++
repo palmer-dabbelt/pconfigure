@@ -556,14 +556,25 @@ bool build_system_cargo::handle_configureopt(const std::string& opt)
 
     auto jobs = option_value(opt, "--jobs");
     if (jobs.size() > 0) {
+        /* Digits, and not only zeros: cargo refuses "--jobs 0" ("jobs
+         * may not be 0"), and a zero that gets past here is a build
+         * that fails from inside a recipe in the middle of a make,
+         * with nothing pointing back at the line that said it.  "00"
+         * is the same zero, and cargo refuses it the same way. */
+        bool digits = true;
+        bool zero = true;
         for (const auto& c: jobs) {
-            if (isdigit((unsigned char)c) != 0)
-                continue;
+            if (isdigit((unsigned char)c) == 0)
+                digits = false;
+            if (c != '0')
+                zero = false;
+        }
 
-            std::cerr << name() << ": '--jobs " << jobs << "' isn't a number"
-                      << " of jobs\n"
-                      << "  write how many cargo may run at once, like"
-                      << " '--jobs 4'\n";
+        if (digits == false || zero == true) {
+            error_at_line() << name() << ": '--jobs " << jobs << "' isn't a"
+                            << " number of jobs\n"
+                            << "  write how many cargo may run at once, at"
+                            << " least one, like '--jobs 4'\n";
             abort();
         }
 

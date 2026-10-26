@@ -313,6 +313,10 @@ void build_system_meson::take_configureopt(const std::string& opt)
 
     auto jobs = option_value(opt, "--jobs");
     if (jobs.size() > 0) {
+        /* Digits, zero included: cargo and cmake refuse a "--jobs 0",
+         * but this one is handed to ninja as "-j", and ninja reads
+         * "-j 0" as no limit at all, which is something a Configfile
+         * might mean. */
         for (const auto& c: jobs) {
             /* Through an unsigned char, which is all isdigit() is
              * defined over: see build_system_cmake's --jobs. */
