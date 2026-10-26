@@ -2393,6 +2393,23 @@ does not on its own rewrite the fragments \texttt{pdeps} wrote; a
 reconfigure does, and one happens whenever the recorded options
 change.
 
+A header that shadows the one a source was built against is noticed
+too, even though nothing the fragment waits on changes when it
+appears.  An \texttt{\#include "x.h"} is looked for beside the source
+before the \texttt{-I} directories, and down those in order, so a
+\texttt{src/x.h} written after a build that found \texttt{inc/x.h},
+or an \texttt{inc1/x.h} ahead of an \texttt{inc2/x.h}, changes what
+the source reads.  Each fragment remembers the places its scan looked
+and found nothing, and the next \texttt{make} --- run by hand or
+after a reconfigure --- works the fragment out again when a file is
+in one of them, whatever its date.  The same holds for what a
+\texttt{BASH} or Perl script includes.  Something there that is no
+header, a directory, is passed over the way the compiler passes over
+it, and the build settles rather than looking again.  A place whose
+name holds a space or a glob or \texttt{make} metacharacter is not
+watched, and a header turning up there is noticed only after a
+\texttt{make clean}.
+
 \subsubsection{Sources that go away}
 
 Deleting a source leaves the fragment written about it behind, and
