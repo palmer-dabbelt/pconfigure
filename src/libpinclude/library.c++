@@ -1579,6 +1579,12 @@ static bool resolve_pp_function(
         return 0;
     };
 
+    /* An operator with nothing on one side of it -- "A &&" -- leaves
+     * nothing to look at below, and is no more something to follow
+     * than any other expression that falls through to the end. */
+    if (begin == end)
+        return false;
+
     /* Checks to see if this is a binary op. */
     {
         auto parens = 0;
@@ -1680,12 +1686,15 @@ static bool resolve_pp_function(
             return false;
     }
 
-    std::cerr << "Unable to parse function:\n";
-    for (auto it = begin; it < end; ++it) {
-        std::cerr << "  f: " << *it << "\n";
-    }
-    std::cerr << std::endl;
-    abort();
+    /* Anything else is an expression this reader can't follow: there
+     * is no arithmetic here, so "N * 2" or "A + B" end up here, along
+     * with the shifts, the bitwise operators and "?:".  The compiler
+     * builds all of them, and a source the compiler builds is one the
+     * scan has to be able to read past.  So they get the guess an
+     * expression too long to look at already gets, and for the same
+     * reason: a branch guessed the wrong way costs a missed include at
+     * worst, where stopping here cost the whole configure -- with a
+     * dump of the tokens that named neither the file nor the line. */
     return false;
 }
 
