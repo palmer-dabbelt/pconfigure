@@ -1628,6 +1628,16 @@ is a \texttt{ninja} command (Section~\ref{buildsys:meson}); and a
 since a variable that was quietly dropped is a build that is wrong in
 exactly the way the variable was written to prevent.
 
+A \texttt{MAKEOPS} has to be a variable, and that is checked when the
+line is read rather than left for \texttt{make} to find in the middle
+of a build.  One with no \texttt{=} in it is a fatal error, since
+\texttt{make} would take it for a goal to build.  So is one with
+nothing in front of its \texttt{=}, or of the \texttt{:=},
+\texttt{+=}, \texttt{?=} or \texttt{!=} that \texttt{make} also reads
+as an assignment: \texttt{MAKEOPS += =arm64} and \texttt{MAKEOPS +=
+:=arm64} set no variable at all.  What else a name may hold is left to
+\texttt{make}, which allows a good deal more than a shell does.
+
 \subsection{\texttt{SUBPROJECT\_TARGETS += \$path}
 \label{cmd:subproject_targets}}
 
@@ -3925,7 +3935,12 @@ The options are:
   \texttt{.config}; a \texttt{\$value} written with quotes around it
   is a string, and goes in with the quotes back on; anything else is
   used as the option's value.  Later options win, so the order they
-  are given in matters.
+  are given in matters.  A value with no \texttt{=} in it, or with
+  nothing in front of the \texttt{=}, is a fatal error: the tree's
+  \texttt{scripts/config} would turn \texttt{--configure =y} into a
+  \texttt{CONFIG\_=y} that Kconfig throws away.  \texttt{\$option}
+  may be written with or without its \texttt{CONFIG\_}, as
+  \texttt{scripts/config} takes either.
 
 \item \texttt{--merge-config \$file} merges a configuration fragment
   on top of that defconfig, using the tree's own
@@ -3984,7 +3999,9 @@ The options are:
   the order they were written: \texttt{make -j} handed several goals
   is allowed to run them at once, and neither \texttt{kbuild} nor
   anything that copied it is safe against that at the top of the
-  tree.
+  tree.  A \texttt{\$name} with an \texttt{=} in it is a variable on
+  \texttt{make}'s command line rather than a goal, and one with nothing
+  in front of the \texttt{=} is a fatal error.
 
 \item \texttt{--depend \$path} names something the tree has to wait
   for, and \texttt{--depend-config \$path} names something only its
@@ -4384,6 +4401,10 @@ The options are:
   value with no
   \texttt{=} in it is a fatal error, since \texttt{configure} would
   read it as a flag it has never heard of and carry on without it.
+  So is one whose \texttt{\$name} is not a shell variable name --- a
+  letter or a \texttt{\_}, then letters, digits and \texttt{\_} ---
+  since that is the rule a generated \texttt{configure} holds it to,
+  and it stops with ``invalid variable name'' on anything else.
   This is spelled apart from \texttt{--configure-flag} because the two
   go wrong in different ways, not because they end up anywhere
   different: they share one command line, in the order they were
@@ -4421,7 +4442,9 @@ The options are:
   \texttt{--target hello}.  May be given more than once, in which case
   they are asked for one at a time in the order they were written,
   since \texttt{make -j} handed several goals is allowed to run them
-  at once.
+  at once.  A \texttt{\$name} with an \texttt{=} in it is a variable on
+  \texttt{make}'s command line rather than a goal, and one with nothing
+  in front of the \texttt{=} is a fatal error.
 
 \item \texttt{--install} and \texttt{--no-install} say whether
   \texttt{make install} is part of building the tree.  It is, unless
@@ -4682,7 +4705,9 @@ CONFIGUREOPTS += --define LLVM_ENABLE_PROJECTS=clang;lld
   and a semicolon in a recipe would otherwise end the command: the
   second of those is one variable holding a list of two.  \texttt{\$var:\$type=\$value} works too, being just another
   spelling of the same argument.  A value with no \texttt{=} in it is
-  a fatal error.
+  a fatal error, and so is one with no \texttt{\$var} in front of the
+  \texttt{=} or the \texttt{:}, which cmake would refuse as a parse
+  error only once the tree was being configured.
 
 \item \texttt{--prefix \$dirname} says where the tree installs to,
   named relative to the project that asked for it the same way a
@@ -5193,7 +5218,8 @@ The options are:
 \item \texttt{--define \$name=\$value} sets a build option, which
   reaches the tree as \texttt{-D\$name=\$value} and as one argument
   however many spaces or commas are in it.  A value with no
-  \texttt{=} in it is a fatal error.
+  \texttt{=} in it is a fatal error, and so is one with no
+  \texttt{\$name} in front of the \texttt{=}.
 
 \item \texttt{--prefix \$dirname} says where the tree installs to, as
   it does for cmake.  It reaches the tree as an absolute
