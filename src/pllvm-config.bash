@@ -18,29 +18,64 @@ do
     shift
 done
 
-# Check if llvm-config even exists
-llvm-config --version >& /dev/null
-if [[ "$?" != "0" ]]
+# Runs llvm-config with its stderr thrown away only for --optional,
+# which asks for a missing LLVM to be no news at all.  Without it LLVM
+# is required, and llvm-config's own complaint is the only thing that
+# says what was wrong with it: in a Configfile backtick pconfigure
+# itself only learns that the command failed.  This is what
+# ppkg-config does with pkg-config's stderr.
+run_llvm_config() {
+    if [[ "$optional" == "true" ]]
+    then
+        llvm-config "$@" 2> /dev/null
+    else
+        llvm-config "$@"
+    fi
+}
+
+# Check if llvm-config even exists.  A missing one gets a message of
+# its own rather than the shell's "command not found", which names
+# this script's line number and not what to do about it.
+if ! command -v llvm-config > /dev/null
 then
     if [[ "$optional" == "true" ]]
     then
         exit 0
-    else
-        exit 1
     fi
+    echo "pllvm-config: no llvm-config on the PATH; install LLVM, put its bin directory on the PATH, or pass --optional if the project builds without it" >&2
+    exit 1
 fi
 
-# Make llvm-config look a lot like pkg-config
+if ! run_llvm_config --version > /dev/null
+then
+    if [[ "$optional" == "true" ]]
+    then
+        exit 0
+    fi
+    exit 1
+fi
+
+# Make llvm-config look a lot like pkg-config.  Each llvm-config is
+# run on its own and its status checked: put together as substitutions
+# in one assignment, the status left behind is that of the last one,
+# so a "llvm-config --libs core" that failed (an LLVM installed with
+# only its shared library has no static component libraries for it to
+# name) still came out as a link line with only libclang on it and a
+# status of 0, and the failure turned up at link time instead.
 stdout=""
-retval=""
+retval="0"
 if [[ "$method" == "--cflags" ]]
 then
-    stdout="$(llvm-config --cflags)"
+    stdout="$(run_llvm_config --cflags)"
     retval="$?"
 elif [[ "$method" == "--libs" ]]
 then
-    stdout="$(llvm-config --libs core) -lclang -L$(llvm-config --libdir) -Wl,-R$(llvm-config --libdir)"
-    retval="$?"
+    if libs="$(run_llvm_config --libs core)" && libdir="$(run_llvm_config --libdir)"
+    then
+        stdout="$libs -lclang -L$libdir -Wl,-R$libdir"
+    else
+        retval="$?"
+    fi
 else
     echo "Unsupported method $method" >/dev/stderr
     exit 1
