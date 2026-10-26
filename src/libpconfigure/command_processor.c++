@@ -2422,7 +2422,26 @@ void command_processor::process_one(const command::ptr& cmd)
                             " back off the name of every library built"
                             " there");
 
-        _stack.top()->lib_dir = _base + cmd->data();
+        /* Stored the way make will spell it.  Every library under
+         * here is a target named lib_dir + "/" + its name, and make
+         * compares target names as text: "LIBDIR = lib/" used to
+         * give a rule for "lib//libf.so", which is the same file as
+         * "lib/libf.so" to everything but make.  A TESTDEPS on
+         * "lib/libf.so" found no rule for it, and a second library
+         * of that name under "LIBDIR = lib" slipped past the
+         * "Mismatched recipe" check and raced the first one into the
+         * file.  Normalizing drops the doubled and trailing slashes
+         * and the "./" and "a/.." detours with them.
+         *
+         * The value is normalized on its own and the base stuck on
+         * afterwards, rather than the two together, so that a plain
+         * "LIBDIR = ." in a subproject stays its base plus "." --
+         * normalizing "sub/." would make it "sub", which unbased()
+         * no longer recognizes as the subproject's own top. */
+        auto dir = file_utils::normalize_path(cmd->data());
+        if (dir.size() > 1 && dir.back() == '/')
+            dir.pop_back();
+        _stack.top()->lib_dir = _base + dir;
         return;
     }
 
