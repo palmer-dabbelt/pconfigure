@@ -3082,7 +3082,18 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
     if (slash != std::string::npos)
         file_utils::mkdir_p(path.substr(0, slash));
 
-    out->write_to_file(path);
+    auto failed = out->write_to_file(path);
+    if (failed.size() > 0) {
+        std::cerr << "can't write '" << failed << "': "
+                  << strerror(errno) << "\n"
+                  << "  this is where the Makefile make reads this"
+                  << " project's rules out of gets written,\n"
+                  << "  and the one from the last configure, if there was"
+                  << " one, has been left as it was\n"
+                  << "  make room for '" << path << "', or move whatever"
+                  << " is in its way, and run pconfigure again\n";
+        abort();
+    }
 
     write_bootstrap_makefile();
     write_check_scopes(*out);

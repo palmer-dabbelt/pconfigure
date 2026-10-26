@@ -264,8 +264,15 @@ namespace makefile {
         void restore_configure_outputs(
             const std::map<std::string, std::string>& outputs);
 
-        /* Writes this makefilie out to a text file. */
-        void write_to_file(const std::string& filename);
+        /* Writes this makefile out to a text file.  It is written
+         * beside "filename" first and renamed over it only once every
+         * byte is known to be out, so that a write that fails leaves
+         * whatever Makefile was there before untouched.  Returns the
+         * empty string when it worked; otherwise the path that could
+         * not be written, with errno saying why, for the caller to
+         * report -- it is the caller that knows what this Makefile is
+         * for. */
+        std::string write_to_file(const std::string& filename);
 
         /* What each "make check" stamp in this Makefile stands for:
          * the file, named the way pconfigure sees it rather than the

@@ -22,7 +22,10 @@
 #include "recipe_quote.h++"
 #include "self_path.h++"
 #include <algorithm>
+#include <cerrno>
+#include <cstdio>
 #include <iostream>
+#include <unistd.h>
 
 /* Writes one "check-report" rule.  There are four of them -- the quiet
  * and loud reports a project always has, and the same pair again for
@@ -308,7 +311,38 @@ static std::vector<std::string> write_recipe(const std::string& contents)
     return out;
 }
 
-void makefile::makefile::write_to_file(const std::string& filename)
+/* Closes a stream that has had a whole file written into it, saying
+ * whether every byte got out.  stdio holds a write error rather than
+ * reporting it at the call that hit it, and much of a file goes out
+ * only at the final flush, so a full disk or a file-size limit shows
+ * up here or nowhere.  errno is left saying why, as far as anything
+ * still knows: a failed flush or close says so itself, but a stream
+ * that failed earlier and has since been emptied has only its error
+ * flag, and EIO is the honest answer for that. */
+static bool close_written(FILE *file)
+{
+    auto ok = true;
+    auto error = 0;
+
+    if (fflush(file) != 0) {
+        ok = false;
+        error = errno;
+    } else if (ferror(file) != 0) {
+        ok = false;
+        error = EIO;
+    }
+
+    if (fclose(file) != 0 && ok == true) {
+        ok = false;
+        error = errno;
+    }
+
+    if (ok == false)
+        errno = error;
+    return ok;
+}
+
+std::string makefile::makefile::write_to_file(const std::string& filename)
 {
     /* Rewritten every time, unconditionally, and that is not an
      * oversight left over from before file_utils::write_if_changed()
@@ -338,12 +372,27 @@ void makefile::makefile::write_to_file(const std::string& filename)
      * hand make a Makefile newer than everything it had just built, and
      * would turn up as a diff in every commit that touched a
      * Configfile.  The two sit close enough together to read as an
-     * inconsistency.  They are not one. */
-    auto file = fopen(filename.c_str(), "w");
-    if (file == NULL) {
-        std::cerr << "Unable to open " << filename << "\n";
-        abort();
-    }
+     * inconsistency.  They are not one.
+     *
+     * Written to a file beside it and renamed into place, rather than
+     * over the top of it.  A write that fails part way -- a full disk,
+     * a quota, a file-size limit -- otherwise leaves a Makefile that
+     * stops in the middle of a recipe, and that file is newer than
+     * every Configfile: make reads it, finds nothing to reconfigure,
+     * and builds whatever rules made it out before the cut.  Renamed
+     * only once the whole file is known to be out, a failed configure
+     * leaves the Makefile from the last one that worked, which is what
+     * make should go on reading until somebody fixes what went wrong.
+     * The rename also gives the result a new inode, so a make that has
+     * the old one open still reads the whole of the old one.  The cost
+     * is that a Makefile that was a symlink becomes a plain file, and
+     * one with its permissions changed gets the umask's back; both are
+     * a file pconfigure writes, not one anybody should be keeping
+     * anything in. */
+    const auto tmp = filename + ".tmp";
+    auto file = fopen(tmp.c_str(), "w");
+    if (file == NULL)
+        return tmp;
 
     fprintf(file, "SHELL=/bin/bash\n\n");
 
@@ -1002,7 +1051,23 @@ void makefile::makefile::write_to_file(const std::string& filename)
     /* The end of what a make running each goal on its own skips. */
     fprintf(file, "endif\n");
 
-    fclose(file);
+    /* Whatever went wrong, the half-written file is taken away rather
+     * than left beside the Makefile for somebody to wonder about --
+     * and errno is kept across that, since it is the reason the caller
+     * is about to print. */
+    auto failed = std::string();
+    if (close_written(file) == false)
+        failed = tmp;
+    else if (rename(tmp.c_str(), filename.c_str()) != 0)
+        failed = filename;
+
+    if (failed.size() > 0) {
+        auto error = errno;
+        unlink(tmp.c_str());
+        errno = error;
+    }
+
+    return failed;
 }
 
 std::vector<std::pair<std::string, std::string>>
