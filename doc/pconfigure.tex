@@ -5506,6 +5506,15 @@ writes the \texttt{Makefile}.  Naming a directory with
 \texttt{--check-dir} overrides that entirely, and may be given more
 than once.
 
+Only a project that builds something has a check directory: one that
+does nothing but pull in subprojects runs no tests of its own, so a
+\texttt{check/} at its top is somebody else's directory, which the
+report doesn't read and \texttt{make distclean} doesn't remove.  A
+build where no project has one writes an empty list, and the
+\texttt{Makefile} says \texttt{--no-check-dirs} in place of any
+\texttt{--check-dir}; either way \texttt{ptest} reports that there
+are no tests rather than falling back to \texttt{check}.
+
 It also says whether what it is reporting is current, by asking
 \texttt{make} about the stamp that \texttt{make check} builds here.
 Which stamp that is depends on whether the project named a
