@@ -2040,6 +2040,44 @@ void command_processor::process_one(const command::ptr& cmd)
          * the more specific "make expansion" answer. */
         refuse_unsafe_metacharacter(cmd, std::to_string(cmd->type()));
 
+        /* What a GENERATE names is a file: the one its script writes,
+         * and -- with ".proc" on the end -- the script itself.  A name
+         * ending in '/', or whose last component is "." or "..", is a
+         * directory by the only reading the text has, and normalizing
+         * kept the trailing '/' and turned "sub/.." into ".", so the
+         * script went looking for "src/gen.h/.proc" or "src/..proc"
+         * and the reader was told to write one there.  A target drops
+         * a trailing '/' instead, since pconfigure writes everything
+         * a target names; here the reader wrote the script, and
+         * guessing which file a directory was meant to be would send
+         * them after a different one than the error names.  Asked of
+         * the text as written, since normalizing turns "sub/." into
+         * "sub", which reads like any other name. */
+        {
+            auto written = cmd->data();
+            auto last = written.rfind('/');
+            auto tail = last == std::string::npos
+                ? written
+                : written.substr(last + 1);
+            auto name = file_utils::normalize_path(written);
+
+            if (tail.size() == 0 || tail == "." || tail == ".."
+                || name == "." || name.size() == 0) {
+                auto command_name = std::to_string(cmd->type());
+                std::cerr << std::to_string(cmd->debug()) << "\n"
+                          << "  error: " << command_name
+                          << " names a directory rather than a file: '"
+                          << written << "'\n"
+                          << "  its name is the file the script writes,"
+                          << " and with '.proc' on the end the script"
+                          << " itself, so it has to end in a file name\n"
+                          << "  name the file, like '" << command_name
+                          << " += gen.h' or '" << command_name
+                          << " += sub/gen.h'\n";
+                abort();
+            }
+        }
+
         /* Named by the path it reaches, the way a SOURCES is and for
          * a sharper version of the same reason: the name is pasted
          * onto the generated-file directory to name the rule's target,
