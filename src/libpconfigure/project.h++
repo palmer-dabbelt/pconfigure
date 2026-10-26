@@ -486,6 +486,16 @@ private:
     static void check_target_shape(const context::ptr& ctx,
                                    std::map<std::string, context::ptr>& seen);
 
+    /* Refuses a line that writes a file another line's program,
+     * library or header is copied into place through -- "<path>.tmp"
+     * beside it -- or whose own copy goes through a file another line
+     * writes.  "claimed" maps every path seen so far to the line that
+     * claimed it and whether it is that line's temporary. */
+    static void check_copy_scratch(
+        const context::ptr& ctx,
+        const makefile::target::ptr& target,
+        std::map<std::string, std::pair<context::ptr, bool>>& claimed);
+
     /* Refuses a GENERATE whose output is one of the files another
      * GENERATE keeps beside its own -- the temporary its output is
      * written through, its dependency fragment and that fragment's

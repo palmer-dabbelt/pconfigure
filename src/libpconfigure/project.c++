@@ -566,6 +566,7 @@ void project::generate_targets(void)
     auto by_output = std::map<std::string, context::ptr>();
     auto scratch_claims = std::map<std::string,
                                    std::pair<context::ptr, std::string>>();
+    auto copy_claims = std::map<std::string, std::pair<context::ptr, bool>>();
 
     /* A GENERATE writes its output while its targets are being worked
      * out, and a source's targets are worked out by scanning it for
@@ -669,6 +670,8 @@ void project::generate_targets(void)
             ? found_generated->second
             : language->targets(context);
         for (const auto& target: targets) {
+            check_copy_scratch(context, target, copy_claims);
+
             auto found = _by_name.find(target->name());
             if (found == _by_name.end()) {
                 if (context->debug == true)
@@ -3206,6 +3209,100 @@ void project::check_target_shape(const context::ptr& ctx,
         refuse_nesting(output, ctx, below->first, below->second);
 
     seen[output] = ctx;
+}
+
+void project::check_copy_scratch(
+    const context::ptr& ctx,
+    const makefile::target::ptr& target,
+    std::map<std::string, std::pair<context::ptr, bool>>& claimed)
+{
+    /* Only files something is written to: a target with no recipe is
+     * a name for a list of other targets, and nothing is copied
+     * through a temporary beside it. */
+    if (target->cmds().size() == 0)
+        return;
+
+    /* Every program, library and header goes into place through a
+     * temporary beside it, "<path>.tmp", which is then renamed over
+     * it: the copy into bin/, lib/ and include/, the one into the
+     * prefix, and pbashc and phc themselves, which write their output
+     * the same way.  That is so that something with the old file open
+     * keeps the old file rather than watching it change underneath it.
+     * But "x.tmp" is a perfectly good name for a second program, and
+     * nothing stopped one: every build or install of "x" then wrote
+     * over the second program and renamed it away, and since make had
+     * usually already found "bin/x.tmp" up to date earlier in the same
+     * run, the build finished without it and said nothing.
+     *
+     * Giving the temporary a name no target can have was the other way
+     * out, and it was not taken.  A fixed name anywhere is a name a
+     * BINARIES or a HEADERS can be written as, so it only moves the
+     * collision; a scratch directory beside everything installed is
+     * one more thing left behind in the prefix; and a mktemp name is a
+     * random file that an interrupted copy leaves for nobody to clean
+     * up, where "<path>.tmp" is overwritten by the next try.  Each of
+     * those would also have to be taught to pbashc and phc separately.
+     * A collision this rare is better answered with a sentence at
+     * configure time, as the same collision among GENERATE outputs is.
+     *
+     * Every file a line writes is claimed, so that the second half of
+     * the pair is caught whichever of the two lines comes first, and it
+     * is the later line that is refused either way.  Two lines that
+     * write one file, or that copy through one temporary, are the same
+     * output asked for twice, which check_target_shape() and the
+     * mismatched-recipe check already have something to say about.
+     *
+     * Every file a program, library or header line writes is taken to
+     * have a temporary, its objects and link outputs in the object
+     * directory included, rather than only the copies.  That claims a
+     * few paths under obj/ that are not really written, but those are
+     * paths no Configfile line can name, and telling the copies apart
+     * by reading their recipes would miss pbashc and phc, which hide
+     * their temporaries inside themselves. */
+    auto copies = ctx->check_type({context_type::BINARY,
+                                   context_type::LIBRARY,
+                                   context_type::HEADER,});
+
+    auto output = file_utils::normalize_path(target->name());
+    auto mine = std::vector<std::pair<std::string, bool>>{{output, false}};
+    if (copies == true)
+        mine.push_back({output + ".tmp", true});
+
+    for (const auto& path: mine) {
+        auto found = claimed.find(path.first);
+        if (found == claimed.end())
+            continue;
+        if (found->second.first == ctx)
+            continue;
+        if (found->second.second == path.second)
+            continue;
+
+        auto other = std::to_string(found->second.first->cmd->debug());
+        auto scratch = path.first;
+        auto copied = scratch.substr(0, scratch.size() - strlen(".tmp"));
+
+        std::cerr << std::to_string(ctx->cmd->debug()) << "\n";
+        if (path.second == true)
+            std::cerr << "  error: this line copies '" << copied
+                      << "' into place through '" << scratch
+                      << "', which is the file built by " << other << "\n";
+        else
+            std::cerr << "  error: this line builds '" << scratch
+                      << "', which is the temporary that '" << copied
+                      << "', built by " << other
+                      << ", is copied into place through\n";
+        std::cerr << "  a program, a library or a header is copied into"
+                  << " place through '<name>.tmp' beside it, so building"
+                  << " or installing the one would overwrite the other and"
+                  << " rename it away; rename one of the two so that"
+                  << " neither is the other's name with '.tmp' on the"
+                  << " end\n";
+        abort();
+    }
+
+    for (const auto& path: mine)
+        if (claimed.find(path.first) == claimed.end())
+            claimed[path.first] = std::make_pair(ctx, path.second);
 }
 
 void project::check_generate_names(
