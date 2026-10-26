@@ -247,6 +247,13 @@ Prints a short description of every command-line option and exits
 without touching anything else --- the \texttt{Makefile} in particular
 is not written.  \texttt{-h} is the same thing spelled shorter.
 
+Nothing else given with it is acted on: the other options are not
+checked, so a \texttt{--strict} whose version can't be read doesn't
+stop it, and \texttt{Configfile} lines on the command line are not
+read, so their backticks don't run.  A word that starts with a dash and
+isn't an option is still a fatal error, since that is an option
+somebody got wrong.
+
 \subsection{\texttt{--verbose} \label{cl:verbose}}
 
 Sets \texttt{VERBOSE} for the whole project before any
@@ -345,7 +352,8 @@ finds out what it would have to fix first.
 
 Prints the version number of \pconfigure\ and exits without touching
 anything else.  Specifically, this doesn't touch the \texttt{Makefile}
-at all.
+at all.  Like \texttt{--help}, it acts on nothing given with it, and
+leaves \texttt{Configfile} lines on the command line unread.
 
 \subsection{\texttt{--srcpath <dirname>} \label{cl:srcpath}}
 
