@@ -658,6 +658,56 @@ trap 'remove_tmpdir' EXIT
 # what gets rebuilt are looking at, and they fail for a reason that has
 # nothing to do with what they test.  "-n" and "-k" are no better.
 # Nothing about the outer make's command line means anything to a test.
+#
+# A variable set on that command line gets there by a second route as
+# well: make exports it into the environment of every recipe, not just
+# into $MAKEFLAGS, and the environment is something every make a test
+# runs reads.  "make check DESTDIR=/stage" handed the test, and any
+# "make install" it ran into a fixture of its own, a DESTDIR meant for
+# some later install of the outer project.  So each name assigned on
+# the command line stops being exported here, before $MAKEFLAGS (the
+# only record of which ones those were) goes.
+#
+# make lists them after a " -- ", one assignment per word, with a space
+# or a backslash inside a value escaped by a backslash: " -- A=x\ y
+# B:=2".  Only the name at the front of each word matters, but finding
+# where the next word starts means stepping over a value's escapes
+# rather than splitting on every space.  The name ends at the "=" of
+# whichever assignment it was -- "=", ":=", "::=", ":::=", "+=", "?="
+# or "!=".
+#
+# "export -n" rather than "unset": the test loses the variable either
+# way, but ptest's own variables keep whatever it gave them, so a
+# command-line "out=..." can't take its result file away from it.
+# PATH is left alone: it is how a test finds the tools it's meant to
+# run, and "make check PATH=..." is a deliberate choice of which ones.
+# The PTEST_* this hands a test are exported again below whatever the
+# command line said, and a name that isn't a shell identifier at all
+# was never a variable a shell could have read.
+if [[ "$MAKELEVEL" != "" && "$MAKEFLAGS" == *" -- "* ]]
+then
+    assignments="${MAKEFLAGS#* -- }"
+    i=0
+    while (( i < ${#assignments} ))
+    do
+        if [[ "${assignments:i}" =~ ^([A-Za-z_][A-Za-z0-9_]*)(:{0,3}|[+?!])= ]] \
+            && [[ "${BASH_REMATCH[1]}" != "PATH" ]]
+        then
+            export -n "${BASH_REMATCH[1]}"
+        fi
+
+        while (( i < ${#assignments} )) && [[ "${assignments:i:1}" != " " ]]
+        do
+            if [[ "${assignments:i:1}" == "\\" ]]
+            then
+                i=$((i + 1))
+            fi
+            i=$((i + 1))
+        done
+        i=$((i + 1))
+    done
+fi
+
 unset MAKEFLAGS
 unset MFLAGS
 unset MAKELEVEL
