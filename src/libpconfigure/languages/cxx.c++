@@ -505,16 +505,16 @@ std::string language_cxx::archiver_command(const context::ptr& ctx) const
  * program that looked for its libraries under the old one. */
 std::string language_cxx::hash_link_options(const context::ptr& ctx) const
 {
-    return hash_options(unbased_options(ctx,
+    return hash_options(
         std::vector<std::string>{this->linker_command(ctx)}
         + this->clopts()
         + ctx->clopts()
-        + added_link_options(ctx)
+        + added_link_options(ctx, spelling::FROM_PROJECT)
         + std::vector<std::string>{
             "prefix:" + ctx->prefix,
-            "lib_dir:" + ctx->lib_dir,
+            "lib_dir:" + ctx->unbased(ctx->lib_dir),
         }
-    ));
+    );
 }
 
 /* The same goes for an object, so this hashes the compile line
@@ -522,15 +522,46 @@ std::string language_cxx::hash_link_options(const context::ptr& ctx) const
  * "-D__PCONFIGURE__PREFIX" and "-D__PCONFIGURE__LIBEXEC" that
  * compile_options() adds name the install prefix, and with only the
  * Configfile's options in the hash a new PREFIX left every object
- * where it was, with the old prefix compiled into it. */
+ * where it was, with the old prefix compiled into it.
+ *
+ * Both lines are hashed as the project itself would spell them,
+ * though, not as the Makefile does.  A subproject is configured from
+ * the top of a run and configured on its own, and the manual promises
+ * the two share what they build: they agree on where each object
+ * goes, and only the hash was left to tell them apart.  From the top
+ * every path pconfigure roots at the subproject starts with its
+ * directory -- "-Isub/include", "-Lsub/lib" -- and from inside it
+ * doesn't, so hashing the line as it stood named one object two ways.
+ * Each side then found the other's object missing and built its own,
+ * and an edit to one source was compiled, linked and copied into
+ * place twice, once by each.
+ *
+ * What gets respelled is only what pconfigure rooted there, and that
+ * is decided where the rooting is done rather than by looking for the
+ * directory on the finished line.  Taking it back off wherever it
+ * started a word used to take it off what the project wrote, too: in
+ * a subproject "sub", -DWHERE='"sub/marine"' hashed the same as
+ * -DWHERE='"marine"', and the LINKOPTS, which go into the link's hash
+ * before they are rooted at all, had "-Lsub/pre" (sub/sub/pre from
+ * the top) hash the same as "-Lpre".  Changing one into the other
+ * named the same object or link directory, which make found up to
+ * date, and the program went on being the old one.
+ *
+ * Nothing that tells two objects apart is lost by respelling.  Every
+ * project's objects are under that project's own object directory,
+ * so the directory taken off here is one the object's path still
+ * carries.  The dependency fragments beside an object, by contrast,
+ * are deliberately one per run -- each names its paths from where its
+ * own make stands -- so the hash that tells those apart goes on
+ * hashing the spelling as it is. */
 std::string language_cxx::hash_compile_options(const context::ptr& ctx,
                                                const context::ptr& child)
                                                const
 {
-    return hash_options(unbased_options(ctx,
+    return hash_options(
         std::vector<std::string>{this->compiler_command(child)}
-        + compile_options(ctx, child)
-    ));
+        + compile_options(ctx, child, spelling::FROM_PROJECT)
+    );
 }
 
 /* The link options pconfigure adds on top of what the Configfile
@@ -540,7 +571,8 @@ std::string language_cxx::hash_compile_options(const context::ptr& ctx,
  * directory goes ahead of the Configfile's LINKOPTS and the DEPLIBS
  * after them (link_objects() says why). */
 std::vector<std::string>
-language_cxx::lib_dir_link_options(const context::ptr& ctx) const
+language_cxx::lib_dir_link_options(const context::ptr& ctx,
+                                   spelling spelled) const
 {
     /* The lib directory is only worth searching when something in
      * this project builds a library into it.  A project that builds
@@ -548,8 +580,11 @@ language_cxx::lib_dir_link_options(const context::ptr& ctx) const
      * naming one that isn't there warns about it -- a warning about a
      * directory pconfigure invented, which leaves whoever reads it
      * with nothing to go fix. */
+    auto lib_dir = (spelled == spelling::FROM_PROJECT)
+        ? ctx->unbased(ctx->lib_dir)
+        : ctx->lib_dir;
     return ctx->lib_dir_built
-        ? std::vector<std::string>{"-L" + ctx->lib_dir}
+        ? std::vector<std::string>{"-L" + lib_dir}
         : std::vector<std::string>();
 }
 
@@ -560,42 +595,10 @@ language_cxx::dep_lib_link_options(const context::ptr& ctx) const
 }
 
 std::vector<std::string>
-language_cxx::added_link_options(const context::ptr& ctx) const
+language_cxx::added_link_options(const context::ptr& ctx,
+                                 spelling spelled) const
 {
-    return lib_dir_link_options(ctx) + dep_lib_link_options(ctx);
-}
-
-/* An object or a link is hashed as the project itself would spell
- * its line, with the project's own directory taken back off every
- * path.  A subproject is configured from the top of a run and
- * configured on its own, and the manual promises the two share what
- * they build: they agree on where each object goes, and only the
- * hash was left to tell them apart.  From the top, though, every path
- * on the line starts with the subproject's directory -- "-c
- * sub/src/tool.c", "-Isub/include", "-Lsub/lib" -- and from inside it
- * doesn't, so hashing the line as it stood named one object two ways.
- * Each side then found the other's object missing and built its own,
- * and an edit to one source was compiled, linked and copied into
- * place twice, once by each.
- *
- * Nothing that tells two objects apart is lost by this.  Every
- * project's objects are under that project's own object directory,
- * so the directory taken off here is one the object's path still
- * carries.
- *
- * This is for what the two runs are meant to share, and only that.
- * The dependency fragments beside an object are deliberately one per
- * run -- each names its paths from where its own make stands -- so
- * the hash that tells those apart goes on hashing the spelling as it
- * is. */
-std::vector<std::string>
-language_cxx::unbased_options(const context::ptr& ctx,
-                              const std::vector<std::string>& opts) const
-{
-    auto prefix = makefile::path_prefix(ctx->base, "");
-    return vector_util::map(opts, [&](const std::string& opt) {
-        return prefix.unbased(opt);
-    });
+    return lib_dir_link_options(ctx, spelled) + dep_lib_link_options(ctx);
 }
 
 /* The hash is the whole of what tells two option lists apart, since
@@ -1696,17 +1699,18 @@ language_cxx::link_objects(const context::ptr& ctx,
     auto link_inputs = std::vector<std::string>();
     for (const auto& child: ctx->children)
         if (child->type == context_type::SOURCE)
-            link_inputs.push_back(child->src_dir + "/" + child->cmd->data()
+            link_inputs.push_back(ctx->unbased(child->src_dir)
+                                  + "/" + child->cmd->data()
                                   + ":" + hash_compile_options(ctx, child));
     for (const auto& object: objects)
-        link_inputs.push_back(object->path());
+        link_inputs.push_back(ctx->unbased(object->path()));
 
     auto link_inputs_path = shared_link_dir + "link-inputs";
     /* Spelled the way the project spells them, for the same reason
      * the link directory's name is: both runs write this file into
      * that one directory, and two spellings of the same list would
      * have each configure look like a changed link to the other. */
-    auto link_inputs_hash = this->hash_options(unbased_options(ctx, link_inputs));
+    auto link_inputs_hash = this->hash_options(link_inputs);
     if (file_utils::write_configure_output(link_inputs_path,
                                            link_inputs_hash) == false) {
         std::cerr << "can't write '" << link_inputs_path << "': "
@@ -1839,7 +1843,7 @@ language_cxx::link_objects(const context::ptr& ctx,
      * link against it or, worse, linked and ran the stale code.  A
      * library this project builds is always the one it means. */
     auto all_opts = dedup_link_opts(
-        lib_dir_link_options(ctx) +
+        lib_dir_link_options(ctx, spelling::FROM_HERE) +
         reroot_link_opts(link_opts() + ctx->link_opts, ctx->base) +
         dep_lib_link_options(ctx));
 
@@ -1995,13 +1999,31 @@ language_cxx::compile_options(const context::ptr& ctx,
                               const context::ptr& child)
                               const
 {
+    return compile_options(ctx, child, spelling::FROM_HERE);
+}
+
+std::vector<std::string>
+language_cxx::compile_options(const context::ptr& ctx,
+                              const context::ptr& child,
+                              spelling spelled)
+                              const
+{
+    /* Spelled from the project, a path is what it would be from a run
+     * inside it: the project's directory comes off the front, and a
+     * SRCPATH that run would have been given stays on. */
+    auto from = [&](const std::string& path) {
+        return (spelled == spelling::FROM_PROJECT)
+            ? child->unbased(path)
+            : path;
+    };
+
     /* A directory a Configfile names for the include search is
      * written from that Configfile's directory, by somebody who only
      * knew about their own project, so it gets the project's
      * directory put on the front.  An absolute one already means the
      * same thing from everywhere. */
     auto reroot = [&](const std::string& dir) {
-        return file_utils::reroot(child->src_path, dir);
+        return file_utils::reroot(from(child->src_path), dir);
     };
 
     /* A forced include is a file rather than a directory, and the
@@ -2016,10 +2038,10 @@ language_cxx::compile_options(const context::ptr& ctx,
      * nowhere.  That makes the answer depend on what is there when
      * pconfigure runs, which is also when it reads the "#include"s. */
     auto reroot_file = [&](const std::string& file) {
-        auto rerooted = reroot(file);
+        auto rerooted = file_utils::reroot(child->src_path, file);
         if (rerooted != file && access(rerooted.c_str(), F_OK) != 0)
             return file;
-        return rerooted;
+        return reroot(file);
     };
 
     auto filter_compile_opts = [&](const std::vector<std::string> compile_opts)
@@ -2173,9 +2195,9 @@ language_cxx::compile_options(const context::ptr& ctx,
         filter_compile_opts(this->compile_opts()) +
         filter_compile_opts(child->compile_opts) +
         std::vector<std::string>{
-            "-I" + child->src_path + child->unbased(child->hdr_dir),
-            "-I" + child->hdr_dir,
-            "-I" + child->obj_dir + "/proc",
+            "-I" + from(child->src_path) + child->unbased(child->hdr_dir),
+            "-I" + from(child->hdr_dir),
+            "-I" + from(child->obj_dir) + "/proc",
             "-D__PCONFIGURE__LIBEXEC=\\\"" + full_libexec_path + "\\\"",
             "-D__PCONFIGURE__PREFIX=\\\"" + ctx->prefix + "\\\""
         };

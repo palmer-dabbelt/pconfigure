@@ -116,25 +116,3 @@ std::string makefile::path_prefix::rewrite(const std::string& line) const
 
     return out;
 }
-
-std::string makefile::path_prefix::unbased(const std::string& line) const
-{
-    if (_base.size() == 0)
-        return line;
-
-    auto out = std::string();
-
-    size_t i = 0;
-    while (i < line.size()) {
-        if (line.compare(i, _base.size(), _base) == 0
-            && starts_path(line, i) == true) {
-            i += _base.size();
-            continue;
-        }
-
-        out += line[i];
-        i++;
-    }
-
-    return out;
-}

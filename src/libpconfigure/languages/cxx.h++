@@ -203,6 +203,22 @@ private:
     std::vector<std::string> compile_options(const context::ptr& ctx,
                                              const context::ptr& child) const;
 
+    /* Which directory the paths pconfigure puts on a line are
+     * spelled from.  FROM_HERE is where pconfigure ran, which is what
+     * the Makefile needs.  FROM_PROJECT is the project's own
+     * directory, the line as a run inside the project would have
+     * written it, which is what an object or a link is named by (see
+     * hash_compile_options()).  Only the paths pconfigure rooted at
+     * the project are respelled: everything else on the line is
+     * the same either way, because it is what the project wrote. */
+    enum class spelling {
+        FROM_HERE,
+        FROM_PROJECT,
+    };
+    std::vector<std::string> compile_options(const context::ptr& ctx,
+                                             const context::ptr& child,
+                                             spelling spelled) const;
+
     /* Where what this target builds ends up, and the directory the
      * link steps for it go in.  Both are named from more than one
      * place, and a second spelling of either is a build putting files
@@ -245,11 +261,11 @@ private:
     std::string hash_link_options(const context::ptr& ctx) const;
     std::string hash_compile_options(const context::ptr& ctx,
                                      const context::ptr& child) const;
-    std::vector<std::string> lib_dir_link_options(const context::ptr& ctx) const;
+    std::vector<std::string> lib_dir_link_options(const context::ptr& ctx,
+                                                  spelling spelled) const;
     std::vector<std::string> dep_lib_link_options(const context::ptr& ctx) const;
-    std::vector<std::string> added_link_options(const context::ptr& ctx) const;
-    std::vector<std::string> unbased_options(const context::ptr& ctx,
-                                             const std::vector<std::string>& opts) const;
+    std::vector<std::string> added_link_options(const context::ptr& ctx,
+                                                spelling spelled) const;
     std::string hash_options(const std::vector<std::string>& opts) const;
 
 protected:
