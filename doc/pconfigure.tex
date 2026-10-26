@@ -2382,7 +2382,11 @@ build to read are a different case, and not only an
 \texttt{AUTORECONFIGURE} one: the record of what goes into each link,
 the command each script, compiled test and header copy was last made
 with --- which is what rebuilds one when its options or its
-\texttt{SOURCES} change, since its name does not --- the context files
+\texttt{SOURCES} change, since its name does not --- the link each
+program and library in the build tree and under the prefix was last
+copied from, which is what copies it again when an option goes back
+to a value an earlier build used and names the link that build left
+behind, the context files
 \texttt{pdeps} works from, the options a vendored tree was
 configured with, what each \texttt{make check} stands for, and the
 files a bare \texttt{ptest} reads (see Section~\ref{prog:ptest}).  The
