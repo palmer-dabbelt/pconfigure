@@ -1589,6 +1589,15 @@ to that subproject alone, on top of whatever its build system was
 already given.  What an option means is up to the build system it
 reaches; see Section~\ref{buildsys}.
 
+An option the build system refuses is a fatal error that names the
+line it was written on.  Some of what an option says can only be
+checked once a \texttt{SUBPROJECTS} has given it a tree and a project
+to be inside --- whether a prefix is inside the object directory,
+whether a \texttt{--setup-script} is there, what a \texttt{--depend}
+names --- and for one written after a \texttt{BUILD\_SYSTEMS} that is
+a later line, or the end of the project.  The refusal still names the
+line that wrote the option, since that is the one to fix.
+
 \subsection{\texttt{MAKEOPS += \$name=\$value} \label{cmd:makeops}}
 
 Puts a variable on the command line of the \texttt{make} that builds a
@@ -3680,9 +3689,10 @@ whatever they spell the option --- a \texttt{--prefix} for
 \texttt{autotools}, \texttt{cmake} and \texttt{meson}, an
 \texttt{--install} for \texttt{cargo}.  An install prefix is a directory \emph{inside the
 object directory of the project that vendored the tree}, named
-relative to that project.  Anything else is a fatal error while the
-\texttt{Configfile} is being read, which is the only place the line
-that got it wrong can still be quoted back.
+relative to that project.  Anything else is a fatal error, and it
+quotes back the line that wrote the prefix --- even a prefix written
+after a \texttt{BUILD\_SYSTEMS}, which cannot be checked until a
+\texttt{SUBPROJECTS} gives it a project to be inside.
 
 Half of that is the rule every path a \texttt{Configfile} writes keeps
 to.  \pconfigure\ works in paths relative to the directory it ran in,
