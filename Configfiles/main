@@ -1328,6 +1328,7 @@ TESTSRC     += compileopts-reverted-reruns-c-test.bash
 TESTSRC     += compiler-reverted-recompiles-binary.bash
 TESTSRC     += compileopts-reverted-autoreconfigure-recompiles.bash
 TESTSRC     += linkopts-reverted-relinks-binary.bash
+TESTSRC     += parallel-install-of-every-kind-into-fresh-destdir.bash
 
 # The half of pconfigure that a build can run on its own, one source
 # at a time.  It is a BINARY rather than a LIBEXEC because pconfigure
