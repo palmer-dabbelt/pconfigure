@@ -1153,7 +1153,15 @@ kind of flag rather than by the order the lines were written in: a
 quoted \texttt{\#include} looks in the includer's directory and then
 every \texttt{-iquote}, and an angled one in neither; then both look
 along every \texttt{-I}, every \texttt{-isystem}, every
-\texttt{-isystem-after} and last every \texttt{-idirafter}.
+\texttt{-isystem-after} and last every \texttt{-idirafter}.  An
+\texttt{\#include} that names its header by an absolute path, in either
+spelling, is looked for at that path and nowhere else, as the compiler
+does: a header in the project reached that way is the header it would
+be by any other name, whether the path goes through a symlink to the
+project or not, and one outside it, a system header included by its
+full path among them, is still a header editing which rebuilds the
+source.  One that names nothing is passed over, and the compiler says
+so.
 
 A file named by \texttt{-include} or \texttt{-imacros}, which the
 compiler reads ahead of every source, is a header of every source
@@ -5992,7 +6000,8 @@ A bash ``compiler'', which really just does the following
 \item Reads the \texttt{-I} and \texttt{-D} in the target's
   \texttt{COMPILEOPTS}, with the argument either stuck on or as the
   next word.  A \texttt{-I} adds a directory an \texttt{\#include} is
-  looked for in, after the including file's own.  A directory that
+  looked for in, after the including file's own; an absolute name is
+  looked for at that path and in none of them.  A directory that
   shares the include's name is passed over rather than pasted in as
   nothing, and the search carries on; an include found nowhere stops
   \texttt{pbashc} with an error naming its line.  A \texttt{-D}
