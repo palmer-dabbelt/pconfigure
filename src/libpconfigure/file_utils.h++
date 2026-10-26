@@ -176,6 +176,17 @@ namespace file_utils {
     bool write_if_changed(const std::string& path,
                           const std::string& contents);
 
+    /* Whether make would call "target" out of date because of "dep":
+     * the dependency is there and was written after the target was.
+     * Down to the nanosecond where the system says, since that is how
+     * make compares them, and a reconfigure run in the same second as
+     * the output it is judging is exactly what an AUTORECONFIGURE
+     * build does.  A dependency that isn't there is no reason here:
+     * whether it can be made is make's question.  Neither is a target
+     * that isn't there, which is the caller's to notice -- it is out
+     * of date whatever its dependencies say. */
+    bool newer_than(const std::string& dep, const std::string& target);
+
     /* Gives "path" the mtime "like" has, so that make, which only
      * ever asks whether a prerequisite is newer than its target,
      * finds no reason in "path" to rebuild "like".  Nothing is done

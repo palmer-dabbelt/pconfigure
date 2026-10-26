@@ -348,6 +348,26 @@ bool file_utils::write_if_changed(const std::string& path,
     return fclose(out) == 0 && wrote;
 }
 
+bool file_utils::newer_than(const std::string& dep,
+                            const std::string& target)
+{
+    struct stat d, t;
+    if (stat(dep.c_str(), &d) != 0 || stat(target.c_str(), &t) != 0)
+        return false;
+
+#if defined(__APPLE__)
+    auto dm = d.st_mtimespec;
+    auto tm = t.st_mtimespec;
+#else
+    auto dm = d.st_mtim;
+    auto tm = t.st_mtim;
+#endif
+
+    if (dm.tv_sec != tm.tv_sec)
+        return dm.tv_sec > tm.tv_sec;
+    return dm.tv_nsec > tm.tv_nsec;
+}
+
 bool file_utils::no_newer_than(const std::string& path,
                                const std::string& like)
 {
