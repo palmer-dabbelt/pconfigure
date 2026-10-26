@@ -117,6 +117,18 @@ the right one.  If \texttt{value} starts and ends with a \texttt{`} character
 then it is executed as a shell out (the syntax here is just like BASH
 and Ruby).
 
+A shell out runs in the directory of the project whose
+\texttt{Configfile} it is in --- the source directory a
+\texttt{--srcpath} names, or a subproject's own directory --- which is
+also where an executable \texttt{Configfile} is run.  A
+\texttt{`cat version`} therefore reads the \texttt{version} file
+beside the project's \texttt{Configfile} whether the project is
+configured on its own, from a separate build directory, or pulled into
+another one with \texttt{SUBPROJECTS}.  Paths \pconfigure\ hands to a
+shell out itself, such as the build tree's \texttt{.pc} directories
+and the \texttt{ppkg-config} a \texttt{--ppkg-config} names, are given
+as absolute paths so they still name the same thing from there.
+
 What a shell out prints takes its place in the line, and the line is
 then read exactly as though that had been typed there, gaps and all.
 A shell out that prints nothing is the usual answer from some of them
@@ -232,7 +244,10 @@ same line in a file would be, as though it were at the top of the
 first file read: runs of white space are just the space between two
 words, white space at either end is dropped, a line that is empty or a
 comment does nothing, and anything in backticks is run while
-configuring, with a command that fails stopping the run.  The
+configuring, with a command that fails stopping the run.  Having no
+\texttt{Configfile} behind it, a line given here runs its backticks in
+the directory \pconfigure\ was started in, rather than in the source
+directory a \texttt{--srcpath} names.  The
 backticks are run once every option has been read, so a
 \texttt{--ppkg-config} given after the line still names the
 \texttt{ppkg-config} it runs.  Options are matched exactly as they
@@ -281,7 +296,10 @@ nothing after it either.  Leave the option off to keep the default.
 
 Uses \texttt{<path>} as \texttt{ppkg-config} (see
 Section~\ref{prog:ppkg-config}) when a \texttt{Configfile} runs it in
-backticks.  The word \texttt{ppkg-config} is replaced wherever it
+backticks.  A \texttt{<path>} with a \texttt{/} in it is relative to
+the directory \pconfigure\ was started in, even for the backticks of
+a subproject or a \texttt{--srcpath} build, which run elsewhere; one
+without is looked up in \texttt{\$PATH}.  The word \texttt{ppkg-config} is replaced wherever it
 appears as a word of its own inside a backticked command, so
 \texttt{`ppkg-config --cflags x`} runs \texttt{<path>} instead, and
 so does \texttt{`true | ppkg-config --cflags x`}: a word starts and
