@@ -298,7 +298,6 @@ namespace makefile {
          * that wait on them so the two can't come to disagree. */
         std::string check_scope_path(const std::string& suite) const;
         std::string check_dirs_args(void) const;
-        std::string check_results_args(void) const;
         std::vector<std::string> check_stamp_deps(void) const;
     };
 }

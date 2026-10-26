@@ -808,8 +808,15 @@ std::string makefile::makefile::write_to_file(const std::string& filename)
      * often because it was failing -- leaves its result behind: read
      * off the directory, that kept "make check" red for good about a
      * test that no longer exists, while "make check-$suite" over the
-     * very same tests was green. */
-    auto all_results = check_dirs + check_results_args();
+     * very same tests was green.
+     *
+     * Handed them in the scope file rather than on the command line:
+     * make runs a recipe as a single argument to the shell, and Linux
+     * refuses one longer than 128KiB, which a tree of a few thousand
+     * tests is past.  The scope is the list already, the stamp waits
+     * on it, and so it is there by the time a report runs. */
+    auto all_results = check_dirs + " --check-named --check-results-from "
+                     + all_scope;
 
     write_report_rule(file, quiet_report, stamp, q, ptest, true, all_results);
     write_report_rule(file, report, stamp, q, ptest, false, all_results);
@@ -1037,14 +1044,13 @@ std::string makefile::makefile::write_to_file(const std::string& filename)
         auto suite_report = obj_dir + "/check-suite-" + suite.first
                           + "-report";
 
-        auto results = std::string(" --check-suite " + suite.first);
-        for (const auto& result: suite.second)
-            results += " --check-result " + _prefix.rewrite(result);
-
         /* The same scope file as the project-wide stamp has, for the
          * same reason: a suite is exactly the set a Configfile edit
-         * can change without touching any result in it. */
+         * can change without touching any result in it.  It is where
+         * the report reads the suite's results from, too. */
         auto suite_scope = _prefix.rewrite(check_scope_path(suite.first));
+        auto results = " --check-suite " + suite.first
+                     + " --check-results-from " + suite_scope;
         write_scope_rule(suite.first);
         fprintf(file, "%s: %s\n", suite_stamp.c_str(), suite_scope.c_str());
         fprintf(file, "%s:", suite_stamp.c_str());
@@ -1123,21 +1129,42 @@ makefile::makefile::check_scopes(void) const
      * those are what a scope says.  A change to either is a change to
      * what "make check" is about; a change to neither -- a reconfigure
      * that comes out the same, a comment in a Configfile -- leaves the
-     * file alone, and with it every result that is still current. */
+     * file alone, and with it every result that is still current.
+     *
+     * The results come first, one to a line and ended by an empty
+     * one, because the report reads them from here (ptest's
+     * --check-results-from): the rest of the file is for make. */
     auto out = std::vector<std::pair<std::string, std::string>>();
 
-    auto all = "ptest" + check_dirs_args() + " --check-named\n";
+    /* Spelled the way make would spell them in the report's recipe,
+     * which is not what rewrite() gives.  That puts this project's
+     * variable in front of each, for make to expand, and ptest reads
+     * the file rather than having make expand anything.  A report only
+     * runs with that variable empty, though -- the rules are inside
+     * an "ifeq" on it -- and every result is this project's own or one
+     * of its children's, so it is the path from this project's
+     * directory. */
+    auto report_path = [&](const std::string& result) {
+        auto& base = _prefix.base();
+        if (base.size() > 0 && result.compare(0, base.size(), base) == 0)
+            return result.substr(base.size());
+        return result;
+    };
+
+    auto all = std::string();
     for (const auto& result: _check_results)
-        all += _prefix.rewrite(result) + "\n";
+        all += report_path(result) + "\n";
+    all += "\nptest" + check_dirs_args() + " --check-named\n";
     for (const auto& dep: check_stamp_deps())
         all += dep + "\n";
     out.push_back(std::make_pair(check_scope_path(""), all));
 
     for (const auto& suite: _test_suites) {
-        auto scope = "ptest" + check_dirs_args() + " --check-suite "
-                   + suite.first + "\n";
+        auto scope = std::string();
         for (const auto& result: suite.second)
-            scope += _prefix.rewrite(result) + "\n";
+            scope += report_path(result) + "\n";
+        scope += "\nptest" + check_dirs_args() + " --check-suite "
+               + suite.first + "\n";
         out.push_back(std::make_pair(check_scope_path(suite.first), scope));
     }
 
@@ -1166,14 +1193,6 @@ std::string makefile::makefile::check_dirs_args(void) const
     for (const auto& dir: _check_dirs)
         out += (dir.second ? " --abrt-is-fail-dir " : " --check-dir ")
              + _prefix.rewrite(dir.first);
-    return out;
-}
-
-std::string makefile::makefile::check_results_args(void) const
-{
-    auto out = std::string(" --check-named");
-    for (const auto& result: _check_results)
-        out += " --check-result " + _prefix.rewrite(result);
     return out;
 }
 

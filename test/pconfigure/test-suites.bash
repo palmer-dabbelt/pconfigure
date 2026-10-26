@@ -76,7 +76,9 @@ grep -q "^report-quick: obj/check-suite-quick-report$" Makefile
 # The report is over the results the suite ran rather than over the
 # directory they landed in, which is the only way it could be: the
 # tarballs of two suites land in the same place.
-grep -q "check-suite quick --check-result check/suite/fast.bash" Makefile
+grep -q "check-suite quick --check-results-from obj/check-suite-quick-scope" Makefile
+[[ "$(sed '/^$/q' obj/check-suite-quick-scope)" == "$(printf '%s\n' \
+    check/suite/fast.bash check/suite/needs-slow.bash check/suite/slow.bash)" ]]
 
 ##############################################################################
 # Running one suite                                                          #
