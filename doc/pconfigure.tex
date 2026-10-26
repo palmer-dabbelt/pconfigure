@@ -3359,6 +3359,15 @@ which is where \texttt{pbashc} looks a quoted name up first.  The same
 file listed twice is refused too, with a message saying to delete the
 repeated line.
 
+The files a script includes become prerequisites of what it is
+compiled into under the names the \texttt{\#include} gave them, spelled
+so that \texttt{make} reads each back as one file: \texttt{\#include
+"my helper.bash"} is a file with a space in its name, the way
+\texttt{pbashc} reads it.  The same handful of characters a C header
+can't have (see Section~\ref{lang:c}) can't be in an included file's
+name either, and one that has one is a fatal error at the script's
+\texttt{SOURCES} line.
+
 \texttt{bash} supports linking against BASH.
 
 \subsection{\texttt{c}: C \label{lang:c}}
@@ -3402,6 +3411,32 @@ project configures without complaint and then fails to link.  Including
 the header by name as well, somewhere the scan reads, fixes both.
 Listing the source behind it in \texttt{SOURCES} fixes only the link:
 the header is still not a prerequisite.
+
+A header becomes a prerequisite under the name the scan found it by,
+which is whatever the \texttt{\#include} said and wherever the
+\texttt{-I} directories led, and it is spelled so that \texttt{make}
+reads it back as that one file.  A header called \texttt{my extra.h},
+\texttt{notes\#1.h}, \texttt{ver:1.h} or \texttt{v\$1.h}, or one found
+through \texttt{-I/opt/my\textbackslash\ dir/include} --- which is how
+\texttt{pkg-config} spells a directory with a space in it --- builds,
+and an edit to it rebuilds what reads it, with or without
+\texttt{AUTORECONFIGURE}.  A few characters have no spelling on a
+\texttt{make} rule line at all: a \texttt{;}, an \texttt{=}, a
+\texttt{|}, a tab and a newline.  A header with one of those in its
+name is a fatal error at the \texttt{SOURCES} line for the file that
+reads it, since nothing in the \texttt{Configfile} names the header
+itself; under \texttt{AUTORECONFIGURE} it is \texttt{pdeps} that says
+so, while the build runs, naming the two files.
+
+The source found behind a header is held to more than the header,
+because it is built: its name goes everywhere a \texttt{SOURCES}
+line's does, on the left of rules and bare into the compile recipe.
+So it can't have any of the characters a \texttt{SOURCES} name can't
+(see Section~\ref{cmd:make-special}), nor whitespace, and one that
+does is a fatal error naming the header and the source, even where the
+header alone would have built.  Renaming the source fixes it, and so
+does \texttt{AUTODEPS = false} when the source was never meant to be
+built into the target.
 
 C is compiled and linked by \texttt{\$\{CC\}}, C++ by
 \texttt{\$\{CXX\}}, and static libraries of either are archived by
