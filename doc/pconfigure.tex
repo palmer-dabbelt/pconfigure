@@ -2960,6 +2960,10 @@ Either call is made from the top of the project that owns the script,
 rather than from wherever \pconfigure\ or \texttt{make} happens to be
 standing, so a script in a subproject reads and prints the same paths
 whether the build was started there or in a parent that pulled it in.
+With \texttt{--srcpath} (see Section~\ref{cl:srcpath}) or a
+\texttt{SRCPATH} that top is the top of the source tree rather than
+the build directory, so a script reads the files beside it and a
+project generates the same way built in place or out of it.
 
 Calling \texttt{\$SRCDIR\$name.proc --deps} prints out the
 dependencies of \texttt{\$name} to \texttt{/dev/stdout}.  It's up to
