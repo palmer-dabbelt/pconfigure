@@ -248,6 +248,7 @@ TESTSRC     += c-include-name-with-space-builds.bash
 TESTSRC     += c-include-name-with-hash-builds.bash
 TESTSRC     += c-include-name-with-colon-builds.bash
 TESTSRC     += c-include-name-with-percent-and-glob-characters-rebuilds-on-edit.bash
+TESTSRC     += c-include-name-with-backslashes-rebuilds-on-edit.bash
 TESTSRC     += c-include-name-with-dollar-autoreconfigure-settles.bash
 TESTSRC     += bash-include-name-with-space-builds.bash
 TESTSRC     += compileopts-escaped-space-include-dir-header-builds.bash
