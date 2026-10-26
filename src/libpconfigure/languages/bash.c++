@@ -306,15 +306,36 @@ language_bash::targets(const context::ptr& ctx) const
             makefile::global_targets::CLEAN,
         };
 
-        auto command = std::string();
-        command += this->compiler_command(ctx)
-                   + " -i "
-                   + sources[0]->name()
-                   + " -o "
-                   + target;
+        auto filename = ctx->cmd->debug()->filename();
+        auto lineno = ctx->cmd->debug()->line_number();
 
-        for (const auto& str: opts)
-            command += " " + str;
+        /* With no SOURCES there is no "-i" to hand the compiler.  The
+         * project has already warned that this target has nothing to
+         * build, and unless STRICT made that an error the Makefile is
+         * meant to come out anyway, as it does for a C target with
+         * nothing to link.  This used to reach for the first source
+         * regardless and pconfigure died right after the warning, on
+         * a null pointer rather than anything that named the line.
+         * So the rule is still written, and fails when make gets to
+         * it with the Configfile line, the way a pkg-config target
+         * without a template does, rather than leaving an empty
+         * script in the build tree that make would then take for a
+         * finished one. */
+        auto command = std::string();
+        if (sources.size() == 0) {
+            command = "echo '" + filename + ":" + std::to_string(lineno)
+                + ": " + ctx->cmd->data() + " has no SOURCES to be made"
+                + " from' >&2; exit 1";
+        } else {
+            command += this->compiler_command(ctx)
+                       + " -i "
+                       + sources[0]->name()
+                       + " -o "
+                       + target;
+
+            for (const auto& str: opts)
+                command += " " + str;
+        }
 
         auto bin_subdir = target.substr(0, target.find_last_of("/"));
 
@@ -331,8 +352,6 @@ language_bash::targets(const context::ptr& ctx) const
             recipe_record(ctx, target, commands)
         };
 
-        auto filename = ctx->cmd->debug()->filename();
-        auto lineno = ctx->cmd->debug()->line_number();
         auto comment = std::vector<std::string>{
             "language_bash::targets() BINARY",
             filename + ":" + std::to_string(lineno)
