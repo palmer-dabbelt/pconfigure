@@ -629,6 +629,50 @@ protected:
                      const std::string& written,
                      const std::string& example) const;
 
+    /* TRUE when "variable" is what a POSIX shell reads as the name in
+     * a NAME=VALUE: a letter or a '_', then letters, digits and '_'.
+     * That is checked_env()'s rule, and it is also the rule a
+     * generated configure holds a NAME=VALUE on its command line to,
+     * so the two ask it of the one function rather than of two
+     * spellings of it that could drift apart. */
+    static bool is_shell_name(const std::string& variable);
+
+    /* Refuses a NAME=VALUE that has nothing where the NAME goes.
+     * "named" is the name as this tree's tool would read it out of
+     * "written" -- what is in front of the '=' for most of them, but
+     * not for all: make has assignment operators that end in an '='
+     * and cmake has a ':TYPE' -- so the caller works it out and this
+     * only says what is wrong with it.
+     *
+     * An empty name is the one mistake every one of these tools
+     * agrees on, and none of them say so until the tree is built:
+     * make stops on "empty variable name", cmake on a parse error,
+     * meson on an option that isn't OPTION=VALUE, and a kbuild tree's
+     * scripts/config writes a "CONFIG_=y" that Kconfig throws away.
+     * Which characters a name may otherwise contain is a question
+     * with a different answer for each, so that half is left to the
+     * caller that knows which tool it is asking for. */
+    void refuse_unnamed(const std::string& flag,
+                        const std::string& written,
+                        const std::string& named,
+                        const std::string& example) const;
+
+    /* The name a word on a make command line sets, or "" when it
+     * isn't an assignment at all: what comes before the first '=',
+     * less the ':', '+', '?' or '!' that turn "=" into one of make's
+     * other assignment operators.  "FOO:=1" sets FOO; ":=1" sets
+     * nothing and is the "empty variable name" make stops on. */
+    static std::string make_variable_name(const std::string& word);
+
+    /* A word bound for the command line of the make that builds this
+     * tree -- a MAKEOPS, a "--make-var", a "--target" that turns out
+     * to be an assignment -- refused when it has an '=' and no name
+     * in front of it.  A word with no '=' is a goal, and whether a
+     * goal is wanted is the caller's question. */
+    void checked_make_word(const std::string& flag,
+                           const std::string& written,
+                           const std::string& example) const;
+
     /* The value a flag was given, or "" when this option isn't that
      * flag.  Both "--flag value" and "--flag=value" turn up in the
      * wild and neither is any harder to read than the other, so both

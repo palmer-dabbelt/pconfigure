@@ -275,6 +275,30 @@ bool build_system_autotools::handle_configureopt(const std::string& opt)
             abort();
         }
 
+        /* A generated configure reads a NAME=VALUE as an assignment
+         * only when the NAME is a shell name, and stops with "invalid
+         * variable name" on anything else -- including no name at
+         * all.  That is a rule autoconf writes into every configure
+         * it generates, so it can be asked here, where the line that
+         * broke it can still be pointed at, rather than at build
+         * time by a configure run from inside a recipe. */
+        auto variable = var.substr(0, var.find('='));
+        refuse_unnamed("--configure-var", var, variable,
+                       "YACC=/opt/bin/bison");
+        if (is_shell_name(variable) == false) {
+            error_at_line() << name() << ": '--configure-var " << var
+                            << "' doesn't start with a variable name: '"
+                            << variable << "' isn't one\n"
+                            << "  configure reads a NAME=VALUE as a variable"
+                            << " only when the NAME is a letter or a '_',"
+                            << " then letters, digits and '_', and stops with"
+                            << " \"invalid variable name\" on anything else\n"
+                            << "  write something like '--configure-var"
+                            << " YACC=/opt/bin/bison'; an option for configure"
+                            << " is a '--configure-flag' instead\n";
+            abort();
+        }
+
         /* A generated configure reads a "name=value" on its command
          * line as an assignment, whatever the name is, so this is
          * the same statement --configure-flag makes with dashes in
@@ -294,6 +318,11 @@ bool build_system_autotools::handle_configureopt(const std::string& opt)
          * diagnostic names the line that was written rather than the
          * MAKEOPS it is the same as. */
         refuse_second_answer("--make-var", make_var);
+
+        /* Asked here for the same reason: add_makeopt() refuses a
+         * variable with no name too, but by then the option is only a
+         * MAKEOPS, and this is the spelling the Configfile wrote. */
+        checked_make_word("--make-var", make_var, "V=1");
 
         /* The same thing a MAKEOPS says, spelled the way the options
          * are.  One list and one order, since two lists would mean an
@@ -326,6 +355,12 @@ bool build_system_autotools::handle_configureopt(const std::string& opt)
 
     auto make_target = option_value(opt, "--target");
     if (make_target.size() > 0) {
+        /* A goal and a variable share the sub-make's command line and
+         * are told apart by an '=', so a '--target' with one in it is
+         * a variable -- and one with nothing in front of the '=' is
+         * make's "empty variable name", at build time. */
+        checked_make_word("--target", make_target, "check");
+
         _make_targets.push_back(make_target);
         return true;
     }

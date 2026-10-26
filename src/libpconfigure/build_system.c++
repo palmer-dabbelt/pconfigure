@@ -101,6 +101,11 @@ void build_system::add_makeopt(const std::string& opt,
         abort();
     }
 
+    /* And with nothing in front of the '=' it is neither: make stops
+     * on "empty variable name" the first time it is run, which is in
+     * the middle of a build and names no line of any Configfile. */
+    checked_make_word("MAKEOPS +=", opt, "ARCH=arm64");
+
     take_makeopt(opt);
 
     _makeopts.push_back(opt);
@@ -1193,7 +1198,26 @@ void build_system::checked_env(const std::string& flag,
     }
 
     auto variable = written.substr(0, equals);
-    auto named = variable.size() > 0;
+    if (is_shell_name(variable) == true)
+        return;
+
+    std::cerr << name() << ": '" << flag << " " << written << "' doesn't"
+              << " start with a variable name: '" << variable << "' isn't"
+              << " one\n"
+              << "  the name goes in front of the command as a shell"
+              << " assignment, which is the one part of this that can't be"
+              << " quoted, so it has to be what a shell reads as a name: a"
+              << " letter or a '_', then letters, digits and '_'\n"
+              << "  write something like '" << flag << " " << example
+              << "'\n";
+    abort();
+}
+
+bool build_system::is_shell_name(const std::string& variable)
+{
+    if (variable.size() == 0)
+        return false;
+
     for (size_t i = 0; i < variable.size(); ++i) {
         /* Through an unsigned char, which is the only thing the
          * ctype functions are defined for: they are specified over
@@ -1211,23 +1235,57 @@ void build_system::checked_env(const std::string& flag,
         if (i > 0 && isdigit(c) != 0)
             continue;
 
-        named = false;
-        break;
+        return false;
     }
 
-    if (named == true)
+    return true;
+}
+
+void build_system::refuse_unnamed(const std::string& flag,
+                                  const std::string& written,
+                                  const std::string& named,
+                                  const std::string& example) const
+{
+    if (named.size() > 0)
         return;
 
-    std::cerr << name() << ": '" << flag << " " << written << "' doesn't"
-              << " start with a variable name: '" << variable << "' isn't"
-              << " one\n"
-              << "  the name goes in front of the command as a shell"
-              << " assignment, which is the one part of this that can't be"
-              << " quoted, so it has to be what a shell reads as a name: a"
-              << " letter or a '_', then letters, digits and '_'\n"
-              << "  write something like '" << flag << " " << example
-              << "'\n";
+    error_at_line() << name() << ": '" << flag << " " << written << "' has"
+                    << " no name in front of its '='\n"
+                    << "  a NAME=VALUE without the NAME sets nothing, and the"
+                    << " tree is handed it as written: it is refused only"
+                    << " once the tree is being built, a long way from this"
+                    << " line\n"
+                    << "  it should look like '" << flag << " " << example
+                    << "'\n";
     abort();
+}
+
+std::string build_system::make_variable_name(const std::string& word)
+{
+    auto equals = word.find('=');
+    if (equals == std::string::npos)
+        return "";
+
+    /* make reads a command-line variable the way it reads a line of
+     * a Makefile, so ':=', '::=', ':::=', '+=', '?=' and '!=' are all
+     * assignments and the characters in front of the '=' that make
+     * them so are not part of the name.  Whitespace beside the
+     * operator is not part of it either, for the same reason. */
+    auto named = word.substr(0, equals);
+    auto end = named.find_last_not_of(":+?! \t");
+    if (end == std::string::npos)
+        return "";
+    return string_utils::clean_white(named.substr(0, end + 1));
+}
+
+void build_system::checked_make_word(const std::string& flag,
+                                     const std::string& written,
+                                     const std::string& example) const
+{
+    if (written.find('=') == std::string::npos)
+        return;
+
+    refuse_unnamed(flag, written, make_variable_name(written), example);
 }
 
 std::string build_system::option_value(const std::string& opt,

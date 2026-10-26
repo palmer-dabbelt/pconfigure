@@ -422,6 +422,18 @@ void build_system_cmake::take_configureopt(const std::string& opt)
             abort();
         }
 
+        /* cmake reads a "-D" as NAME:TYPE=VALUE or NAME=VALUE, the
+         * name ending at whichever of the ':' and the '=' comes
+         * first, and an empty one is a "Parse error in command line
+         * argument" when the tree is configured.  Only that is
+         * refused: what characters a cache variable's name may hold
+         * is a question cmake answers loosely, and a name cmake
+         * accepts is not one to second-guess here. */
+        refuse_unnamed("--define", define,
+                       string_utils::clean_white(
+                           define.substr(0, define.find_first_of(":="))),
+                       "LLVM_TARGETS_TO_BUILD=RISCV");
+
         /* Where the tree installs is the one thing a cache variable
          * may not say here: this build system puts the same path into
          * the cache, into the install and into whatever a

@@ -224,6 +224,16 @@ void build_system_meson::take_configureopt(const std::string& opt)
             abort();
         }
 
+        /* meson stops on a "-D" whose name is empty ("must be in
+         * OPTION=VALUE format") when the tree is set up.  Only that is
+         * refused: an option's name can carry a subproject's name and
+         * a ':' in front of it, or a language and a '.', and which of
+         * those this tree has is meson's to say. */
+        refuse_unnamed("--define", define,
+                       string_utils::clean_white(
+                           define.substr(0, define.find('='))),
+                       "tests=false");
+
         refuse_second_answer("--define", define);
 
         _defines.push_back(define);

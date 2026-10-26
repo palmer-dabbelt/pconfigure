@@ -203,6 +203,18 @@ bool build_system_kconfig::handle_configureopt(const std::string& opt)
             abort();
         }
 
+        /* Only an empty name is refused, since that is the one
+         * mistake there is no doubt about: the tree's scripts/config
+         * puts "CONFIG_" in front of whatever it is handed unless it
+         * is there already, so "--configure =y" writes a "CONFIG_=y"
+         * that Kconfig throws away with a warning, and the option
+         * somebody meant is never set.  What else a name may contain
+         * is the tree's own Kconfig's business, and a name without
+         * the "CONFIG_" is a name scripts/config takes. */
+        refuse_unnamed("--configure", configure,
+                       string_utils::clean_white(configure.substr(0, equals)),
+                       "CONFIG_FOO=y");
+
         _options.push_back(option(configure.substr(0, equals),
                                   configure.substr(equals + 1)));
         return true;
@@ -223,6 +235,11 @@ bool build_system_kconfig::handle_configureopt(const std::string& opt)
          * Configfile actually wrote rather than the MAKEOPS this
          * shares a list with. */
         refuse_second_answer("--make-var", make_var);
+
+        /* Asked here for the same reason: add_makeopt() refuses a
+         * variable with no name too, but by then the option is only a
+         * MAKEOPS, and this is the spelling the Configfile wrote. */
+        checked_make_word("--make-var", make_var, "V=1");
 
         /* The same thing a MAKEOPS says, spelled the way the options
          * are.  One list and one order, since two lists would mean an
@@ -258,6 +275,12 @@ bool build_system_kconfig::handle_configureopt(const std::string& opt)
          * no goal, sets a variable, and gets the tree's default goal
          * built with an install destination nobody here decided. */
         refuse_second_answer("--target", make_target);
+
+        /* That check reads what is in front of the '=' as the name,
+         * and an empty one is no destination, so "--target =modules"
+         * got past it -- to make's "empty variable name", at build
+         * time. */
+        checked_make_word("--target", make_target, "modules");
 
         _make_targets.push_back(make_target);
         return true;
