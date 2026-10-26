@@ -59,6 +59,26 @@ static std::string canonical_dir(const std::string& dir);
  * linker read, as the names to make them prerequisites under. */
 static std::vector<std::string> link_input_files(const std::vector<std::string>& args);
 
+/* A flag and its argument, spelled for the compiler driver to hand
+ * to the linker.  "-Wl,-rpath,DIR" is the usual way to say it, but
+ * the driver splits a "-Wl," at every comma, so a directory or a name
+ * with one in it -- a PREFIX of "/opt/app,v2", a LIBDIR of "lib,v2",
+ * a library called "libf,v2.so" -- reached the linker as two words,
+ * the second of them an input file it couldn't find.  None of those
+ * are wrong to want: a comma means nothing to make, the shell or the
+ * linker itself.  So a value with a comma in it goes through
+ * "-Xlinker", which passes exactly one word and splits nothing.
+ * Everything else keeps the "-Wl," spelling, which is the one the
+ * rest of this file (and whatever a LINKOPTS already says) looks for
+ * when it asks whether an rpath is on the line already. */
+static std::string linker_flag(const std::string& flag,
+                               const std::string& value)
+{
+    if (value.find(',') == std::string::npos)
+        return "-Wl," + flag + "," + value;
+    return "-Xlinker " + flag + " -Xlinker " + value;
+}
+
 /* Splits link arguments into words and re-roots the relative "-L"
  * directories among them at the project they were written in.
  *
@@ -1081,7 +1101,8 @@ language_cxx::link_target::generate_makefile_target(void) const
             switch (_shared) {
             case shared_target::TRUE:
                 if (mach_o == true)
-                    return " -shared -Wl,-install_name,@rpath/" + soname;
+                    return " -shared "
+                        + linker_flag("-install_name", "@rpath/" + soname);
                 /* Without an ELF soname, a consumer's NEEDED entry
                  * doesn't get this library's name -- it gets whatever
                  * path "-l" happened to resolve to when THAT consumer
@@ -1093,7 +1114,7 @@ language_cxx::link_target::generate_makefile_target(void) const
                  * was linked from, which is exactly as fragile as it
                  * sounds. -install_name is the Mach-O spelling of the
                  * same idea just above; -soname is ELF's. */
-                return " -shared -Wl,-soname," + soname;
+                return " -shared " + linker_flag("-soname", soname);
             case shared_target::FALSE:
                 return "";
             }
@@ -1145,8 +1166,8 @@ language_cxx::link_target::generate_makefile_target(void) const
              * it is from the libraries it needs itself.  This is what
              * ELF has always done here; macOS needed asking. */
             if (mach_o == true)
-                return "-Wl,-rpath,@loader_path/" + from_output + dir;
-            return "-Wl,-rpath,\\$$ORIGIN/" + from_output + dir;
+                return linker_flag("-rpath", "@loader_path/" + from_output + dir);
+            return linker_flag("-rpath", "\\$$ORIGIN/" + from_output + dir);
         };
 
     auto rpaths = [&](void) -> std::vector<std::string>
@@ -1155,7 +1176,7 @@ language_cxx::link_target::generate_makefile_target(void) const
             case install_target::TRUE:
             {
                 auto out = std::vector<std::string>{
-                    "-Wl,-rpath," + _ctx->installed(_ctx->lib_dir)
+                    linker_flag("-rpath", _ctx->installed(_ctx->lib_dir))
                 };
 
                 /* A LIBRARIES name with a directory in it installs
@@ -1176,9 +1197,9 @@ language_cxx::link_target::generate_makefile_target(void) const
 
                     /* "-Llib/sub" twice, or once as "-L./lib/sub", is
                      * still the one directory to look in. */
-                    auto rpath = "-Wl,-rpath,"
-                        + _ctx->installed(_ctx->lib_dir)
-                        + "/" + dir.substr(lib_dir.size());
+                    auto rpath = linker_flag("-rpath",
+                        _ctx->installed(_ctx->lib_dir)
+                        + "/" + dir.substr(lib_dir.size()));
                     if (std::find(out.begin(), out.end(), rpath) == out.end())
                         out.push_back(rpath);
                 }
