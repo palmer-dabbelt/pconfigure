@@ -5734,6 +5734,12 @@ A bash ``compiler'', which really just does the following
   every line of the program is on the line it has in the source.  In
   \texttt{\#!/usr/bin/env bash} the word after \texttt{env} names
   the program rather than an option, so nothing is carried from it.
+  \texttt{env -S} splits what follows into separate arguments, but
+  the new line names \texttt{bash} directly and can pass it only one,
+  so \texttt{\#!/usr/bin/env -S bash -e -u} has its flags run
+  together as \texttt{-eu}.  Options that can't be folded that way,
+  such as \texttt{-o pipefail}, are refused with the source's
+  \texttt{\#!} line named; set those inside the script instead.
 \item Marks the output as executable
 \end{itemize}
 
