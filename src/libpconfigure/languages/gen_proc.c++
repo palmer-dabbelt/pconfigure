@@ -1191,16 +1191,38 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * mandatory input, it is named outright on the rule above, and
          * a dangling one is a build that cannot run --generate at all.
          * Filtering it would turn that into a fragment that is never
-         * re-derived, which is a quieter way to be broken. */
+         * re-derived, which is a quieter way to be broken.
+         *
+         * Each directory is named with a "/." on the end, which is the
+         * same directory to stat() and a different name to make.
+         * "make src" is a natural thing for a project to want, and a
+         * "PHONY += src" puts "src" in .PHONY -- where make treats it
+         * as out of date on every look, whatever its mtime says.
+         * Named bare, the source directory was then a prerequisite
+         * that is never current: the fragment was remade, and since
+         * the fragment is included make re-executed itself, found it
+         * out of date again, and printed "DEPS" forever, "make clean"
+         * included.  make folds a leading "./" out of a name but
+         * leaves a trailing "/." alone, so "src/." is a file make
+         * stats and not the phony.  Refusing the PHONY instead would
+         * turn away a name that is fine everywhere else in the build,
+         * since nothing but this rule names a directory; and watching
+         * a glob of the directory's contents instead would stop
+         * hearing a file being removed.  "." stays as it is: "./." is
+         * "." to make anyway. */
         auto dep_deps = std::vector<makefile::target::ptr>{
             std::make_shared<makefile::target>(
                 "$(wildcard " + procfile + ")")
         };
-        for (const auto& dir: watched)
+        for (const auto& dir: watched) {
+            auto spelled = dir == "." ? dir
+                         : dir == "/" ? std::string("/.")
+                         : dir + "/.";
             dep_deps.push_back(
                 std::make_shared<makefile::target>(
-                    present_only(makefile::function_argument(dir),
+                    present_only(makefile::function_argument(spelled),
                                  "$", "\\")));
+        }
 
         auto variable = ctx->base.size() == 0
             ? std::string()

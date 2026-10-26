@@ -96,7 +96,7 @@ grep -qxF 'obj/proc/gen.h: src/gen.h.proc $(foreach f,$(wildcard src/opt/answer.
 # and prints what it found one optional line at a time, whose answer
 # changes when a sibling shows up.  A directory that is not there
 # expands to nothing, so it costs this build nothing at all.
-grep -q '^obj/proc/gen.h.d:.*\$(wildcard src/opt)' Makefile
+grep -q '^obj/proc/gen.h.d:.*\$(wildcard src/opt/\.)' Makefile
 
 # And the build settles.  A missing prerequisite that make re-expands
 # every run is a fine way to build forever, so this is worth asking.

@@ -233,7 +233,7 @@ grep -q "Nothing to be done" ninth.out
 rm -rf obj/proc bin
 $PTEST_BINARY $PCONFIGURE_ARGS
 cat Makefile
-grep -qF 'obj/proc/gen.h.d: $(wildcard src/gen.h.proc) $(foreach f,$(wildcard obj/toolchain/bin),$(if $(realpath $(f)),$(subst :,\:,$(f)),))' Makefile
+grep -qF 'obj/proc/gen.h.d: $(wildcard src/gen.h.proc) $(foreach f,$(wildcard obj/toolchain/bin/.),$(if $(realpath $(f)),$(subst :,\:,$(f)),))' Makefile
 
 timeout 60 make $MAKE_ARGS > tenth.out 2>&1 || { cat tenth.out; exit 1; }
 cat tenth.out
