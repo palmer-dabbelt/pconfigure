@@ -614,6 +614,7 @@ TESTSRC     += ptest-collects-unreadable-file-from-tmpdir.bash
 TESTSRC     += check-test-that-locks-its-tmpdir-still-gets-a-result.bash
 TESTSRC     += testsrc-nested-dir-bash-check-runs.bash
 TESTSRC     += testsrc-nested-dir-c-check-runs.bash
+TESTSRC     += testsrc-nested-dir-checkdir-and-scratch.bash
 TESTSRC     += check-dry-run-runs-no-bash-test.bash
 TESTSRC     += check-dry-run-runs-no-c-test.bash
 TESTSRC     += make-silent-dry-run-check-runs-no-test.bash
