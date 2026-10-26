@@ -2296,8 +2296,10 @@ build to read are a different case, and not only an
 the command each script, compiled test and header copy was last made
 with --- which is what rebuilds one when its options or its
 \texttt{SOURCES} change, since its name does not --- the context files
-\texttt{pdeps} works from, and the options a vendored tree was
-configured with.  The \texttt{Makefile} knows what
+\texttt{pdeps} works from, the options a vendored tree was
+configured with, what each \texttt{make check} stands for, and the
+files a bare \texttt{ptest} reads (see Section~\ref{prog:ptest}).  The
+\texttt{Makefile} knows what
 each of them says, so it has a rule that writes a missing one back
 exactly as the configure wrote it, without running \pconfigure.
 Deleting the object directory of the project \pconfigure\ ran in, or
@@ -5521,6 +5523,10 @@ Which stamp that is depends on whether the project named a
 \texttt{DEFAULT\_TEST\_SUITE} (see
 Section~\ref{cmd:default_test_suite}), so \pconfigure\ writes it
 down in \texttt{\$OBJDIR/check-stamp} alongside the directories.
+Both come back from \texttt{make} or \texttt{make check} run in the
+project \pconfigure\ ran in, should the object directory holding them
+be deleted, saying what the configure wrote; until one of those runs,
+\texttt{ptest} reports on \texttt{check} alone.
 
 A report about one test suite is asked for with
 \texttt{--check-suite \$name} and the results to report, one
