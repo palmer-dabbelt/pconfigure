@@ -880,11 +880,14 @@ static bool names_a_make_target(const command_type& type)
  * command line that never becomes a target and has every right to an
  * "-DX=a:b" or a '#' in it.
  *
- * Whitespace never reaches here from a Configfile, which splits its
- * lines into words before anything is a name.  It is in the list
- * anyway because a Configfile is not the only place a name comes
- * from: a source found behind a header is built under the name it has
- * on disk, and language_cxx asks this of that name too. */
+ * Whitespace is in the list for the names that come from somewhere
+ * other than a Configfile: a source found behind a header is built
+ * under the name it has on disk, and language_cxx and pdeps ask this
+ * of that name.  A Configfile line can hold a space too -- everything
+ * after the operator is one value -- but that has been a STRICT
+ * warning saying to write one line per file for longer than this list
+ * has had whitespace in it, so refuse_make_special_character() leaves
+ * it to that warning rather than stopping projects it lets through. */
 std::string make_special_character(char c)
 {
     switch (c) {
@@ -999,13 +1002,23 @@ static std::string make_wildcard_character(char c)
 /* Refuses "cmd" outright when it names a target or a source with one
  * of make_special_character()'s characters in it.  Only the first one
  * found is named: a diagnostic about one character is one that says
- * exactly what to change, and the next run names the next one. */
+ * exactly what to change, and the next run names the next one.
+ *
+ * Whitespace is the exception.  A line like "SOURCES += a.c b.c" is
+ * already met by the space-in-a-path warning just before this is
+ * asked, which says what was probably meant (one line per file) and
+ * becomes an error under STRICT; refusing it here as well would turn
+ * that warning into an abort for every project that never asked for
+ * STRICT, and would replace the better of the two messages. */
 static void refuse_make_special_character(const command::ptr& cmd)
 {
     if (names_a_make_target(cmd->type()) == false)
         return;
 
     for (const auto& c: cmd->data()) {
+        if (c == ' ' || c == '\t' || c == '\n')
+            continue;
+
         auto why = make_special_character(c);
         if (why.size() == 0)
             continue;
