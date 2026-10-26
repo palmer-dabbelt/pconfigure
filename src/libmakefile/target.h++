@@ -144,6 +144,17 @@ namespace makefile {
      * rule line, "$(wildcard ...)" and the like, where make reads
      * less of it specially than it does bare. */
     std::string function_argument(const std::string& path);
+
+    /* The same path spelled as the argument to "$(wildcard ...)",
+     * which is a glob, so that it matches the file of that name and
+     * nothing else. */
+    std::string wildcard_argument(const std::string& path);
+
+    /* Text for a rule line that names the file at this path as a
+     * prerequisite while it exists and comes to nothing while it does
+     * not: a "$(wildcard ...)" of it, or something longer for a name
+     * that the bare result of that would not be read back as. */
+    std::string present_prerequisite(const std::string& path);
 }
 
 #endif

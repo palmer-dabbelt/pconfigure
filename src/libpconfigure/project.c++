@@ -2592,6 +2592,12 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
          * file is only read once a binary is in place, by which point
          * the subproject that builds it is included too.
          *
+         * The path is this checkout's, which is wherever somebody
+         * cloned it, so it is spelled for the rule line the same way
+         * a CONFIG_DEPS is.  A checkout called "proj:v2" is no reason
+         * to refuse a Configfile that never said so, and this rule is
+         * on every make of the tree: a ':' in it stopped them all.
+         *
          * Absolute by way of this directory rather than realpath() of
          * the binary, because the binary need not exist at configure
          * time -- a pconfigure run from somewhere else can configure
@@ -2608,7 +2614,8 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
             auto tool = std::string(here) + "/" + bootstrap
                       + "bin/pconfigure";
             free(here);
-            out->add_dep(makefile_path(), "$(wildcard " + tool + ")");
+            out->add_dep(makefile_path(),
+                         makefile::present_prerequisite(tool));
         }
 
         /* The other Makefiles this one includes, which a configure

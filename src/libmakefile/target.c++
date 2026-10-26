@@ -210,22 +210,17 @@ bool makefile::same_recipe(const target::ptr& a, const target::ptr& b)
     return true;
 }
 
-/* make reads two characters on a rule line as its own wherever they
- * sit in a word: a '#' starts a comment that runs to the end of the
- * line, taking the rest of this path and every prerequisite after it,
- * and a '$' starts an expansion, so "cost$1.txt" is "cost" followed by
- * whatever the variable "1" holds.  Either way make goes looking for a
- * file nobody named and stops on "No rule to make target".
- *
- * A '$' is written "$$" and a '#' "\#", which are the spellings make
- * has for each.  A backslash is only special to make in front of a
- * '#', where a run of them is read as escapes of each other, so the
- * backslashes in front of a '#' are doubled first -- the same thing
- * the rerun arguments do, for the same reason -- and the path comes
- * out the other side as it went in.  Every other character is left as
- * it is: whitespace, a ':' and a '%' are their own problems, and
- * nothing this is used for has met them. */
-std::string makefile::prerequisite(const std::string& path)
+/* The loop prerequisite() and present_prerequisite() share: each of
+ * the characters in "special" gets a backslash in front, which is how
+ * make is told a character on a rule line is part of a name, and a '$'
+ * is written "$$".  A backslash is only special to make in front of
+ * one of those characters, where a run of them is read as escapes of
+ * each other, so the backslashes in front of one are doubled first --
+ * the same thing the rerun arguments do, for the same reason -- and the
+ * path comes out the other side as it went in.  Anywhere else a
+ * backslash is an ordinary character and is left alone. */
+static std::string quote_for_make(const std::string& path,
+                                  const std::string& special)
 {
     auto out = std::string();
     auto backslashes = std::string();
@@ -234,8 +229,8 @@ std::string makefile::prerequisite(const std::string& path)
             backslashes += c;
             continue;
         }
-        if (c == '#')
-            out += backslashes + backslashes + "\\#";
+        if (special.find(c) != std::string::npos)
+            out += backslashes + backslashes + "\\" + c;
         else if (c == '$')
             out += backslashes + "$$";
         else
@@ -244,6 +239,40 @@ std::string makefile::prerequisite(const std::string& path)
     }
     out += backslashes;
     return out;
+}
+
+/* The characters that make a word a glob.  make globs a prerequisite
+ * with one of them in it and takes any other as the name it says,
+ * while $(wildcard) globs everything it is handed; either way, once
+ * it is a glob a backslash quotes the character after it, and a ']'
+ * closes a class. */
+static const std::string glob_characters = "*?[";
+
+static std::string quote_for_glob(const std::string& path)
+{
+    auto out = std::string();
+    for (const auto& c: path) {
+        if (c == '\\' || c == ']' || glob_characters.find(c) != std::string::npos)
+            out += '\\';
+        out += c;
+    }
+    return out;
+}
+
+/* make reads two characters on a rule line as its own wherever they
+ * sit in a word: a '#' starts a comment that runs to the end of the
+ * line, taking the rest of this path and every prerequisite after it,
+ * and a '$' starts an expansion, so "cost$1.txt" is "cost" followed by
+ * whatever the variable "1" holds.  Either way make goes looking for a
+ * file nobody named and stops on "No rule to make target".
+ *
+ * A '$' is written "$$" and a '#' "\#", which are the spellings make
+ * has for each.  Every other character is left as it is: whitespace,
+ * a ':' and a '%' are their own problems, and nothing this is used for
+ * has met them. */
+std::string makefile::prerequisite(const std::string& path)
+{
+    return quote_for_make(path, "#");
 }
 
 /* Inside a function call make does not end the line at a '#', so one
@@ -261,4 +290,53 @@ std::string makefile::function_argument(const std::string& path)
             out += c;
     }
     return out;
+}
+
+/* $(wildcard) is a glob, so a name with a '[' in it is a character
+ * class and a backslash quotes whatever follows it: "notes[1].txt" is
+ * looked for as "notes1.txt" and "notes\1.txt" as "notes1.txt" too,
+ * the wildcard comes to nothing, and the file is silently not watched.
+ * Each of the glob's own characters gets the backslash the glob reads
+ * as "this one is just a character", and the '$' is doubled as it is
+ * for any function argument.  A '#' needs nothing inside the call. */
+std::string makefile::wildcard_argument(const std::string& path)
+{
+    return function_argument(quote_for_glob(path));
+}
+
+/* What $(wildcard) hands back is the bare name, and make reads that
+ * as part of the rule line it was expanded on, after the expansion.
+ * For most names that is the name.  A ':' is a second target
+ * separator and stops every make on "multiple target patterns", a
+ * ';' starts a recipe and a '|' the order-only prerequisites, so
+ * either leaves the rule naming a file nobody made; and a name with a
+ * glob character in it is globbed again, which finds "notes1.txt" for
+ * "notes[1].txt" if there is one.  Nothing can spell the expansion
+ * once it has happened, so for those names the expansion is not what
+ * goes on the rule: the name does, spelled for the rule line by this
+ * end, and the $(wildcard) only decides whether it is there at all.
+ *
+ * That is the third argument to a $(foreach) over what the
+ * $(wildcard) found, rather than the second to an $(if), because the
+ * last argument is the only one a ',' in the name cannot split.  The
+ * $(wildcard) is of one name with the glob quoted out of it, so it
+ * finds that file or nothing, and the $(foreach) says the name once or
+ * not at all.  Inside a call a '#' is an ordinary character, both
+ * before the expansion and after it, so it is the one character the
+ * rule line would otherwise need that this leaves alone.
+ *
+ * A name that needs none of it keeps the plain $(wildcard), which is
+ * what every Configfile on the rule is, and what anybody reading the
+ * Makefile expects to find there.  Whitespace and an unmatched
+ * parenthesis are still out of reach: there is no spelling of either
+ * that a $(wildcard) and a rule line both read back as written. */
+std::string makefile::present_prerequisite(const std::string& path)
+{
+    auto found = "$(wildcard " + wildcard_argument(path) + ")";
+    if (path.find_first_of(":;|" + glob_characters) == std::string::npos)
+        return found;
+
+    auto globbed = path.find_first_of(glob_characters) != std::string::npos;
+    auto name = quote_for_make(globbed ? quote_for_glob(path) : path, ":;|");
+    return "$(foreach f," + found + "," + name + ")";
 }

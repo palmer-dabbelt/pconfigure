@@ -742,10 +742,14 @@ void makefile::makefile::write_to_file(const std::string& filename)
      * target" for these, which is the only thing the $(wildcard) was
      * there to prevent.
      *
-     * The names are whatever a CONFIG_DEPS said, so they are spelled
-     * for where they land: a "cost$1.txt" handed to $(wildcard) as
-     * written is looked for as "cost.txt", comes to nothing, and the
-     * file is silently not watched at all.
+     * The names are whatever a CONFIG_DEPS or a CONFIG said, so they
+     * are spelled for where they land, by present_prerequisite(): a
+     * "cost$1.txt" handed to $(wildcard) as written is looked for as
+     * "cost.txt", a "notes[1].txt" as "notes1.txt", and either comes to
+     * nothing and the file is silently not watched at all; and a
+     * "notes:1.txt" the wildcard did find comes back bare on this rule
+     * line, where make reads the ':' as one more separator and stops
+     * every build on "multiple target patterns".
      *
      * A project that keeps its committed Makefile beside this one
      * says the prerequisites here and leaves the recipe there, where
@@ -761,8 +765,8 @@ void makefile::makefile::write_to_file(const std::string& filename)
             if (built)
                 fprintf(file, " %s", prerequisite(configfile).c_str());
             else
-                fprintf(file, " $(wildcard %s)",
-                        function_argument(configfile).c_str());
+                fprintf(file, " %s",
+                        present_prerequisite(configfile).c_str());
         }
         fprintf(file, "\n");
 
