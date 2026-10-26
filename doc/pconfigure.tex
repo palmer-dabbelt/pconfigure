@@ -3026,6 +3026,15 @@ characters.  An input that is genuinely required should still be named
 without the \texttt{?}, so that a build missing it says so rather than
 generating something quietly wrong.
 
+What makes an input mandatory is that the script names it \emph{now}.
+The build asks the script again whenever the script or a directory its
+answer named changes, so a script that globs a directory and stops
+naming a file once it is deleted needs no reconfigure: the next
+\texttt{make} regenerates the output from what is left.  A file the
+script still names and that is not there stops the build with
+\texttt{make}'s ``No rule to make target'', however long ago
+\pconfigure\ was run.
+
 \pconfigure\ records such a line as a glob filtered by
 \texttt{\$(realpath ...)} rather than naming it outright, which is what
 makes both halves work.  While the file is absent the glob expands to
@@ -3134,9 +3143,10 @@ Beside \texttt{\$name} \pconfigure\ keeps a few files of its own, all
 named after it: \texttt{\$name.tmp}, which the output is written
 through before it is moved into place, \texttt{\$name.recipe-inputs},
 which records the recipe that wrote it, and \texttt{\$name.d},
-\texttt{\$name.d.raw}, \texttt{\$name.d.tmp} and
-\texttt{\$name.d-context}, which hold and record the dependency
-fragment that keeps \texttt{--deps} current during the build.  No
+\texttt{\$name.d.raw}, \texttt{\$name.d.tmp},
+\texttt{\$name.d-context} and \texttt{\$name.d.answer}, which hold
+and record the dependency fragment that keeps \texttt{--deps} current
+during the build.  No
 other \texttt{GENERATE} in the project may have one of those as its
 output, since the two would then be fighting over one file: a
 \texttt{GENERATE += gen.h.d} next to a \texttt{GENERATE += gen.h} is
