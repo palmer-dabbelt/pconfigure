@@ -2964,6 +2964,14 @@ list, so a line may name several of them and a blank line names none.
 Each relative path is rooted in the script's project one at a time,
 and an absolute path is left as written, so a script declares the same
 inputs whether its project is built on its own or as a subproject.
+A \texttt{\#}, a \texttt{\$} or a \texttt{:} in a path is spelled
+for \texttt{make} on the way into the \texttt{Makefile}, so it names
+the file the script printed.  A \texttt{;} cannot be: on a rule line
+it starts a recipe, and \texttt{make} has no spelling for one that is
+part of a file name.  A script that prints one is refused, by
+\pconfigure\ naming the \texttt{GENERATE} line or, when the answer
+changes after a configure, by the build, and the input has to be
+renamed.
 
 A line whose first character is a \texttt{?} names an \emph{optional}
 dependency: an input the script reads when it is there and does without
