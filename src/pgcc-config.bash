@@ -34,22 +34,14 @@ flag="$4"
 if [[ "$test" != "" && "$flag" != "" ]]
 then
     dumpversion="$($program -dumpversion | cut -d'.' -f1-2)"
-    match="false"
-
-    if [[ "$(echo "$dumpversion" | cut -d '.' -f 1)" != "4" ]]
-    then
-        # Comparing arbitrary versions wants "sort -V", which OSX
-        # doesn't have, so only GCC 4.x's versions are understood.
-        echo "pgcc-config: $program reports version $dumpversion, but only GCC 4.x versions can be compared (OSX doesn't have sort -V)" >&2
-        exit 1
-    fi
 
     # Versions are compared as numbers, major first and then minor, in
-    # bash's own arithmetic.  Sorting them as text gets 4.10 wrong, and
-    # "sort -V" isn't on OSX.  The patch level was cut off above, so
-    # "gt" and "lt" are about the release a flag arrived in: 4.5.3 is
-    # exactly 4.5.  A version given without a minor, like the bare
-    # "7" that newer GCCs report, has a minor of 0.
+    # bash's own arithmetic, so any GCC can be compared and not just
+    # 4.x.  Sorting them as text gets 4.10 wrong, and "sort -V" isn't on
+    # OSX.  The patch level was cut off above, so "gt" and "lt" are
+    # about the release a flag arrived in: 4.5.3 is exactly 4.5.  A
+    # version given without a minor, like the bare "7" that newer GCCs
+    # report, has a minor of 0.
     #
     # Anything that isn't digits gets refused rather than compared,
     # since bash arithmetic would quietly read "4.x" as 4.0 and hand
