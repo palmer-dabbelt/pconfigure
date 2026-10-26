@@ -992,6 +992,15 @@ the test it belongs to; \texttt{make cache-clean} deliberately leaves
 it alone, since reclaiming a stale object cache should not throw away
 the one thing in the tree that was expensive to make.
 
+Because the scratch directory is the test's own name with
+\texttt{.scratch} on the end, a second test of the same target can't be
+named that, or named anything inside it: \texttt{TESTS += t} and
+\texttt{TESTS += t.scratch} would be compiled to the same path, one as
+a program and one as a directory.  \texttt{pconfigure} refuses the
+later of the two lines and names the other.  A test whose name merely
+ends in \texttt{.scratch}, with nothing beside it that the name belongs
+to, is fine.
+
 \subsection{\texttt{HEADERS += \$name} \label{cmd:headers}}
 
 The \texttt{HEADERS} command creates a target that's meant for
