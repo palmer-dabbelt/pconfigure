@@ -153,9 +153,9 @@ static void add_config_dep_from(const std::string& srcpath,
                                 const std::string& dep)
 {
     if (dep[0] == '/')
-        add_configfile_dep(dep);
+        add_config_dep(dep);
     else
-        add_configfile_dep(srcpath + "/" + dep);
+        add_config_dep(srcpath + "/" + dep);
 }
 
 void project::process_line(const ptr& self,
@@ -2619,34 +2619,73 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
                 return true;
         return false;
         }();
-    if (_base.size() == 0 && anyone_asked == true) {
-        /* Which of those names a vendored tree in this run installs,
-         * so the Makefile can have make build it before deciding
-         * whether to reconfigure (see makefile::write_to_file()).
-         * Only a vendored tree's outputs, and that is the whole of
-         * the restriction rather than a first cut at it: their rules
-         * read nothing but the tree's own sources and options, so
-         * they can be built while make is still remaking the
-         * makefiles it includes.  Anything pconfigure links is the
-         * other way round -- its object list comes out of pdeps
-         * fragments make has not read yet at that point, which is the
-         * fresh-checkout failure described below for the bootstrapped
-         * tool -- so a CONFIG_DEPS on one of those keeps waiting for
-         * the file to turn up on its own. */
-        auto vendored_output = [&](const std::string& path) -> bool {
+
+    /* Which of the names below a vendored tree in this run installs,
+     * so the Makefile can have make build it before deciding whether
+     * to reconfigure (see makefile::write_to_file()).  Only a vendored
+     * tree's outputs, and that is the whole of the restriction rather
+     * than a first cut at it: their rules read nothing but the tree's
+     * own sources and options, so they can be built while make is
+     * still remaking the makefiles it includes.  Anything pconfigure
+     * links is the other way round -- its object list comes out of
+     * pdeps fragments make has not read yet at that point, which is
+     * the fresh-checkout failure described below for the bootstrapped
+     * tool -- so a CONFIG_DEPS on one of those keeps waiting for the
+     * file to turn up on its own. */
+    auto vendored_outputs = [&](const std::vector<std::string>& paths) {
+        auto built = std::vector<std::string>();
+        for (const auto& path: paths) {
+            auto found = false;
             for (const auto& other: everyone)
                 for (const auto& tree: other->_processor->vendored())
                     if (tree->vendored() && tree->produces(path))
-                        return true;
-            return false;
-        };
+                        found = true;
+            if (found)
+                built.push_back(path);
+        }
+        return built;
+    };
 
-        auto built = std::vector<std::string>();
-        for (const auto& configfile: configfiles_read())
-            if (vendored_output(configfile))
-                built.push_back(configfile);
+    /* Without AUTORECONFIGURE a Makefile is not rewritten because a
+     * Configfile changed, which is the promise above, and none of the
+     * Configfiles are named.  A CONFIG_DEPS line is a different thing
+     * from a Configfile, though: it is the project saying in so many
+     * words that its Makefile is written out of this path, and the
+     * manual says a project with a committed Makefile beside the
+     * generated one gets the prerequisite either way, for the
+     * committed recipe to act on.  It did not -- the names went onto
+     * the one list only AUTORECONFIGURE writes out -- so a project
+     * that bootstraps its pconfigure, whose committed Makefile already
+     * has the recipe that writes this one, never reconfigured when the
+     * directory a CONFIG enumerates gained a file, and went on
+     * building the tree as it was.
+     *
+     * So in a project with a BOOTSTRAP the names are written as
+     * prerequisites with no recipe, the other half of the rule in the
+     * committed Makefile.  A vendored tree's output is written bare
+     * there, as under AUTORECONFIGURE and for the same reason: the
+     * first make of a fresh tree builds the tool and configures
+     * against it, rather than against its absence.
+     *
+     * A project with no committed Makefile gets nothing, though.
+     * There the prerequisite could never lead to a reconfigure, and
+     * it is not inert: make remakes the makefiles it includes before
+     * it looks at any goal, "make clean" and "make -n" included, and
+     * that remakes every prerequisite with a rule.  So a CONFIG_DEPS
+     * on something this build makes -- a vendored tree's tool, or a
+     * binary pconfigure links -- would have a clean or a dry run
+     * rebuild it whenever a source of it changed, even through the
+     * $(wildcard) once the file exists, and gain nothing from it. */
+    if (_base.size() == 0 && anyone_asked == false
+        && _processor->bootstrap().size() > 0
+        && config_deps_named().size() > 0) {
+        out->written_out_of(config_deps_named(),
+                            vendored_outputs(config_deps_named()));
+    }
 
-        out->reconfigure_on(configfiles_read(), built);
+    if (_base.size() == 0 && anyone_asked == true) {
+        out->reconfigure_on(configfiles_read(),
+                            vendored_outputs(configfiles_read()));
 
         /* A project that bootstraps its own pconfigure builds the tool
          * that wrote this Makefile out of the Makefile itself: after

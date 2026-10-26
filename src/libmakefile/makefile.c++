@@ -122,7 +122,8 @@ makefile::makefile::makefile(bool verbose,
   _prefix(prefix),
   _write_reconfigure(true),
   _pconfigure_args(),
-  _record_pconfigure_args(false)
+  _record_pconfigure_args(false),
+  _reconfigure_recipe(true)
 {
 }
 
@@ -208,6 +209,16 @@ void makefile::makefile::reconfigure_on(
 {
     _configfiles = configfiles;
     _configfiles_built = built;
+    _reconfigure_recipe = true;
+}
+
+void makefile::makefile::written_out_of(
+    const std::vector<std::string>& inputs,
+    const std::vector<std::string>& built)
+{
+    _configfiles = inputs;
+    _configfiles_built = built;
+    _reconfigure_recipe = false;
 }
 
 void makefile::makefile::restore_configure_outputs(
@@ -755,7 +766,14 @@ void makefile::makefile::write_to_file(const std::string& filename)
      * says the prerequisites here and leaves the recipe there, where
      * the pconfigure to run is named.  One target with its
      * prerequisites in two places is ordinary; two recipes would not
-     * be. */
+     * be.
+     *
+     * And a bootstrapped project without AUTORECONFIGURE says only
+     * what its CONFIG_DEPS lines named, with no recipe at all: the
+     * committed Makefile's recipe is the only one there is, and it
+     * runs when one of these moves.  A project with no committed
+     * Makefile is never handed such a list, since there nothing would
+     * act on it but make remaking the files it names. */
     if (_configfiles.size() > 0) {
         fprintf(file, "%s:", filename.c_str());
         for (const auto& configfile: _configfiles) {
@@ -770,7 +788,7 @@ void makefile::makefile::write_to_file(const std::string& filename)
         }
         fprintf(file, "\n");
 
-        if (_write_reconfigure == true) {
+        if (_write_reconfigure == true && _reconfigure_recipe == true) {
             fprintf(file, "\t%secho \"PCONFIGURE\"\n", q);
             fprintf(file, "\t%s%s $(PCONFIGURE_ARGS)\n", q, pconfigure.c_str());
         }

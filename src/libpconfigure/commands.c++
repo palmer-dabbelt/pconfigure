@@ -107,6 +107,31 @@ void add_configfile_dep(const std::string& path)
     configfiles.push_back(normalized);
 }
 
+/* The names CONFIG_DEPS lines gave, which are on the list above too
+ * and are kept apart here for the bootstrapped project that did not
+ * ask for AUTORECONFIGURE.  Such a project watches no Configfile --
+ * running pconfigure again is something a person asks for -- but a
+ * CONFIG_DEPS line is a project saying out loud that its Makefile is
+ * written out of this path, and the recipe in its committed Makefile
+ * can act on that. */
+static std::vector<std::string> config_deps;
+
+const std::vector<std::string>& config_deps_named(void)
+{
+    return config_deps;
+}
+
+void add_config_dep(const std::string& path)
+{
+    add_configfile_dep(path);
+
+    auto normalized = file_utils::normalize_path(path);
+    for (const auto& already: config_deps)
+        if (already == normalized)
+            return;
+    config_deps.push_back(normalized);
+}
+
 void add_pkgconfig_path(const std::string& dir)
 {
     for (const auto& existing: pkgconfig_path)

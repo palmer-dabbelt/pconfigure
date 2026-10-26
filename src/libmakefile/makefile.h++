@@ -131,6 +131,15 @@ namespace makefile {
          * $(wildcard) -- see write_to_file() for why. */
         std::vector<std::string> _configfiles_built;
 
+        /* Whether those come with the recipe that runs pconfigure,
+         * which is what makes them a reconfigure rule rather than a
+         * list of what this Makefile was written out of.  Only a
+         * project that asked for AUTORECONFIGURE gets the recipe; a
+         * bootstrapped one that did not still names what its
+         * CONFIG_DEPS lines named, for its committed Makefile to act
+         * on. */
+        bool _reconfigure_recipe;
+
         /* Files a configure writes for this build to read, which no
          * other rule makes, and what each one says.  Each gets a rule
          * here that writes it again, for the make after somebody
@@ -235,6 +244,17 @@ namespace makefile {
          * the ones a rule in this build produces, which make is to
          * build before it decides whether to reconfigure. */
         void reconfigure_on(const std::vector<std::string>& configfiles,
+                            const std::vector<std::string>& built);
+
+        /* Says that this Makefile is written out of these, the same as
+         * reconfigure_on() does, but without the recipe that would run
+         * pconfigure when one of them changes.  The prerequisites are
+         * there for a Makefile that keeps its own recipe for this one,
+         * which a project that bootstraps its pconfigure has.  Without
+         * that recipe they are not harmless -- make remakes whatever
+         * they name before it looks at any goal -- so nothing else
+         * calls this. */
+        void written_out_of(const std::vector<std::string>& inputs,
                             const std::vector<std::string>& built);
 
         /* Says that this Makefile is to know how to write each of

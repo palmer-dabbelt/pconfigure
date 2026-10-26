@@ -112,6 +112,16 @@ const std::vector<std::string>& configfiles_read(void);
  */
 void add_configfile_dep(const std::string& path);
 
+/* What a CONFIG_DEPS line does: adds the name to that list, and
+ * remembers it as one a CONFIG_DEPS gave, so that a bootstrapped
+ * project without AUTORECONFIGURE -- which watches no Configfile --
+ * can still name it as an input to its Makefile. */
+void add_config_dep(const std::string& path);
+
+/* The names add_config_dep() was given, in the order it was given them
+ * and once each. */
+const std::vector<std::string>& config_deps_named(void);
+
 void add_pkgconfig_path(const std::string& dir);
 
 /* Names the built copy of a pkg-config file this run writes, the
