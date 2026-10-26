@@ -7,6 +7,12 @@ abrt_dirs=()
 check_suite=""
 check_results=()
 
+# Whether something that knows the build has said where its results
+# are, even if the answer was "nowhere": a build of nothing but
+# subprojects that build nothing has no check directory at all, and
+# "check" is then just a directory somebody might have made.
+check_dirs_known="false"
+
 # A directory is the same directory with a slash after it -- which is
 # how a shell's tab completion hands one over -- but the report finds
 # which directory a result named outright belongs to by comparing the
@@ -54,6 +60,11 @@ do
         dir="$(strip_slashes "$1")"
         check_dirs+=("$dir")
         abrt_dirs+=("$dir")
+    elif [[ "$1" == "--no-check-dirs" ]]
+    then
+        # What a Makefile says in place of any --check-dir when no
+        # project it covers has a check directory.
+        check_dirs_known="true"
     elif [[ "$1" == "--check-dir" ]]
     then
         # One per project: a build with subprojects has its test
@@ -79,7 +90,7 @@ do
     shift
 done
 
-if [[ "${#check_dirs[@]}" == "0" ]]
+if [[ "${#check_dirs[@]}" == "0" ]] && [[ "$check_dirs_known" == "false" ]]
 then
     # A build with subprojects has its test results spread across all
     # of them, and there's nothing in this directory that says where
@@ -89,6 +100,9 @@ then
     # one directory everybody has.
     if [[ -r obj/check-dirs ]]
     then
+        # And an empty list is an answer too, not a missing one.
+        check_dirs_known="true"
+
         # A tab and "abrt-is-fail" after a directory is the same thing
         # --abrt-is-fail-dir says on the command line.
         while IFS=$'\t' read -r dir flag
@@ -106,7 +120,7 @@ then
     fi
 fi
 
-if [[ "${#check_dirs[@]}" == "0" ]]
+if [[ "${#check_dirs[@]}" == "0" ]] && [[ "$check_dirs_known" == "false" ]]
 then
     check_dirs=(check)
 fi

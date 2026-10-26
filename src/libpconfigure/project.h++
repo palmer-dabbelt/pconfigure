@@ -397,6 +397,14 @@ private:
     static std::map<std::string, std::string>
     distclean_files(const std::vector<ptr>& projects);
 
+    /* Whether this project's own check directory is the build's: the
+     * one "make distclean" removes and the reports read results out
+     * of.  Only a project that builds something has one, since that is
+     * what a test hangs off -- a project that only pulls in others
+     * runs no tests of its own, and a "check" at its top is somebody
+     * else's directory. */
+    bool has_check_dir(void) const;
+
     /* Writes down where the test results this project is responsible
      * for end up, so that "ptest" run on its own can find them.  The
      * Makefile knows this already -- it's the same list its report

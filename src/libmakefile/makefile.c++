@@ -882,6 +882,13 @@ std::string makefile::makefile::check_scope_path(const std::string& suite) const
 
 std::string makefile::makefile::check_dirs_args(void) const
 {
+    /* Said outright when there are none, since ptest given no
+     * directories at all goes looking for the ones it was never told
+     * about and settles on "check" -- which for a project that builds
+     * nothing is not the build's to read. */
+    if (_check_dirs.size() == 0)
+        return " --no-check-dirs";
+
     auto out = std::string();
     for (const auto& dir: _check_dirs)
         out += (dir.second ? " --abrt-is-fail-dir " : " --check-dir ")

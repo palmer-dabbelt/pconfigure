@@ -2437,8 +2437,10 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
      * it pulled in.  These only get written out for a standalone
      * build, so a parent's copies are what run when there is one. */
     for (const auto& project: aggregated)
-        out->add_check_dir(project->processor()->root_context()->check_dir,
-                           project->processor()->abrt_is_fail());
+        if (project->has_check_dir())
+            out->add_check_dir(
+                project->processor()->root_context()->check_dir,
+                project->processor()->abrt_is_fail());
 
     /* Same reason, and the same list: a suite is a name make can be
      * asked for, so the Makefile that gets asked is the one that has
@@ -3431,11 +3433,26 @@ void project::write_check_dirs(const std::vector<ptr>& aggregated) const
      * where make runs, which for this file is this project.  A project
      * that said ABRT_IS_FAIL has that after a tab, so a bare "ptest"
      * scores its results the way "make report" does. */
-    for (const auto& project: aggregated)
+    for (const auto& project: aggregated) {
+        if (project->has_check_dir() == false)
+            continue;
         fprintf(file, "%s%s\n",
                 root->unbased(
                     project->processor()->root_context()->check_dir).c_str(),
                 project->processor()->abrt_is_fail() ? "\tabrt-is-fail" : "");
+    }
 
     fclose(file);
+}
+
+bool project::has_check_dir(void) const
+{
+    /* The same question distclean_dirs() asks before it names the
+     * directory, so that what the report reads as results and what
+     * distclean takes away as results are one directory or neither.
+     * Asked of everything built rather than only of the tests, since
+     * a project whose last test was just deleted still has that
+     * test's stale result in there, and a report that stopped looking
+     * would quietly drop it rather than show it. */
+    return _processor->output_contexts().size() > 0;
 }
