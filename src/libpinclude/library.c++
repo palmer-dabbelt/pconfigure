@@ -20,6 +20,7 @@
 
 #include <pinclude.h++>
 #include <cctype>
+#include <cstring>
 #include <fstream>
 #include <stack>
 #include <iostream>
@@ -363,7 +364,9 @@ int list_overwrite_defines(std::string filename,
      * a C comment out of anything. */
     static const auto next_logical_line = [](std::ifstream& file, std::string& out,
                                              std::string& raw,
-                                             int& comment, int& lineno,
+                                             int& comment,
+                                             std::string& raw_close,
+                                             int& lineno,
                                              pinclude::syntax language) {
         std::string line;
         if (!std::getline(file, line))
@@ -413,10 +416,12 @@ int list_overwrite_defines(std::string filename,
             out = out.substr(0, out.size() - 1) + line;
         }
 
-        /* Only a block comment can still be open when the line ends,
-         * so it is the only state kept between calls: "comment" is 1
-         * while one is open and 0 otherwise.  Everything else below
-         * ends with the line it is on.
+        /* Only a block comment or a raw string literal can still be
+         * open when the line ends, so they are the only state kept
+         * between calls: "comment" is 1 while a block comment is open
+         * and 0 otherwise, and "raw_close" is what ends the raw string
+         * that is open -- empty while there isn't one.  Everything else
+         * below ends with the line it is on.
          *
          * A slash and a star only open a comment when they are C.
          * Inside a string literal, a character literal or an
@@ -428,12 +433,27 @@ int list_overwrite_defines(std::string filename,
          * comment, any of those hides what comes after it -- every
          * later #include, for a block comment that is never closed --
          * so the literals are walked as the compiler walks them,
-         * escapes and all.  A literal still open at the end of the
-         * line is a program the compiler refuses, and this doesn't
-         * try to be cleverer about one than ending it there. */
-        enum class in { CODE, LINE_COMMENT, LITERAL, HEADER };
-        auto at = in::CODE;
+         * escapes and all.  An ordinary literal still open at the end
+         * of the line is a program the compiler refuses, and this
+         * doesn't try to be cleverer about one than ending it there.
+         *
+         * A C++ raw string is the exception on both counts.
+         * R"(...)" has no escapes and doesn't end at a quote, only at
+         * a ")" followed by the delimiter it opened with and a quote,
+         * so a raw string holding a quote and then a slash-star is
+         * one string -- and walked with ordinary rules, its inner
+         * quote closed it and the slash-star after opened a comment.
+         * And a raw string runs on over as many lines as it likes,
+         * which is the point of one: a template of C written out by a
+         * generator has its "#include" lines on lines of their own,
+         * and they are text in a string rather than directives.  So a
+         * raw string's body is blanked like a comment, which takes
+         * those lines out of the scan, and the string is carried over
+         * from one line to the next until it closes. */
+        enum class in { CODE, LINE_COMMENT, LITERAL, HEADER, RAW };
+        auto at = raw_close.empty() ? in::CODE : in::RAW;
         auto close = '\0';
+        size_t delim = 0;
         auto peek = [&](size_t i) {
             return i + 1 < out.size() ? out[i + 1] : '\0';
         };
@@ -476,6 +496,56 @@ int list_overwrite_defines(std::string filename,
             return j < i && isdigit((unsigned char)out[j]);
         };
 
+        /* A raw string is a quote with R, u8R, uR, UR or LR in front
+         * of it -- the whole of the token, so that fooR"x" is still
+         * the identifier fooR and an ordinary "x" after it.  An
+         * identifier can also hold a '$' or a UTF-8 character, both
+         * of which GCC and Clang accept, so those count as part of
+         * one too: taken for a raw string, an identifier's quote
+         * that never meets a ")" and a quote would blank the rest of
+         * the file.  What it hands back is how many characters of
+         * prefix there are, or 0 for a quote that opens no raw
+         * string. */
+        auto raw_prefix = [&](size_t i) -> size_t {
+            static const char *const prefixes[] = {
+                "u8R", "uR", "UR", "LR", "R",
+            };
+            for (auto prefix : prefixes) {
+                size_t n = strlen(prefix);
+                if (i < n || out.compare(i - n, n, prefix) != 0)
+                    continue;
+                auto before = (unsigned char)(i > n ? out[i - n - 1] : ' ');
+                if (isalnum(before) || before == '_' || before == '$'
+                    || before >= 0x80)
+                    continue;
+                return n;
+            }
+            return 0;
+        };
+
+        /* The delimiter between the quote and the "(" is at most
+         * sixteen characters, none of them a space, a parenthesis, a
+         * backslash or a control character -- a quote is allowed, so
+         * R""(x)"" is the string x -- and it can't run on to
+         * the next line.  A quote that has an R in front of it but no
+         * delimiter of that shape after is a program the compiler
+         * refuses, so it is read as an ordinary literal, as before,
+         * rather than as a raw string that hides the rest of the
+         * file.  On success "delim" is how far the delimiter runs. */
+        auto raw_delimiter = [&](size_t i, size_t& delim) {
+            for (size_t j = i + 1; j < out.size() && j <= i + 17; ++j) {
+                auto c = (unsigned char)out[j];
+                if (c == '(') {
+                    delim = j - (i + 1);
+                    return true;
+                }
+                if (isspace(c) || iscntrl(c)
+                    || c == ')' || c == '\\')
+                    return false;
+            }
+            return false;
+        };
+
         for (size_t i = 0; i < out.size(); ++i) {
             if (comment == 1) {
                 if (out[i] == '*' && peek(i) == '/') {
@@ -506,6 +576,16 @@ int list_overwrite_defines(std::string filename,
                     at = in::CODE;
                 continue;
 
+            case in::RAW:
+                if (out.compare(i, raw_close.size(), raw_close) == 0) {
+                    i += raw_close.size() - 1;
+                    raw_close.clear();
+                    at = in::CODE;
+                    continue;
+                }
+                out[i] = ' ';
+                continue;
+
             case in::CODE:
                 break;
             }
@@ -526,6 +606,11 @@ int list_overwrite_defines(std::string filename,
                        && opens_header_name(i)) {
                 at = in::HEADER;
                 close = out[i] == '<' ? '>' : '"';
+            } else if (out[i] == '"' && raw_prefix(i) > 0
+                       && raw_delimiter(i, delim)) {
+                raw_close = ")" + out.substr(i + 1, delim) + "\"";
+                at = in::RAW;
+                i += delim + 1;
             } else if (out[i] == '"') {
                 at = in::LITERAL;
                 close = '"';
@@ -599,6 +684,7 @@ int list_overwrite_defines(std::string filename,
      * reached it by the time anything is said about that line. */
     int lineno = 0;
     int comment = 0;
+    std::string raw_close;
     std::vector<heredoc> heredocs;
     auto in_data = false;
     std::string raw;
@@ -676,7 +762,8 @@ int list_overwrite_defines(std::string filename,
         }
     };
 
-    while (next_logical_line(file, line, raw, comment, lineno, language)) {
+    while (next_logical_line(file, line, raw, comment, raw_close,
+                             lineno, language)) {
         /* Below a Perl script's "__DATA__" or "__END__" is data the
          * script reads, or nothing at all, and never script -- so an
          * "#include" there is no file the script reads, for the same
