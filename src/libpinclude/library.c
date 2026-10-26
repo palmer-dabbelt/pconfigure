@@ -167,6 +167,37 @@ static int _pinclude_lines(const char *input,
     while ((length = getline(&buffer, &buffer_size, infile)) != -1) {
         lineno++;
 
+        /* Every line from here on is a C string, to be compared,
+         * substituted into and written out, and a C string ends at
+         * its first NUL.  A NUL in the middle of a line -- an archive
+         * appended to a self-extracting script is the usual way to
+         * get one -- used to cut the line short there, so the program
+         * came out carrying something other than what was written and
+         * nothing said so.  Carrying the bytes through would mean
+         * every line having a length rather than an end, and a binary
+         * payload still isn't safe from being read as script: one of
+         * its lines that happens to start "#include" is expanded.  So
+         * it is refused, and pointed at.
+         *
+         * Only when expanding: a list of includes loses nothing to a
+         * line cut short, since no directive starts after a NUL. */
+        if (per_line != NULL && strlen(buffer) != (size_t)length) {
+            fprintf(stderr, "%s:%zu: a NUL byte, which can't be carried"
+                    " through into the compiled program\n",
+                    input, lineno);
+            fprintf(stderr, "  each line is read as text, and text ends at"
+                    " its first NUL, so the rest of the line would be"
+                    " lost\n");
+            fprintf(stderr, "  keep binary data in a file of its own for"
+                    " the script to read, or write it in encoded, with"
+                    " base64 for instance\n");
+
+            free(buffer);
+            fclose(infile);
+
+            return -1;
+        }
+
 #ifdef DEBUG_LIBPINCLUDE_EACHLINE
         fprintf(stderr, "    %s", buffer);
 #endif
