@@ -348,9 +348,11 @@ namespace {
      * include path and the defines come back out of the command line
      * it would have been compiled with. */
     std::vector<std::string> headers_of(const deps_context& ctx,
-                                        const std::string& source)
+                                        const std::string& source,
+                                        std::set<std::string>& missed)
     {
-        return cxx_headers_read_by(source, ctx.opts, ctx.made);
+        return cxx_headers_read_by(source, ctx.opts, ctx.made,
+            [&](const std::string& path) { missed.insert(path); });
     }
 
     /* The rule that runs this makes the directory too, since make
@@ -368,6 +370,68 @@ namespace {
     std::string join(const std::vector<std::string>& v)
     {
         return context_file::join(v);
+    }
+
+    /* The places a file could turn up and be read instead of what the
+     * scan found, and the rule that has this fragment written again
+     * when one does.
+     *
+     * Every other prerequisite of a fragment is a file that is there,
+     * and the fragment is rewritten when one of them changes.  A
+     * header that shadows another -- a src/x.h beside the source
+     * written after a build that found inc/x.h, or an inc1/x.h ahead
+     * of an inc2/x.h -- changes what the source reads without
+     * changing any of those, so a fragment that only watched them
+     * went on naming the header that had been shadowed.  Without
+     * AUTORECONFIGURE a reconfigure is what notices, because
+     * pconfigure scans every source again whenever it runs; under it
+     * the scan is this program's, and nothing ever asked it again,
+     * not even an explicit pconfigure, until a "make clean".
+     *
+     * Whether one is there is asked rather than how new it is,
+     * because a header brought in by "cp -p" or a tar extract has
+     * whatever date it came with, and the one it shadows can be newer
+     * than that.  A phony prerequisite is what makes the fragment
+     * stale on the strength of a file being there at all.  Its being
+     * there is also what stops it: the rewritten fragment found the
+     * file where it was looked for and no longer lists it, so the
+     * build asks once and then settles.  That is why pinclude leaves
+     * off a place where something that is no header sits -- the
+     * search would pass over it again and this would ask again, for
+     * ever.
+     *
+     * The same check runs whether make was started by hand or by a
+     * reconfigure, so a plain make notices too; there is no reason
+     * for the build to know less than a reconfigure would tell it. */
+    void watch_missed(const std::function<void(const std::string&)>& say,
+                      const std::string& deps,
+                      const std::set<std::string>& missed,
+                      const makefile::path_prefix& prefix)
+    {
+        /* Only the names "$(wildcard)" reads as themselves.  One
+         * with a glob character in it is a pattern there, and can
+         * match a file the search would never have read -- which
+         * would ask again after every rewrite, since the rewrite
+         * still lists it.  A space or a make metacharacter splits or
+         * expands the name before wildcard sees it.  A file turning
+         * up at one of those is left for a "make clean" to notice, as
+         * every one was before: a build that misses a rare name is
+         * better than one that never stops for it. */
+        auto watched = std::vector<std::string>();
+        for (const auto& path: missed)
+            if (path.find_first_of("*?[]\\ \t$%#:;=") == std::string::npos)
+                watched.push_back(path);
+
+        if (watched.size() == 0)
+            return;
+
+        auto g = guard("shadowed", prefix.rewrite(deps));
+        say("ifneq ($(wildcard " + join(watched) + "),)");
+        say(".PHONY: " + g);
+        say(g + ":");
+        say(deps + ": " + g);
+        say("endif");
+        say("");
     }
 
     /* The piece of Makefile for a script, which is the C one with
@@ -408,7 +472,9 @@ namespace {
             return;
         }
 
-        auto includes = script_includes_read_by(source, ctx.opts, syntax);
+        auto missed = std::set<std::string>();
+        auto includes = script_includes_read_by(source, ctx.opts, syntax,
+            [&](const std::string& path) { missed.insert(path); });
 
         /* The list as a file, so that one which changes without any
          * file on it getting newer -- an include that now resolves to
@@ -475,6 +541,8 @@ namespace {
         say(ctx.target + ": " + join(target_deps));
         say(deps + ": " + source + " " + join(includes));
         out += "\n";
+
+        watch_missed(say, deps, missed, prefix);
 
         /* An empty rule for each, so that a file the script has since
          * stopped including, and that has then been deleted, is
@@ -593,7 +661,8 @@ int main(int argc, const char **argv)
         return 0;
     }
 
-    auto headers = headers_of(ctx, source);
+    auto missed = std::set<std::string>();
+    auto headers = headers_of(ctx, source, missed);
 
     /* Read after the move to the top of the tree, because that is
      * where its path is spelled from. */
@@ -822,6 +891,8 @@ int main(int argc, const char **argv)
     say(object + ": " + join(object_deps));
     say(deps + ": " + source + " " + join(headers));
     out += "\n";
+
+    watch_missed(say, deps, missed, prefix);
 
     /* A header that has been deleted is a prerequisite make has no
      * rule for, and make stops rather than building anything.  But a
