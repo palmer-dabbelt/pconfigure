@@ -3361,14 +3361,20 @@ C and C++ share their headers, so what is found next to one can be
 either (see Section~\ref{lang:cxx}).
 
 The directives are read the way the compiler reads them, including the
-ones it only warns about.  An \texttt{\#ifdef} or \texttt{\#ifndef}
-asks about the identifier it starts with, so \texttt{\#ifdef
-VERBOSE(x)} is a question about \texttt{VERBOSE}, and anything written
-after an \texttt{\#else} or \texttt{\#endif} is passed over.  An
-\texttt{\#elif} chain takes the first branch whose test holds, and
-C23's \texttt{\#elifdef NAME} and \texttt{\#elifndef NAME} are
-branches of it like any other, read as \texttt{\#elif defined(NAME)}
-and \texttt{\#elif !defined(NAME)}.  The
+ones it only warns about.  A directive may be spelled with the
+\texttt{\%:} digraph in place of its \texttt{\#}, as in
+\texttt{\%:include "extra.h"}, and a UTF-8 byte order mark at the very
+start of a file is skipped, as \texttt{gcc} and \texttt{clang} skip
+it; the same bytes anywhere else are part of the line they are on.
+Neither is true of a script, which \texttt{pbashc} reads with a
+\texttt{\#} in the first column or not at all.  An \texttt{\#ifdef}
+or \texttt{\#ifndef} asks about the identifier it starts with, so
+\texttt{\#ifdef VERBOSE(x)} is a question about \texttt{VERBOSE}, and
+anything written after an \texttt{\#else} or \texttt{\#endif} is
+passed over.  An \texttt{\#elif} chain takes the first branch whose
+test holds, and C23's \texttt{\#elifdef NAME} and \texttt{\#elifndef
+NAME} are branches of it like any other, read as \texttt{\#elif
+defined(NAME)} and \texttt{\#elif !defined(NAME)}.  The
 names that start out defined are the ones the target's
 \texttt{COMPILEOPTS} hand the compiler, with every \texttt{-D} and
 \texttt{-U} taken in the order the compiler takes them: a target
