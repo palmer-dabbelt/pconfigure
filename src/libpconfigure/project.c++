@@ -2503,8 +2503,29 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
      * the $(wildcard) that keeps a missing one from stopping the
      * build is the same thing that keeps its going away quiet -- and
      * a target that stopped being asked for keeps whatever it last
-     * built. */
-    if (_base.size() == 0 && _processor->autoreconfigure() == true) {
+     * built.
+     *
+     * Whether the rule is written is a question about every project
+     * in the run, not only this one, for the same reason the rule
+     * lives up here.  A subproject that says AUTORECONFIGURE under a
+     * top that doesn't has its own setting win -- it gets pdeps for
+     * its sources -- but asking only this project left it with no
+     * reaction to an edit of its own Configfile and with a deleted
+     * object directory stopping every make, since both of those can
+     * only be answered from here.  So one project asking is enough,
+     * and it watches the whole list rather than that project's share
+     * of it: what a subproject builds is written out of the Configfile
+     * above it as well, which is where its SUBPROJECTS line and
+     * everything it inherits live, and that is the shape the opposite
+     * split (a top that asks, a subproject that says false) already
+     * has. */
+    auto anyone_asked = [&](void) -> bool {
+        for (const auto& other: everyone)
+            if (other->_processor->autoreconfigure() == true)
+                return true;
+        return false;
+        }();
+    if (_base.size() == 0 && anyone_asked == true) {
         /* Which of those names a vendored tree in this run installs,
          * so the Makefile can have make build it before deciding
          * whether to reconfigure (see makefile::write_to_file()).
