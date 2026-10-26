@@ -3471,7 +3471,7 @@ static bool read_whole_file(const std::string& path, std::string& out)
     return ok;
 }
 
-void project::check_header_copy(const context::ptr& ctx)
+void project::check_header_copy(const context::ptr& ctx) const
 {
     if (ctx->check_type({context_type::HEADER}) == false)
         return;
@@ -3565,7 +3565,22 @@ void project::check_header_copy(const context::ptr& ctx)
      * source was edited since: telling the two apart would take
      * knowing what the file was before the edit, and the cost of the
      * wrong guess is one rm on one side and a lost header on the
-     * other.  So the message owns up to both, and says which rm. */
+     * other.  So the message owns up to both, and says which rm.
+     *
+     * Except where there is a record of another kind.  A tree built by
+     * a pconfigure from before records were kept has none for any copy
+     * in it, and the next edit to any header source, followed by
+     * moving to a pconfigure that does keep them, used to refuse that
+     * tree's own copy of it: the vendored pconfigure of a project that
+     * bootstraps one did exactly that on its first build after an
+     * update.  The Makefile that pconfigure wrote is still there,
+     * though, and says that this build made the copy out of this
+     * source.  It only counts when it is from before records, which
+     * shows in it: every Makefile written since removes the record
+     * along with the copy in the copy's clean rule, so it names one,
+     * and a Makefile that does is one whose records are to be
+     * believed instead -- and one that a "make clean" emptied of
+     * copies without forgetting their rules. */
     auto record = language::recipe_record_path(ctx, copy);
     if (access(record.c_str(), F_OK) == 0)
         return;
@@ -3574,6 +3589,9 @@ void project::check_header_copy(const context::ptr& ctx)
     auto from_says = std::string();
     if (read_whole_file(copy, copy_says) && read_whole_file(from, from_says)
         && copy_says == from_says)
+        return;
+
+    if (recordless_makefile_made(copy, from))
         return;
 
     std::cerr << std::to_string(ctx->cmd->debug()) << "\n"
@@ -3593,6 +3611,43 @@ void project::check_header_copy(const context::ptr& ctx)
               << " of the way if it holds anything worth keeping, and"
               << " configure again\n";
     abort();
+}
+
+bool project::recordless_makefile_made(const std::string& copy,
+                                       const std::string& from) const
+{
+    auto makefile = std::string();
+    if (read_whole_file(makefile_path(), makefile) == false)
+        return false;
+
+    if (makefile.find(".recipe-inputs") != std::string::npos)
+        return false;
+
+    /* A subproject's Makefile spells its own directory through its
+     * variable, so that a parent can put another in front of it; read
+     * back, the variable is this project's directory, the way "copy"
+     * and "from" are spelled. */
+    if (_base.size() > 0) {
+        auto variable = "$(" + prefix_variable(_base) + ")";
+        for (auto at = makefile.find(variable); at != std::string::npos;
+             at = makefile.find(variable, at + _base.size()))
+            makefile.replace(at, variable.size(), _base);
+    }
+
+    /* The rule is the copy, a colon, and the source first among its
+     * prerequisites, the headers it includes after that. */
+    auto rule = copy + ": " + from;
+    for (auto at = makefile.find(rule); at != std::string::npos;
+         at = makefile.find(rule, at + 1)) {
+        auto starts_line = at == 0 || makefile[at - 1] == '\n';
+        auto end = at + rule.size();
+        auto ends_name = end == makefile.size() || makefile[end] == ' '
+            || makefile[end] == '\n';
+        if (starts_line && ends_name)
+            return true;
+    }
+
+    return false;
 }
 
 void project::write_check_records(const std::vector<ptr>& aggregated) const

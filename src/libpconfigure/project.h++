@@ -512,7 +512,14 @@ private:
     /* Refuses a HEADERS that copies a SOURCES into the include
      * directory when the copy would land on a file that isn't one:
      * the source itself, or a header nothing in this build made. */
-    static void check_header_copy(const context::ptr& ctx);
+    void check_header_copy(const context::ptr& ctx) const;
+
+    /* Whether the Makefile the last configure of this project wrote
+     * was written by a pconfigure that kept no recipe records, and has
+     * the rule that makes "copy" out of "from" -- which is then the
+     * only record there is that this build made it. */
+    bool recordless_makefile_made(const std::string& copy,
+                                  const std::string& from) const;
 
     /* Every test this project runs, by the name of the target that
      * runs it -- which is what a DEPTESTS resolves to, and what a
