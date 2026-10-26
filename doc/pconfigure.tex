@@ -3889,12 +3889,12 @@ list:
   machine that happens to have a program of that name.  The value
   after the \texttt{=} is quoted like everything else.
 
-\item A cmake \texttt{--configure-arg}, deliberately: it is written
-  the way it will appear on cmake's command line, so somebody who
-  needs two arguments writes two words and somebody who needs one word
-  with a space in it writes the quotes themselves.  That is also why
-  every word of one is asked about rather than the first, and why the
-  quoting comes off before it is asked
+\item A cmake or meson \texttt{--configure-arg}, deliberately: it is
+  written the way it will appear on the tree's command line, so
+  somebody who needs two arguments writes two words and somebody who
+  needs one word with a space in it writes the quotes themselves.
+  That is also why every word of one is asked about rather than the
+  first, and why the quoting comes off before it is asked
   (Section~\ref{buildsys:second_answer}).
 
 \item The command an autotools \texttt{--autoreconf} names, which is a
@@ -3906,6 +3906,15 @@ list:
   It is digits all the way through or it was refused where it was
   written, so there is nothing left in it for a shell to find.
 \end{itemize}
+
+The two of those written as free text, a \texttt{--configure-arg} and
+an \texttt{--autoreconf}, have to be quoting a shell can read to the
+end, and are refused where they were written when they are not: a
+single or double quote that never closes, which would be a recipe
+every \texttt{make} stops at with ``unexpected EOF'', or a backslash
+with nothing after it, which would escape the space the recipe puts
+after it and glue the next argument on.  A quote or backslash meant
+for the tree itself is escaped, as it would be typed at a shell.
 
 And one thing that is not a quoting question at all.  A path an option
 names becomes a prerequisite in the generated \texttt{Makefile} --- a
