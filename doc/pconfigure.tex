@@ -3868,6 +3868,21 @@ this build system did not decide is a plain \texttt{make} writing
 wherever that line pointed, and \texttt{/usr/local} is one character
 away.
 
+For the same reason a \texttt{DESTDIR} from outside the
+\texttt{Configfile} doesn't reach that install either.  One given on
+the outer \texttt{make}'s command line, as in \texttt{make
+DESTDIR=/stage install}, or exported into its environment, applies to
+what \pconfigure\ installs itself, as Section~\ref{make:install}
+says; it would otherwise also have reached the \texttt{autotools},
+\texttt{cmake} and \texttt{meson} trees being installed into their
+prefixes during the build, through \texttt{MAKEFLAGS} or the
+environment, and sent each of them under \texttt{/stage} followed by
+the whole absolute prefix, leaving the prefix empty.  So the
+sub-\texttt{make} that builds and installs a tree is given an empty
+\texttt{DESTDIR} on its command line, and a \texttt{cmake --build} or
+a \texttt{ninja} is run with \texttt{DESTDIR} taken out of its
+environment.
+
 Every channel that reaches the tree is asked the same question, so a
 name refused in one of them is refused in all: the flags and the
 variables handed to the tree's own configuration, the variables a
