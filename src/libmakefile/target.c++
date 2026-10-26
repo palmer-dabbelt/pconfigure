@@ -34,7 +34,9 @@ makefile::target::target(const std::string& name,
       _comment(comment),
       _phony(false),
       _included(false),
-      _clean_extra()
+      _clean_extra(),
+      _order_only(),
+      _skip_if()
 {
 }
 
@@ -47,7 +49,9 @@ makefile::target::target(const std::string& name)
       _comment(),
       _phony(false),
       _included(false),
-      _clean_extra()
+      _clean_extra(),
+      _order_only(),
+      _skip_if()
 {
 }
 
@@ -74,6 +78,8 @@ makefile::target::ptr makefile::target::without(makefile::global_targets mask) c
     out->_phony = _phony;
     out->_included = _included;
     out->_clean_extra = _clean_extra;
+    out->_order_only = _order_only;
+    out->_skip_if = _skip_if;
     return out;
 }
 
@@ -88,6 +94,8 @@ makefile::target::ptr makefile::target::as_phony(void) const
     out->_phony = true;
     out->_included = _included;
     out->_clean_extra = _clean_extra;
+    out->_order_only = _order_only;
+    out->_skip_if = _skip_if;
     return out;
 }
 
@@ -102,6 +110,8 @@ makefile::target::ptr makefile::target::as_included(void) const
     out->_phony = _phony;
     out->_included = true;
     out->_clean_extra = _clean_extra;
+    out->_order_only = _order_only;
+    out->_skip_if = _skip_if;
     return out;
 }
 
@@ -116,7 +126,29 @@ makefile::target::ptr makefile::target::with_clean_extra(const std::string& path
     out->_phony = _phony;
     out->_included = _included;
     out->_clean_extra = _clean_extra;
+    out->_order_only = _order_only;
+    out->_skip_if = _skip_if;
     out->_clean_extra.push_back(path);
+    return out;
+}
+
+makefile::target::ptr
+makefile::target::with_order_only(const std::vector<std::string>& paths,
+                                  const std::string& skip_if) const
+{
+    auto out = std::make_shared<target>(_name,
+                                        _short_cmd,
+                                        _deps,
+                                        _global,
+                                        _cmds,
+                                        _comment);
+    out->_phony = _phony;
+    out->_included = _included;
+    out->_clean_extra = _clean_extra;
+    out->_order_only = _order_only;
+    for (const auto& path: paths)
+        out->_order_only.push_back(path);
+    out->_skip_if = skip_if;
     return out;
 }
 
@@ -184,17 +216,39 @@ void makefile::target::write_to_file(FILE *file,
     fprintf(file, "%s:", name.c_str());
     for (const auto& dep: _deps)
         fprintf(file, " %s", prefix.rewrite(dep->_name).c_str());
+    if (_order_only.size() > 0) {
+        fprintf(file, " |");
+        for (const auto& path: _order_only)
+            fprintf(file, " %s", prefix.rewrite(path).c_str());
+    }
     fprintf(file, "\n");
+
+    /* A skipped recipe still has every one of its lines run by a
+     * shell, each of which is told to stop before it starts.  The
+     * other way of saying nothing -- wrapping each line in an
+     * "$(if)" -- hands the line to make's function parser, where a
+     * LINKOPTS with a lone parenthesis in it ends the call early.
+     * The answer goes in a variable rather than being asked again on
+     * every line because asking can be a "$(shell)", and because
+     * make expands all of a recipe before running any of it, the
+     * first line's answer is the one every later line reads. */
+    auto skip = std::string();
+    if (_skip_if.size() > 0) {
+        fprintf(file, "\t@$(eval __pconfigure__skip := $(if %s,exit 0; ))\n",
+                _skip_if.c_str());
+        skip = "$(__pconfigure__skip)";
+    }
+
     /* A target with nothing to say says nothing.  The echo is what
      * a build prints while it works, and a rule that does no work
      * printing an empty line is just a blank line in the log. */
     if (_short_cmd.size() > 0)
-        fprintf(file, verbose == false ? "\t@echo \"%s\"\n" : "\techo \"%s\"\n",
-                _short_cmd.c_str());
+        fprintf(file, verbose == false ? "\t@%secho \"%s\"\n" : "\t%secho \"%s\"\n",
+                skip.c_str(), _short_cmd.c_str());
 
     for (const auto& cmd: _cmds)
-        fprintf(file, verbose == false ? "\t@%s\n" : "\t%s\n",
-                prefix.rewrite(cmd).c_str());
+        fprintf(file, verbose == false ? "\t@%s%s\n" : "\t%s%s\n",
+                skip.c_str(), prefix.rewrite(cmd).c_str());
     fprintf(file, "\n");
 }
 

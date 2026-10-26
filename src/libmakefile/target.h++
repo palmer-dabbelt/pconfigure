@@ -70,6 +70,24 @@ namespace makefile {
          * looking for what filled the disk. */
         std::vector<std::string> _clean_extra;
 
+        /* Prerequisites that have to be made before the recipe runs
+         * but that never make it due by being newer than the target,
+         * which make spells after a '|'.  The recipe sees them as
+         * "$|", and not as "$^". */
+        std::vector<std::string> _order_only;
+
+        /* A make expression that, expanded just before the recipe
+         * would run, says whether to run none of it: anything but
+         * nothing skips every line, the progress line included.
+         *
+         * make expands every line of a recipe before it runs the
+         * first, so the answer is worked out once and the whole
+         * recipe goes one way.  A target skipped this way is still
+         * one make believes it has remade, which is what a caller
+         * has to want: it is for a recipe that would do the wrong
+         * thing now and will be asked again. */
+        std::string _skip_if;
+
     public:
         /* Creates a new target fully-fledged target -- this is a
          * target that the Makefile actually knows how to generate. */
@@ -108,6 +126,12 @@ namespace makefile {
         /* Returns a copy of this target that "make clean" also
          * removes the given path for. */
         ptr with_clean_extra(const std::string& path) const;
+
+        /* Returns a copy of this target with the given paths as
+         * order-only prerequisites, and a recipe that runs none of
+         * its lines when "skip_if" expands to anything at all. */
+        ptr with_order_only(const std::vector<std::string>& paths,
+                            const std::string& skip_if) const;
 
         bool included(void) const { return _included; }
 
