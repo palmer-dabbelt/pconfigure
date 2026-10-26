@@ -570,6 +570,19 @@ or \texttt{LIBDIR} has since moved away from is still
 \texttt{make distclean}'s, and so is one left by a target that was
 dropped while there was no list to put it on.
 
+A clean can be asked for in the same \texttt{make} as other goals, as
+in \texttt{make clean all} or \texttt{make clean check}, and means the
+same thing as running them one after the other.  That is also how it
+is done: a \texttt{make} given \texttt{clean} or \texttt{distclean}
+alongside anything else builds none of it, and runs each goal in a
+\texttt{make} of its own, in the order they were given, stopping at
+the first that fails.  One \texttt{make} cannot do both, because it
+decides whether the files its makefiles depend on are current before
+any goal starts --- under \texttt{AUTORECONFIGURE} (see
+Section~\ref{cmd:autoreconfigure}) that includes every header a
+source reads --- and would go on believing that after the clean had
+taken them away.
+
 \subsection{\texttt{make cache-clean} \label{make:cache_clean}}
 
 Removes what is left in an object directory that the build no longer
