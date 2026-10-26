@@ -272,12 +272,20 @@ language_bash::targets(const context::ptr& ctx) const
                  * script that started including a file after the
                  * configure was never rebuilt when that file changed,
                  * while one that stopped including a file it then
-                 * deleted had make stop on the file. */
+                 * deleted had make stop on the file.
+                 *
+                 * A header copy reads nothing but its one source,
+                 * whatever that source includes: what it includes is
+                 * found by the scan of whatever includes the copy, as
+                 * C.  Scanned here, it was read as a script, and an
+                 * "#if" in an ordinary header aborted the configure
+                 * as one pbashc can't read. */
                 if (ctx->autodeps == true && ctx->autoreconfigure == true
                     && this->pastes_includes() == true)
                     fragments.push_back(
                         deps_script(ctx, child, target, opts));
-                else if (ctx->autodeps == true)
+                else if (ctx->autodeps == true
+                         && this->pastes_includes() == true)
                     deps = deps + dependencies(child, path, opts);
             }
 
