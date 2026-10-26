@@ -3474,6 +3474,18 @@ directly.
 The Chisel C++ backend supports linking against C (for binaries and
 C++ libraries), and against Scala (for Scala libraries).
 
+What chisel builds is a Verilog file, elaborated from the Scala and
+copied into the library directory under the target's name, so it
+builds only a \texttt{LIBRARIES}; a \texttt{BINARIES} made of Scala
+is refused, naming its line.  There is no link step, so a
+\texttt{LINKOPTS} is refused too.  Its \texttt{COMPILEOPTS} go to its
+phases rather than to a compiler: \texttt{-W<phase>,<arg>} sends one
+argument to the phase called \texttt{compile} or \texttt{rtl} (in
+either case), and \texttt{-Wdriver,<arg>} sends it to all of them.
+\texttt{-Wrtl,-top,<name>} names the top module the RTL phase
+elaborates.  Any other option, or a phase that doesn't exist, is
+refused naming the line of the target it landed on.
+
 \subsection{\texttt{c++}: C++ \label{lang:cxx}}
 
 C++ is almost exactly the same as C, except that a wider set of file
