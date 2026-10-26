@@ -57,7 +57,7 @@ public:
      * The rules and this list spell the names through the same
      * helpers, so that the two cannot drift apart. */
     static std::vector<std::pair<std::string, std::string>>
-    scratch_files(const std::string& output);
+    scratch_files(const context::ptr& ctx, const std::string& output);
 };
 
 #endif

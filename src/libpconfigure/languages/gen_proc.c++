@@ -32,7 +32,9 @@
  * where its dependency fragment lives, and where the recipe that made
  * the fragment is recorded.  The recipes spell the fragment's own
  * leftovers as "$@.raw" and "$@.tmp", so those two are named off the
- * fragment rather than off the output. */
+ * fragment rather than off the output.  The recipe that made the output
+ * itself is recorded where every other output's is, by
+ * recipe_record_path(). */
 static std::string temporary_path(const std::string& output)
 {
     return output + ".tmp";
@@ -49,11 +51,14 @@ static std::string fragment_context_path(const std::string& output)
 }
 
 std::vector<std::pair<std::string, std::string>>
-language_gen_proc::scratch_files(const std::string& output)
+language_gen_proc::scratch_files(const context::ptr& ctx,
+                                 const std::string& output)
 {
     auto fragment = fragment_path(output);
     return {
         {temporary_path(output), "the temporary"},
+        {recipe_record_path(ctx, output),
+         "the record of the recipe that writes the output"},
         {fragment, "the dependency fragment"},
         {fragment + ".raw", "the dependency fragment's raw --deps answer"},
         {fragment + ".tmp", "the dependency fragment's temporary"},
@@ -707,6 +712,56 @@ language_gen_proc::targets(const context::ptr& ctx) const
                 + " || (rm -f " + tmp_target + " " + target + "; exit 1)"
         };
 
+        /* Which script writes the output is the Configfile's to say: a
+         * GENERATE runs src/<name>.proc and a TGENERATE test/<name>.proc,
+         * and a SRCDIR above the line moves it again.  Changing any of
+         * those leaves an output on disk that the OLD script wrote, and
+         * make has no way of telling: the new script is a prerequisite,
+         * but it is usually older than the output -- the ordinary state
+         * of a checkout -- so the rule is satisfied and the old answer
+         * stays until somebody runs "make clean".  A BASH script and a
+         * HEADERS copy have the same problem and keep a record of their
+         * recipe for it (see language::recipe_record()), and so does
+         * this.
+         *
+         * Unlike theirs, the record is not hung off the rule as a
+         * prerequisite, and that is down to the "cmp" in the recipe
+         * above.  A record that changed is newer than the output; the
+         * new script then runs, and when it prints what the old one
+         * printed the output is deliberately left alone -- so it stays
+         * older than the record, and make would run the script again on
+         * every build from then on.  Pointing a GENERATE at a copy of
+         * its script is not an exotic thing to do.  So the record is
+         * read here instead, by the configure that changed the recipe,
+         * and a record that says something else gets the output written
+         * again now, the same way a missing output is: through the
+         * recipe itself, so that an unchanged answer leaves the output
+         * and everything compiled from it alone.  The record can then
+         * be as new as it likes, since no rule asks.
+         *
+         * A record that isn't there says nothing about the output beside
+         * it, the way recipe_record() treats one: that is a tree
+         * configured before records were kept, or one whose object
+         * directory was thrown away, in which case the output went with
+         * it.  Written through recipe_record() all the same, so that the
+         * record has the one name and the one spelling every other
+         * record has, and so that the Makefile can write it back -- which
+         * is also what keeps "make cache-clean", which deletes from the
+         * object directory whatever the Makefile doesn't name, from
+         * throwing it away and with it the next switch of script.
+         *
+         * The record is written after the run, not before.  A configure
+         * that dies in the middle then leaves the old record beside
+         * whatever is there, which the next configure finds mismatched
+         * and runs again; the other order would leave the new record
+         * vouching for the old output. */
+        auto recipe_path = recipe_record_path(ctx, target);
+        auto recipe = std::string();
+        for (const auto& line: commands)
+            recipe += line + "\n";
+        auto recipe_changed = access(recipe_path.c_str(), F_OK) == 0
+            && file_utils::says(recipe_path, recipe) == false;
+
         /* We actually issue the generate commands here, as that's the only way
          * to tell the rest of pconfigure these commands have actually been
          * generated.
@@ -739,7 +794,11 @@ language_gen_proc::targets(const context::ptr& ctx) const
          *
          * The recipe itself still decides whether the file is
          * replaced, so a script that runs and says what it said
-         * before leaves the output, and its mtime, as they were. */
+         * before leaves the output, and its mtime, as they were.
+         *
+         * A script that is older than the output but isn't the one that
+         * wrote it is the case mtimes can't see, which is what the
+         * recipe record above is for. */
         auto stale = access(target.c_str(), R_OK) != 0
             || file_utils::newer_than(procfile, target);
         for (const auto& line: dep_lines) {
@@ -759,7 +818,7 @@ language_gen_proc::targets(const context::ptr& ctx) const
             }
         }
 
-        if (stale == true) {
+        if (stale == true || recipe_changed == true) {
             auto status = system(commands[0].c_str());
             if (status != 0) {
                 std::cerr << gen_line << "\n"
@@ -783,6 +842,8 @@ language_gen_proc::targets(const context::ptr& ctx) const
             if (system(commands[1].c_str()) != 0)
                 script_failed("--generate", "failed");
         }
+
+        recipe_record(ctx, target, commands);
 
         auto filename = ctx->cmd->debug()->filename();
         auto lineno = ctx->cmd->debug()->line_number();

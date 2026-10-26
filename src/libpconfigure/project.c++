@@ -2974,7 +2974,7 @@ void project::check_generate_names(
     auto mine = std::vector<std::pair<std::string, std::string>>{
         {output, "the output"}
     };
-    for (const auto& scratch: language_gen_proc::scratch_files(output))
+    for (const auto& scratch: language_gen_proc::scratch_files(ctx, output))
         mine.push_back(scratch);
 
     for (const auto& path: mine) {
