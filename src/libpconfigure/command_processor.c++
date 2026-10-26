@@ -576,9 +576,10 @@ static void refuse_target_leaving_project(const command::ptr& cmd)
     abort();
 }
 
-/* Returns "cmd", a BINARIES, LIBEXECS, TESTEXECS or LIBRARIES, named
- * by the file it builds rather than by the text that named it, and
- * refuses one whose name is a directory rather than a file.
+/* Returns "cmd", a BINARIES, LIBEXECS, TESTEXECS, LIBRARIES or
+ * HEADERS, named by the file it builds rather than by the text that
+ * named it, and refuses one whose name is a directory rather than a
+ * file.
  *
  * A target's name is pasted onto its output directory to say where it
  * lands, onto the object directory to say where it is linked, and
@@ -592,6 +593,14 @@ static void refuse_target_leaving_project(const command::ptr& cmd)
  * onto itself.  Normalizing once, here, means every one of those
  * places is handed the same name, the way a SOURCES or a GENERATE
  * already is.
+ *
+ * A HEADERS is a target in exactly the same sense: its name is pasted
+ * onto the include directory to say where its copy lands and onto the
+ * install directory to say where it goes, and "api/x.h" and
+ * "api/./x.h" were two rules writing one include/api/x.h -- the second
+ * line's header dropped by a serial "make install" and the two racing
+ * into one temporary file under -j -- while "sub/a.h/" was an install
+ * rule waiting on an "include/sub/a.h/" no file could ever be.
  *
  * A trailing slash is dropped rather than refused.  It adds nothing
  * a target's name could mean -- pconfigure is the one making the
@@ -627,10 +636,14 @@ static command::ptr normalized_target(const command::ptr& cmd)
         : written.substr(last + 1);
 
     if (tail == "." || tail == ".." || name == "." || name.size() == 0) {
-        auto command_name = std::to_string(cmd->type());
-        auto example = cmd->type() == command_type::LIBRARIES
-            ? std::string("libmain.so")
-            : std::string("main");
+        /* Named as written, since a HEADERSRC arrives here as its
+         * HEADERS half and the line says HEADERSRC. */
+        auto command_name = std::to_string(cmd->written_as());
+        auto example = std::string("main");
+        if (cmd->type() == command_type::LIBRARIES)
+            example = "libmain.so";
+        if (cmd->type() == command_type::HEADERS)
+            example = "main.h";
 
         std::cerr << std::to_string(cmd->debug()) << "\n"
                   << "  error: " << command_name << " names a directory"
@@ -2238,8 +2251,16 @@ void command_processor::process_one(const command::ptr& cmd)
         if (cmd->written_as() != command_type::HEADERSRC)
             refuse_target_leaving_project(cmd);
 
+        /* Normalized for the same reasons a BINARIES is, so that two
+         * spellings of one header meet in the duplicate check and a
+         * trailing slash doesn't end up on the install rule.  Only
+         * this half of a HEADERSRC is: its SOURCES half is a source,
+         * and a source's name is already resolved where it is
+         * looked for. */
+        auto target = normalized_target(cmd);
+
         clear_until({context_type::DEFAULT}, cmd);
-        dup_tos_and_push(context_type::HEADER, cmd);
+        dup_tos_and_push(context_type::HEADER, target);
 
         _stack.top()->bin_dir = _stack.top()->hdr_dir;
 
