@@ -254,7 +254,10 @@ void build_system_meson::take_configureopt(const std::string& opt)
     if (configure_arg.size() > 0) {
         /* Raw, and after everything this build system wrote, so it's
          * the last word on anything it names -- which is why it gets
-         * the same check a --define does. */
+         * the same check a --define does.  Raw also means the shell
+         * reads its quoting first, so that has to be quoting it can
+         * read. */
+        refuse_unbalanced_quoting("--configure-arg", configure_arg);
         refuse_second_answer("--configure-arg", configure_arg);
 
         _configure_args.push_back(configure_arg);

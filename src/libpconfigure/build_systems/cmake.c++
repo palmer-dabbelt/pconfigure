@@ -470,7 +470,9 @@ void build_system_cmake::take_configureopt(const std::string& opt)
          * everything this build system wrote, so a "-D" in here is
          * the last word on any variable it names -- which made it the
          * widest way round the --define check above, and is why it
-         * gets the same one. */
+         * gets the same one.  Raw also means the shell reads its
+         * quoting first, so that has to be quoting it can read. */
+        refuse_unbalanced_quoting("--configure-arg", configure_arg);
         refuse_second_answer("--configure-arg", configure_arg);
 
         _configure_args.push_back(configure_arg);

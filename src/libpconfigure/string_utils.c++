@@ -189,6 +189,40 @@ std::string string_utils::shell_unescape(const std::string& in)
     return out;
 }
 
+std::string string_utils::shell_quoting_problem(const std::string& in)
+{
+    auto quote = '\0';
+
+    for (size_t i = 0; i < in.size(); ++i) {
+        if (quote == '\'') {
+            if (in[i] == '\'')
+                quote = '\0';
+        } else if (in[i] == '\\') {
+            /* The character after it is never a quote's, whichever
+             * side of a double quote this is -- which is too generous
+             * inside one, where "\d" keeps its backslash, but never
+             * about a quote.  One with nothing after it inside a
+             * double quote leaves that quote open, and that is what
+             * gets said about it below. */
+            if (i + 1 >= in.size() && quote == '\0')
+                return "ends in a backslash";
+            ++i;
+        } else if (quote == '"') {
+            if (in[i] == '"')
+                quote = '\0';
+        } else if (in[i] == '\'' || in[i] == '"') {
+            quote = in[i];
+        }
+    }
+
+    if (quote == '\'')
+        return "opens a single quote that never closes";
+    if (quote == '"')
+        return "opens a double quote that never closes";
+
+    return "";
+}
+
 bool string_utils::has_extension(const std::string& name,
                                  const std::string& extension)
 {

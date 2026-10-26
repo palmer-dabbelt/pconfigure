@@ -966,6 +966,27 @@ namespace {
     }
 }
 
+void build_system::refuse_unbalanced_quoting(const std::string& flag,
+                                             const std::string& written) const
+{
+    auto problem = string_utils::shell_quoting_problem(written);
+    if (problem.size() == 0)
+        return;
+
+    error_at_line() << name() << ": '" << flag << " " << written << "' "
+                    << problem << "\n"
+                    << "  this is pasted into a recipe as written, so the"
+                    << " shell reads its quoting before the tree sees any of"
+                    << " it -- a quote left open is a recipe every 'make'"
+                    << " stops at with \"unexpected EOF\", and a backslash"
+                    << " at the end escapes the space in front of whatever"
+                    << " the recipe puts next and glues the two together\n"
+                    << "  close the quote, or put a backslash in front of a"
+                    << " quote or backslash that is meant to reach the tree"
+                    << " as itself (\\', \\\" or \\\\)\n";
+    abort();
+}
+
 void build_system::refuse_second_answer(const std::string& flag,
                                         const std::string& written) const
 {

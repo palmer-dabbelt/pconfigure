@@ -600,6 +600,24 @@ protected:
     void refuse_second_answer(const std::string& flag,
                               const std::string& written) const;
 
+    /* Refuses text that is pasted into a recipe as written when the
+     * shell can't read its quoting: a quote that never closes, or a
+     * backslash at the very end.  "flag" is the option as this build
+     * system's diagnostics spell it and "written" is what came after
+     * it, as for refuse_second_answer().
+     *
+     * The raw options -- a --configure-arg, an --autoreconf -- are
+     * raw so that whoever writes one can quote it the way the shell
+     * wants, and nothing between the Configfile and the shell looks
+     * at that quoting.  Written wrong, it surfaces as a recipe line
+     * nobody wrote that fails every make with "unexpected EOF", or
+     * as a trailing backslash that escapes the space in front of the
+     * next argument and runs, gluing the two together.  Either way
+     * the line that did it is a long way off, and here it can still
+     * be named. */
+    void refuse_unbalanced_quoting(const std::string& flag,
+                                   const std::string& written) const;
+
     /* One NAME=VALUE bound for the environment of a command this
      * build system writes, refused when it isn't one.  "flag" is the
      * option as that build system's diagnostics spell it, "written"

@@ -64,6 +64,23 @@ namespace string_utils {
      * off, so -DX='"str"' still leaves X a string literal. */
     std::string shell_unescape(const std::string& in);
 
+    /* What is wrong with the quoting of a piece of a command line, as
+     * a phrase that can finish the sentence "it ...", or "" when the
+     * shell would read it to the end without complaint.  Read by the
+     * same rules as shell_unescape() above, and asked of the text
+     * that is pasted into a recipe as written, where the shell is the
+     * first thing to read it and a mistake in its quoting is a recipe
+     * nobody wrote.
+     *
+     * There are three: a single quote that never closes, a double
+     * quote that never closes, and a backslash with nothing after it.
+     * The first two are a recipe the shell refuses with "unexpected
+     * EOF" on every make.  The third is worse, because it runs: it
+     * escapes whatever the recipe put after the text, which is the
+     * space in front of the next argument, and the two arguments
+     * reach the program as one. */
+    std::string shell_quoting_problem(const std::string& in);
+
     /* Joins the string using delim as the separator between
      * elements. */
     std::string join(const std::vector<std::string>& in,

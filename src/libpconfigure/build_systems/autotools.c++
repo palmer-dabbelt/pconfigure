@@ -378,7 +378,12 @@ bool build_system_autotools::handle_configureopt(const std::string& opt)
     if (autoreconf.size() > 0) {
         /* The other half of the pair above: naming the program that
          * makes the configure takes back a "--no-autoreconf" that
-         * said nothing does. */
+         * said nothing does.
+         *
+         * It is a command line, run as written, so its quoting is the
+         * shell's to read and has to be quoting the shell can. */
+        refuse_unbalanced_quoting("--autoreconf", autoreconf);
+
         _autoreconf = autoreconf;
         _no_autoreconf = false;
         return true;
