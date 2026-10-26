@@ -364,6 +364,17 @@ void makefile::makefile::write_to_file(const std::string& filename)
      * not passed down into the builds of vendored trees either. */
     fprintf(file, "unexport CDPATH\n\n");
 
+    /* A watched file's name can have a parenthesis in it, and inside
+     * the "$(wildcard ...)" that watches it make would count that
+     * parenthesis towards the end of the call.  present_prerequisite()
+     * spells each one as a reference to one of these instead, and
+     * since make expands a rule's prerequisites as it reads the rule,
+     * they are defined here, ahead of any rule at all.  Simply
+     * expanded, so each is the one character and never anything make
+     * has to look at again. */
+    fprintf(file, "%s := (\n", left_parenthesis);
+    fprintf(file, "%s := )\n\n", right_parenthesis);
+
     /* GNU make ships pattern rules that build a program out of a
      * source file sitting next to it, and they fire on any
      * prerequisite that has no rule of its own.  A generated Makefile
@@ -853,17 +864,32 @@ void makefile::makefile::write_to_file(const std::string& filename)
      * Makefile is never handed such a list, since there nothing would
      * act on it but make remaking the files it names. */
     if (_configfiles.size() > 0) {
-        fprintf(file, "%s:", filename.c_str());
-        for (const auto& configfile: _configfiles) {
+        /* make reads a word with a '(' in it, followed later on the
+         * same rule line by a word ending in ')', as an archive group
+         * -- "lib(a.o b.o)" -- whatever either word was expanded out
+         * of, so a "notes(1.txt" next to a "Configfile.more)" would
+         * turn both into members of an archive called "notes".  Each
+         * name with a '(' gets a rule line of its own, ahead of the
+         * one the recipe belongs to; make adds up a target's
+         * prerequisites across all of its rule lines. */
+        auto spell = [&](const std::string& configfile) {
             auto built = std::find(_configfiles_built.begin(),
                                    _configfiles_built.end(),
                                    configfile) != _configfiles_built.end();
             if (built)
-                fprintf(file, " %s", prerequisite(configfile).c_str());
-            else
-                fprintf(file, " %s",
-                        present_prerequisite(configfile).c_str());
-        }
+                return prerequisite(configfile);
+            return present_prerequisite(configfile);
+        };
+
+        for (const auto& configfile: _configfiles)
+            if (configfile.find('(') != std::string::npos)
+                fprintf(file, "%s: %s\n", filename.c_str(),
+                        spell(configfile).c_str());
+
+        fprintf(file, "%s:", filename.c_str());
+        for (const auto& configfile: _configfiles)
+            if (configfile.find('(') == std::string::npos)
+                fprintf(file, " %s", spell(configfile).c_str());
         fprintf(file, "\n");
 
         if (_write_reconfigure == true && _reconfigure_recipe == true) {

@@ -165,6 +165,16 @@ namespace makefile {
      * not: a "$(wildcard ...)" of it, or something longer for a name
      * that the bare result of that would not be read back as. */
     std::string present_prerequisite(const std::string& path);
+
+    /* The make variables present_prerequisite() spells a parenthesis
+     * with, which every generated Makefile defines before its first
+     * rule.  Named like the rest of what the Makefile keeps for itself,
+     * so that no Configfile's variable can be one of them.  Plain
+     * character constants rather than strings, because this code is
+     * linked into more than one of the shared libraries and a global
+     * with a constructor would be built and torn down once by each. */
+    static const char *const left_parenthesis = "__pconfigure__lparen";
+    static const char *const right_parenthesis = "__pconfigure__rparen";
 }
 
 #endif

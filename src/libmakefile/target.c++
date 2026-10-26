@@ -401,18 +401,55 @@ std::string makefile::wildcard_argument(const std::string& path)
  * before the expansion and after it, so it is the one character the
  * rule line would otherwise need that this leaves alone.
  *
+ * A parenthesis is the other thing a call reads specially: make finds
+ * the ')' that ends "$(wildcard" or "$(foreach" by counting, before it
+ * expands anything, so the ')' in "notes)1.txt" ends the call early
+ * and leaves "1.txt)" on the rule as a file nobody makes, and the '('
+ * in "notes(1.txt" leaves the call unterminated.  A balanced pair is
+ * counted open and shut again and comes to no harm, but there is no
+ * backslash for either one.  What make does not count is the value
+ * of a variable, so each parenthesis is written as a reference to one
+ * holding it, which write_to_file() defines at the top of every
+ * Makefile; the reference is balanced, and once it is expanded the
+ * parenthesis is just a character in the name.  Every one is spelled
+ * that way, balanced or not, so that what the call reads never
+ * depends on whether the rest of the name happens to close it.
+ *
+ * Back on the rule line a lone ')' is an ordinary character, and so is
+ * a lone '(' as long as nothing later on the same line ends in ')':
+ * make takes that pair of words for an archive group, "lib(a.o b.o)",
+ * which is why the rule that watches the Configfiles gives each name
+ * with a '(' a line of its own.
+ *
  * A name that needs none of it keeps the plain $(wildcard), which is
  * what every Configfile on the rule is, and what anybody reading the
- * Makefile expects to find there.  Whitespace and an unmatched
- * parenthesis are still out of reach: there is no spelling of either
- * that a $(wildcard) and a rule line both read back as written. */
+ * Makefile expects to find there.  Whitespace is still out of reach:
+ * there is no spelling of it that a $(wildcard) and a rule line both
+ * read back as written.  So is a name that ends in ')' with a '('
+ * before it, which make reads as a member of an archive however it
+ * got onto the line. */
+static std::string spell_parentheses(const std::string& text)
+{
+    auto out = std::string();
+    for (const auto& c: text) {
+        if (c == '(')
+            out += std::string("$(") + makefile::left_parenthesis + ")";
+        else if (c == ')')
+            out += std::string("$(") + makefile::right_parenthesis + ")";
+        else
+            out += c;
+    }
+    return out;
+}
+
 std::string makefile::present_prerequisite(const std::string& path)
 {
-    auto found = "$(wildcard " + wildcard_argument(path) + ")";
+    auto found = "$(wildcard " + spell_parentheses(wildcard_argument(path))
+               + ")";
     if (path.find_first_of(":;|" + glob_characters) == std::string::npos)
         return found;
 
     auto globbed = path.find_first_of(glob_characters) != std::string::npos;
     auto name = quote_for_make(globbed ? quote_for_glob(path) : path, ":;|");
-    return "$(foreach f," + found + "," + name + ")";
+    return "$(foreach f," + found + "," + spell_parentheses(name) + ")";
 }
