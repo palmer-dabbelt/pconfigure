@@ -3813,7 +3813,24 @@ void command_processor::process_directives(const std::string& path,
 
     pinclude::list(
         path,
-        [](std::string) { return 0; },
+
+        /* A directive can also be reached through an "#include"
+         * instead of sitting in "path" itself (see
+         * testdeps-directive.bash's "includes-it.bash"), so every file
+         * this reads is one whose edits can change what the Makefile
+         * says -- same reason as the add_configfile_dep() above, one
+         * level over.  That has to be every file it reads and not
+         * only the ones a directive turned up in: an included file
+         * that holds no directive yet is the one whose first is the
+         * edit to notice.  The system's headers never get here,
+         * since no include directories are handed over to search: an
+         * include is only found by its path from the file that wrote
+         * it, and the C reading never looks there for an angled one,
+         * so a "<stdio.h>" is never named at all. */
+        [](std::string included) {
+            add_configfile_dep(included);
+            return 0;
+        },
         true,
 
         /* A C test is still C, and a "#pconfigure" or an "#include"
@@ -3826,14 +3843,6 @@ void command_processor::process_directives(const std::string& path,
         language_bash::syntax_of(path),
 
         [&](const pinclude::directive& directive) {
-            /* The directive can be reached through an "#include"
-             * instead of sitting in "path" itself (see
-             * testdeps-directive.bash's "includes-it.bash"), and it's
-             * that file's edits a TESTDEPS on it has to survive --
-             * same reason as the add_configfile_dep() above, one
-             * level over. */
-            add_configfile_dep(directive.filename);
-
             auto debug = std::make_shared<debug_info>(directive.filename,
                                                       directive.line_number,
                                                       directive.line);
