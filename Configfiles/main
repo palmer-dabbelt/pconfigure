@@ -969,6 +969,12 @@ TESTSRC     += perl-binary-without-sources-fails-at-make-naming-line.bash
 TESTSRC     += pkgconfig-library-sed-script-is-not-its-template.bash
 TESTSRC     += pkgconfig-library-second-sources-refused-with-line.bash
 TESTSRC     += pkgconfig-library-sed-script-applied-to-template.bash
+TESTSRC     += chisel-binaries-refused-names-line.bash
+TESTSRC     += chisel-linkopts-names-line.bash
+TESTSRC     += chisel-unknown-compileopt-names-line.bash
+TESTSRC     += chisel-unknown-phase-option-names-line.bash
+TESTSRC     += chisel-driver-target-unknown-names-line.bash
+TESTSRC     += chisel-phase-option-reaches-its-phase.bash
 
 # Incremental-rebuild behavior, one dependency type per test, the
 # shapes LLVM's CMake build and Linux's Kbuild express (see the

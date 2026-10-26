@@ -25,6 +25,7 @@
 #include "../string_utils.h++"
 #include <libmakefile/exclusive_target.h++>
 #include <assert.h>
+#include <ctype.h>
 #include <iostream>
 #include <map>
 
@@ -58,13 +59,36 @@ namespace std {
     }
 }
 
-static chisel_phase check_chisel_phase(const std::string& str)
+/* Looks a phase up by the name a COMPILEOPTS gave it, without regard
+ * to case.  A name that isn't a phase is a mistake in a Configfile,
+ * so it's answered with false for the caller to refuse along with the
+ * line it came from, rather than thrown: nothing here knows that line,
+ * and nothing above here catches anything. */
+static bool find_chisel_phase(const std::string& str, chisel_phase& out)
 {
-    for (const auto& ctx: all_chisel_phases)
-        if (strcasecmp(str.c_str(), std::to_string(ctx).c_str()) == 0)
-            return ctx;
+    for (const auto& phase: all_chisel_phases) {
+        if (strcasecmp(str.c_str(), std::to_string(phase).c_str()) == 0) {
+            out = phase;
+            return true;
+        }
+    }
 
-    throw "Unable to process " + str + " chisel_phase";
+    return false;
+}
+
+/* The phases' names, the way a refusal lists them for whoever has to
+ * pick one: lower case, since that is how they're usually written in
+ * a "-W<phase>," and the lookup doesn't mind. */
+static std::string chisel_phase_names(void)
+{
+    auto names = std::vector<std::string>();
+    for (const auto& phase: all_chisel_phases) {
+        auto name = std::to_string(phase);
+        for (auto& c: name)
+            c = tolower(c);
+        names.push_back(name);
+    }
+    return string_utils::join(names, ", ");
 }
 
 /* A class to hold the various phase arguments. */
@@ -106,38 +130,41 @@ language_chisel::targets(const context::ptr& ctx) const
 {
     assert(ctx != NULL);
 
-    /* Generating Chisel output is pretty much the same regardless of
-     * the target type, there's just a slightly */
-    auto target_path = [&](void)
+    /* Every refusal below is about a Configfile line, so each starts
+     * by naming one.  The options don't remember which line wrote
+     * them, so it's the line of the target they landed on, and the
+     * refusal quotes the option itself so it can be found from there.
+     * The context tree isn't printed: it's pconfigure's business, and
+     * the line already says everything in it that the reader wrote. */
+    auto refuse = [&](void) -> std::ostream&
         {
-            switch (ctx->type) {
-            case context_type::LIBRARY:
-            return ctx->lib_dir + "/" + ctx->cmd->data();
+            std::cerr << std::to_string(ctx->cmd->debug()) << "\n";
+            return std::cerr;
+        };
 
-            case context_type::DEFAULT:
-            case context_type::BINARY:
-            case context_type::GENERATE:
-            case context_type::SOURCE:
-            case context_type::TEST:
-            case context_type::HEADER:
-            case context_type::PHONY:
-            std::cerr << "Unimplemented context type: "
-            << std::to_string(ctx->type)
-            << "\n";
-            std::cerr << ctx->as_tree_string("  ");
-            abort();
-            break;
-            }
-
-            std::cerr << "context type not in switch\n";
-            abort();
-        }();
+    /* What chisel makes is a Verilog file, copied into the library
+     * directory under the target's name, so a LIBRARIES is the only
+     * thing it can build.  A BINARIES is the likely mistake, since
+     * that's what a Scala program would be anywhere else, and the
+     * name it was given is the one to suggest. */
+    if (ctx->type != context_type::LIBRARY) {
+        refuse() << "  error: chisel can't build a "
+                 << std::to_string(ctx->cmd->type())
+                 << ": what it makes from Scala is a Verilog file, which is"
+                 << " a LIBRARIES\n"
+                 << "  write 'LIBRARIES += " << ctx->cmd->data() << ".v'"
+                 << " instead\n";
+        abort();
+    }
 
     /* There can't be any link-time options for Chisel projects
-     * because there really isn't an actual link time, so I just fail
-     * here if anything is actually provided. */
-    if (this->link_opts(ctx).size() != 0) {
-        std::cerr << "Chisel projects can't have link-time arguments\n";
+     * because there really isn't an actual link time: the library is
+     * a copy of what the elaborator wrote.  Quietly dropping one would
+     * leave whoever wrote it believing it did something. */
+    for (const auto& opt: this->link_opts(ctx)) {
+        refuse() << "  error: chisel libraries aren't linked, so the"
+                 << " LINKOPTS '" << opt << "' has nothing to apply to\n"
+                 << "  remove that LINKOPTS\n";
         abort();
     }
 
@@ -153,23 +180,38 @@ language_chisel::targets(const context::ptr& ctx) const
             for (const auto& phase: all_chisel_phases)
                 phase_args.insert({phase, arg});
 
-            try {
-                if (arg.key() == "target")
-                    target_phase = check_chisel_phase(arg.value());
-            } catch(...) {
-                std::cerr << "Unknown target name " << arg.value() << "\n";
-                std::cerr << "  This probably came from a -Wdriver,-target\n";
-                std::cerr << ctx->as_tree_string("  ");
+            if (arg.key() == "target"
+                && find_chisel_phase(arg.value(), target_phase) == false) {
+                refuse() << "  error: the COMPILEOPTS '" << opt << "' makes"
+                         << " the chisel phase '" << arg.value() << "' the"
+                         << " target, and chisel has no phase by that name\n"
+                         << "  write '-Wdriver,-target,<phase>' with one of: "
+                         << chisel_phase_names() << "\n";
                 abort();
             }
         } else if (std::regex_match(opt, std::regex("-W.*,.*"))) {
-            /* "-W*,*,*" is sent to only a single phase. */
+            /* "-W*,*,*" is sent to only a single phase, whose name is
+             * everything between the "-W" and the first comma. */
             auto comma = opt.find(',');
-            auto phase = check_chisel_phase(opt.substr(2, comma-1));
+            auto name = opt.substr(2, comma-2);
+            auto phase = chisel_phase::RTL;
+            if (find_chisel_phase(name, phase) == false) {
+                refuse() << "  error: the COMPILEOPTS '" << opt << "' is for"
+                         << " the chisel phase '" << name << "', and chisel"
+                         << " has no phase by that name\n"
+                         << "  write '-W<phase>,<arg>' with one of: "
+                         << chisel_phase_names()
+                         << ", or '-Wdriver,<arg>' for all of them\n";
+                abort();
+            }
             phase_args.insert({phase, opt.substr(comma+1)});
         } else {
-            std::cerr << "ERROR: unknown Chisel argument " << opt << "\n";
-            std::cerr << ctx->as_tree_string("  ");
+            refuse() << "  error: chisel can't use the COMPILEOPTS '" << opt
+                     << "': its options go to one of its phases rather than"
+                     << " to a compiler\n"
+                     << "  write '-W<phase>,<arg>' with one of: "
+                     << chisel_phase_names()
+                     << ", or '-Wdriver,<arg>' for all of them\n";
             abort();
         }
     }
