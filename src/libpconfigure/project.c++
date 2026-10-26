@@ -1208,6 +1208,75 @@ void project::check_aggregated_test_suites(
     }
 }
 
+void project::check_phony_suite_goals(const std::vector<ptr>& aggregated) const
+{
+    /* Only this project's own PHONYs: they are the ones that land in
+     * this project's Makefile with nothing in front of them.  One from
+     * a subproject is under that subproject's directory here, and is
+     * asked about when the subproject takes its own turn at this,
+     * which is the Makefile it lands in bare. */
+    for (const auto& ctx: _processor->output_contexts()) {
+        if (ctx->type != context_type::PHONY)
+            continue;
+
+        /* As make reads it, which is without any "./" on the front:
+         * "./check-quick" is the suite's goal as much as the bare
+         * spelling is. */
+        const auto& written = ctx->cmd->data();
+        const auto name = string_utils::make_target_name(written);
+
+        auto suite = std::string();
+        for (const auto& prefix: {"check-", "report-"}) {
+            if (name.compare(0, strlen(prefix), prefix) == 0)
+                suite = name.substr(strlen(prefix));
+        }
+        if (suite.size() == 0)
+            continue;
+
+        /* Any suite this Makefile runs, not only the ones this project
+         * declared: a suite a subproject declares gets its
+         * "check-<name>" rule written up here too, since this is the
+         * Makefile that gets asked for it.  Found by its line rather
+         * than by its members, because the line is what the complaint
+         * has to point at as well as the PHONY's. */
+        test_suite::ptr declared = nullptr;
+        for (const auto& project: aggregated) {
+            declared = project->processor()->test_suite_named(suite);
+            if (declared != nullptr)
+                break;
+        }
+        if (declared == nullptr)
+            continue;
+
+        /* The same collision refuse_goal_name() turns down for "clean"
+         * and the rest, with a name that only becomes a goal once a
+         * suite is declared -- so it is asked here, once every
+         * Configfile has been read, rather than at either line: the
+         * suite can come after the PHONY, or from a subproject that
+         * wasn't read yet.  Merged, "make check-<suite>" would build
+         * whatever the PHONY stands for on top of running the suite,
+         * and asking for the PHONY by name would run the suite. */
+        std::cerr << std::to_string(ctx->cmd->debug()) << "\n"
+                  << "  error: PHONY can't be called '" << written
+                  << "': ";
+        if (name != written)
+            std::cerr << "make reads that as '" << name << "', which ";
+        else
+            std::cerr << "that ";
+        std::cerr << "is the goal pconfigure writes for the test"
+                  << " suite '" << suite << "'\n"
+                  << "  " << std::to_string(declared->cmd()->debug())
+                  << " declares that suite\n"
+                  << "  make would read the two as one rule, so the"
+                  << " suite would also build whatever this PHONY stands"
+                  << " for, and asking for the PHONY would also run the"
+                  << " suite\n"
+                  << "  give the PHONY a name of its own, after what its"
+                  << " tests exercise -- 'integration', say\n";
+        abort();
+    }
+}
+
 void project::check_bootstrap(const std::vector<ptr>& everyone) const
 {
     const auto& srcpath = _processor->bootstrap();

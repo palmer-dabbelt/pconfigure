@@ -306,6 +306,12 @@ int main(int argc, const char **argv)
     for (const auto& project: projects)
         project->check_aggregated_test_suites(project::flatten(project));
 
+    /* Once every Configfile has been read, because a suite can be
+     * declared after the PHONY whose name it takes, or by a
+     * subproject read after the line. */
+    for (const auto& project: projects)
+        project->check_phony_suite_goals(project::flatten(project));
+
     /* Before any Makefile, rather than along with each project's own,
      * because the Makefile make is run on carries a rule for every
      * file like these that the run wrote (see

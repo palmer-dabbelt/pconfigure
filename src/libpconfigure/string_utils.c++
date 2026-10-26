@@ -200,6 +200,19 @@ bool string_utils::has_extension(const std::string& name,
                         extension) == 0;
 }
 
+std::string string_utils::make_target_name(const std::string& name)
+{
+    /* The same loop as make's own, which only strips a "./" with
+     * something after it. */
+    size_t start = 0;
+    while (name.size() > start + 2 && name.compare(start, 2, "./") == 0) {
+        start += 2;
+        while (start < name.size() && name[start] == '/')
+            start++;
+    }
+    return name.substr(start);
+}
+
 std::string string_utils::join(const std::vector<std::string>& in,
                                const std::string& delim)
 {

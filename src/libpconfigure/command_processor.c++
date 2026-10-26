@@ -27,6 +27,7 @@
 #include "languages/phony.h++"
 #include "string_utils.h++"
 #include <pinclude.h++>
+#include <algorithm>
 #include <cctype>
 #include <cstdlib>
 #include <iostream>
@@ -1008,6 +1009,71 @@ static void refuse_make_special_character(const command::ptr& cmd)
                   << " that name here\n";
         abort();
     }
+}
+
+/* Refuses a PHONY that takes the name of a goal pconfigure writes into
+ * every Makefile itself.  A PHONY lands in its project's Makefile as a
+ * bare rule, and make reads two rules for one name as one rule with
+ * both sets of prerequisites -- so "PHONY += clean" with a TESTDEPS
+ * doesn't make a second thing called clean, it makes "make clean"
+ * build that TESTDEPS before it removes anything, and fail without
+ * removing anything in exactly the tree that won't build.  Every one
+ * of these goes the same way: "make install" and "make uninstall"
+ * picking up a build, "make check" or "make report" building things
+ * no test asked for, "make all" collecting a name that was kept out
+ * of it on purpose, and "make reconfigure" building before it runs.
+ *
+ * Asked of the name as written rather than of where it ends up.  In
+ * the Makefile at the top a subproject's PHONY is under the
+ * subproject's directory and collides with nothing, but that same
+ * Makefile is the one somebody gets by walking into the subproject
+ * and running make there, where the directory is gone and the name is
+ * as bare as it was written.
+ *
+ * A suite's "check-<name>" and "report-<name>" are the same collision
+ * and are refused too, but not here: the suite can be declared further
+ * down this Configfile, or in a subproject that isn't read yet, so
+ * that is project::check_phony_suite_goals()'s question..
+ *
+ * Asked of the name make will read rather than the characters on the
+ * line, though: make drops a "./" from the front of every target, so
+ * "PHONY += ./clean" is a rule called "clean" in the Makefile as much
+ * as the bare spelling is, and merges into the real one just the
+ * same. */
+static void refuse_goal_name(const command::ptr& cmd)
+{
+    static const std::vector<std::string> goals = {
+        "all",
+        "cache-clean",
+        "check",
+        "clean",
+        "distclean",
+        "install",
+        "reconfigure",
+        "report",
+        "uninstall",
+    };
+
+    const auto goal = string_utils::make_target_name(cmd->data());
+    if (std::find(goals.begin(), goals.end(), goal) == goals.end())
+        return;
+
+    std::cerr << std::to_string(cmd->debug()) << "\n"
+              << "  error: PHONY can't be called '" << cmd->data()
+              << "': ";
+    if (goal != cmd->data())
+        std::cerr << "make reads that as '" << goal << "', which ";
+    else
+        std::cerr << "that ";
+    std::cerr << "is a goal every Makefile pconfigure writes"
+              << " already has\n"
+              << "  make would read the two as one rule, so 'make "
+              << goal << "' would also build whatever this PHONY"
+              << " stands for, and asking for the PHONY would also do"
+              << " whatever 'make " << goal << "' does\n"
+              << "  give the PHONY a name of its own, after what its"
+              << " tests exercise -- 'integration', say\n";
+    abort();
 }
 
 /* The refusal of a line written with the wrong operator.  Which of
@@ -2401,6 +2467,8 @@ void command_processor::process_one(const command::ptr& cmd)
     {
         if (cmd->check_operation("+=") == false)
             goto bad_op_pluseq;
+
+        refuse_goal_name(cmd);
 
         clear_until({context_type::DEFAULT}, cmd);
         dup_tos_and_push(context_type::PHONY, cmd);

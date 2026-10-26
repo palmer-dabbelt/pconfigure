@@ -244,6 +244,13 @@ public:
      * tree a build pulls in. */
     void check_aggregated_test_suites(const std::vector<ptr>& aggregated) const;
 
+    /* Complains if one of this project's PHONYs is called
+     * "check-<name>" or "report-<name>" for a suite this project's
+     * Makefile writes those goals for.  "aggregated" is the same list
+     * as above, because a suite a subproject declares gets its goals
+     * written into this Makefile too. */
+    void check_phony_suite_goals(const std::vector<ptr>& aggregated) const;
+
     /* Complains if a BOOTSTRAP names a tree that doesn't build the
      * pconfigure it promised.  "everyone" is every project in the
      * run, since the tree is one of them by the time this is asked.

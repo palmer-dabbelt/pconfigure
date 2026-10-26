@@ -77,6 +77,14 @@ namespace string_utils {
      * one. */
     bool has_extension(const std::string& name, const std::string& extension);
 
+    /* A target's name the way make reads it: every "./" on the front
+     * gone, along with any run of '/' after one, so "./clean" and
+     * ".//./clean" are both "clean".  make does this to every target
+     * and prerequisite it reads, which makes two spellings that differ
+     * only there two rules for one name.  A name that is nothing but
+     * "./" keeps it, as make leaves it too. */
+    std::string make_target_name(const std::string& name);
+
     /* One word of shell, quoted so that whatever shell runs it takes
      * the whole of it as one word however many spaces, semicolons or
      * asterisks are in the middle.
