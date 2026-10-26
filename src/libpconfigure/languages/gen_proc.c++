@@ -135,6 +135,14 @@ std::string language_gen_proc::fragment_recipe_record(const std::string& output)
     return fragment_context_path(output);
 }
 
+/* The --deps answer the build last heard, kept only so that its
+ * mtime moves when the answer does: see where the fragment's recipe
+ * writes it. */
+static std::string answer_path(const std::string& output)
+{
+    return fragment_path(output) + ".answer";
+}
+
 std::vector<std::pair<std::string, std::string>>
 language_gen_proc::scratch_files(const context::ptr& ctx,
                                  const std::string& output)
@@ -149,6 +157,8 @@ language_gen_proc::scratch_files(const context::ptr& ctx,
         {fragment + ".tmp", "the dependency fragment's temporary"},
         {fragment_context_path(output),
          "the record of the dependency fragment's recipe"},
+        {answer_path(output),
+         "the record of the --deps answer the build last heard"},
     };
 }
 
@@ -647,36 +657,71 @@ language_gen_proc::targets(const context::ptr& ctx) const
                 abort();
             }
 
-            /* What it printed is relative to itself.  An optional
-             * line naming several paths keeps them inside the one
-             * filter, the way the fragment below spells it, since
-             * $(wildcard) takes a list as readily as a single
-             * pattern.
+            /* What it printed is relative to itself.  A line naming
+             * several paths keeps them inside the one function call,
+             * since $(wildcard) and $(subst) take a list as readily as
+             * a single path.
              *
-             * Each path is whatever the script printed, so it is
-             * spelled for where it lands, which the two kinds of line
-             * do differently: a mandatory path lands bare on the rule
-             * line, where a '#' cuts it short, a '$' expands and a ':'
-             * makes a second rule separator, and an optional one lands
-             * inside the filter's function calls, where only the '$'
-             * does -- the filter itself sees to the ':' in what it
-             * finds. */
+             * A mandatory line counts only until the fragment further
+             * down has been made.  This answer is a snapshot, and a
+             * script that globs a directory stops naming a file once
+             * the file is deleted -- but the snapshot went on naming
+             * it until somebody reconfigured, outright, as a
+             * prerequisite no rule builds: every make from then on
+             * stopped with "No rule to make target", AUTORECONFIGURE
+             * or not, for an input the script no longer reads.  The
+             * fragment says what the script reads now, and names a
+             * mandatory path just as outright, so what the snapshot
+             * adds once the fragment exists is nothing but the chance
+             * to be out of date.  Before then it is all there is: the
+             * first make after a configure, or after a clean, can need
+             * the output while it is still remaking the fragments it
+             * includes -- under AUTORECONFIGURE a C source's own
+             * fragment asks for the headers it reads -- and an input
+             * that some other rule builds has to be built first.
+             *
+             * Each path is whatever the script printed, and on either
+             * kind of line it lands inside function calls, where a '$'
+             * expands and a '#' is an ordinary character.  What the
+             * call hands back is read for colons again, as the filter's
+             * comment above says, so a mandatory list goes through the
+             * same $(subst) an optional path does.  That is also what
+             * keeps a ',' in a path from ending the $(if)'s argument
+             * early: it sits in the last argument of a call nested in
+             * it, which make does not split. */
             auto paths = dep_paths(line);
+            auto joined = std::string();
+            for (const auto& path: paths)
+                joined += (joined.size() == 0 ? "" : " ")
+                        + makefile::function_argument(path);
             if (optional_dep(line) == true) {
-                auto joined = std::string();
-                for (const auto& path: paths)
-                    joined += (joined.size() == 0 ? "" : " ")
-                            + makefile::function_argument(path);
                 sources.push_back(
                     std::make_shared<makefile::target>(
                         present_only(joined, "$", "\\")));
-            } else {
-                for (const auto& path: paths)
-                    sources.push_back(
-                        std::make_shared<makefile::target>(
-                            makefile::prerequisite(path)));
+            } else if (joined.size() > 0) {
+                sources.push_back(
+                    std::make_shared<makefile::target>(
+                        "$(if $(wildcard " + fragment_path(target) + "),,"
+                        + "$(subst :,\\:," + joined + "))"));
             }
         }
+
+        /* Dropping a deleted input off the rule only stops it being an
+         * error.  The output still says what the deleted file said, and
+         * a deletion leaves nothing on the rule newer than the output:
+         * the file that went is the one prerequisite that could have
+         * spoken up.  So the output also hangs off the record of the
+         * script's live answer that the fragment's recipe keeps below,
+         * which moves when, and only when, what the script names
+         * changes -- the way a C object hangs off pdeps's list of the
+         * headers it read, for the same reason.
+         *
+         * Through "$(wildcard)", because the record is made by the
+         * build rather than by pconfigure, and the first make after a
+         * configure has not made it yet. */
+        sources.push_back(
+            std::make_shared<makefile::target>(
+                "$(wildcard " + answer_path(target) + ")"));
 
         auto global_targets = std::vector<makefile::global_targets>{
             makefile::global_targets::ALL,
@@ -809,13 +854,30 @@ language_gen_proc::targets(const context::ptr& ctx) const
          * expand that -- and the target always has a '/', since it
          * starts with the generated-files directory. */
         auto target_dir = target.substr(0, target.rfind('/'));
+
+        /* One prerequisite of the output can be told it has been dealt
+         * with, and it is the record of the --deps answer, further
+         * down: it is ours rather than the script's, and its mtime is
+         * nothing but a message to this rule.  So an output that came
+         * back the same as it was hands the record its own mtime, and
+         * an answer that changed without changing the output -- an
+         * input dropped that contributed nothing, or a record that
+         * moved while this make was already regenerating -- is
+         * regenerated once rather than on every make from then on.
+         * "-c", because at configure time there is no record yet and
+         * this is no reason to make one; and "|| true", because a
+         * record that could not be touched is a regeneration on the
+         * next make, not a failure of this one. */
+        auto settle_answer = "touch -c -r " + target + " "
+                           + answer_path(target) + " 2>/dev/null || true;";
+
         auto commands = std::vector<std::string>{
             "mkdir -p " + target_dir,
             "(" + in_project(script + " --generate")
                 + ") > " + tmp_target
                 + " && { if cmp -s " + tmp_target + " " + target
                 + " 2>/dev/null;"
-                + " then rm -f " + tmp_target + ";"
+                + " then rm -f " + tmp_target + "; " + settle_answer
                 + " else mv " + tmp_target + " " + target + "; fi; }"
                 + " || (rm -f " + tmp_target + " " + target + "; exit 1)"
         };
@@ -960,11 +1022,71 @@ language_gen_proc::targets(const context::ptr& ctx) const
             filename + ":" + std::to_string(lineno)
         };
 
+        /* One more step, in front of the script, and only in the
+         * Makefile: a refusal to generate the output while an input the
+         * script names is missing.
+         *
+         * make would normally have said that itself, since an input the
+         * script names is on the rule and nothing builds it.  The hole
+         * is the empty rules the fragment further down gives every
+         * input that was there when it was written.  They are what let
+         * an input the script has STOPPED naming be deleted -- but
+         * under AUTORECONFIGURE a C source's own fragment asks for the
+         * output while make is still remaking the fragments it
+         * includes, so the one in force is the one from before the
+         * deletion, and its empty rule tells make that the missing
+         * input has been made.  It had not been, and the output was
+         * regenerated from what was left: make stopped a moment later
+         * with "No rule to make target", but the output it left behind
+         * was wrong, and newer than the input once that was put back
+         * with its old mtime -- so the next make built a binary from
+         * it without a word.
+         *
+         * Which of the two a missing input is, nothing but the script
+         * can say, so the script is asked: whatever it still names
+         * outright has to be there, and a name the shell's glob leaves
+         * as it was is missing, as it is to make.  An input the script
+         * has stopped naming is not looked for, which is the case the
+         * empty rules are for; and an optional one never is.  The
+         * message is make's own, since this is make's refusal made a
+         * step late, with the reason it could not be made a step
+         * earlier.  It does not name the GENERATE line, as the
+         * configure-time errors do, because two lines asking for the
+         * same output are one rule only while their recipes match.
+         *
+         * Only when a prerequisite is in fact missing, which make can
+         * see for itself, so that the usual regeneration runs the
+         * script once rather than twice.  A --deps that fails here is
+         * not this step's to report: the fragment's own recipe runs it
+         * the same way and says so, and an answer that cannot be had
+         * is not one that names anything missing. */
+        auto check_inputs = "$(if $(filter-out $(wildcard $^),$^),false,true)"
+            " || (" + in_project(
+                "{ \"" + script + "\" --deps 2>/dev/null"
+                " || true; } | sed -e '/^?/d' | { status=0;"
+                " while read -r line || test -n \"$$line\"; do"
+                " for p in $$line; do if test ! -e \"$$p\"; then"
+                " echo \"No rule to make target '$$p', needed by '$@'\";"
+                " status=1; fi; done; done;"
+                " if test $$status != 0; then"
+                " echo \"  '" + ctx->unbased(procfile) + " --deps' still"
+                " names it as an input, so it cannot be generated without"
+                " it:\";"
+                " echo \"  put it back, or have the script stop naming"
+                " it\"; fi;"
+                " exit $$status; } >&2") + ")";
+
+        auto rule_recipe = std::vector<std::string>{
+            commands[0],
+            check_inputs,
+            commands[1]
+        };
+
         auto bin_target = std::make_shared<makefile::target>(target,
                                                              short_cmd,
                                                              sources,
                                                              global_targets,
-                                                             commands,
+                                                             rule_recipe,
                                                              comment);
 
         /* The --deps answer above is a snapshot: it was true when
@@ -1270,6 +1392,11 @@ language_gen_proc::targets(const context::ptr& ctx) const
             dep_sed += "-e 's|\\([[:space:]]\\)\\([^/[:space:]]\\)|\\1"
                      + root + "\\2|g' ";
         }
+
+        /* Everything up to here spells a path; what follows makes a
+         * line into a rule.  The empty rules below want the first half
+         * and not the second. */
+        auto spell_sed = dep_sed;
         dep_sed += "-e '/^?/!s|.*|" + variable + ctx->unbased(target)
                  + ": &|' ";
         dep_sed += "-e 's|^?[[:space:]]*\\(.*\\)|" + variable
@@ -1299,12 +1426,12 @@ language_gen_proc::targets(const context::ptr& ctx) const
          *
          * One thing it does NOT do, because the first draft of this
          * comment said it did and the measurement says otherwise: no
-         * previously-declared mandatory input is lost.  The fragment
-         * ADDS prerequisites rather than replacing the rule's, so the
-         * configure-time snapshot goes on naming src/base.txt -- "make
-         * -p" still reports it, and editing it still regenerates (BASE
-         * went to 9 on the next make).  The damage is confined to the
-         * optional line, and that is damage enough.
+         * previously-declared mandatory input is lost.  The refusal
+         * leaves the fragment on disk as it was, and that fragment goes
+         * on naming src/base.txt -- "make -p" still reports it, and
+         * editing it still regenerates (BASE went to 9 on the next
+         * make).  The damage is confined to the optional line, and
+         * that is damage enough.
          *
          * The wording is not a copy of the configure-time message but
          * the same strings, built above where both guards can reach
@@ -1333,6 +1460,89 @@ language_gen_proc::targets(const context::ptr& ctx) const
         for (const auto& l: semicolon_lines)
             semicolon_echo += "echo \"" + l + "\"; ";
 
+        /* The record the output hangs off, rewritten only when the
+         * answer differs from the one it holds, so that its mtime says
+         * "what the script reads has changed" and nothing else.  The
+         * fragment itself cannot say that: it is rewritten every time
+         * a watched directory moves, which is every time an editor
+         * drops a backup file beside an input, and the output hanging
+         * off it would be regenerated for every one of those.
+         *
+         * A record that is not there yet is dated like the output
+         * rather than now.  There is no earlier answer for it to have
+         * changed from, and the output the configure just made was
+         * made from this same answer -- so a record dated now would
+         * regenerate every GENERATE in the tree on the first make
+         * after every configure, for nothing.  The cost is that a tree
+         * built before the record existed misses one change made
+         * between that build and the first make that writes it.
+         *
+         * "$(basename $@)" is the output, the fragment being named for
+         * it with a ".d" on the end; and it is written before the
+         * fragment is, so that a record which could not be written
+         * leaves the fragment out of date and the next make tries
+         * again, instead of a fresh fragment that nothing re-derives
+         * and a record that never heard the change. */
+        auto record_answer = std::string(
+            "if test -e $@.answer;"
+            " then cmp -s $@.raw $@.answer || cp $@.raw $@.answer;"
+            " else cp $@.raw $@.answer"
+            " && { touch -r $(basename $@) $@.answer 2>/dev/null || true; };"
+            " fi || (rm -f $@.raw; exit 1)");
+
+        /* An empty rule for every mandatory input that is there when the
+         * fragment is written, and for none that is not.
+         *
+         * The fragment is the previous make's answer until this make
+         * has re-derived it, and make reads it before then.  That is
+         * harmless almost always, because nothing wants the output
+         * until the fragment has been remade -- but under
+         * AUTORECONFIGURE a C source's own fragment asks for the
+         * headers it reads, a generated one among them, while make is
+         * still remaking what it includes.  A deleted input the stale
+         * fragment named outright then stopped the build exactly as
+         * the stale snapshot on the rule did, on the one make that was
+         * about to learn that the script had stopped naming it.  With
+         * an empty rule the vanished input is taken to have been
+         * remade, the output is regenerated from what the script reads
+         * now, and the fresh fragment no longer names it.
+         *
+         * Only for an input that is THERE, because that is what keeps
+         * a mandatory input mandatory.  One the script still names and
+         * that is missing when it is asked gets no rule from here, so
+         * make stops on it as it always has -- and deleting a file
+         * moves the directory it was in, which is watched, so the
+         * fragment is asked again and drops the rule the moment the
+         * file goes.  (Not when the directory goes with it and nothing
+         * above it is watched: then the stale rule stands, and the
+         * output is regenerated on every make -- by a script that will
+         * most likely fail for want of its input -- until something
+         * does ask again.  Loud, if not as plain as make's refusal.)
+         * An input that some other rule builds and that
+         * has not been built yet is left to that rule, and one that has
+         * been built gains an empty rule, which adds nothing to the one
+         * that builds it.
+         *
+         * A path is tested from the top of its own project, which is
+         * what the script printed it relative to, after the shell has
+         * split and globbed the line the way make splits and globs a
+         * prerequisite list.  It is then spelled for make by the same
+         * expressions that spell the fragment's rules.  A path with a
+         * '%' in it is left out, since as the target of a rule it
+         * would make a pattern rule of it.
+         *
+         * They go after a blank line, because the answer's last line
+         * may have no newline on the end of it, and sed then writes
+         * that line's rule without one too: the first empty rule would
+         * be glued onto it, making one line with two colons in it that
+         * make refuses outright.  A blank line in a makefile is
+         * nothing. */
+        auto empty_rules = std::string(
+            "(list=$$(sed -e '/^?/d' $@.raw) && ")
+            + in_project("for p in $$list; do if test -e \"$$p\";"
+                         " then printf '%s\\n' \"$$p\"; fi; done")
+            + ") | sed " + spell_sed + "-e '/%/d' -e 's|.*|&:|'";
+
         auto dep_commands = std::vector<std::string>{
             "mkdir -p $(dir $@)",
             "(" + in_project("\"" + script + "\" --deps")
@@ -1344,7 +1554,9 @@ language_gen_proc::targets(const context::ptr& ctx) const
             "{ " + semicolon_echo
                  + "sed -n 's|^|  it printed: |p' $@.raw | grep ';'; "
             "} >&2; rm -f $@.raw; exit 1; fi",
+            record_answer,
             "sed " + dep_sed + " $@.raw > $@.tmp"
+                  + " && { echo; " + empty_rules + "; } >> $@.tmp"
                   + " && mv $@.tmp $@"
                   + " || (rm -f $@.raw $@.tmp; exit 1)"
         };

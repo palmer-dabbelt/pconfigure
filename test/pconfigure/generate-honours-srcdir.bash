@@ -36,7 +36,7 @@ EOF
 
 $PTEST_BINARY $PCONFIGURE_ARGS
 cat Makefile
-grep -q "^obj/proc/gen.h: source/gen.h.proc data/answer.txt" Makefile
+grep -qF 'obj/proc/gen.h: source/gen.h.proc $(if $(wildcard obj/proc/gen.h.d),,$(subst :,\:,data/answer.txt))' Makefile
 
 make $MAKE_ARGS
 test "$(./bin/app)" = "4"

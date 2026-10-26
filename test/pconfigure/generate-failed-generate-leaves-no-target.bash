@@ -159,7 +159,7 @@ test "$(./bin/app)" = "1"
 # exists if and only if the last run that wrote it succeeded" stops
 # holding.  generate-identical-output-does-not-cascade.bash is where the
 # suppression itself is measured.
-grep -q 'obj/proc/gen.h.tmp && { if cmp -s obj/proc/gen.h.tmp obj/proc/gen.h 2>/dev/null; then rm -f obj/proc/gen.h.tmp; else mv obj/proc/gen.h.tmp obj/proc/gen.h; fi; } || (rm -f obj/proc/gen.h.tmp obj/proc/gen.h; exit 1)$' Makefile
+grep -q 'obj/proc/gen.h.tmp && { if cmp -s obj/proc/gen.h.tmp obj/proc/gen.h 2>/dev/null; then rm -f obj/proc/gen.h.tmp; touch -c -r obj/proc/gen.h obj/proc/gen.h.d.answer 2>/dev/null || true; else mv obj/proc/gen.h.tmp obj/proc/gen.h; fi; } || (rm -f obj/proc/gen.h.tmp obj/proc/gen.h; exit 1)$' Makefile
 
 timeout 60 make $MAKE_ARGS > fifth.out 2>&1 || { cat fifth.out; exit 1; }
 cat fifth.out

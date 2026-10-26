@@ -88,7 +88,7 @@ grep -qxF 'obj/proc/gen.h: $(foreach f,$(wildcard src/opt/answer.txt),$(if $(rea
 # separately because it is what a future change would break quietly.
 # The configure-time snapshot names the optional input through a
 # wildcard, and the '?' is not part of the path.
-grep -qxF 'obj/proc/gen.h: src/gen.h.proc $(foreach f,$(wildcard src/opt/answer.txt),$(if $(realpath $(f)),$(subst :,\:,$(f)),))' Makefile
+grep -qxF 'obj/proc/gen.h: src/gen.h.proc $(foreach f,$(wildcard src/opt/answer.txt),$(if $(realpath $(f)),$(subst :,\:,$(f)),)) $(wildcard obj/proc/gen.h.d.answer)' Makefile
 
 # The directory it would arrive in is watched, deliberately.  The
 # wildcard above is what hears a file the script named by hand, so the

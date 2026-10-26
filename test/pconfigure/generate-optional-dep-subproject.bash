@@ -88,7 +88,7 @@ test "$(./sub/bin/app)" = "0"
 # rather than one spelled from the top of the tree, which is what makes
 # the same line mean the right file from either directory -- and the
 # mandatory line beside it is spelled the way it always was.
-grep -qxF '$(pconfigure_subdir_sub)obj/proc/gen.h: $(pconfigure_subdir_sub)src/gen.h.proc $(pconfigure_subdir_sub)src/base.txt $(foreach f,$(wildcard $(pconfigure_subdir_sub)src/opt/answer.txt),$(if $(realpath $(f)),$(subst :,\:,$(f)),))' sub/obj/Makefile.sub
+grep -qxF '$(pconfigure_subdir_sub)obj/proc/gen.h: $(pconfigure_subdir_sub)src/gen.h.proc $(if $(wildcard $(pconfigure_subdir_sub)obj/proc/gen.h.d),,$(subst :,\:,$(pconfigure_subdir_sub)src/base.txt)) $(foreach f,$(wildcard $(pconfigure_subdir_sub)src/opt/answer.txt),$(if $(realpath $(f)),$(subst :,\:,$(f)),)) $(wildcard $(pconfigure_subdir_sub)obj/proc/gen.h.d.answer)' sub/obj/Makefile.sub
 
 # The sed that re-derives the fragment writes "$$" where the fragment
 # has to end up holding a "$", twice over: once for the target's
@@ -172,7 +172,7 @@ rm -rf obj bin
 $PTEST_BINARY $PCONFIGURE_ARGS
 timeout 60 make $MAKE_ARGS > own.out 2>&1 || { cat own.out; exit 1; }
 cat own.out
-grep -qxF 'obj/proc/gen.h: src/gen.h.proc src/base.txt $(foreach f,$(wildcard src/opt/answer.txt),$(if $(realpath $(f)),$(subst :,\:,$(f)),))' Makefile
+grep -qxF 'obj/proc/gen.h: src/gen.h.proc $(if $(wildcard obj/proc/gen.h.d),,$(subst :,\:,src/base.txt)) $(foreach f,$(wildcard src/opt/answer.txt),$(if $(realpath $(f)),$(subst :,\:,$(f)),)) $(wildcard obj/proc/gen.h.d.answer)' Makefile
 test "$(./bin/app)" = "42"
 cd ..
 

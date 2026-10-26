@@ -107,7 +107,7 @@ grep -q "Nothing to be done" settled.out
 # reason.  The filter wraps the glob rather than replacing it: the glob
 # is still what finds the candidates, and $(realpath) is only what drops
 # the ones that cannot be stat'ed.
-grep -qxF 'obj/proc/gen.h: src/gen.h.proc $(foreach f,$(wildcard obj/toolchain/bin/aarch64-*linux*-gcc),$(if $(realpath $(f)),$(subst :,\:,$(f)),))' Makefile
+grep -qxF 'obj/proc/gen.h: src/gen.h.proc $(foreach f,$(wildcard obj/toolchain/bin/aarch64-*linux*-gcc),$(if $(realpath $(f)),$(subst :,\:,$(f)),)) $(wildcard obj/proc/gen.h.d.answer)' Makefile
 
 ##############################################################################
 # A live match beside the dangling ones is still heard                       #
