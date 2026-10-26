@@ -768,7 +768,25 @@ int list_overwrite_defines(std::string filename,
             push_conditional(resolved);
         }, bare_directives);
 
+        /* A "#define" holds to the same two rules an "#undef" below
+         * does.  Only where lines are live: a "#define" in a branch
+         * the compiler skips -- an "#ifdef" of a name nobody gives, or
+         * the "#else" of a feature switch that was taken -- defines
+         * nothing, and counting it here follows an include the
+         * compiler never reads and links in the source behind it.  And
+         * only in C: pbashc and pperlc read a "#define" line as a
+         * comment, so the "#ifndef" after it is taken and the file
+         * under it pasted in.  Taking the name as defined here would
+         * leave that file off the script's prerequisites, and an edit
+         * to it would never rebuild the script.  A script's names are
+         * the "-D"s from its COMPILEOPTS, which arrive in the set
+         * before the scan starts and aren't touched by this. */
         check_line(line, "define", [&](std::string rest) {
+            if (language != pinclude::syntax::C)
+                return;
+            if (state_stack.top() != state::OUTPUT)
+                return;
+
             auto after = [&]() {
                 for (size_t i = 0; i < rest.size(); ++i)
                     if (isspace(rest[i]) || rest[i] == '(')
