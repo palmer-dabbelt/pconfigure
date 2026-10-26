@@ -116,14 +116,15 @@ then
     exit 1
 fi
 
-# A binary this build links stays behind the $(wildcard), and that is
+# A binary this build links isn't written bare like this, and that is
 # the line between the two rather than an accident of which was tried.
 # Its link line comes out of pdeps fragments, and make remakes the
 # Makefile before it has read any -- building it from in there on a
-# fresh tree would link it out of nothing.  So that one keeps waiting
-# to exist.  A tree of its own, because once it does exist it is a
-# CONFIG_DEPS the build rewrites on every link, and the second make
-# above would reconfigure for it.
+# fresh tree would link it out of nothing.  So that one is a
+# prerequisite only on a pass that read every fragment.  A tree of its
+# own, because once it does exist it is a CONFIG_DEPS the build
+# rewrites on every link, and the second make above would reconfigure
+# for it.
 mkdir -p linked/src
 cat >linked/Configfile <<'CONFIGFILE'
 AUTORECONFIGURE = true
@@ -136,6 +137,10 @@ cat >linked/src/top.c++ <<'SOURCE'
 int main(void) { return 0; }
 SOURCE
 (cd linked && $PTEST_BINARY $PCONFIGURE_ARGS)
-grep -q '\$(wildcard bin/top)' linked/Makefile
+grep -qF ',$(MAKECMDGOALS)),,bin/top)' linked/Makefile
+if grep -q '^Makefile:.* bin/top' linked/Makefile
+then
+    exit 1
+fi
 
 exit 0

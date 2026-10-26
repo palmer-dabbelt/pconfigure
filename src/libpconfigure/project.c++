@@ -2715,8 +2715,7 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
      * links is the other way round -- its object list comes out of
      * pdeps fragments make has not read yet at that point, which is
      * the fresh-checkout failure described below for the bootstrapped
-     * tool -- so a CONFIG_DEPS on one of those keeps waiting for the
-     * file to turn up on its own. */
+     * tool -- so a CONFIG_DEPS on one of those is the next list's. */
     auto vendored_outputs = [&](const std::vector<std::string>& paths) {
         auto built = std::vector<std::string>();
         for (const auto& path: paths) {
@@ -2726,6 +2725,32 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
                     if (tree->vendored() && tree->produces(path))
                         found = true;
             if (found)
+                built.push_back(path);
+        }
+        return built;
+    };
+
+    /* And which of them a rule pconfigure writes makes, anywhere in
+     * the run: a program a subproject links, most often, that another
+     * project's Configfile bakes the path of in.  Those are built
+     * before the reconfigure too, but only once make has read every
+     * fragment, which is the half of the above that held them back;
+     * see makefile::write_to_file().  Only under AUTORECONFIGURE,
+     * where the fragments are pieces of Makefile and a pass can tell
+     * whether it read them all. */
+    auto linked_outputs = [&](const std::vector<std::string>& paths) {
+        auto made = std::set<std::string>();
+        for (const auto& other: everyone)
+            for (const auto& target: other->_targets)
+                made.insert(file_utils::normalize_path(target->name()));
+
+        auto vendored = vendored_outputs(paths);
+        auto built = std::vector<std::string>();
+        for (const auto& path: paths) {
+            if (std::find(vendored.begin(), vendored.end(), path)
+                != vendored.end())
+                continue;
+            if (made.find(file_utils::normalize_path(path)) != made.end())
                 built.push_back(path);
         }
         return built;
@@ -2770,7 +2795,8 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
 
     if (_base.size() == 0 && anyone_asked == true) {
         out->reconfigure_on(configfiles_read(),
-                            vendored_outputs(configfiles_read()));
+                            vendored_outputs(configfiles_read()),
+                            linked_outputs(configfiles_read()));
 
         /* A project that bootstraps its own pconfigure builds the tool
          * that wrote this Makefile out of the Makefile itself: after

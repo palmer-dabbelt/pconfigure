@@ -131,6 +131,11 @@ namespace makefile {
          * $(wildcard) -- see write_to_file() for why. */
         std::vector<std::string> _configfiles_built;
 
+        /* The ones among them that a rule pconfigure writes makes,
+         * which are prerequisites only once make has read every
+         * fragment that rule is made of. */
+        std::vector<std::string> _configfiles_linked;
+
         /* Whether those come with the recipe that runs pconfigure,
          * which is what makes them a reconfigure rule rather than a
          * list of what this Makefile was written out of.  Only a
@@ -241,10 +246,14 @@ namespace makefile {
          * these change.  They are the names a run went looking for
          * Configfile lines in, present or not: a file that shows up
          * later is one of the ways the answer changes.  "built" names
-         * the ones a rule in this build produces, which make is to
-         * build before it decides whether to reconfigure. */
+         * the ones a vendored tree in this build produces, which make
+         * is to build before it decides whether to reconfigure, and
+         * "linked" the ones a rule pconfigure writes produces, which
+         * it is to build first too once it has read their rules
+         * whole. */
         void reconfigure_on(const std::vector<std::string>& configfiles,
-                            const std::vector<std::string>& built);
+                            const std::vector<std::string>& built,
+                            const std::vector<std::string>& linked);
 
         /* Says that this Makefile is written out of these, the same as
          * reconfigure_on() does, but without the recipe that would run

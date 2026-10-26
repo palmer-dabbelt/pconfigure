@@ -210,10 +210,12 @@ void makefile::makefile::rerun_with(const std::string& args)
 
 void makefile::makefile::reconfigure_on(
     const std::vector<std::string>& configfiles,
-    const std::vector<std::string>& built)
+    const std::vector<std::string>& built,
+    const std::vector<std::string>& linked)
 {
     _configfiles = configfiles;
     _configfiles_built = built;
+    _configfiles_linked = linked;
     _reconfigure_recipe = true;
 }
 
@@ -672,7 +674,9 @@ std::string makefile::makefile::write_to_file(const std::string& filename)
      * else so that a subproject's rules are in hand by the time
      * anything here refers to them. */
     for (const auto& subproject: _subprojects)
-        fprintf(file, "include %s\n\n", subproject.path.c_str());
+        fprintf(file, "%sinclude %s\n\n",
+                note_if_unread(subproject.path).c_str(),
+                subproject.path.c_str());
 
     /* The targets that are themselves pieces of Makefile, which have
      * to be included as well as built.  make remakes what it includes
@@ -702,6 +706,7 @@ std::string makefile::makefile::write_to_file(const std::string& filename)
 
         fprintf(file, "ifndef %s\n", guard.c_str());
         fprintf(file, "%s := 1\n", guard.c_str());
+        fprintf(file, "%s", note_if_unread(name).c_str());
         fprintf(file, "include %s\n", name.c_str());
         fprintf(file, "endif\n\n");
     }
@@ -901,6 +906,16 @@ std::string makefile::makefile::write_to_file(const std::string& filename)
      * target" for these, which is the only thing the $(wildcard) was
      * there to prevent.
      *
+     * A file one of pconfigure's own rules makes -- a program a
+     * subproject links, that some other Configfile bakes the path of
+     * in -- is the same first make gone wrong, and needed a second
+     * make that reconfigured and rebuilt whatever the answer touched.
+     * It can't simply be bare, though: its rule is only whole once
+     * make has read the dependency fragments, and on a fresh tree make
+     * remakes the Makefile before there are any.  So it is bare on the
+     * pass that read them all, and nothing on the pass before; see
+     * built_once_read_prerequisite().
+     *
      * The names are whatever a CONFIG_DEPS or a CONFIG said, so they
      * are spelled for where they land, by present_prerequisite(): a
      * "cost$1.txt" handed to $(wildcard) as written is looked for as
@@ -937,6 +952,11 @@ std::string makefile::makefile::write_to_file(const std::string& filename)
                                    configfile) != _configfiles_built.end();
             if (built)
                 return prerequisite(configfile);
+            auto linked = std::find(_configfiles_linked.begin(),
+                                    _configfiles_linked.end(),
+                                    configfile) != _configfiles_linked.end();
+            if (linked)
+                return built_once_read_prerequisite(configfile);
             return present_prerequisite(configfile);
         };
 

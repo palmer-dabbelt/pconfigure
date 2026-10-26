@@ -507,3 +507,40 @@ std::string makefile::present_prerequisite(const std::string& path)
     auto name = quote_for_make(globbed ? quote_for_glob(path) : path, ":;|");
     return "$(foreach f," + found + "," + spell_parentheses(name) + ")";
 }
+
+/* A file make is told to include and can't find is one it remakes
+ * after it has read everything else, and then it starts over to read
+ * it.  What it reads in between is short by whatever that file would
+ * have said, and anything make does in between is done on that
+ * reading.  Nothing tells a Makefile which pass it is on, so every
+ * include says it for itself.  Through the same glob the "include"
+ * goes through, so the two agree on what the name is. */
+std::string makefile::note_if_unread(const std::string& name)
+{
+    return "ifeq ($(wildcard " + name + "),)\n"
+         + std::string(unread_variable) + " := 1\n"
+         + "endif\n";
+}
+
+/* Bare once make has read every piece of Makefile there was, so that
+ * the rule behind the file is the whole rule: a program's objects are
+ * prerequisites the dependency fragments add, and a link out of
+ * fragments make has not read is a link out of nothing.  On the pass
+ * that is short of one the name comes to nothing at all, not even
+ * through a $(wildcard), since the file can be there from a build
+ * before and is just as out of date; make starts over once it has
+ * made what was missing, and the next pass is the one that builds it.
+ *
+ * Not under a clean either.  make remakes the Makefile before any
+ * goal, and a clean that started by linking the program it was about
+ * to delete would be a long way round to an empty tree.
+ *
+ * The name is the last argument to the $(if), which is the one a ','
+ * in it can't split, and its parentheses are spelled the way
+ * present_prerequisite() spells them, for the same reason. */
+std::string makefile::built_once_read_prerequisite(const std::string& path)
+{
+    return "$(if $(" + std::string(unread_variable)
+         + ")$(filter clean distclean,$(MAKECMDGOALS)),,"
+         + spell_parentheses(prerequisite(path)) + ")";
+}

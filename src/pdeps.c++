@@ -904,6 +904,13 @@ int main(int argc, const char **argv)
                 for (const auto& link: ctx.links)
                     say(link + ": | " + sibling_deps);
 
+                /* Said by every include, for the reason
+                 * makefile::note_if_unread() gives: a link the
+                 * sibling goes into is not whole until make has
+                 * read this. */
+                auto note = makefile::note_if_unread(sibling_deps);
+                note.pop_back();
+                say(note);
                 say("include " + sibling_deps);
                 say("endif");
                 out += "\n";

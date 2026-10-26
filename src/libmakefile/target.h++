@@ -190,6 +190,23 @@ namespace makefile {
      * that the bare result of that would not be read back as. */
     std::string present_prerequisite(const std::string& path);
 
+    /* Text for a rule line that names a file this build has a rule
+     * for, which it is to bring up to date while remaking the
+     * Makefile, once make has read every piece of Makefile that rule
+     * might be made of -- and nothing before then, or during a clean.
+     * See makefile::write_to_file() for why. */
+    std::string built_once_read_prerequisite(const std::string& path);
+
+    /* The lines to write just ahead of an "include" of the file make
+     * reads as "name", which note that it is not there to be read:
+     * so that make, which goes on without it and makes it later,
+     * knows on this pass that what it read is not the whole of it. */
+    std::string note_if_unread(const std::string& name);
+
+    /* The make variable those lines set, which is empty on a pass
+     * that read every included piece of Makefile there was to read. */
+    static const char *const unread_variable = "__pconfigure__unread";
+
     /* The make variables present_prerequisite() spells a parenthesis
      * with, which every generated Makefile defines before its first
      * rule.  Named like the rest of what the Makefile keeps for itself,
