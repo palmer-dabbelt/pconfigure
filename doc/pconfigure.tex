@@ -5351,6 +5351,14 @@ finally gets there, with a message from the linker about a missing
 its sources, which goes back to the top of the project and ends the
 target on its way.
 
+It's a warning unless \texttt{STRICT} says otherwise, so the
+\texttt{Makefile} is still written.  A BASH or Perl script and a
+pkg-config file have no linker to complain about them, so their rules
+fail instead when \texttt{make} gets there, with the
+\texttt{Configfile} line and ``has no SOURCES to be made from'',
+rather than leaving an empty file behind that would pass for a built
+one.
+
 A \texttt{HEADERS} and a \texttt{GENERATE} aren't asked, since a
 header is installed rather than built and a \texttt{GENERATE} writes
 its own source.
