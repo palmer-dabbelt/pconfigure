@@ -24,7 +24,9 @@
 #include "version.h"
 #include <libmakefile/implied_deps.h++>
 #include <algorithm>
+#include <cerrno>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <map>
 #include <set>
@@ -88,6 +90,34 @@ static void check_something_to_read(const command_processor::ptr& processor,
     abort();
 }
 
+/* The exit status of "--help" or "--version", which are the two runs
+ * whose whole job is what they write to stdout.  Returning 0 straight
+ * after the write said they'd done that job even when the text never
+ * left the process: std::cout buffers, nothing flushed it until exit,
+ * and the failure that flush ran into -- a full disk, a closed
+ * descriptor, a pipe nobody reads -- went nowhere.  A script that
+ * captures "pconfigure --version" then can't tell the answer it got
+ * from one it didn't.  Flushed here, so the failure is seen while
+ * there's still a status to give it, and reported on stderr the way
+ * cat or any GNU tool reports it.
+ *
+ * errno is cleared before the write so that a reason left over from
+ * something earlier isn't passed off as this one's; a stream that
+ * failed without the system saying why is still a failure, just one
+ * with less to say. */
+static int finish_stdout(const std::string& option)
+{
+    std::cout.flush();
+    if (!std::cout.fail())
+        return 0;
+
+    auto reason = (errno != 0) ? std::string(strerror(errno))
+                               : std::string("the write failed");
+    std::cerr << "error: the output of '" << option << "' could not be"
+              << " written to stdout: " << reason << "\n";
+    return 1;
+}
+
 int main(int argc, const char **argv)
 {
     /* Every shell pconfigure starts while it configures -- the one
@@ -136,6 +166,7 @@ int main(int argc, const char **argv)
     };
 
     if (asked(command_type::HELP)) {
+        errno = 0;
         std::cout <<
 "usage: pconfigure [options]\n"
 "\n"
@@ -160,12 +191,13 @@ int main(int argc, const char **argv)
 "  --ppkg-config PATH  Use PATH as the ppkg-config tool\n"
 "\n"
 "See https://github.com/palmer-dabbelt/pconfigure for more information.\n";
-        return 0;
+        return finish_stdout("--help");
     }
 
     if (asked(command_type::VERSION)) {
-        std::cout << "pconfigure " << PCONFIGURE_VERSION << std::endl;
-        return 0;
+        errno = 0;
+        std::cout << "pconfigure " << PCONFIGURE_VERSION << "\n";
+        return finish_stdout("--version");
     }
 
     for (const auto& command: given)
