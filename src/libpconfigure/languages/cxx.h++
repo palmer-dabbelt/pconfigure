@@ -300,6 +300,10 @@ protected:
          * file without touching anything else make watches. */
         const std::string _link_inputs_path;
 
+        /* The pieces of Makefile the objects arrive through, under
+         * AUTORECONFIGURE; see link_objects(). */
+        const std::vector<std::string> _fragments;
+
     public:
         link_target(const std::string& target_path,
                     const std::vector<target::ptr>& objects,
@@ -311,7 +315,8 @@ protected:
                     const context::ptr& ctx,
                     const std::string linker_command,
                     const std::string linker_pretty,
-                    const std::string link_inputs_path);
+                    const std::string link_inputs_path,
+                    const std::vector<std::string>& fragments);
 
         virtual ~link_target(void) {}
 
@@ -341,6 +346,9 @@ protected:
          * rebuild it. */
         const std::string _link_inputs_path;
 
+        /* And the same pieces of Makefile, for the same reason. */
+        const std::vector<std::string> _fragments;
+
     public:
         archive_target(const std::string& target_path,
                        const std::vector<target::ptr>& objects,
@@ -348,7 +356,8 @@ protected:
                        const context::ptr& ctx,
                        const std::string archiver_command,
                        const std::string archiver_pretty,
-                       const std::string link_inputs_path);
+                       const std::string link_inputs_path,
+                       const std::vector<std::string>& fragments);
 
         virtual ~archive_target(void) {}
 
@@ -459,9 +468,16 @@ protected:
 
     /* Links together a bunch of object files into the target binary or
      * library. */
+    /* The make expression a link rule is skipped on, when its
+     * objects arrive through the given fragments; empty when there
+     * are none.  See link_objects(). */
+    static std::string unread_fragments(
+        const std::vector<std::string>& fragments);
+
     std::vector<target::ptr> link_objects(
         const context::ptr& ctx,
-        const std::vector<target::ptr>& objects
+        const std::vector<target::ptr>& objects,
+        const std::vector<std::string>& fragments
     ) const;
 
     /* Compiles a source file into an object, returns the compiled target

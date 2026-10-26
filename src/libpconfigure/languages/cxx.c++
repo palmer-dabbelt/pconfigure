@@ -742,7 +742,10 @@ std::vector<makefile::target::ptr> language_cxx::targets(const context::ptr& ctx
                     continue;
             }
 
-            auto link = link_objects(ctx, objects);
+            auto link = link_objects(ctx, objects,
+                                     vector_util::map(fragments,
+                                         [](const makefile::target::ptr& f)
+                                         { return f->name(); }));
             return vector_util::map(objects + link,
                                     [](const target::ptr& t) -> makefile::target::ptr
                                     {
@@ -977,6 +980,49 @@ cxx_sources_for_header(const std::string& full_header_path)
     return out;
 }
 
+/* What a link or archive rule under AUTORECONFIGURE asks before it
+ * runs: whether make read every piece of Makefile its objects arrive
+ * through as it is on disk now.  Anything at all is "no".
+ *
+ * Those objects are prerequisites the fragments add, so the rule is
+ * only as complete as make's reading of them, and make reads them
+ * once, as it starts.  It also remakes them then, before it starts
+ * over to read what it made -- and if a makefile it is remaking
+ * depends on this link, which a CONFIG_DEPS naming the program does,
+ * it runs the link in between, holding a reading that is out of date
+ * or that has nothing in it at all.  A fragment renamed by a change
+ * of options is not there to be read before it is made, so the first
+ * build after the reconfigure linked a program out of no objects
+ * whatsoever and failed on "undefined reference to `main'".
+ *
+ * So the fragments are order-only prerequisites, which has every one
+ * written before the question is asked without a rewritten fragment
+ * relinking anything by itself.  pdeps seals each one with a hash of
+ * what it says, both in a comment and in a variable, and the two
+ * lists are the same only when make has read every fragment in its
+ * current form.  When they are not, the link is left alone: make
+ * starts over once it has remade the fragments, and the link is
+ * still out of date when it does -- nothing has touched it -- so the
+ * make that reads what they now say is the one that links.  One that
+ * names a sibling behind a header says so on the same rule, from
+ * inside the fragment, which is how a fragment nobody named is
+ * waited for too.
+ *
+ * The lists are wrapped in an "x" either side because the hashes
+ * are digits: "$(subst)" takes the one out of the other only when
+ * they match from end to end, and an empty list is still something
+ * to look for. */
+std::string language_cxx::unread_fragments(
+    const std::vector<std::string>& fragments)
+{
+    if (fragments.size() == 0)
+        return "";
+
+    auto read = std::string("$(strip $(foreach d,$|,$(__pconfigure__fragment-$(d))))");
+    auto disk = std::string("$(strip $(shell sed -n 's/^# fragment //p' $| 2>/dev/null))");
+    return "$(subst x" + read + "x,,x" + disk + "x)";
+}
+
 language_cxx::link_target::link_target(const std::string& target_path,
                                        const std::vector<target::ptr>& objects,
                                        const std::vector<target::ptr>& additional_deps,
@@ -987,7 +1033,8 @@ language_cxx::link_target::link_target(const std::string& target_path,
                                        const context::ptr& ctx,
                                        const std::string linker_command,
                                        const std::string linker_pretty,
-                                       const std::string link_inputs_path)
+                                       const std::string link_inputs_path,
+                                       const std::vector<std::string>& fragments)
 : _target_path(target_path),
   _objects(objects),
   _additional_deps(additional_deps),
@@ -998,7 +1045,8 @@ language_cxx::link_target::link_target(const std::string& target_path,
   _ctx(ctx),
   _linker_command(linker_command),
   _linker_pretty(linker_pretty),
-  _link_inputs_path(link_inputs_path)
+  _link_inputs_path(link_inputs_path),
+  _fragments(fragments)
 {
 }
 
@@ -1347,7 +1395,7 @@ language_cxx::link_target::generate_makefile_target(void) const
         deps,
         global,
         cmds,
-        _comments);
+        _comments)->with_order_only(_fragments, unread_fragments(_fragments));
 }
 
 language_cxx::archive_target::archive_target(const std::string& target_path,
@@ -1356,14 +1404,16 @@ language_cxx::archive_target::archive_target(const std::string& target_path,
                                              const context::ptr& ctx,
                                              const std::string archiver_command,
                                              const std::string archiver_pretty,
-                                             const std::string link_inputs_path)
+                                             const std::string link_inputs_path,
+                                             const std::vector<std::string>& fragments)
 : _target_path(target_path),
   _objects(objects),
   _comments(comments),
   _ctx(ctx),
   _archiver_command(archiver_command),
   _archiver_pretty(archiver_pretty),
-  _link_inputs_path(link_inputs_path)
+  _link_inputs_path(link_inputs_path),
+  _fragments(fragments)
 {
 }
 
@@ -1441,7 +1491,7 @@ language_cxx::archive_target::generate_makefile_target(void) const
         deps,
         global,
         cmds,
-        _comments);
+        _comments)->with_order_only(_fragments, unread_fragments(_fragments));
 }
 
 language_cxx::compile_target::compile_target(const std::string& target_path,
@@ -1662,7 +1712,8 @@ std::string language_cxx::link_dir(const context::ptr& ctx) const
 
 std::vector<language_cxx::target::ptr>
 language_cxx::link_objects(const context::ptr& ctx,
-                           const std::vector<language_cxx::target::ptr>& objects)
+                           const std::vector<language_cxx::target::ptr>& objects,
+                           const std::vector<std::string>& fragments)
                            const
 {
     auto shared_comments = std::vector<std::string>{
@@ -1906,7 +1957,8 @@ language_cxx::link_objects(const context::ptr& ctx,
             ctx,
             archiver_command(ctx),
             this->linker_pretty(),
-            link_inputs_path
+            link_inputs_path,
+            fragments
         );
 
         auto archive_record = copy_record(archive, archive, "0644");
@@ -1959,7 +2011,8 @@ language_cxx::link_objects(const context::ptr& ctx,
         ctx,
         this->linker_command(ctx),
         this->linker_pretty(),
-        link_inputs_path
+        link_inputs_path,
+        fragments
     );
 
     auto local_target = std::make_shared<link_target>(
@@ -1973,7 +2026,8 @@ language_cxx::link_objects(const context::ptr& ctx,
         ctx,
         this->linker_command(ctx),
         this->linker_pretty(),
-        link_inputs_path
+        link_inputs_path,
+        fragments
     );
 
     /* In order to keep the local and install targets consistant with the
