@@ -52,10 +52,16 @@ public:
     size_t number;
     std::string text;
 
+    /* The directory the line's backticks run in, which is the root of
+     * the project whose Configfile it is -- the same directory an
+     * executable Configfile is run from, and for the same reason. */
+    std::string directory;
+
     configfile_line(const std::string& filename,
                     size_t number,
-                    const std::string& text)
-    : filename(filename), number(number), text(text)
+                    const std::string& text,
+                    const std::string& directory)
+    : filename(filename), number(number), text(text), directory(directory)
     {}
 };
 
@@ -70,11 +76,11 @@ std::vector<configfile_line> config_lines(const std::string& srcpath,
                                           const command::ptr& config);
 
 /* The lines of a file with exactly this name.  The source path is
- * only used to find executable Configfiles, which are run with it as
- * their working directory.  A file that isn't there has no lines; one
- * that is there but can't be opened or is a directory is a fatal
- * error, pointing at the command that asked for the file when there
- * was one. */
+ * the working directory an executable Configfile is run in, and the
+ * one the backticks on every line read out of the file run in.  A
+ * file that isn't there has no lines; one that is there but can't be
+ * opened or is a directory is a fatal error, pointing at the command
+ * that asked for the file when there was one. */
 std::vector<configfile_line> lines_from_file(const std::string& srcpath,
                                              const std::string& filename,
                                              const debug_info::ptr& asked_by

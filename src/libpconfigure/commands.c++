@@ -42,6 +42,31 @@
  * parsing framework. */
 static std::string ppkg_config_option = "";
 
+/* A path somebody gave relative to the directory pconfigure was
+ * started in, spelled so that it still names the same thing from any
+ * other directory.  Backticks run in the directory of the project
+ * whose Configfile they're on, which is only the starting directory
+ * for the top project of an in-tree build, and every path this run
+ * hands one -- a "--ppkg-config", the build tree's .pc directories --
+ * was worked out relative to where pconfigure was started.  Absolute
+ * paths are already the same everywhere and are left as they are. */
+static std::string from_starting_directory(const std::string& path)
+{
+    if (path.size() == 0 || path[0] == '/')
+        return path;
+
+    auto buffer = std::vector<char>(4096);
+    while (getcwd(&buffer[0], buffer.size()) == NULL) {
+        if (errno != ERANGE) {
+            perror("Unable to find the working directory");
+            abort();
+        }
+        buffer.resize(buffer.size() * 2);
+    }
+
+    return std::string(&buffer[0]) + "/" + path;
+}
+
 /* How a backtick is told to say "ppkg-config".
  *
  * Not the bare name: that leaves the answer to $PATH, which is a
@@ -63,8 +88,16 @@ static std::string ppkg_config_option = "";
  * case $PATH was covering. */
 static std::string ppkg_config_command(void)
 {
-    if (ppkg_config_option.empty() == false)
-        return ppkg_config_option;
+    /* A name without a '/' in it is for $PATH to find, wherever the
+     * backtick happens to run; one with a '/' is a path, and is rooted
+     * where it was typed rather than where the backtick runs, so that
+     * "--ppkg-config tools/ppkg-config" names the same program for a
+     * subproject's backticks as for the top project's. */
+    if (ppkg_config_option.empty() == false) {
+        if (ppkg_config_option.find('/') == std::string::npos)
+            return ppkg_config_option;
+        return from_starting_directory(ppkg_config_option);
+    }
 
     auto sibling = makefile::tool_path("ppkg-config");
     if (sibling != "ppkg-config" && access(sibling.c_str(), X_OK) == 0)
@@ -164,11 +197,13 @@ void add_pkgconfig_dep(const std::string& path)
     pkgconfig_deps.push_back(normalized);
 }
 
-static std::string execute(std::string line, const debug_info::ptr& where);
+static std::string execute(std::string line, const debug_info::ptr& where,
+                           const std::string& directory);
 static std::string replace_word(const std::string& haystack,
                                 const std::string& word,
                                 const std::string& replacement);
 static command::ptr parse_written(const debug_info::ptr& where,
+                                  const std::string& directory,
                                   bool& said_nothing,
                                   std::string& shown);
 
@@ -351,7 +386,10 @@ std::vector<command::ptr> commands(int argc, const char **argv)
          * would mean an option that never got the word it takes. */
         auto said_nothing = true;
         auto shown = std::string();
-        auto cmd = parse_written(debug, said_nothing, shown);
+        /* A line given here has no Configfile behind it: it was typed
+         * into a shell in the directory pconfigure was started in, so
+         * that's where its backticks run. */
+        auto cmd = parse_written(debug, ".", said_nothing, shown);
         if (cmd != NULL && command::parse_option(shown, debug) != NULL)
             cmd = NULL;
 
@@ -450,6 +488,7 @@ std::vector<configfile_line> configfile_lines(const std::string& srcpath)
  * the caller knows how to say where an unreadable line was.  "shown"
  * is the line the way any complaint about it should quote it. */
 static command::ptr parse_written(const debug_info::ptr& where,
+                                  const std::string& directory,
                                   bool& said_nothing,
                                   std::string& shown)
 {
@@ -474,7 +513,8 @@ static command::ptr parse_written(const debug_info::ptr& where,
      * leaves the gaps either side of it behind as two spaces, and
      * "SOURCES += `true` main.c" names a source called " main.c". */
     auto typed = text;
-    text = string_utils::clean_white(execute(text, where->with_line(typed)));
+    text = string_utils::clean_white(execute(text, where->with_line(typed),
+                                             directory));
 
     /* A line that was nothing but a command which printed nothing is
      * a line with nothing left in it. */
@@ -513,7 +553,7 @@ command::ptr parse_line(const configfile_line& line)
 
     auto said_nothing = true;
     auto shown = std::string();
-    auto cmd = parse_written(where, said_nothing, shown);
+    auto cmd = parse_written(where, line.directory, said_nothing, shown);
     if (said_nothing)
         return NULL;
     if (cmd == NULL) {
@@ -601,17 +641,27 @@ std::vector<configfile_line> lines_from_file(const std::string& srcpath,
      * only knows about its own tree, and this repository's own
      * Configfiles start by cd'ing into "src".
      *
+     * The backticks on the lines of a plain Configfile run there too,
+     * since they are the same kind of thing -- a command the project
+     * wrote about its own tree -- and a project is supposed to
+     * configure the same way on its own as it does pulled into a
+     * parent with SUBPROJECTS, or from a build directory with
+     * --srcpath.  Run where pconfigure was started instead, a
+     * "`cat version`" that worked in the checkout found nothing as
+     * soon as it was configured from anywhere else.
+     *
      * pconfigure itself deliberately stays where it was started,
      * since every path it has worked out is relative to there. */
+    auto directory = srcpath;
+    auto script = filename;
+    if (filename.compare(0, srcpath.size() + 1, srcpath + "/") == 0)
+        script = filename.substr(srcpath.size() + 1);
+    else
+        directory = ".";
+
     auto executable = access(filename.c_str(), X_OK) == 0;
     FILE *file = NULL;
     if (executable == true) {
-        auto directory = srcpath;
-        auto script = filename;
-        if (filename.compare(0, srcpath.size() + 1, srcpath + "/") == 0)
-            script = filename.substr(srcpath.size() + 1);
-        else
-            directory = ".";
 
         /* Both halves are one word each to the shell, whatever is in
          * them.  A Configfile's name has no reason to avoid a space or
@@ -708,7 +758,8 @@ std::vector<configfile_line> lines_from_file(const std::string& srcpath,
             abort();
         }
 
-        out.push_back(configfile_line(filename, ln.number, ln.line));
+        out.push_back(configfile_line(filename, ln.number, ln.line,
+                                      directory));
     }
 
     /* The program's exit status isn't looked at.  Executable
@@ -728,7 +779,8 @@ std::vector<configfile_line> lines_from_file(const std::string& srcpath,
  * that can't be run is a mistake on a particular Configfile line, and
  * the text of that line on its own is no help finding it in a tree
  * with a Configfile, a Configfiles/main and a handful of CONFIGs. */
-std::string execute(std::string line, const debug_info::ptr& where)
+std::string execute(std::string line, const debug_info::ptr& where,
+                    const std::string& directory)
 {
     if (line.find('`') == std::string::npos)
         return line;
@@ -761,9 +813,15 @@ std::string execute(std::string line, const debug_info::ptr& where)
              * than where some older copy got installed. */
             if (pkgconfig_path.size() > 0
                 && command_str.find("pkg-config") != std::string::npos) {
+                /* Each directory is spelled from the directory
+                 * pconfigure was started in, which is not where the
+                 * command runs for a subproject or a --srcpath build:
+                 * there a relative one named a directory under the
+                 * project's own tree that doesn't exist, and a package
+                 * a sibling subproject provides came back missing. */
                 auto path = std::string();
                 for (const auto& dir: pkgconfig_path)
-                    path += dir + ":";
+                    path += from_starting_directory(dir) + ":";
 
                 /* The directories go into the environment the shell
                  * is started with, rather than in front of the
@@ -811,6 +869,19 @@ std::string execute(std::string line, const debug_info::ptr& where)
                 for (const auto& dep: pkgconfig_deps)
                     add_configfile_dep(dep);
             }
+
+            /* The command is run from the directory of the project
+             * whose line it is on: see lines_from_file().  The 'cd' is
+             * a line of its own in front of the command rather than
+             * joined to it with a '&&', which would bind only to the
+             * first of the commands in "a || b" and leave "b" to run
+             * wherever a failed 'cd' left the shell; a failed one
+             * here ends the shell, and is a failing command like any
+             * other.  CDPATH has been taken out of the environment
+             * already, so a relative 'cd' goes where it says. */
+            if (directory != ".")
+                command_str = "cd " + string_utils::quoted(directory)
+                              + " || exit\n" + command_str;
 
             /* What the command printed goes in the way a shell's
              * command substitution would put it there: a line break
