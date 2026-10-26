@@ -3720,12 +3720,15 @@ Every channel that reaches the tree is asked the same question, so a
 name refused in one of them is refused in all: the flags and the
 variables handed to the tree's own configuration, the variables a
 \texttt{--make-var} or a \texttt{MAKEOPS} puts on the
-sub-\texttt{make}'s command line, and the environment an
-\texttt{--env} writes.  What is asked is every whitespace-separated
-word of the option rather than the first, since an option that reaches
-the tree as written can be several arguments; and the shell's quoting
-is taken off a word before it is looked at, since such an option is
-read by the shell before the tree ever sees it.  A name \texttt{make}
+sub-\texttt{make}'s command line, the \texttt{--target} that goes on
+that same command line --- where \texttt{make} reads a word with an
+\texttt{=} in it as a variable rather than as a goal --- and the
+environment an \texttt{--env} writes.  What is asked is every
+whitespace-separated word of the option rather than the first, since
+an option that reaches the tree as written can be several arguments;
+and the shell's quoting is taken off a word before it is looked at,
+since such an option is read by the shell before the tree ever sees
+it.  A name \texttt{make}
 works out rather than one written down --- \texttt{-D\$(WHATEVER)=1}
 --- is refused for being a name nothing here can read.
 
@@ -4495,7 +4498,11 @@ That covers every spelling: the GNU directory variables ---
 \texttt{libdir}, \texttt{mandir} and the rest of the list the GNU
 coding standards define, plus \texttt{DESTDIR} --- said as a
 \texttt{--configure-flag}, as a \texttt{--configure-var}, as a
-\texttt{--make-var}, as a \texttt{MAKEOPS} or as an \texttt{--env},
+\texttt{--make-var}, as a \texttt{MAKEOPS}, as an \texttt{--env}, or
+as a \texttt{--target} --- which is a word on the same
+\texttt{make} command line a \texttt{--make-var} is, so that
+\texttt{--target DESTDIR=/tmp/x} names no goal and sets a variable
+---
 and in each of the spellings a generated \texttt{configure} reads,
 the truncations autoconf writes out for its own options among them.
 The \texttt{--srcdir} that would say which tree gets configured goes
@@ -4804,7 +4811,14 @@ cmake's own \texttt{--install-prefix}, the
 and the rest of them --- and \texttt{DESTDIR}, each said as a
 \texttt{--define}, as a \texttt{--configure-arg}, as a
 \texttt{MAKEOPS} or as an \texttt{--env}, and each whether it is
-being set with a \texttt{-D} or deleted with a \texttt{-U}.  The
+being set with a \texttt{-D} or deleted with a \texttt{-U}.  With a
+generator that builds by running \texttt{make} a \texttt{--target}
+is asked too, since it is a word on that \texttt{make}'s command line
+and one with an \texttt{=} in it is a variable there; that is asked
+once the \texttt{--generator} is known, wherever in the
+\texttt{CONFIGUREOPTS} it was written.  With any other generator a
+\texttt{--target} reaches \texttt{cmake --build --target}, which
+reads it as the name of a target and nothing else, so it is not.  The
 \texttt{-B} and \texttt{-S} this build system already wrote go with
 them, a second answer to either being the same escape one option
 across.  A \texttt{--configure-arg} is looked at one
