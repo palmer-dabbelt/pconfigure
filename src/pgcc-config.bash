@@ -4,7 +4,16 @@
 # stderr, where they're a diagnostic rather than words of a compile
 # command.  The usage's heredoc delimiter is quoted because the text
 # mentions `program -dumpversion` as prose, not as something to run.
-if [[ "$1" == "" || "$2" == "" ]]
+#
+# Anything past the version means the caller wanted the compare mode,
+# and that mode needs both a test and a flag.  A test whose flag is
+# missing -- forgotten, or a variable that expanded to nothing -- used
+# to fall through into the search mode below, which answers "${CC}" on
+# stdout when it finds nothing, and a backtick would paste that make
+# variable into the compile flags.  Refusing with the usage says what
+# to write instead.
+if [[ "$1" == "" || "$2" == "" ]] || \
+   [[ "$#" -gt 2 && ( "$3" == "" || "$4" == "" ) ]]
 then
     cat >&2 <<'EOF'
 pgcc-config <program> <version> [test] [flag]
