@@ -1032,6 +1032,7 @@ TESTSRC     += generate-same-name-source-header-wins-consistently.bash
 TESTSRC     += generate-include-dir-header-shadows-generated.bash
 TESTSRC     += generate-header-pulls-in-source-behind-its-include.bash
 TESTSRC     += autoreconfigure-generate-script-edit-links-new-source.bash
+TESTSRC     += generate-dropped-line-output-reclaimed-by-cache-clean.bash
 TESTSRC     += compileopts-change-recompiles-objects.bash
 TESTSRC     += prefix-change-recompiles-prefix-macro.bash
 TESTSRC     += prefix-change-relinks-installed-rpath.bash
