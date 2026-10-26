@@ -2976,6 +2976,15 @@ list, so a line may name several of them and a blank line names none.
 Each relative path is rooted in the script's project one at a time,
 and an absolute path is left as written, so a script declares the same
 inputs whether its project is built on its own or as a subproject.
+Before that each path is tidied the way \texttt{make} would need it
+spelled to match the rule that builds it: a run of slashes becomes one,
+a \texttt{.} component is dropped, and a component followed by
+\texttt{..} is dropped along with it, so \texttt{./obj/proc/a.h} and
+\texttt{src/../obj/proc/a.h} both name the generated
+\texttt{obj/proc/a.h}.  The tidying is purely by name and never
+reaches through a symbolic link, a component is only dropped when
+something follows it, and a \texttt{..} that climbs out of the
+directory the path started in is left as written.
 A \texttt{\#}, a \texttt{\$} or a \texttt{:} in a path is spelled
 for \texttt{make} on the way into the \texttt{Makefile}, so it names
 the file the script printed.  A \texttt{;} cannot be: on a rule line
