@@ -5921,7 +5921,23 @@ SOURCES     += pconfigure/main.c
 
 This allows \texttt{Configfile}s to interrogate the installed C
 compilers by version number in an attempt to mask flags that are not
-supported on particular compilers.
+supported on particular compilers.  It is meant to be run in a
+backtick, like
+\begin{verbatim}
+COMPILEOPTS += `pgcc-config gcc 4.5 gt -Wno-trampolines`
+\end{verbatim}
+which prints the flag when \texttt{gcc -dumpversion} is newer than
+4.5, and nothing otherwise; \texttt{lt} prints it when the compiler
+is older.  Both are strict, so a compiler of exactly the named
+version gets neither.  Versions are compared as numbers, the major
+first and then the minor, so 4.9 is older than 5.1 and 4.10 is newer
+than 4.9.  The patch level isn't compared: a 4.5.3 compiler is
+exactly 4.5, and a version is written as \texttt{<major>.<minor>} or
+a bare \texttt{<major>}, which is the same as \texttt{<major>.0}.
+A version written any other way, or a compiler whose
+\texttt{-dumpversion} isn't one, makes \texttt{pgcc-config} give up
+with the reason on its standard error and nothing on its standard
+output, which stops \pconfigure\ at the \texttt{Configfile} line.
 
 \subsection{\texttt{pllvm-config} \label{prog:pllvm-config}}
 
