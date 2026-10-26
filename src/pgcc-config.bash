@@ -33,7 +33,26 @@ flag="$4"
 
 if [[ "$test" != "" && "$flag" != "" ]]
 then
-    dumpversion="$($program -dumpversion | cut -d'.' -f1-2)"
+    # The program's own answer is captured before it is trimmed, because
+    # a pipeline's status is the last command's: through "| cut" a
+    # compiler that isn't installed, or one that refuses -dumpversion,
+    # looks like a successful run that printed nothing.  Either way there
+    # is no version to compare, and saying so here keeps the refusal of
+    # an unparseable version below from blaming the version of a
+    # program that never answered.  The program's own stderr is left
+    # alone so whatever it (or the shell, for a missing one) said is
+    # right above ours.
+    if ! rawversion="$($program -dumpversion)"
+    then
+        echo "pgcc-config: could not run $program -dumpversion, so there is no version to compare against $version; check that $program is installed and on PATH" >&2
+        exit 1
+    fi
+    if [[ "$rawversion" == "" ]]
+    then
+        echo "pgcc-config: $program -dumpversion printed no version, so there is nothing to compare against $version" >&2
+        exit 1
+    fi
+    dumpversion="$(echo "$rawversion" | cut -d'.' -f1-2)"
 
     # Versions are compared as numbers, major first and then minor, in
     # bash's own arithmetic, so any GCC can be compared and not just
