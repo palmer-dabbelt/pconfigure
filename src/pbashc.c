@@ -73,6 +73,11 @@ static int skip_first_line;
  * doesn't start with "#!" at all. */
 static char *shebang_options(const char *input);
 
+/* Folds options that env split into separate words ("-e -u") into the
+ * one word a direct "#!" line can pass on ("-eu"), in place, or stops
+ * with an error naming the input's "#!" line when they can't be. */
+static void merge_flags(const char *input, char *options);
+
 /* Writes a line out to the output file. */
 static int write_line(const char *line, void *unused);
 
@@ -94,6 +99,7 @@ int main(int argc, char **argv)
     int chmod_size;
     int ret;
     struct stat input_stat;
+    char *options;
 
     input = NULL;
     output = NULL;
@@ -187,6 +193,11 @@ int main(int argc, char **argv)
         exit(1);
     }
 
+    /* Read before anything is written, since a "#!" line that can't
+     * be carried over is a reason to stop, and stopping here leaves
+     * nothing behind to clean up. */
+    options = shebang_options(input);
+
     /* Written beside where it goes and renamed over it at the end,
      * rather than through whatever is already there.
      *
@@ -228,8 +239,6 @@ int main(int argc, char **argv)
      * of its own gets the line and the blank one after it as before:
      * it moves down either way, and nothing it asked for is lost. */
     {
-        char *options = shebang_options(input);
-
         if (options == NULL)
             fprintf(outfile, SHEBANG "\n\n");
         else if (options[0] != '\0')
@@ -390,6 +399,7 @@ char *shebang_options(const char *input)
     char *end;
     char *interpreter;
     size_t interpreter_length;
+    int is_env;
 
     file = fopen(input, "r");
     if (file == NULL)
@@ -428,10 +438,11 @@ char *shebang_options(const char *input)
      * ("-S" is how "env -S bash -e" gets its "-e" through) are
      * skipped, and what comes after the program is what that program
      * was asked for. */
-    if (interpreter_length >= 3
+    is_env = interpreter_length >= 3
         && strncmp(interpreter + interpreter_length - 3, "env", 3) == 0
         && (interpreter_length == 3
-            || interpreter[interpreter_length - 4] == '/')) {
+            || interpreter[interpreter_length - 4] == '/');
+    if (is_env) {
         while (*cursor == '-') {
             cursor += strcspn(cursor, " \t");
             cursor += strspn(cursor, " \t");
@@ -444,5 +455,63 @@ char *shebang_options(const char *input)
      * it to the interpreter too: it doesn't split "-e -u" into two
      * arguments, so neither does this. */
     memmove(line, cursor, strlen(cursor) + 1);
+
+    /* Except that "env -S" does split it, which is the whole reason
+     * to write "#!/usr/bin/env -S bash -e -u": env hands bash "-e"
+     * and "-u" as two arguments.  The line that replaces it names
+     * bash directly, and there nothing splits, so carried over as it
+     * stands it became "#!/bin/bash -e -u" -- one argument, which
+     * bash refuses as an invalid option, and a program that can't
+     * start at all.  Several words of single-letter flags say the
+     * same as one word with the letters run together, so that is what
+     * they become.  Without "-S" the kernel hands env the whole of
+     * "bash -e -u" as the program's name and the source never ran,
+     * so treating it the same way costs nothing. */
+    if (is_env && strpbrk(line, " \t") != NULL)
+        merge_flags(input, line);
+
     return line;
+}
+
+void merge_flags(const char *input, char *options)
+{
+    char *in;
+    char *out;
+
+    /* "-o" and "-O" take the word after them as their argument, and
+     * a long option is a word of its own, so neither can be folded
+     * into the others.  There is no single argument that says what
+     * such a line asked for, so rather than write one bash can't run
+     * this stops and says how to get there instead. */
+    for (in = options; *in != '\0';) {
+        size_t length;
+        size_t letters;
+
+        length = strcspn(in, " \t");
+        letters = strspn(in + 1, "ABCDEFGHIJKLMNPQRSTUVWXYZ"
+                                 "abcdefghijklmnpqrstuvwxyz");
+        if (in[0] != '-' || letters == 0 || letters + 1 != length) {
+            fprintf(stderr,
+                    "%s:1: the options '%s' on the '#!' line can't be "
+                    "passed to bash as the one\n"
+                    "  argument the compiled program's '#!' line gives it\n"
+                    "  write single-letter flags together, as in '-eu', "
+                    "and set anything else\n"
+                    "  inside the script, as in 'set -o pipefail'\n",
+                    input, options);
+            exit(1);
+        }
+        in += length;
+        in += strspn(in, " \t");
+    }
+
+    /* Every word is a dash and some letters, so the result is the
+     * first dash followed by every word's letters in order. */
+    out = options + 1;
+    for (in = options + 1; *in != '\0'; in++) {
+        if (*in == '-' || *in == ' ' || *in == '\t')
+            continue;
+        *out++ = *in;
+    }
+    *out = '\0';
 }
