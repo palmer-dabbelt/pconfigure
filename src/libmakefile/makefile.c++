@@ -24,7 +24,9 @@
 #include <algorithm>
 #include <cerrno>
 #include <cstdio>
+#include <fcntl.h>
 #include <iostream>
+#include <sys/stat.h>
 #include <unistd.h>
 
 /* Writes one "check-report" rule.  There are four of them -- the quiet
@@ -1068,6 +1070,21 @@ std::string makefile::makefile::write_to_file(const std::string& filename)
         failed = tmp;
     else if (rename(tmp.c_str(), filename.c_str()) != 0)
         failed = filename;
+
+    /* The Makefile's timestamp is when its last byte was written, but
+     * the directory it sits in changes later than that, when the
+     * rename puts it in place.  A Makefile that watches its own
+     * directory -- "CONFIG_DEPS += .", or a parent's that lists every
+     * top-level directory -- would then find the directory newer than
+     * itself and reconfigure on the first make, which is the configure
+     * counting its own write as somebody's edit.  Most of the time the
+     * two land on the same tick of a filesystem's coarse clock and
+     * nobody sees it, which is exactly what makes it come and go with
+     * how busy the machine is.  Stamping the Makefile after the rename
+     * puts it at or past every change this write made.  A failure here
+     * costs only that one extra reconfigure, so it isn't one. */
+    if (failed.size() == 0)
+        utimensat(AT_FDCWD, filename.c_str(), nullptr, 0);
 
     if (failed.size() > 0) {
         auto error = errno;
