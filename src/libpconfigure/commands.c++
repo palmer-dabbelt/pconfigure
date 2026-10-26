@@ -285,9 +285,65 @@ std::vector<command::ptr> commands(int argc, const char **argv)
         out.push_back(NULL);
     }
 
+    /* The refusal for a word that is neither an option nor a line
+     * that can be read. */
+    auto refuse = [&](int i) {
+        /* Counted the way the debug_info above counts it, from the
+         * first word after the program's name, so that this and every
+         * other complaint about the command line ("args:1 '--strict'")
+         * give the same word the same number.  The word is quoted as
+         * it was typed, since that's what will be looked for in the
+         * command that ran this.
+         *
+         * A word that isn't one of the options is read as a Configfile
+         * line, which is why both are named: somebody who mistyped an
+         * option wants the list of options, and somebody who meant a
+         * line wants to know how one is written. */
+        std::cerr << "Unable to parse command-line option "
+                  << i
+                  << ": '"
+                  << argv[i]
+                  << "'\n"
+                  << "  it isn't one of the options"
+                  << " 'pconfigure --help' lists, and a word that"
+                  << " isn't an option is read as a Configfile line,"
+                  << " which goes in as one quoted word: pconfigure 'LANGUAGES += c'\n";
+
+        abort();
+    };
+
+    /* "--help" and "--version" are answered without configuring
+     * anything, and reading a line is configuring: its backticks are
+     * commands, run for whatever they leave behind as much as for
+     * what they print, and a line that can't be read stops the run.
+     * Neither is anything somebody asking for the option list or the
+     * version number asked for -- and the likeliest way to be asking
+     * is to have added "--help" to the end of a command that just
+     * failed, lines and all.  So the lines are left unread.
+     *
+     * Except for a word that starts with a dash, which no Configfile
+     * command does: that is an option somebody got wrong, and it is
+     * still refused by name, since an answer that doesn't point at it
+     * leaves them hunting for the one word that's the problem.  It is
+     * refused without being read as a line, so that even backticks in
+     * it go unrun. */
+    auto answering = std::any_of(out.begin(), out.end(),
+        [](const command::ptr& cmd) {
+            return cmd != NULL
+                && (cmd->type() == command_type::HELP
+                    || cmd->type() == command_type::VERSION);
+        });
+
     for (const auto& line: lines) {
         auto i = line.second;
         auto debug = debug_info::command_line(i, argv[i]);
+
+        if (answering) {
+            auto text = string_utils::clean_white(argv[i]);
+            if (text.size() > 0 && text[0] == '-')
+                refuse(i);
+            continue;
+        }
 
         /* What would be an option once its spaces were gone was not
          * typed as one, and is turned away the same way as any other
@@ -305,31 +361,8 @@ std::vector<command::ptr> commands(int argc, const char **argv)
         if (said_nothing)
             continue;
 
-        if (cmd == NULL) {
-            /* Counted the way the debug_info above counts it, from
-             * the first word after the program's name, so that this
-             * and every other complaint about the command line ("args:1
-             * '--strict'") give the same word the same number.  The
-             * word is quoted as it was typed, since that's what will
-             * be looked for in the command that ran this.
-             *
-             * A word that isn't one of the options is read as a
-             * Configfile line, which is why both are named: somebody
-             * who mistyped an option wants the list of options, and
-             * somebody who meant a line wants to know how one is
-             * written. */
-            std::cerr << "Unable to parse command-line option "
-                      << i
-                      << ": '"
-                      << argv[i]
-                      << "'\n"
-                      << "  it isn't one of the options"
-                      << " 'pconfigure --help' lists, and a word that"
-                      << " isn't an option is read as a Configfile line,"
-                      << " which goes in as one quoted word: pconfigure 'LANGUAGES += c'\n";
-
-            abort();
-        }
+        if (cmd == NULL)
+            refuse(i);
 
         out[line.first] = cmd;
     }

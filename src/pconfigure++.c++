@@ -117,10 +117,25 @@ int main(int argc, const char **argv)
     auto processor = std::make_shared<command_processor>();
 
     auto given = commands(argc, argv);
-    for (const auto& command: given)
-        processor->process(command);
 
-    if (processor->given_help_command()) {
+    /* "--help" and "--version" are looked for before anything given
+     * with them is acted on, rather than by processing every option
+     * and then asking.  Processing an option is configuring with it:
+     * a "--strict" whose version can't be read is refused there, and
+     * so is a "--phc" or "--cross-compile" written wrongly -- and an
+     * answer that only comes once every other option was right is no
+     * answer for the person most likely to be asking, who has just
+     * had one of them refused and added "--help" to the same command.
+     * commands() has already left the Configfile lines unread for the
+     * same reason. */
+    auto asked = [&](command_type type) {
+        return std::any_of(given.begin(), given.end(),
+                           [&](const command::ptr& command) {
+                               return command->type() == type;
+                           });
+    };
+
+    if (asked(command_type::HELP)) {
         std::cout <<
 "usage: pconfigure [options]\n"
 "\n"
@@ -148,10 +163,13 @@ int main(int argc, const char **argv)
         return 0;
     }
 
-    if (processor->given_version_command()) {
+    if (asked(command_type::VERSION)) {
         std::cout << "pconfigure " << PCONFIGURE_VERSION << std::endl;
         return 0;
     }
+
+    for (const auto& command: given)
+        processor->process(command);
 
     /* The Configfiles are read after the command-line options have
      * been processed, because the command line can change where those
