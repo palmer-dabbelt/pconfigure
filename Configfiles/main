@@ -1114,6 +1114,7 @@ TESTSRC     += subproject-two-spellings-distclean.bash
 TESTSRC     += project-path-with-space-builds-and-reconfigures.bash
 TESTSRC     += cache-clean-mixed-build-stays-settled.bash
 TESTSRC     += cache-clean-drops-object-of-removed-source.bash
+TESTSRC     += cache-clean-drops-record-of-removed-generate.bash
 TESTSRC     += clean-then-parallel-rebuild-with-subproject.bash
 TESTSRC     += subproject-standalone-configure-keeps-test-recipe-record.bash
 TESTSRC     += subproject-standalone-configure-keeps-bash-binary-recipe-record.bash

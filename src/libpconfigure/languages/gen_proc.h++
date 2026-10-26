@@ -58,6 +58,12 @@ public:
      * helpers, so that the two cannot drift apart. */
     static std::vector<std::pair<std::string, std::string>>
     scratch_files(const context::ptr& ctx, const std::string& output);
+
+    /* The one of those that is written at configure time rather than
+     * by a rule, which makes it the one "make cache-clean" cannot
+     * learn about by reading the Makefile back: it has to be told
+     * which of these to keep. */
+    static std::string fragment_recipe_record(const std::string& output);
 };
 
 #endif

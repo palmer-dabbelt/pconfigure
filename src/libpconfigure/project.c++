@@ -2060,18 +2060,6 @@ makefile::target::ptr project::cache_clean_target(const std::vector<ptr>& projec
          * would cost a relink of everything. */
         prune += " -not -name 'link-inputs'";
 
-        /* And the record a GENERATE keeps of the recipe that wrote its
-         * dependency fragment.  It is written at configure time with
-         * no rule behind it, so the Makefile never names it, and the
-         * next configure reads a missing record the same way it reads
-         * a mismatched one: as a fragment some other recipe wrote.
-         * That fragment is thrown away and the script's "--deps" runs
-         * again, so a cache clean would cost every GENERATE in the
-         * project being asked its dependencies over -- and those
-         * scripts are run by somebody else's code, which is not
-         * something to be doing for nothing. */
-        prune += " -not -name '*.d-context'";
-
         /* And the scratch a test was given, which the Makefile names
          * as an argument to ptest rather than as something it knows
          * how to build -- so reading it back decides every byte in
@@ -2107,6 +2095,43 @@ makefile::target::ptr project::cache_clean_target(const std::vector<ptr>& projec
                 wanted += "; find " + dir + " -name '*.d' -exec cat {} + "
                           "| sed -n 's|\\(^" + dir
                           + "/[^[:space:]:]*\\):.*|\\1|p'";
+
+            /* And the record each GENERATE keeps of the recipe that
+             * wrote its dependency fragment.  It is written at
+             * configure time with no rule behind it, so the Makefile
+             * never names it, and the next configure reads a missing
+             * record the same way it reads a mismatched one: as a
+             * fragment some other recipe wrote.  That fragment is
+             * thrown away and the script's "--deps" runs again, so
+             * losing these would cost every GENERATE in the project
+             * being asked its dependencies over -- and those scripts
+             * are somebody else's code, which is not something to be
+             * running for nothing.
+             *
+             * Only the GENERATEs configured now, though, and that is
+             * why these are named one at a time rather than spared by
+             * a "*.d-context" pattern.  A pattern spares the record of
+             * a GENERATE that has since been deleted from the
+             * Configfile too: its output and its fragment go, and the
+             * record is left on its own in the object directory for
+             * ever, with nothing left that will read it.  The paths
+             * are spelled the way the fragment's rule spells its
+             * target, which is how find spells them as well, and they
+             * are compared as strings rather than handed to find as
+             * patterns, so an output with a '[' or a '*' in its name
+             * means what it says. */
+            for (const auto& context: project->_processor->output_contexts()) {
+                if (context->check_type({context_type::GENERATE}) == false)
+                    continue;
+
+                auto record = language_gen_proc::fragment_recipe_record(
+                    context->gen_dir + "/" + context->cmd->data());
+                if (record.compare(0, dir.size() + 1, dir + "/") != 0)
+                    continue;
+
+                wanted += "; printf '%s\\n' "
+                          + string_utils::quoted(record);
+            }
 
             commands.push_back(
                 "comm -23 "

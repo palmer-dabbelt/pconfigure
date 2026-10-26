@@ -130,6 +130,11 @@ static std::string tidy_dep_path(const std::string& path)
     return joined;
 }
 
+std::string language_gen_proc::fragment_recipe_record(const std::string& output)
+{
+    return fragment_context_path(output);
+}
+
 std::vector<std::pair<std::string, std::string>>
 language_gen_proc::scratch_files(const context::ptr& ctx,
                                  const std::string& output)
