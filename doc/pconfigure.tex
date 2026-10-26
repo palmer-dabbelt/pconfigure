@@ -3347,8 +3347,23 @@ A number of \pconfigure\ specifics are determined
 \subsection{\texttt{asm}: Assembly}
 
 This is almost exactly the same as C (see Section~\ref{lang:c}),
-except that it expects source files are called \texttt{*.S} and that
-it compiles using \texttt{cc -xassembly}.
+except that it also compiles assembly sources called \texttt{*.S},
+the spelling that goes through the C preprocessor first.  A target
+written in \texttt{asm} can name both kinds of source, which is the
+usual reason to write one: a program in C with a start file or a
+context switch beside it.  The unpreprocessed \texttt{*.s} is not
+taken.
+
+Both kinds are compiled by \texttt{\$\{CC\}} with \texttt{\$\{CFLAGS\}}
+and no \texttt{-x}, so the compiler goes by the ending: \texttt{.c} is
+C and \texttt{.S} is assembly.  One compile line has to do for both,
+because under \texttt{AUTORECONFIGURE} the line a source is compiled
+with is also the one the sources found behind its headers are compiled
+with.  A target is linked the way a C one is.
+
+C is preferred over \texttt{asm} for a target whose sources are all
+\texttt{.c}, so turning \texttt{asm} on for one program leaves every
+other C program in the project as it was.
 
 It's expected that \texttt{cc} accepts the same command-line arguments
 as GCC does.  Note that a wrapper for \texttt{nasm} is provided that
@@ -3562,11 +3577,17 @@ C++ supports linking against C.
 
 \subsection{\texttt{flo}: Chisel Flo Backend}
 
-This language is almost exactly the same as the Chisel C++ language
+This language is no longer supported: it went with the C version of
+\pconfigure\ and was never ported, and \texttt{LANGUAGES += flo} is a
+fatal error saying so.  Nothing generates Flo any more; Chisel is built
+with \texttt{LANGUAGES += chisel} (see Section~\ref{chisel}), which
+elaborates it to Verilog.  What follows describes what it used to do.
+
+This language was almost exactly the same as the Chisel C++ language
 (see Section~\ref{chisel}) but it generates Flo code instead of C++
 code.
 
-The Flo backend supports linking against Flo.
+The Flo backend supported linking against Flo.
 
 \subsection{\texttt{h}: C/C++ Header}
 
@@ -3663,7 +3684,16 @@ pkgconfig supports linking against pkgconfig.
 
 \subsection{\texttt{scala}: Scala \label{lang:scala}}
 
-The Scala language uses \texttt{pscalac} (see
+This language is no longer supported: it went with the C version of
+\pconfigure\ and was never ported, and \texttt{LANGUAGES += scala} is
+a fatal error saying so.  Chisel is built with \texttt{LANGUAGES +=
+chisel} (see Section~\ref{chisel}), which runs \texttt{scalac} itself.
+The \texttt{pscalac} and \texttt{pscalald} wrappers this language used
+are still installed, so other Scala can be built by running them from
+the project's own rules.  What follows describes what the language
+used to do, which the Chisel language still refers to.
+
+The Scala language used \texttt{pscalac} (see
 Section~\ref{prog:pscalac}) and \texttt{pscalald} (see
 Section~\ref{prog:pscalald}) to build Scala in a manner that's mostly
 compatible with a UNIX-style C toolchain.
@@ -3680,7 +3710,7 @@ will include every scala file listed by \texttt{find \$SRCNAME/dir
 to some added complexity and should be eventually fixed, but it'll be
 tough because it's hard to parse Scala code in a timely fashion.
 
-Scala supports linking against scala.
+Scala supported linking against scala.
 
 \section{Supported Build Systems \label{buildsys}}
 
@@ -6167,6 +6197,10 @@ When combined with \texttt{pscalald}, this makes Scala look like a
 regular compiled language.  Specifically this wraps \texttt{scalac} in
 a manner such that it produces a JAR archive, much like GCC produces
 ELF objects.
+
+No language runs it now that the Scala language is gone (see
+Section~\ref{lang:scala}); it is still installed for a project's own
+rules to call.
 
 \subsection{\texttt{pscalald} \label{prog:pscalald}}
 
