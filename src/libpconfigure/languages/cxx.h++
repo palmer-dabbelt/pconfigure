@@ -404,6 +404,16 @@ protected:
 
         virtual ~cp_target(void) {}
 
+        /* The recipe that copies "source_path" into place.  It takes
+         * what it needs as arguments rather than from a cp_target, so
+         * that the commands a copy runs can be worked out by whatever
+         * else needs to know them, and they stay the ones the rule
+         * runs. */
+        static std::vector<std::string>
+        copy_commands(const std::string& source_path,
+                      const install_target& install,
+                      const std::string& install_mode);
+
     public:
         /* target virtual functions */
         virtual makefile::target::ptr generate_makefile_target(void) const;

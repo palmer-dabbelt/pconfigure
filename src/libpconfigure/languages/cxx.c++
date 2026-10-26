@@ -1492,42 +1492,7 @@ language_cxx::cp_target::generate_makefile_target(void) const
 {
     auto deps = vector_util::make(_source->generate_makefile_target());
 
-    /* Copied next to where it goes and then renamed over it, rather
-     * than written straight through the file that's already there.
-     *
-     * A rebuild replaces a program or a library that something may
-     * well have open, and "cp" opens the destination and truncates it
-     * -- so what used to be there and what is there now are one file,
-     * and everything with it mapped is running against pages that
-     * have changed underneath it.  On macOS the kernel has already
-     * checked that file's code signature and remembered the answer
-     * against that file, so the next thing to exec or load it dies of
-     * SIGKILL with nothing printed at all.  A rename leaves the old
-     * file alone for whoever still has it, and gives the new one its
-     * own identity to be checked. */
-    auto cmds = std::vector<std::string>{
-        "mkdir -p $(dir $@)",
-#if defined(__gnu_linux__)
-        "cp --reflink=auto -f " + _source->path() + " $@.tmp",
-#else
-        "cp -f " + _source->path() + " $@.tmp",
-#endif
-    };
-
-    /* An installed copy gets a fixed mode before it's renamed into
-     * place, as it would from "install -m".  A "cp" carries over the
-     * mode of what it copies, which is whatever the builder's umask
-     * left it with: a program or a shared library only came out 0755
-     * because its install flavour happens to be linked during the
-     * install, under that umask instead, and a static archive -- which
-     * has the one flavour, made during the build -- went in under
-     * "umask 077" as a file nobody else could link against.  The build
-     * tree's copy is the builder's, and keeps the mode it was made
-     * with. */
-    if (_install == install_target::TRUE)
-        cmds.push_back("chmod " + _install_mode + " $@.tmp");
-
-    cmds.push_back("mv -f $@.tmp $@");
+    auto cmds = copy_commands(_source->path(), _install, _install_mode);
 
     auto global = [&]()
         {
@@ -1556,6 +1521,50 @@ language_cxx::cp_target::generate_makefile_target(void) const
         global,
         cmds,
         _comments);
+}
+
+std::vector<std::string>
+language_cxx::cp_target::copy_commands(const std::string& source_path,
+                                       const install_target& install,
+                                       const std::string& install_mode)
+{
+    /* Copied next to where it goes and then renamed over it, rather
+     * than written straight through the file that's already there.
+     *
+     * A rebuild replaces a program or a library that something may
+     * well have open, and "cp" opens the destination and truncates it
+     * -- so what used to be there and what is there now are one file,
+     * and everything with it mapped is running against pages that
+     * have changed underneath it.  On macOS the kernel has already
+     * checked that file's code signature and remembered the answer
+     * against that file, so the next thing to exec or load it dies of
+     * SIGKILL with nothing printed at all.  A rename leaves the old
+     * file alone for whoever still has it, and gives the new one its
+     * own identity to be checked. */
+    auto cmds = std::vector<std::string>{
+        "mkdir -p $(dir $@)",
+#if defined(__gnu_linux__)
+        "cp --reflink=auto -f " + source_path + " $@.tmp",
+#else
+        "cp -f " + source_path + " $@.tmp",
+#endif
+    };
+
+    /* An installed copy gets a fixed mode before it's renamed into
+     * place, as it would from "install -m".  A "cp" carries over the
+     * mode of what it copies, which is whatever the builder's umask
+     * left it with: a program or a shared library only came out 0755
+     * because its install flavour happens to be linked during the
+     * install, under that umask instead, and a static archive -- which
+     * has the one flavour, made during the build -- went in under
+     * "umask 077" as a file nobody else could link against.  The build
+     * tree's copy is the builder's, and keeps the mode it was made
+     * with. */
+    if (install == install_target::TRUE)
+        cmds.push_back("chmod " + install_mode + " $@.tmp");
+
+    cmds.push_back("mv -f $@.tmp $@");
+    return cmds;
 }
 
 language_cxx::header_target::header_target(const std::string& path)
