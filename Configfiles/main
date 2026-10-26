@@ -462,6 +462,7 @@ TESTSRC     += perl-script-installs-executable-and-uninstalls.bash
 TESTSRC     += install-modes-ignore-build-umask.bash
 TESTSRC     += install-modes-ignore-build-umask-compiled.bash
 TESTSRC     += install-skips-test-only-targets.bash
+TESTSRC     += install-skips-tests-of-libraries-and-archives.bash
 TESTSRC     += static-archive-install-and-uninstall.bash
 TESTSRC     += install-reinstalls-only-missing-file.bash
 TESTSRC     += destdir-relative-installs-under-cwd.bash
