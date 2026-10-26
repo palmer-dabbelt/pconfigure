@@ -369,6 +369,31 @@ namespace {
             die(error);
     }
 
+    /* The last thing in a fragment that something links: a hash of
+     * everything above it, said twice -- once as a comment, which is
+     * what is on disk, and once as a make variable, which is what make
+     * read.  The objects a link is made of are only ever said here,
+     * so a link run while make holds an older reading of one of these
+     * than the one on disk, or none at all, is a link of the wrong
+     * list.  That is what happens when make remakes a fragment before
+     * it has read it, and builds a link on the way to some makefile
+     * that depends on it: the link rule compares the two and leaves
+     * the link to the make that starts over.
+     *
+     * Hashed rather than stamped with when it was written, because
+     * the rule that writes this again for a missing ".headers" stamp
+     * can run with nothing having changed, and the same words on disk
+     * as in make are a list make has right. */
+    void seal(std::string& out,
+              const std::string& deps,
+              const makefile::path_prefix& prefix)
+    {
+        auto hash = hash_of(std::vector<std::string>{out});
+        out += "# fragment " + hash + "\n";
+        out += prefix.rewrite(guard("fragment", prefix.rewrite(deps))
+                              + " := " + hash) + "\n";
+    }
+
     std::string join(const std::vector<std::string>& v)
     {
         return context_file::join(v);
@@ -694,6 +719,7 @@ int main(int argc, const char **argv)
         out += "# There is no such file today, so it builds nothing"
                " and nothing\n";
         out += "# is linked against it.\n";
+        seal(out, deps, prefix);
         write(deps, out);
         return 0;
     }
@@ -870,6 +896,14 @@ int main(int argc, const char **argv)
                     say("clean: " + c);
                 }
 
+                /* What is linked out of the source behind the
+                 * header is said in its own fragment, so each link
+                 * waits for that to be written before it asks
+                 * whether what make read of it is still what it
+                 * says. */
+                for (const auto& link: ctx.links)
+                    say(link + ": | " + sibling_deps);
+
                 say("include " + sibling_deps);
                 say("endif");
                 out += "\n";
@@ -1041,7 +1075,9 @@ int main(int argc, const char **argv)
                    + (ctx.pic.size() > 0 ? " " + ctx.pic : "")) + "\n";
         say("endif");
     }
+    out += "\n";
 
+    seal(out, deps, prefix);
     write(deps, out);
     return 0;
 }
