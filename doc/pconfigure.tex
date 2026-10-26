@@ -5594,7 +5594,13 @@ across all of them, and \pconfigure\ writes the list of directories
 they land in to \texttt{\$OBJDIR/check-dirs} at the same time as it
 writes the \texttt{Makefile}.  Naming a directory with
 \texttt{--check-dir} overrides that entirely, and may be given more
-than once.
+than once.  Directories are compared by where they are rather than by
+how they are spelled, so \texttt{check}, \texttt{./check/} and its
+absolute path name one directory, as does a symlink to it, and its
+results are counted once.
+A directory inside another one that was named too keeps its own
+results: each is counted, labelled and scored by the nearest
+directory that holds it, in a whole run and a suite report alike.
 
 Only a project that builds something has a check directory: one that
 does nothing but pull in subprojects runs no tests of its own, so a
