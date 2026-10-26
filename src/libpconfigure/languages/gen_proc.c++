@@ -23,6 +23,7 @@
 #include "../file_utils.h++"
 #include "../project.h++"
 #include <assert.h>
+#include <glob.h>
 #include <set>
 #include <unistd.h>
 #include <iostream>
@@ -708,8 +709,57 @@ language_gen_proc::targets(const context::ptr& ctx) const
 
         /* We actually issue the generate commands here, as that's the only way
          * to tell the rest of pconfigure these commands have actually been
-         * generated. */
-        if (access(target.c_str(), R_OK) != 0) {
+         * generated.
+         *
+         * And not only when there is no output yet, which is what this
+         * used to ask.  What a generated header includes is read off
+         * the copy sitting here, by the scan that decides what a
+         * binary links and what its objects depend on, so a copy the
+         * script's last edit has made stale is a copy that answers
+         * those questions for the old script.  A rerun after editing
+         * gen.h.proc to include helper.h left helper.c unlinked and
+         * the next make failing on an undefined reference, and a
+         * header with no source behind it was put on no rule at all;
+         * both went away only on a second pconfigure, by which time
+         * make had regenerated the output.
+         *
+         * So this asks make's question of the inputs the rule above
+         * names: the script and everything its --deps answer printed.
+         * That means the script runs here exactly when the next make
+         * would have run it anyway, and an output that is up to date
+         * costs a reconfigure nothing.  "Always regenerate, and keep
+         * the old file if nothing changed" was the other shape, and
+         * it was rejected for that cost: a GENERATE that builds an
+         * archive would rebuild it on every configure.  An optional
+         * input is expanded the way the rule's $(wildcard) would
+         * expand it, since its path may be a pattern.  What the build
+         * later discovers through the fragment below is not consulted
+         * -- but the --deps that just ran here is the same question
+         * asked again, so a newly read input is already in the answer.
+         *
+         * The recipe itself still decides whether the file is
+         * replaced, so a script that runs and says what it said
+         * before leaves the output, and its mtime, as they were. */
+        auto stale = access(target.c_str(), R_OK) != 0
+            || file_utils::newer_than(procfile, target);
+        for (const auto& line: dep_lines) {
+            for (const auto& path: dep_paths(line)) {
+                if (optional_dep(line) == false) {
+                    stale = stale || file_utils::newer_than(path, target);
+                    continue;
+                }
+
+                glob_t matches;
+                if (glob(path.c_str(), 0, NULL, &matches) == 0)
+                    for (size_t i = 0; i < matches.gl_pathc; ++i)
+                        stale = stale
+                            || file_utils::newer_than(matches.gl_pathv[i],
+                                                      target);
+                globfree(&matches);
+            }
+        }
+
+        if (stale == true) {
             auto status = system(commands[0].c_str());
             if (status != 0) {
                 std::cerr << gen_line << "\n"
