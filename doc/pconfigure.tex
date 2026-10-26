@@ -2770,8 +2770,10 @@ pasted unquoted into compile lines and install recipes, where a space
 splits it in two.  For the same reason a prefix can't have any of the
 characters \texttt{make} or the shell read specially in it ---
 \texttt{:}, \texttt{\#}, \texttt{=}, \texttt{\$}, \texttt{\%},
-a backslash or a quote among them --- since it is part of the name of
-every file \texttt{make install} writes.  Repeated slashes and a trailing one are dropped, so
+a brace, a backslash or a quote among them --- since it is part of the
+name of every file \texttt{make install} writes.  A brace is there
+because the install recipes run under \texttt{bash}, which expands
+\texttt{/opt/\{a,b\}} into two directories.  Repeated slashes and a trailing one are dropped, so
 \texttt{/opt/thing/} and \texttt{/opt//thing} mean exactly what
 \texttt{/opt/thing} does; a prefix of \texttt{/} on its own is kept,
 and installs to \texttt{/bin} and \texttt{/lib} rather than
@@ -5653,11 +5655,23 @@ name:
   start of a string that never ends, a \texttt{;}, \texttt{\&} or
   \texttt{|} as the end of a command, a \texttt{<} or \texttt{>} as a
   redirection, a parenthesis as a subshell, and a \texttt{\textbackslash}
-  as an escape that disappears from the name.
+  as an escape that disappears from the name.  The recipes run under
+  \texttt{bash}, which also expands a brace list or sequence, so
+  \texttt{a\{b,c\}} and \texttt{v\{1..2\}} each come out as several
+  words, and runs what is between two backquotes as a command.
 \end{itemize}
 
-A backquote never gets this far: \pconfigure\ runs what is between two
-of them as a command when it reads the line.
+Either brace is refused, even alone where \texttt{bash} would have left
+it be, so that the rule doesn't depend on which braces it pairs.  The
+backquotes written on a \texttt{Configfile} line are run by
+\pconfigure\ itself when it reads the line, but a backquote can still
+reach a name in two ways: in the output of one of those commands,
+which is pasted into the line as it is, and in the name of a source
+found behind a header, which comes from the file on disk (see
+Section~\ref{lang:c}).  Either is refused, as is a brace that arrives
+the same way.  The header itself only ever reaches
+\texttt{make}, never a shell, so a header with a brace or a backquote
+in its name builds.
 
 The list is the characters that were found to break a build, not a
 promise about every other one.  Letters, digits, \texttt{-},
@@ -5680,8 +5694,8 @@ the vendored build systems quote what they write, and neither is a
 command line: \texttt{COMPILEOPTS += -DX=a:b\#c} means what it says.
 
 Unlike a space, this is not a \texttt{STRICT} warning.  No
-\texttt{Configfile} ever built with one of these in a name, so there is
-nothing old for refusing it to break.
+\texttt{Configfile} ever built with one of these in a name, a lone
+brace aside, so there is nothing old for refusing it to break.
 
 \subsection{A name with a \texttt{\%} or a glob character
   \label{warn:wildcard}}
