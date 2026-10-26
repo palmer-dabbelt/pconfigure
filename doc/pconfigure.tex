@@ -2898,10 +2898,18 @@ links keeps the \texttt{\$(wildcard)}: \texttt{make} remakes the
 what such a file is linked out of, so it is noticed once it exists and
 not built from there.
 
-Without \texttt{AUTORECONFIGURE} the line still adds the prerequisite,
-and a project that keeps its own committed \texttt{Makefile} beside the
-generated one supplies the recipe there
-(Section~\ref{cmd:autoreconfigure}).
+Without \texttt{AUTORECONFIGURE} only a project that keeps its own
+committed \texttt{Makefile} beside the generated one --- a
+\texttt{BOOTSTRAP} project (Section~\ref{cmd:bootstrap}) --- gets the
+prerequisite, and its committed \texttt{Makefile} supplies the recipe
+(Section~\ref{cmd:autoreconfigure}), so a file appearing in the named
+directory reconfigures it.  Only the \texttt{CONFIG\_DEPS} paths are
+named there, not the \texttt{Configfile}s, which stay unwatched without
+\texttt{AUTORECONFIGURE}.  A project with no committed \texttt{Makefile}
+gets no prerequisite at all: with no recipe it could never reconfigure,
+and \texttt{make} would still remake whatever the line names before
+looking at the goal, so \texttt{make clean} or \texttt{make -n} would
+rebuild a binary or a vendored tree the line points at.
 
 \subsection{\texttt{TESTSRC += \$name} \label{cmd:testsrc}}
 
