@@ -81,7 +81,20 @@
  * either -- make deletes a failed recipe's target only when the recipe
  * changed it, and "&&" means this one never got as far as the mv -- and
  * it is file-global, so it would start removing half-written targets
- * for every other rule in the Makefile besides. */
+ * for every other rule in the Makefile besides.
+ *
+ * The quiet report is printed on success too.  "make check" and
+ * "make check-<suite>" have no recipe of their own, so this is the
+ * only place its contents can reach the terminal, and a green run
+ * still has something to say: the NSKIP count, which ptest --quiet
+ * writes exactly so that a suite which has quietly stopped running
+ * half of itself is seen by whoever typed "make check".  A run with
+ * nothing to excuse leaves an empty quiet report, so a clean check
+ * stays silent.  It is a recipe line of its own, after the mv, so
+ * that it neither changes what the report file holds or when it was
+ * written nor gets read as a failure of the scoring by the "||" above.
+ * The full report has "make report" to print it, and printing it
+ * here as well would show it twice. */
 static void write_report_rule(FILE *file,
                               const std::string& report,
                               const std::string& stamp,
@@ -93,9 +106,12 @@ static void write_report_rule(FILE *file,
     fprintf(file,
             "%s: %s\n\t%srm -f $@ && %s%s --no-check-make-check%s"
             " > $@.tmp && mv $@.tmp $@"
-            " || (cat $@.tmp; rm -f $@.tmp $@; exit 1)\n\n",
+            " || (cat $@.tmp; rm -f $@.tmp $@; exit 1)\n",
             report.c_str(), stamp.c_str(), quiet_make, ptest.c_str(),
             quiet ? " --quiet" : "", args.c_str());
+    if (quiet)
+        fprintf(file, "\t%scat $@\n", quiet_make);
+    fprintf(file, "\n");
 }
 
 makefile::makefile::makefile(bool verbose,
