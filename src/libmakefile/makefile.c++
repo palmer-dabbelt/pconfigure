@@ -503,6 +503,43 @@ void makefile::makefile::write_to_file(const std::string& filename)
                   " symlink to it)\n");
     fprintf(file, "endif\n\n");
 
+    /* Past make, $(DESTDIR) lands in the install and uninstall recipes
+     * as a bare word of shell, and the shell has syntax of its own.  A
+     * DESTDIR under "R&D" ran "rm -f .../R" in the background and
+     * deleted a file that had nothing to do with the install; a
+     * backslash was dropped, so "st\age" installed into and uninstalled
+     * from "stage"; "st{a,b}" made two trees; a '?', '*' or '[' let an
+     * uninstall glob its way into a sibling staging directory; and a
+     * quote, a '(' or a redirection stopped on a shell error about a
+     * line of this Makefile.  A '|' doesn't even get that far: in the
+     * "install" rule's prerequisites it starts the order-only ones.
+     *
+     * Quoting $(DESTDIR) in the recipes isn't the fix.  The same words
+     * are the installed files' target names, where make reads them
+     * before any shell does and has no quoting at all, and "$@" comes
+     * out of those unquoted.  A quote character in the DESTDIR would
+     * also need escaping inside whatever quotes were chosen, and every
+     * backend writes its own recipes.  Refusing them here covers every
+     * recipe at once and says what to do, the way the checks above
+     * do.
+     *
+     * The characters are in a variable because a '(' or ')' written
+     * into a make function's arguments would be read as part of the
+     * call.  Only the characters that start syntax are here: '}', ']'
+     * and '!' do nothing on their own in a recipe that isn't
+     * interactive, and a '$' can't get here, since make has already
+     * expanded it by the time DESTDIR is read. */
+    fprintf(file, "__pconfigure__destdir_refused := \\ & | ( ) ' \" ` < > * ? [ {\n");
+    fprintf(file, "ifneq ($(strip $(foreach c,$(__pconfigure__destdir_refused),"
+                  "$(findstring $(c),$(DESTDIR)))),)\n");
+    fprintf(file, "$(error DESTDIR=\"$(DESTDIR)\" has one of"
+                  " $(__pconfigure__destdir_refused) in it, and the shell"
+                  " or make reads those as syntax in the install and"
+                  " uninstall recipes it is pasted into: install through"
+                  " a path to the same directory that has none, such as"
+                  " a symlink to it)\n");
+    fprintf(file, "endif\n\n");
+
     /* "make clean all" is how people ask for a build from scratch,
      * and one make cannot give them that.  make decides whether each
      * file is current once per run, and for the files that feed the
