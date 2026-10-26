@@ -1445,7 +1445,12 @@ Dependencies between projects don't have to be written down.  A
 build produces becomes a \texttt{Makefile} dependency on it, and
 \texttt{ppkg-config} is answered out of the build tree, so a project
 can ask about a package one of its subprojects provides and be told
-where that subproject's output actually is.
+where that subproject's output actually is.  The build tree's
+\texttt{.pc} directories are put in the environment of the shell that
+runs the backtick, ahead of any \texttt{PKG\_CONFIG\_PATH} the caller
+set, so every command in it sees them: a fallback after a
+\texttt{||}, a second question after a \texttt{;}, and one inside an
+\texttt{if} are all answered out of the build tree too.
 
 A subproject is built and installed as part of whoever pulled it in,
 into the same \texttt{PREFIX}, and \texttt{make check} from the top
