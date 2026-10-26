@@ -117,6 +117,27 @@ do
         # One test of that set, named outright.
         shift
         check_results+=("$1")
+    elif [[ "$1" == "--check-results-from" ]]
+    then
+        # The same thing for every test in a file, one to a line, up to
+        # the first empty line -- which is how a Makefile hands over
+        # the set: a few thousand of them as --check-result is a
+        # command line longer than one argument may be, and make runs
+        # a recipe as one argument to the shell.  The file is the
+        # check scope the report already waits on (see
+        # makefile::check_scopes()), so what was scored is what the
+        # stamp was made from.
+        shift
+        if [[ ! -r "$1" ]]
+        then
+            echo "ptest: can't read results from $1" >&2
+            exit 2
+        fi
+        while IFS= read -r result || [[ "$result" != "" ]]
+        do
+            [[ "$result" == "" ]] && break
+            check_results+=("$result")
+        done < "$1"
     else
         break
     fi
