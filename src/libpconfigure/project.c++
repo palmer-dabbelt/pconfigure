@@ -2871,12 +2871,19 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
      * configure time (see check_distclean_spares_sources()), so there
      * is nothing in them for this to spare.  One rule for every
      * project this Makefile runs the tests of, the same list its
-     * reports cover. */
+     * reports cover.
+     *
+     * It is spelled "rm -fr", as every other line a clean runs is,
+     * rather than distclean's "rm -rf".  The two do the same thing,
+     * but "make -n clean" is how somebody checks that a clean only
+     * removes things, and the honest way to read that output is to
+     * take out the removals and look at what is left -- which is
+     * one pattern only while every removal is written the same way. */
     {
         auto commands = std::vector<std::string>();
         for (const auto& project: aggregated)
             commands.push_back(
-                "rm -rf " + string_utils::quoted(
+                "rm -fr " + string_utils::quoted(
                     project->processor()->root_context()->check_dir));
 
         auto sweep_name = std::string("__pconfigure__clean-check-dirs");
