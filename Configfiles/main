@@ -770,6 +770,7 @@ TESTSRC     += make-question-mode-settled-after-build-check-install.bash
 TESTSRC     += make-always-make-with-autoreconfigure-settles.bash
 TESTSRC     += make-no-builtin-rules-builds-and-checks.bash
 TESTSRC     += make-keep-going-builds-other-binaries-past-failed-compile.bash
+TESTSRC     += make-keep-going-check-runs-tests-past-failed-test-compile.bash
 TESTSRC     += phony-global-targets-run-beside-same-named-files.bash
 TESTSRC     += check-touch-runs-no-test.bash
 TESTSRC     += check-with-include-or-output-sync-flag-runs-tests.bash
