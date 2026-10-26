@@ -483,6 +483,7 @@ static int _pinclude_lines(const char *input,
             char *full_path;
             char *dir_path;
             char *filename;
+            bool absolute;
 
             /* dir_path = dirname(input) */
             dir_path = strdup(input);
@@ -510,7 +511,17 @@ static int _pinclude_lines(const char *input,
                     str_chomp(filename);
             }
 
-            if (strcmp(dir_path, ".") != 0) {
+            /* An absolute name is the one file it names: it is
+             * looked for there and nowhere else, as the scan in
+             * library.c++ does and the compiler does for a header.
+             * Glued onto the script's own directory it named nothing,
+             * so a helper written by its full path was refused as a
+             * file that couldn't be found. */
+            absolute = filename[0] == '/';
+
+            if (absolute) {
+                full_path = strdup(filename);
+            } else if (strcmp(dir_path, ".") != 0) {
                 if (asprintf(&full_path, "%s/%s", dir_path, filename) < 0)
                     abort();
             } else {
@@ -559,7 +570,7 @@ static int _pinclude_lines(const char *input,
 	    }
 
             /* Check each additional include directory */
-            for (i = 0; include_dirs[i] != NULL; i++) {
+            for (i = 0; !absolute && include_dirs[i] != NULL; i++) {
                 free(full_path);
                 if (asprintf(&full_path, "%s/%s", include_dirs[i], filename) <
                     0)
@@ -611,6 +622,27 @@ static int _pinclude_lines(const char *input,
 
                 fprintf(stderr, "%s:%zu: can't find '%s'\n",
                         input, lineno, filename);
+
+                /* No directory was searched for an absolute name, so
+                 * listing them would only send whoever reads this
+                 * looking in the wrong places. */
+                if (absolute) {
+                    if (is_directory(filename) == true)
+                        fprintf(stderr, "  '%s' is a directory rather"
+                                " than a file\n", filename);
+                    fprintf(stderr,
+                            "  an absolute path is looked for there and"
+                            " nowhere else, so check the spelling\n");
+
+                    free(dir_path);
+                    free(filename);
+                    free(full_path);
+                    free(buffer);
+                    fclose(infile);
+
+                    return -1;
+                }
+
                 looked_in(dir_path, filename);
                 for (i = 0; include_dirs[i] != NULL; i++) {
                     /* The file's own directory is often on the list

@@ -2988,25 +2988,51 @@ link_input_files(const std::vector<std::string>& args)
 /* Most paths on a command line got there relative to where pconfigure
  * is running, but not all: what pkg-config says about a package is
  * absolute, because a .pc file has to mean the same thing to whoever
- * reads it.  Both have to be spelled the same way to be recognized as
- * the same directory. */
+ * reads it, and so is a header an "#include" names by its full path.
+ * Both have to be spelled the same way to be recognized as the same
+ * file.
+ *
+ * Which leading part of an absolute path is this directory is asked
+ * of the filesystem rather than of getcwd()'s string.  getcwd() gives
+ * the path with every symlink resolved, while whoever wrote the
+ * absolute path most likely took it from $PWD, which keeps them: a
+ * checkout reached through a symlinked home directory, or on macOS
+ * anything under /var or /tmp, which are links into /private.  The
+ * prefix didn't match, the header stayed absolute, and as a name no
+ * rule makes it was never linked to the source behind it.  The
+ * longest leading directory that is this one wins, so that a
+ * directory reached by way of a link to itself further down comes
+ * out as the plain name and not as one spelled through the link. */
 static std::string relative_to_here(const std::string& dir)
 {
     if (dir.size() == 0 || dir[0] != '/')
         return dir;
 
-    auto buffer = std::vector<char>(4096);
-    while (getcwd(&buffer[0], buffer.size()) == NULL) {
-        if (errno != ERANGE)
-            return dir;
-        buffer.resize(buffer.size() * 2);
-    }
-
-    auto here = std::string(&buffer[0]) + "/";
-    if (dir.compare(0, here.size(), here) != 0)
+    struct stat here;
+    if (stat(".", &here) != 0)
         return dir;
 
-    return dir.substr(here.size());
+    for (auto slash = dir.find_last_of('/');
+         slash != std::string::npos && slash > 0;
+         slash = dir.find_last_of('/', slash - 1)) {
+        struct stat st;
+        auto prefix = dir.substr(0, slash);
+        if (stat(prefix.c_str(), &st) != 0)
+            continue;
+        if (st.st_dev != here.st_dev || st.st_ino != here.st_ino)
+            continue;
+
+        /* What follows the run of slashes after the directory, so
+         * that "/here//src/x.h" is "src/x.h" and not "/src/x.h".  This
+         * directory itself, written with a trailing slash, is nothing
+         * at all from here, which canonical_dir() spells as ".". */
+        auto rest = dir.find_first_not_of('/', slash);
+        if (rest == std::string::npos)
+            return "";
+        return dir.substr(rest);
+    }
+
+    return dir;
 }
 
 /* The name to ask for a directory by, which has to be the same name

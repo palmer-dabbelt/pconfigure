@@ -1025,7 +1025,24 @@ int list_overwrite_defines(std::string filename,
                     missed.push_back(strip_dd(path));
             };
 
+            /* An absolute name is the one file it names, whichever
+             * spelling it was written in: the compiler opens that path
+             * and searches nowhere, and pbashc pastes it from there.
+             * Glued onto the includer's directory or onto an include
+             * directory it names nothing, so the header was dropped --
+             * its edits rebuilt nothing and the source behind it was
+             * never linked.  Whether it is one of this project's own
+             * files is for whoever gets the name to work out, since
+             * the same directory can be spelled from the root in more
+             * than one way. */
             auto full_path = [&]() {
+                if (rest_path[0] == '/') {
+                    if (findable(rest_path))
+                        return option<std::string>(strip_dd(rest_path));
+                    miss(rest_path);
+                    return option<std::string>();
+                }
+
                 auto cwd_relative = get_relative_cwd(filename) + rest_path;
                 if (searches_includer) {
                     if (findable(cwd_relative))
