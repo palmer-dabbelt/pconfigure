@@ -583,6 +583,80 @@ int list_overwrite_defines(std::string filename,
     std::vector<heredoc> heredocs;
     auto in_data = false;
     std::string raw;
+
+    /* An "#elif" ends the branch before it and opens another in the
+     * same conditional, and which one is read is the first whose
+     * test holds: once a branch has been taken, every one after it
+     * is off, however its own test comes out.  Without this the
+     * lines after an "#elif" went by the "#if" that opened the
+     * chain, so an include in the "#elif" that was taken went
+     * unlisted and one after a taken "#if" was followed.
+     *
+     * Only in C.  pbashc knows nothing of an "#elif": to it the
+     * line is a comment and the lines after it go by the "#ifdef"
+     * above, and the list of what a script reads has to be found
+     * the way pbashc finds it.
+     *
+     * The test is only worked out for a branch that could be the
+     * one taken.  After a branch has been, or inside one that is
+     * off, the compiler doesn't evaluate it either, and an
+     * expression this reader can't follow is no reason to stop.
+     *
+     * "test" is the expression the branch is taken on, and empty when
+     * the line didn't say one.  "directive" is how the line spelled
+     * itself, so that what is said about it names what was written. */
+    const auto next_branch = [&](const std::string& directive,
+                                 const std::string& test) {
+        if (language != pinclude::syntax::C)
+            return;
+
+        /* The bottom of the stack is the file itself rather than a
+         * conditional, and there is nothing for an "#elif" there to
+         * be the next branch of.  Taken as one, it would turn off the
+         * rest of the file. */
+        if (state_stack.size() <= 1) {
+            std::cerr << filename << ":" << lineno << ": '"
+                      << raw << "' has no '#if' before it\n"
+                      << "  an '" << directive << "' is the next branch"
+                      << " of an '#if', '#ifdef' or '#ifndef' that is"
+                      << " still open\n"
+                      << "  open the conditional before it, or write"
+                      << " '#if' if this is where it starts\n";
+            abort();
+        }
+
+        auto ss = state_stack.top();
+        state_stack.pop();
+        switch (ss) {
+        case state::OUTPUT:
+        case state::DONE:
+            state_stack.push(state::DONE);
+            break;
+        case state::ELSE:
+            if (test == "") {
+                std::cerr << filename << ":" << lineno << ": '"
+                          << raw << "' has no "
+                          << (directive == "#elif" ? "expression" : "name")
+                          << "\n"
+                          << "  write the "
+                          << (directive == "#elif"
+                              ? "test this branch is taken on"
+                              : "name this branch asks about")
+                          << " after it, or '#else' if it is taken"
+                          << " whenever the ones before it aren't\n";
+                abort();
+            }
+
+            state_stack.push(resolve_pp_function(test, defines)
+                             ? state::OUTPUT
+                             : state::ELSE);
+            break;
+        case state::DEAD:
+            state_stack.push(state::DEAD);
+            break;
+        }
+    };
+
     while (next_logical_line(file, line, raw, comment, lineno, language)) {
         /* Below a Perl script's "__DATA__" or "__END__" is data the
          * script reads, or nothing at all, and never script -- so an
@@ -736,68 +810,27 @@ int list_overwrite_defines(std::string filename,
             }
         }, bare_directives);
 
-        /* An "#elif" ends the branch before it and opens another in the
-         * same conditional, and which one is read is the first whose
-         * test holds: once a branch has been taken, every one after it
-         * is off, however its own test comes out.  Without this the
-         * lines after an "#elif" went by the "#if" that opened the
-         * chain, so an include in the "#elif" that was taken went
-         * unlisted and one after a taken "#if" was followed.
-         *
-         * Only in C.  pbashc knows nothing of an "#elif": to it the
-         * line is a comment and the lines after it go by the "#ifdef"
-         * above, and the list of what a script reads has to be found
-         * the way pbashc finds it.
-         *
-         * The test is only worked out for a branch that could be the
-         * one taken.  After a branch has been, or inside one that is
-         * off, the compiler doesn't evaluate it either, and an
-         * expression this reader can't follow is no reason to stop. */
         check_line(line, "elif", [&](std::string rest) {
-            if (language != pinclude::syntax::C)
-                return;
+            next_branch("#elif", rest);
+        }, bare_directives);
 
-            /* The bottom of the stack is the file itself rather than a
-             * conditional, and there is nothing for an "#elif" there
-             * to be the next branch of.  Taken as one, it would turn
-             * off the rest of the file. */
-            if (state_stack.size() <= 1) {
-                std::cerr << filename << ":" << lineno << ": '"
-                          << raw << "' has no '#if' before it\n"
-                          << "  an '#elif' is the next branch of an"
-                          << " '#if', '#ifdef' or '#ifndef' that is"
-                          << " still open\n"
-                          << "  open the conditional before it, or write"
-                          << " '#if' if this is where it starts\n";
-                abort();
-            }
+        /* C23 spells "#elif defined(NAME)" as "#elifdef NAME" and
+         * "#elif !defined(NAME)" as "#elifndef NAME", and gcc and
+         * clang take both in every language mode.  check_line() won't
+         * match either as "#elif", since an identifier character
+         * follows the keyword, so each gets a handler of its own.
+         * They are the same next branch of the same chain, though, so
+         * they share next_branch() rather than a copy of it,
+         * and the name is read the way "#ifdef" reads its own: as the
+         * identifier the line starts with. */
+        check_line(line, "elifdef", [&](std::string rest) {
+            auto name = ifdef_name(rest);
+            next_branch("#elifdef", name == "" ? "" : "defined(" + name + ")");
+        }, bare_directives);
 
-            auto ss = state_stack.top();
-            state_stack.pop();
-            switch (ss) {
-            case state::OUTPUT:
-            case state::DONE:
-                state_stack.push(state::DONE);
-                break;
-            case state::ELSE:
-                if (rest == "") {
-                    std::cerr << filename << ":" << lineno << ": '"
-                              << raw << "' has no expression\n"
-                              << "  write the test this branch is"
-                              << " taken on after it, or '#else' if it"
-                              << " is taken whenever the ones before it"
-                              << " aren't\n";
-                    abort();
-                }
-
-                state_stack.push(resolve_pp_function(rest, defines)
-                                 ? state::OUTPUT
-                                 : state::ELSE);
-                break;
-            case state::DEAD:
-                state_stack.push(state::DEAD);
-                break;
-            }
+        check_line(line, "elifndef", [&](std::string rest) {
+            auto name = ifdef_name(rest);
+            next_branch("#elifndef", name == "" ? "" : "!defined(" + name + ")");
         }, bare_directives);
 
         check_line(line, "endif", [&](std::string) {
