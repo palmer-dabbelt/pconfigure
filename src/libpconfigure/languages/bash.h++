@@ -81,9 +81,12 @@ public:
     /* Lists all the dependencies of a bash-like file -- these can be any sort
      * of makefile target because they might have dependencies themselves.
      * The options are the ones the compiler is run with, since its "-I"
-     * and "-D" decide which files an "#include" reads. */
+     * and "-D" decide which files an "#include" reads.  "child" is
+     * the SOURCES the path came from, which a diagnostic about one of
+     * those files points at. */
     virtual std::vector<makefile::target::ptr>
-    dependencies(const std::string& path,
+    dependencies(const context::ptr& child,
+                 const std::string& path,
                  const std::vector<std::string>& opts) const;
 
     /* Whether what a source includes is pasted into the output, which

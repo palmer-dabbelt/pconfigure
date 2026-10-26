@@ -145,6 +145,11 @@ namespace makefile {
      * from a prerequisite in what a '%' means. */
     std::string rule_target(const std::string& path);
 
+    /* Why make has no way to name this path on a rule line at all, or
+     * "" when prerequisite() and rule_target() can both spell it: a
+     * sentence for a diagnostic, about the first such character. */
+    std::string unspellable(const std::string& path);
+
     /* The same path spelled for the inside of a function call on a
      * rule line, "$(wildcard ...)" and the like, where make reads
      * less of it specially than it does bare. */

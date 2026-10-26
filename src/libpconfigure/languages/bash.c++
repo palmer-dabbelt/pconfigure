@@ -278,7 +278,7 @@ language_bash::targets(const context::ptr& ctx) const
                     fragments.push_back(
                         deps_script(ctx, child, target, opts));
                 else if (ctx->autodeps == true)
-                    deps = deps + dependencies(path, opts);
+                    deps = deps + dependencies(child, path, opts);
             }
 
             /* A test is a child of the thing it tests, and the project
@@ -704,18 +704,37 @@ script_includes_read_by(const std::string& path,
 }
 
 std::vector<makefile::target::ptr>
-language_bash::dependencies(const std::string& path,
+language_bash::dependencies(const context::ptr& child,
+                            const std::string& path,
                             const std::vector<std::string>& opts) const
 {
     /* Each include goes onto the script's rule as a prerequisite, and
      * the name is whatever the "#include" said: pbashc reads it up to
      * the closing quote, so "my helper.bash" is one file to it and has
      * to be one file to make, which means spelling it for the rule
-     * line the way language_cxx spells a header. */
+     * line the way language_cxx spells a header.  The few names make
+     * has no spelling for are refused, pointing at the SOURCES line
+     * for the script, since nothing in the Configfile named the
+     * include itself. */
     auto out = std::vector<makefile::target::ptr>();
-    for (const auto& p: script_includes_read_by(path, opts, script_syntax()))
+    for (const auto& p: script_includes_read_by(path, opts, script_syntax())) {
+        auto why = makefile::unspellable(p);
+        if (why.size() > 0) {
+            std::cerr << std::to_string(child->cmd->debug()) << "\n"
+                      << "  error: '" << path << "' includes '" << p
+                      << "', which the Makefile cannot name\n"
+                      << "  what a script includes is a prerequisite of"
+                      << " the file it is compiled into, and " << why
+                      << "\n"
+                      << "  rename the included file -- letters, digits,"
+                      << " '-', '_', '.' and spaces are all safe -- and"
+                      << " include it by that name\n";
+            abort();
+        }
+
         out.push_back(std::make_shared<makefile::target>(
                           makefile::prerequisite(p)));
+    }
     return out;
 }
 

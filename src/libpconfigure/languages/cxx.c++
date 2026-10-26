@@ -1570,7 +1570,8 @@ language_cxx::header_target::generate_makefile_target(void) const
      * one anybody wrote down: a header called "my extra.h" or one
      * under a "-I" with an escaped space in it is a real file, and the
      * object has to wait on that file rather than on the halves make
-     * would split it into. */
+     * would split it into.  compile_source() has already refused the
+     * names make has no spelling for. */
     return std::make_shared<makefile::target>(makefile::prerequisite(_path));
 }
 
@@ -2483,6 +2484,28 @@ language_cxx::compile_source(const context::ptr& ctx,
          * built half against the old header and half against the
          * new. */
         {
+            /* The header is a prerequisite, so it is spelled as one
+             * when it is written out; but a few characters have no
+             * spelling, and a rule that named some other file than
+             * the header would be wrong in a way nobody would look
+             * for.  Nothing in the Configfile named it, so what is
+             * pointed at is the line naming the source that reads
+             * it. */
+            auto why = makefile::unspellable(header_dep);
+            if (why.size() > 0) {
+                std::cerr << std::to_string(child->cmd->debug()) << "\n"
+                          << "  error: '" << source_path
+                          << "' reads the header '" << header_dep
+                          << "', which the Makefile cannot name\n"
+                          << "  the header is a prerequisite of the"
+                          << " object built from that source, and "
+                          << why << "\n"
+                          << "  rename the header -- letters, digits,"
+                          << " '-', '_', '.' and spaces are all safe --"
+                          << " and include it by that name\n";
+                abort();
+            }
+
             auto t = std::make_shared<header_target>(header_dep);
             header_deps = header_deps + std::vector<header_target::ptr>{t};
         }

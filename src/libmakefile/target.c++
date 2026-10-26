@@ -278,7 +278,8 @@ static std::string quote_for_glob(const std::string& path)
  * prerequisites and starts a recipe -- but make has no spelling for
  * one that is part of a file name: "\;" still ends the list, inside a
  * "$(wildcard ...)" as well as bare.  So a caller that can meet one
- * has to refuse it, naming the Configfile line the path came from.
+ * has to refuse it, naming the Configfile line the path came from, and
+ * the same goes for every character unspellable() names.
  *
  * A space is the fourth, and it got here once the headers the scan
  * finds were spelled through this -- "my extra.h", or a header under
@@ -308,6 +309,46 @@ std::string makefile::prerequisite(const std::string& path)
 std::string makefile::rule_target(const std::string& path)
 {
     return quote_for_make(path, "#: %");
+}
+
+/* The characters make cannot be told are part of a name on a rule
+ * line, whatever is put in front of them, each measured with GNU make
+ * 4.4.1.  A ';' ends the prerequisites and starts a recipe, "\;"
+ * included.  An '=' turns the line into a target-specific variable
+ * assignment, escaped or not.  A '|' is the start of the order-only
+ * prerequisites, and while "\|" does name the file as a prerequisite
+ * it does not as a target, so the two sides of a rule cannot agree on
+ * it; a tab is the same story.  A newline ends the rule.
+ *
+ * A caller that meets one has a name it cannot write and no spelling
+ * to fall back on, so it says so, naming whatever led it to the path,
+ * rather than write a rule about some other file. */
+std::string makefile::unspellable(const std::string& path)
+{
+    for (const auto& c: path) {
+        switch (c) {
+        case ';':
+            return "make reads a ';' on a rule line as the end of the"
+                   " prerequisites and the start of a recipe, and has no"
+                   " escape that makes one part of a name";
+        case '=':
+            return "make reads a rule line with an '=' in it as a"
+                   " variable assignment, and has no escape that makes"
+                   " one part of a name";
+        case '|':
+            return "make reads a '|' on a rule line as the start of the"
+                   " order-only prerequisites, and its escape for one is"
+                   " not read the same way on both sides of a rule";
+        case '\t':
+            return "make reads a tab on a rule line as the gap between"
+                   " two names, and its escape for one is not read the"
+                   " same way on both sides of a rule";
+        case '\n':
+            return "make reads a newline as the end of the rule, and has"
+                   " no escape that makes one part of a name";
+        }
+    }
+    return "";
 }
 
 /* Inside a function call make does not end the line at a '#', so one

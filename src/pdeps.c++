@@ -450,6 +450,24 @@ namespace {
         return out;
     }
 
+    /* The few names make has no spelling for at all, said here
+     * rather than written into a fragment as a rule about some other
+     * file.  "what" says how the source came to name the file. */
+    void refuse_unspellable(const std::string& source,
+                            const std::string& what,
+                            const std::string& path)
+    {
+        auto why = makefile::unspellable(path);
+        if (why.size() == 0)
+            return;
+
+        die("'" + source + "' " + what + " '" + path + "', which the"
+            " Makefile cannot name: it is a prerequisite of what '"
+            + source + "' is built into, and " + why + ".  Rename it --"
+            " letters, digits, '-', '_', '.' and spaces are all safe --"
+            " and include it by that name.");
+    }
+
     /* The piece of Makefile for a script, which is the C one with
      * everything about objects taken out: what the script includes is
      * a prerequisite of the file it is compiled into, and of this
@@ -491,6 +509,8 @@ namespace {
         auto missed = std::set<std::string>();
         auto includes = script_includes_read_by(source, ctx.opts, syntax,
             [&](const std::string& path) { missed.insert(path); });
+        for (const auto& include: includes)
+            refuse_unspellable(source, "includes", include);
 
         /* The list as a file, so that one which changes without any
          * file on it getting newer -- an include that now resolves to
@@ -679,6 +699,8 @@ int main(int argc, const char **argv)
 
     auto missed = std::set<std::string>();
     auto headers = headers_of(ctx, source, missed);
+    for (const auto& header: headers)
+        refuse_unspellable(source, "reads the header", header);
 
     /* Read after the move to the top of the tree, because that is
      * where its path is spelled from. */
