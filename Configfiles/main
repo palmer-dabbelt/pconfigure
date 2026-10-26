@@ -1009,6 +1009,7 @@ TESTSRC     += configureopts-without-build-system-names-line.bash
 TESTSRC     += compileopts-without-target-names-the-line.bash
 TESTSRC     += deplibs-after-sources-names-the-line.bash
 TESTSRC     += unknown-language-names-the-line.bash
+TESTSRC     += language-scala-and-flo-refused-as-retired.bash
 TESTSRC     += perl-library-names-the-line.bash
 TESTSRC     += perl-shebang-options-kept.bash
 TESTSRC     += perl-env-split-shebang-several-options-run.bash

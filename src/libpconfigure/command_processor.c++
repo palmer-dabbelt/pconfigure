@@ -2251,6 +2251,46 @@ void command_processor::process_one(const command::ptr& cmd)
 
         auto new_language = language_list::global_search(cmd->data());
 
+        /* Scala and Flo were languages of the C pconfigure that came
+         * before this one, and went with it when it was removed
+         * (3c23690, "Remove pconfigure-legacy") without anybody
+         * porting them.  What they drove is still here: pscalac and
+         * pscalald are built and installed from Configfiles/main, and
+         * make scalac look like a C compiler and linker, but no
+         * language here calls them: a Configfile can't name a Scala
+         * target any more, only a Makefile rule or script of the
+         * project's own can run them.  Chisel, the Scala most
+         * projects here were building, has a language of its own now
+         * that runs scalac itself and elaborates to Verilog.  Flo was
+         * the other output the old Chisel support could produce, and
+         * nothing here generates it any more.
+         *
+         * So a Configfile that asks for one of them is an old
+         * Configfile, not a misspelled one, and the advice for a name
+         * pconfigure has never heard of -- write 'c' -- sends whoever
+         * reads it hunting for a typo that isn't there.  Each gets the
+         * advice that fits what it used to build. */
+        if (new_language == NULL && cmd->data() == "scala") {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: The language 'scala' is no longer"
+                      << " supported\n"
+                      << "  delete this line: for Chisel write"
+                      << " 'LANGUAGES += chisel', and build other Scala"
+                      << " by running the pscalac and pscalald"
+                      << " pconfigure installs from your own rules\n";
+            abort();
+        }
+
+        if (new_language == NULL && cmd->data() == "flo") {
+            std::cerr << std::to_string(cmd->debug()) << "\n"
+                      << "  error: The language 'flo' is no longer"
+                      << " supported, and nothing generates Flo any"
+                      << " more\n"
+                      << "  write 'LANGUAGES += chisel' instead, which"
+                      << " elaborates Chisel to Verilog\n";
+            abort();
+        }
+
         if (new_language == NULL) {
             /* Not a list of every name registered, since some of
              * those are pconfigure's own plumbing (implicit_h,
