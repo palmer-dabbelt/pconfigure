@@ -5,6 +5,7 @@ abrt_is_fail="false"
 check_dirs=()
 abrt_dirs=()
 check_suite=""
+check_named="false"
 check_results=()
 
 # Whether something that knows the build has said where its results
@@ -79,6 +80,19 @@ do
         # says nothing about which of them belong together.
         shift
         check_suite="$1"
+        check_named="true"
+    elif [[ "$1" == "--check-named" ]]
+    then
+        # Reports exactly the results named with --check-result, and
+        # none if none were, the way a suite does -- for the report of
+        # everything "make check" runs.  A directory of tarballs holds
+        # the last result of every test that was ever run in it,
+        # including the ones a Configfile has since stopped naming, and
+        # one of those that failed would otherwise keep that report red
+        # for good about a test that no longer exists.  Without it a
+        # run reads the directories, which is still the right answer
+        # for somebody typing "ptest": they asked what is on disk.
+        check_named="true"
     elif [[ "$1" == "--check-result" ]]
     then
         # One test of that set, named outright.
@@ -173,7 +187,7 @@ then
 
     # A suite that nobody joined has nothing to say, and says the same
     # true thing in the same words as a tree that was never tested.
-    if [[ "$check_suite" == "" ]]
+    if [[ "$check_named" != "true" ]]
     then
         found="${#existing[@]}"
     else
@@ -226,12 +240,14 @@ then
     }
 
     # The results this run is reporting on, each with the directory it
-    # belongs to.  A whole run is everything in those directories; a
-    # suite is exactly the results it was named, since a tarball on
-    # disk carries no record of which suites ran the test that left
-    # it.
+    # belongs to.  A run that was handed its results -- a suite, or the
+    # whole of what "make check" runs -- is exactly the results it was
+    # named, since a tarball on disk carries no record of which suites
+    # ran the test that left it, nor of whether any Configfile still
+    # names that test.  Otherwise it is everything in those
+    # directories.
     results() {
-        if [[ "$check_suite" != "" ]]
+        if [[ "$check_named" == "true" ]]
         then
             local f
             for f in "${check_results[@]}"

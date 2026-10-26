@@ -62,8 +62,11 @@ which is what to use when the tree is mid-change.
 
 Results are tarballs under `check/`, one per test, holding whatever the
 test left in `$PTEST_TMPDIR` plus its exit status in `ptest__return`.
-Stale ones from a test that has since been deleted stay there and keep
-getting counted, so clear them out rather than trusting the total.
+A test that has since been taken out of `Configfiles/main` leaves its
+last result there, but `make check` and `make report` score only the
+results of tests the Configfiles still name, and `make clean` removes
+the whole directory.  A bare `bin/ptest` still reads everything on
+disk, so its total can include those leftovers.
 
 ## Code
 

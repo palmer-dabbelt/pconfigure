@@ -166,6 +166,11 @@ void makefile::makefile::add_check_dir(const std::string& dir,
     _check_dirs.push_back(std::make_pair(dir, abrt_is_fail));
 }
 
+void makefile::makefile::add_check_result(const std::string& result)
+{
+    _check_results.push_back(result);
+}
+
 void makefile::makefile::add_test_suite(const std::string& name,
                                         const std::vector<std::string>& results)
 {
@@ -632,8 +637,18 @@ void makefile::makefile::write_to_file(const std::string& filename)
      * different answers. */
     auto check_dirs = check_dirs_args();
 
-    write_report_rule(file, quiet_report, stamp, q, ptest, true, check_dirs);
-    write_report_rule(file, report, stamp, q, ptest, false, check_dirs);
+    /* The whole-build report is handed the results it covers, the way
+     * a suite's is, rather than left to read the check directories.
+     * Those hold the last result of every test that was ever run in
+     * them, and a test somebody took out of the Configfile -- most
+     * often because it was failing -- leaves its result behind: read
+     * off the directory, that kept "make check" red for good about a
+     * test that no longer exists, while "make check-$suite" over the
+     * very same tests was green. */
+    auto all_results = check_dirs + check_results_args();
+
+    write_report_rule(file, quiet_report, stamp, q, ptest, true, all_results);
+    write_report_rule(file, report, stamp, q, ptest, false, all_results);
     /* "make check" runs one named set of tests when the project said
      * which, and every test it has when it didn't.  "make report"
      * follows it: a report about a run that didn't happen is a report
@@ -872,7 +887,9 @@ makefile::makefile::check_scopes(void) const
      * file alone, and with it every result that is still current. */
     auto out = std::vector<std::pair<std::string, std::string>>();
 
-    auto all = "ptest" + check_dirs_args() + "\n";
+    auto all = "ptest" + check_dirs_args() + " --check-named\n";
+    for (const auto& result: _check_results)
+        all += _prefix.rewrite(result) + "\n";
     for (const auto& dep: check_stamp_deps())
         all += dep + "\n";
     out.push_back(std::make_pair(check_scope_path(""), all));
@@ -910,6 +927,14 @@ std::string makefile::makefile::check_dirs_args(void) const
     for (const auto& dir: _check_dirs)
         out += (dir.second ? " --abrt-is-fail-dir " : " --check-dir ")
              + _prefix.rewrite(dir.first);
+    return out;
+}
+
+std::string makefile::makefile::check_results_args(void) const
+{
+    auto out = std::string(" --check-named");
+    for (const auto& result: _check_results)
+        out += " --check-result " + _prefix.rewrite(result);
     return out;
 }
 

@@ -84,6 +84,14 @@ namespace makefile {
         /* Each with whether its project said ABRT_IS_FAIL. */
         std::vector<std::pair<std::string, bool>> _check_dirs;
 
+        /* Every test result "make check" builds when it means every
+         * test, across this project and everything it pulled in.  The
+         * report of that run names them rather than reading
+         * _check_dirs, for the reason a suite's report does: a
+         * directory also holds the results of tests nobody configures
+         * any more. */
+        std::vector<std::string> _check_results;
+
         /* The named sets of tests this Makefile can be asked to run
          * on their own, each with the test results that are in it.
          * The results are named outright rather than described,
@@ -185,6 +193,11 @@ namespace makefile {
         void add_check_stamp(const std::string& stamp);
         void add_check_dir(const std::string& dir, bool abrt_is_fail);
 
+        /* Names one result of a test that "make check" runs when no
+         * suite was asked for, from this project or any it pulled in,
+         * so that its report scores that result and no others. */
+        void add_check_result(const std::string& result);
+
         /* Adds the results of one named set of tests, which get their
          * own "check-<name>" and "report-<name>" rules.  A name that
          * has already been added is added to rather than added again:
@@ -249,6 +262,7 @@ namespace makefile {
          * that wait on them so the two can't come to disagree. */
         std::string check_scope_path(const std::string& suite) const;
         std::string check_dirs_args(void) const;
+        std::string check_results_args(void) const;
         std::vector<std::string> check_stamp_deps(void) const;
     };
 }

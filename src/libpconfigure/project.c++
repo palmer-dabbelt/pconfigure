@@ -2453,6 +2453,13 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
     for (const auto& suite: aggregate_test_suite_members(aggregated))
         out->add_test_suite(suite.first, suite.second);
 
+    /* And every test there is, which is the set "make check" runs when
+     * no suite was asked for, so that its report is about that set
+     * rather than about whatever results happen to be on disk. */
+    for (const auto& project: aggregated)
+        for (const auto& test: project->tests())
+            out->add_check_result(test.first);
+
     /* Which of them "make check" means, which is this project's
      * answer rather than the aggregate: the rule belongs to whoever
      * make was run in, and a subproject that has an opinion about its
@@ -2689,6 +2696,38 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
             std::vector<std::string>{}));
         out->add_dep(".PHONY", clean_name);
         out->add_dep("clean", clean_name);
+    }
+
+    /* "make clean" also takes the whole of every check directory, and
+     * not just the results each test's own clean rule names.  Those
+     * rules are written from the tests the Configfiles name today, so
+     * the result of a test somebody has since taken out was never
+     * named by any of them and outlived every clean -- which is the
+     * one result in there that nothing will ever make current again.
+     * Every byte under a check directory is a result "make check"
+     * left, or the directories it made to hold them: distclean already
+     * removes them whole, and a source file in one is refused at
+     * configure time (see check_distclean_spares_sources()), so there
+     * is nothing in them for this to spare.  One rule for every
+     * project this Makefile runs the tests of, the same list its
+     * reports cover. */
+    {
+        auto commands = std::vector<std::string>();
+        for (const auto& project: aggregated)
+            commands.push_back(
+                "rm -rf " + string_utils::quoted(
+                    project->processor()->root_context()->check_dir));
+
+        auto sweep_name = std::string("__pconfigure__clean-check-dirs");
+        out->add_standalone_target(std::make_shared<makefile::target>(
+            sweep_name,
+            "",
+            std::vector<makefile::target::ptr>{},
+            std::vector<makefile::global_targets>{},
+            commands,
+            std::vector<std::string>{}));
+        out->add_dep(".PHONY", sweep_name);
+        out->add_dep("clean", sweep_name);
     }
 
     /* Every file the run wrote for a build to read and nothing in the
