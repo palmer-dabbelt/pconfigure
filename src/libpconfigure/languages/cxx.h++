@@ -90,11 +90,17 @@ cxx_defines(const std::vector<std::string>& opts);
  * "promised" is the headers the build is going to make, which pdeps
  * passes and pconfigure does not: pconfigure has made every one of
  * them by the time it scans anything, and pdeps can be asked after a
- * "make clean" has taken them all away again. */
+ * "make clean" has taken them all away again.
+ *
+ * "on_missed" is pinclude's, spelled the way the headers are, and is
+ * pdeps's too: it is how a fragment learns where a new header would
+ * shadow one of these, which pconfigure never needs to be told
+ * because it scans every source again whenever it runs. */
 std::vector<std::string>
 cxx_headers_read_by(const std::string& source,
                     const std::vector<std::string>& compile_opts,
-                    const std::vector<std::string>& promised = {});
+                    const std::vector<std::string>& promised = {},
+                    const pinclude::missed_callback& on_missed = {});
 
 /* The endings that search tries, which is what anything deciding
  * how to build what it finds has to have an answer for. */

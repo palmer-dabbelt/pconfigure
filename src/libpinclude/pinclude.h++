@@ -162,7 +162,21 @@ namespace pinclude {
      * nothing to read, and what it would have pulled in is not known
      * until it exists.  It is looked for in the search order the
      * others are, so the place it will be beats a stale copy further
-     * down the include path, the way it will for the compiler. */
+     * down the include path, the way it will for the compiler.
+     *
+     * on_missed is handed every place an include was looked for
+     * ahead of where it was found, and every place one that was never
+     * found was looked for, provided nothing at all is there now.  A
+     * file that appears at one of those is a file the include would
+     * read instead, and nothing the scan named gets any newer when it
+     * does -- so a caller that keeps the answer has to keep these too,
+     * or it goes on believing a header that has since been shadowed.
+     * Something that is there but is no header, a directory, is left
+     * off: the search passes over it today and will tomorrow, so it
+     * is no reason to look again, and a caller that kept asking would
+     * never stop. */
+    typedef std::function<void(const std::string&)> missed_callback;
+
     int list(std::string filename,
              pinclude::search_path include_dirs,
              std::vector<std::string> defined,
@@ -172,7 +186,8 @@ namespace pinclude {
              directive_callback on_directive = {},
              bool refuse_if = false,
              bool strict_directives = false,
-             std::unordered_set<std::string> promised = {});
+             std::unordered_set<std::string> promised = {},
+             missed_callback on_missed = {});
 
     int list(std::string filename,
              pinclude::search_path include_dirs,
@@ -183,7 +198,8 @@ namespace pinclude {
              directive_callback on_directive = {},
              bool refuse_if = false,
              bool strict_directives = false,
-             std::unordered_set<std::string> promised = {});
+             std::unordered_set<std::string> promised = {},
+             missed_callback on_missed = {});
 
     /* list(), for a file read ahead of another one rather than for
      * a file on its own: whatever it "#define"s is left in defines
@@ -198,7 +214,8 @@ namespace pinclude {
                       std::unordered_set<std::string>& defines,
                       std::function<int(std::string)> callback,
                       bool skip_missing_files,
-                      std::unordered_set<std::string> promised = {});
+                      std::unordered_set<std::string> promised = {},
+                      missed_callback on_missed = {});
 
     static inline
     int list(std::string filename,

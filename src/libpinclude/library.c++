@@ -36,7 +36,8 @@ int pinclude::list(std::string filename,
                    pinclude::directive_callback on_directive,
                    bool refuse_if,
                    bool strict_directives,
-                   std::unordered_set<std::string> promised)
+                   std::unordered_set<std::string> promised,
+                   pinclude::missed_callback on_missed)
 {
     std::unordered_set<std::string> define_set;
     for (const auto& define: defines)
@@ -51,7 +52,8 @@ int pinclude::list(std::string filename,
                 on_directive,
                 refuse_if,
                 strict_directives,
-                promised);
+                promised,
+                on_missed);
 }
 
 /* OUTPUT, ELSE and DONE are the states of a conditional whose
@@ -162,7 +164,8 @@ int list_overwrite_defines(std::string filename,
                            const pinclude::directive_callback& on_directive,
                            bool refuse_if,
                            bool strict_directives,
-                           const std::unordered_set<std::string>& promised);
+                           const std::unordered_set<std::string>& promised,
+                           const pinclude::missed_callback& on_missed);
 
 int pinclude::list(std::string filename,
                    pinclude::search_path include_dirs_without_cwd,
@@ -173,7 +176,8 @@ int pinclude::list(std::string filename,
                    pinclude::directive_callback on_directive,
                    bool refuse_if,
                    bool strict_directives,
-                   std::unordered_set<std::string> promised)
+                   std::unordered_set<std::string> promised,
+                   pinclude::missed_callback on_missed)
 {
     /* The files the scan is in the middle of reading, from this one
      * down to whichever it is reading now.  An include of one of them
@@ -202,7 +206,8 @@ int pinclude::list(std::string filename,
         on_directive,
         refuse_if,
         strict_directives,
-        promised
+        promised,
+        on_missed
     );
 }
 
@@ -211,7 +216,8 @@ int pinclude::list_defining(std::string filename,
                             std::unordered_set<std::string>& defines,
                             std::function<int(std::string)> callback,
                             bool skip_missing_files,
-                            std::unordered_set<std::string> promised)
+                            std::unordered_set<std::string> promised,
+                            pinclude::missed_callback on_missed)
 {
     /* A cycle is a cycle within this one file's includes, the same as
      * for list(): the file read after this one starts again with
@@ -228,7 +234,8 @@ int pinclude::list_defining(std::string filename,
         pinclude::directive_callback(),
         false,
         false,
-        promised
+        promised,
+        on_missed
     );
 }
 
@@ -242,7 +249,8 @@ int list_overwrite_defines(std::string filename,
                            const pinclude::directive_callback& on_directive,
                            bool refuse_if,
                            bool strict_directives,
-                           const std::unordered_set<std::string>& promised)
+                           const std::unordered_set<std::string>& promised,
+                           const pinclude::missed_callback& on_missed)
 {
     /* Every script is read the strict way, which is the question
      * check_line() asks, and so is a C file whose caller asked for it
@@ -921,19 +929,40 @@ int list_overwrite_defines(std::string filename,
                 ? include_dirs.quoted()
                 : include_dirs.both;
 
+            /* Every place tried and passed over on the way, which is
+             * every place a file could appear and change what this
+             * include reads -- see on_missed in the header.  Only the
+             * ones with nothing there at all: lstat() rather than
+             * stat(), so that a dangling link, which the search passes
+             * over and which make's "$(wildcard)" may or may not see,
+             * is no more a reason to look again than a directory is. */
+            auto missed = std::vector<std::string>();
+            auto miss = [&](const std::string& path) {
+                struct stat st;
+                if (on_missed != nullptr && lstat(path.c_str(), &st) != 0)
+                    missed.push_back(strip_dd(path));
+            };
+
             auto full_path = [&]() {
                 auto cwd_relative = get_relative_cwd(filename) + rest_path;
-                if (searches_includer && findable(cwd_relative))
-                    return option<std::string>(strip_dd(cwd_relative));
+                if (searches_includer) {
+                    if (findable(cwd_relative))
+                        return option<std::string>(strip_dd(cwd_relative));
+                    miss(cwd_relative);
+                }
 
                 for (const auto& dir: search_dirs) {
                     auto check = dir + "/" + rest_path;
                     if (findable(check))
                         return option<std::string>(strip_dd(check));
+                    miss(check);
                 }
 
                 return option<std::string>();
             }();
+
+            for (const auto& path: missed)
+                on_missed(path);
 
             if (skip_missing_files == false && full_path.valid() == false) {
                 std::cerr << "Unable to open file: " << rest_path << "\n";
@@ -976,7 +1005,8 @@ int list_overwrite_defines(std::string filename,
                     on_directive,
                     refuse_if,
                     strict_directives,
-                    promised
+                    promised,
+                    on_missed
                 );
                 if (rout != 0) {
                     std::cerr << "Early out no longer supported in pinclude::list\n";

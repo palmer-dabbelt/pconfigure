@@ -36,11 +36,16 @@
  * pconfigure asks this of a script when it writes the Makefile, and
  * under AUTORECONFIGURE pdeps asks it of the same script while make
  * runs; an include only one of them found is a prerequisite under one
- * build and not under the other. */
+ * build and not under the other.
+ *
+ * on_missed is pinclude's, and is how pdeps hears about the places a
+ * file would shadow one of these: pconfigure scans every script again
+ * whenever it runs, and has no need to. */
 std::vector<std::string>
 script_includes_read_by(const std::string& path,
                         const std::vector<std::string>& opts,
-                        pinclude::syntax syntax);
+                        pinclude::syntax syntax,
+                        const pinclude::missed_callback& on_missed = {});
 
 /* BASH is the first language I have that doesn't need a compile
  * phase. */

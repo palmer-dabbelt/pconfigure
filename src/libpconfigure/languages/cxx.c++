@@ -2644,7 +2644,8 @@ std::vector<std::string> language_cxx::dependencies(
 std::vector<std::string>
 cxx_headers_read_by(const std::string& source,
                     const std::vector<std::string>& compile_opts,
-                    const std::vector<std::string>& promised)
+                    const std::vector<std::string>& promised,
+                    const pinclude::missed_callback& on_missed)
 {
     auto defined = std::unordered_set<std::string>();
     for (const auto& define: cxx_defines(compile_opts))
@@ -2667,6 +2668,14 @@ cxx_headers_read_by(const std::string& source,
         return 0;
     };
 
+    /* Spelled the way the headers are, for the same reason: they are
+     * written into the same fragment. */
+    auto missed = pinclude::missed_callback();
+    if (on_missed != nullptr)
+        missed = [&](const std::string& s) {
+            on_missed(relative_to_here(s));
+        };
+
     /* A forced include is looked for where the compiler looks for it:
      * in the directory the compiler runs from first, rather than the
      * one the source is in, and then along the include path the way a
@@ -2680,14 +2689,32 @@ cxx_headers_read_by(const std::string& source,
         return !S_ISDIR(st.st_mode) && access(path.c_str(), R_OK) == 0;
     };
 
+    /* What the search passes over on the way is reported the way
+     * pinclude reports it for an "#include", since a forced include
+     * can be shadowed in all the same ways: only where nothing at all
+     * is there now. */
+    auto miss = [&](const std::string& path) {
+        struct stat st;
+        if (missed != nullptr && lstat(path.c_str(), &st) != 0)
+            missed(file_utils::normalize_path(path));
+    };
+
     for (const auto& name: cxx_forced_includes(compile_opts)) {
         auto found = std::string();
         if (includable(name))
             found = name;
-        else if (name[0] != '/')
-            for (const auto& dir: include_dirs.quoted())
-                if (found.size() == 0 && includable(dir + "/" + name))
-                    found = dir + "/" + name;
+        else {
+            miss(name);
+            if (name[0] != '/')
+                for (const auto& dir: include_dirs.quoted()) {
+                    if (found.size() > 0)
+                        break;
+                    if (includable(dir + "/" + name))
+                        found = dir + "/" + name;
+                    else
+                        miss(dir + "/" + name);
+                }
+        }
 
         if (found.size() == 0)
             continue;
@@ -2702,7 +2729,8 @@ cxx_headers_read_by(const std::string& source,
                                 defined,
                                 callback,
                                 true,
-                                promised_set);
+                                promised_set,
+                                missed);
     }
 
     pinclude::list(source,
@@ -2714,7 +2742,8 @@ cxx_headers_read_by(const std::string& source,
                    {},
                    false,
                    false,
-                   promised_set);
+                   promised_set,
+                   missed);
     return out;
 }
 

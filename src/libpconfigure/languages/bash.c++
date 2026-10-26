@@ -667,7 +667,8 @@ pbashc_options(const std::vector<std::string>& opts,
 std::vector<std::string>
 script_includes_read_by(const std::string& path,
                         const std::vector<std::string>& opts,
-                        pinclude::syntax syntax)
+                        pinclude::syntax syntax,
+                        const pinclude::missed_callback& on_missed)
 {
     /* pbashc is run with the target's options, and it searches the
      * "-I" directories for an "#include" and reads the "-D" names in
@@ -698,7 +699,7 @@ script_includes_read_by(const std::string& path,
                    [&](std::string p) {
                        out.push_back(p);
                        return 0;
-                   }, true, syntax, {}, true);
+                   }, true, syntax, {}, true, false, {}, on_missed);
     return out;
 }
 
