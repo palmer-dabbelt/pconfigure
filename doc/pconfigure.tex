@@ -3313,6 +3313,12 @@ several tests share the code that needs the thing --- the helper knows
 what it needs, and a test that pulls the helper in gets the dependency
 along with the code it came for.
 
+What follows the \texttt{\#pconfigure} is read the way a
+\texttt{Configfile} line is: any run of spaces or tabs between its
+words counts as a single space, so a directive whose operator is lined
+up with extra white space means the same as one written with single
+spaces.
+
 \subsection{What can be written in one}
 
 A \texttt{TESTDEPS} (see Section~\ref{cmd:testdeps}), and nothing
