@@ -14,19 +14,38 @@ check_results=()
 # "check" is then just a directory somebody might have made.
 check_dirs_known="false"
 
-# A directory is the same directory with a slash after it -- which is
-# how a shell's tab completion hands one over -- but the report finds
-# which directory a result named outright belongs to by comparing the
-# text, and "check/" followed by "/*" matches nothing.  So the slashes
-# come off once, here, and everything after this sees one spelling.
-# "/" alone keeps its slash, since without it there is no directory.
-strip_slashes() {
+# A directory is the same directory however it is spelled: with a
+# slash after it, which is how a shell's tab completion hands one
+# over, with a "./" in front of it, or with a doubled slash in the
+# middle.  The report labels each result by the directory it came
+# from, so these come off once, here, and everything after this sees
+# one tidy spelling.  It's only the text, though -- an absolute path
+# and a relative one to the same place are both left as they were
+# written, and the report compares where they really are once it's
+# ready to look (see check_dir_key below).  "/" alone keeps its slash,
+# since without it there is no directory, and a spelling with nothing
+# left is ".".
+tidy_dir() {
     local dir="$1"
-    while [[ "$dir" == */ ]] && [[ "$dir" != "/" ]]
+    local out=""
+    local part
+    local parts
+
+    IFS=/ read -r -a parts <<<"$dir"
+    for part in "${parts[@]}"
     do
-        dir="${dir%/}"
+        if [[ "$part" != "" ]] && [[ "$part" != "." ]]
+        then
+            out="${out:+$out/}$part"
+        fi
     done
-    echo "$dir"
+
+    if [[ "$dir" == /* ]]
+    then
+        echo "/$out"
+    else
+        echo "${out:-.}"
+    fi
 }
 
 while [[ "$1" == --* ]]
@@ -58,7 +77,7 @@ do
         # child that did, and a child that asked shouldn't lose that
         # just because the report was run from above it.
         shift
-        dir="$(strip_slashes "$1")"
+        dir="$(tidy_dir "$1")"
         check_dirs+=("$dir")
         abrt_dirs+=("$dir")
     elif [[ "$1" == "--no-check-dirs" ]]
@@ -71,7 +90,7 @@ do
         # One per project: a build with subprojects has its test
         # results spread across all of them.
         shift
-        check_dirs+=("$(strip_slashes "$1")")
+        check_dirs+=("$(tidy_dir "$1")")
     elif [[ "$1" == "--check-suite" ]]
     then
         # Reports one named set of tests rather than everything that
@@ -121,9 +140,11 @@ then
         # --abrt-is-fail-dir says on the command line.
         while IFS=$'\t' read -r dir flag
         do
-            dir="$(strip_slashes "$dir")"
+            # A blank line names nothing, and has to be passed over
+            # before it's tidied into ".", which is a directory.
             if [[ "$dir" != "" ]]
             then
+                dir="$(tidy_dir "$dir")"
                 check_dirs+=("$dir")
                 if [[ "$flag" == "abrt-is-fail" ]]
                 then
@@ -175,13 +196,89 @@ then
         fi
     fi
 
-    # If there's no test directory anywhere then just give up
-    existing=()
-    for dir in "${check_dirs[@]}"
-    do
-        if test -d "$dir"
+    # Where a check directory really is: the physical absolute path
+    # when it exists, and the tidy absolute spelling of where it would
+    # be when it doesn't.  Two names are one directory exactly when
+    # they have the same key, which is what the text alone can't say
+    # -- "check" and "$PWD/check" are one directory, and one a result
+    # named "check/ab" is under.  This is worked out here rather than
+    # as the flags are read because "--check" has only just run "make
+    # check", which may be what made the directory.  Without "-P" a
+    # "cd" into a directory reached through a symlink would answer
+    # with the link, and a key built from the link and another built
+    # from where it points would never match.
+    check_dir_key() {
+        local dir="$1"
+        local key
+
+        if test -d "$dir" && key="$(CDPATH= cd -P -- "$dir" 2>/dev/null && pwd -P)"
         then
-            existing+=("$dir")
+            echo "$key"
+            return
+        fi
+
+        case "$dir" in
+            /*) tidy_dir "$dir" ;;
+            *)  tidy_dir "$(pwd -P)/$dir" ;;
+        esac
+    }
+
+    # A directory named twice -- "check" and "check/", or "./check"
+    # and "$PWD/check" -- is one directory, and walking it twice
+    # counts every result in it twice.  So each one is kept once,
+    # under the first spelling it was given, which is the one its
+    # results are labelled by.  Asking for --abrt-is-fail-dir under
+    # any of its spellings asks for it under all of them.
+    #
+    # Alongside each key goes what every path inside that directory
+    # starts with: the key and a slash, except for "/", which already
+    # ends in one.  Matching against these is done once per result, so
+    # they're worked out once here rather than every time.
+    named_dirs=("${check_dirs[@]}")
+    named_abrt_dirs=("${abrt_dirs[@]}")
+    check_dirs=()
+    check_keys=()
+    check_prefixes=()
+    abrt_dirs=()
+    for dir in "${named_dirs[@]}"
+    do
+        key="$(check_dir_key "$dir")"
+        kept="$dir"
+        seen="false"
+        for i in "${!check_keys[@]}"
+        do
+            if [[ "${check_keys[$i]}" == "$key" ]]
+            then
+                kept="${check_dirs[$i]}"
+                seen="true"
+            fi
+        done
+
+        if [[ "$seen" == "false" ]]
+        then
+            check_dirs+=("$dir")
+            check_keys+=("$key")
+            check_prefixes+=("${key%/}/")
+        fi
+
+        for d in "${named_abrt_dirs[@]}"
+        do
+            if [[ "$d" == "$dir" ]]
+            then
+                abrt_dirs+=("$kept")
+            fi
+        done
+    done
+
+    # If there's no test directory anywhere then just give up.  Kept
+    # by position, since the walk below needs each directory's key as
+    # well as its name.
+    existing=()
+    for i in "${!check_dirs[@]}"
+    do
+        if test -d "${check_dirs[$i]}"
+        then
+            existing+=("$i")
         fi
     done
 
@@ -223,20 +320,45 @@ then
     # starts from nothing rather than from ".", the answer for a result
     # under none of them, because "." is one character long and a
     # directory whose name is too could never beat it.
-    result_dir() {
+    #
+    # The match is on where the result really is, not on how either
+    # one was spelled: "./check" holds "check/ab", and so does
+    # "$PWD/check".  The result is then named under the spelling of
+    # the directory that holds it, so that its label is the one a
+    # whole run would have walked down to.  One under none of them
+    # keeps the name it was given.
+    place_result() {
         local file="$1"
-        local out=""
-        local dir
+        local base
+        local key
+        local i
+        local best=""
 
-        for dir in "${check_dirs[@]}"
+        if [[ "$file" == */* ]]
+        then
+            base="$(check_dir_key "${file%/*}/")"
+        else
+            base="$(check_dir_key .)"
+        fi
+        key="${base%/}/${file##*/}"
+
+        for i in "${!check_keys[@]}"
         do
-            if [[ "$file" == "$dir"/* ]] && [[ "${#dir}" -gt "${#out}" ]]
+            if [[ "$key" == "${check_prefixes[$i]}"* ]] &&
+               { [[ "$best" == "" ]] ||
+                 [[ "${#check_keys[$i]}" -gt "${#check_keys[$best]}" ]]; }
             then
-                out="$dir"
+                best="$i"
             fi
         done
 
-        echo "${out:-.}"
+        if [[ "$best" == "" ]]
+        then
+            printf '%s\t%s\n' "." "$file"
+        else
+            printf '%s\t%s\n' "${check_dirs[$best]}" \
+                "${check_dirs[$best]}/${key#"${check_prefixes[$best]}"}"
+        fi
     }
 
     # The results this run is reporting on, each with the directory it
@@ -246,27 +368,68 @@ then
     # ran the test that left it, nor of whether any Configfile still
     # names that test.  Otherwise it is everything in those
     # directories.
+    #
+    # A check directory inside another one that was named too -- a
+    # subproject's own, or "check/t" alongside "check" -- has its
+    # results walked over by both, so the outer walk steps around it
+    # and leaves them to the inner one.  That is the same answer the
+    # longest match gives a suite: each result is counted once, and
+    # labelled and scored by the directory nearest it.
+    #
+    # The walk is "find -H", which follows the directory it was given
+    # if that is a symlink and nothing below it.  Without it, a
+    # directory named through a symlink -- and that includes one kept
+    # as the first spelling of a directory also named by where the
+    # link points -- has nothing under it at all, and every result it
+    # holds silently drops out of the report.
     results() {
         if [[ "$check_named" == "true" ]]
         then
             local f
             for f in "${check_results[@]}"
             do
-                printf '%s\t%s\n' "$(result_dir "$f")" "$f"
+                place_result "$f"
             done | sort -k 2
             return
         fi
 
-        local dir
-        for dir in "${existing[@]}"
+        local i
+        local j
+        for i in "${existing[@]}"
         do
+            local dir="${check_dirs[$i]}"
+            local prefix="${check_prefixes[$i]}"
+            local here="${dir%/}/"
+            local inner=()
+            for j in "${!check_keys[@]}"
+            do
+                if [[ "${check_keys[$j]}" == "$prefix"* ]]
+                then
+                    inner+=("${check_keys[$j]#"$prefix"}")
+                fi
+            done
+
             # Taken a whole line at a time and as written: a plain
             # read eats the backslashes out of a name like
             # "C:\cygwin", and the result it then names does not
             # exist, so a test that passed would be scored an EROR.
-            find "$dir" -type f | sort | while IFS= read -r f
+            find -H "$dir" -type f | sort | while IFS= read -r f
             do
-                printf '%s\t%s\n' "$dir" "$f"
+                local rest="${f#"$here"}"
+                local skip="false"
+                local n
+                for n in "${inner[@]}"
+                do
+                    if [[ "$rest" == "$n"/* ]]
+                    then
+                        skip="true"
+                    fi
+                done
+
+                if [[ "$skip" == "false" ]]
+                then
+                    printf '%s\t%s\n' "$dir" "$f"
+                fi
             done
         done
     }
