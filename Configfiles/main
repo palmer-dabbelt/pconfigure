@@ -469,6 +469,7 @@ TESTSRC     += destdir-relative-installs-under-cwd.bash
 TESTSRC     += libexecs-install-and-uninstall.bash
 TESTSRC     += installed-library-runpath-for-its-deplibs.bash
 TESTSRC     += uninstall-with-nothing-installed-succeeds.bash
+TESTSRC     += prefix-with-harmless-punctuation-installs.bash
 TESTSRC     += cp-replaces.bash
 TESTSRC     += c-test.bash
 TESTSRC     += c-deplib-test.bash
