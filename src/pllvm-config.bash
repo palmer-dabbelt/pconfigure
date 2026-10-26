@@ -1,7 +1,13 @@
-# Parses some special command-line options
+# Parses some special command-line options.  Every other word is a
+# method, and each one sets its own flag rather than overwriting a
+# single "method" variable: that used to keep only the last one, so
+# "--cflags --libs" (what a line compiling and linking one source in
+# a single step asks for) got the libs alone, with no warning, and the
+# compile lost LLVM's include path.
 optional="false"
 have=""
-method=""
+cflags="false"
+libs="false"
 while [[ "$1" != "" ]]
 do
     if [[ "$1" == "--optional" ]]
@@ -11,8 +17,17 @@ do
     then
 	shift
 	have="$1"
+    elif [[ "$1" == "--cflags" ]]
+    then
+	cflags="true"
+    elif [[ "$1" == "--libs" ]]
+    then
+	libs="true"
     else
-	method="$1"
+	# Refused here, before llvm-config is asked anything, so that a
+	# typo next to a good method isn't hidden behind its output.
+	echo "Unsupported method $1" >/dev/stderr
+	exit 1
     fi
     
     shift
@@ -46,6 +61,14 @@ then
     exit 1
 fi
 
+# Asking for no method at all is refused: the empty answer it would get
+# reads just like an LLVM that needs no flags.
+if [[ "$cflags" == "false" && "$libs" == "false" ]]
+then
+    echo "No method given: ask for --cflags, --libs, or both" >/dev/stderr
+    exit 1
+fi
+
 if ! run_llvm_config --version > /dev/null
 then
     if [[ "$optional" == "true" ]]
@@ -55,30 +78,31 @@ then
     exit 1
 fi
 
-# Make llvm-config look a lot like pkg-config.  Each llvm-config is
-# run on its own and its status checked: put together as substitutions
-# in one assignment, the status left behind is that of the last one,
-# so a "llvm-config --libs core" that failed (an LLVM installed with
-# only its shared library has no static component libraries for it to
-# name) still came out as a link line with only libclang on it and a
-# status of 0, and the failure turned up at link time instead.
+# Make llvm-config look a lot like pkg-config, which answers both
+# methods when given both, always with the cflags ahead of the libs
+# whatever order they were asked in, and answers a repeated one once.
+# Each llvm-config is run on its own and its status checked: put
+# together as substitutions in one assignment, the status left behind
+# is that of the last one, so a "llvm-config --libs core" that failed
+# (an LLVM installed with only its shared library has no static
+# component libraries for it to name) still came out as a link line
+# with only libclang on it and a status of 0, and the failure turned up
+# at link time instead.
 stdout=""
 retval="0"
-if [[ "$method" == "--cflags" ]]
+if [[ "$cflags" == "true" ]]
 then
     stdout="$(run_llvm_config --cflags)"
     retval="$?"
-elif [[ "$method" == "--libs" ]]
+fi
+if [[ "$libs" == "true" && "$retval" == "0" ]]
 then
-    if libs="$(run_llvm_config --libs core)" && libdir="$(run_llvm_config --libdir)"
+    if libs_out="$(run_llvm_config --libs core)" && libdir="$(run_llvm_config --libdir)"
     then
-        stdout="$libs -lclang -L$libdir -Wl,-R$libdir"
+        stdout="$stdout $libs_out -lclang -L$libdir -Wl,-R$libdir"
     else
         retval="$?"
     fi
-else
-    echo "Unsupported method $method" >/dev/stderr
-    exit 1
 fi
 
 # If --optional is given then don't panic
