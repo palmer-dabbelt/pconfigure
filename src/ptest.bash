@@ -668,7 +668,13 @@ export PTEST_CHECKDIR="$checkdir"
 export PTEST_TMPDIR="$tmpdir"
 export PTEST_SCRATCH_DIR="$scratchdir"
 
-"$test" "$@" >&"$tmpdir"/ptest__output
+# The output is captured so a result is the same whoever produced it,
+# and the input has to be pinned down for the same reason.  Left
+# attached, a test that reads stdin gets the terminal of whoever typed
+# "make check" (and hangs until a key is pressed), or the rest of the
+# list of a script that runs "make check" from a "while read" loop (and
+# that loop quietly stops after one entry).  A test is given nothing.
+"$test" "$@" </dev/null >&"$tmpdir"/ptest__output
 status="$?"
 
 # The directory is the test's to do what it likes with until it exits,
