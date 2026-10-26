@@ -315,6 +315,15 @@ public:
      * was already out. */
     void write_configureopts(void) const;
 
+    /* Writes down what a bare "ptest" needs to know about this
+     * project's tests: where every project's results land and how
+     * they are scored (write_check_dirs()), and which stamp "make
+     * check" builds (write_check_stamp()).  Public, and called before
+     * any Makefile is written, for the same reason as
+     * write_configureopts(): these go into the object directory too,
+     * and the Makefile make is run on is what puts them back. */
+    void write_check_records(const std::vector<ptr>& aggregated) const;
+
 public:
     /* A project and everything below it, parents before children. */
     static std::vector<ptr> flatten(const ptr& root);

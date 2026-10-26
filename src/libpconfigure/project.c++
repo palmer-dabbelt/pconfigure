@@ -2013,10 +2013,11 @@ makefile::target::ptr project::cache_clean_target(const std::vector<ptr>& projec
             spare(vendored->install_dir());
         }
 
-        /* pconfigure wrote this one, and the Makefile says nothing
-         * about it: reading the Makefile back would decide it was
-         * stale and throw away the only record of where the test
-         * results live. */
+        /* pconfigure wrote this one, and nothing the Makefile builds
+         * is made from it: reading the Makefile back would decide it
+         * was stale and throw away the record of where the test
+         * results live, which only a configure or a make from the top
+         * of the tree would put back. */
         prune += " -not -path '"
               + project->_processor->root_context()->obj_dir
               + "/check-dirs'";
@@ -2701,6 +2702,33 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
     if (_base.size() == 0)
         out->restore_configure_outputs(file_utils::configure_outputs());
 
+    /* The files a bare "ptest" reads are among those, but unlike a
+     * link's inputs nothing in the build names them -- ptest reads
+     * them, make never does -- so a rule to write them again is a rule
+     * nothing asks for.  Hanging them off "all" and "check" is what
+     * asks: the make that rebuilds a deleted object directory, or the
+     * "make check" that refills it with results, puts them back as
+     * well, and ptest reports on the same projects, scored the same
+     * way and against the same stamp, as "make report" does.  Without
+     * them it quietly falls back to this project's results alone.
+     *
+     * Every project's, not only this one's, because a subproject is a
+     * directory somebody can walk into and run ptest in too.  Only
+     * from up here, since only this Makefile has the rules: a
+     * subproject's Makefile naming them would be "No rule to make
+     * target" the first time somebody ran make in it with them gone. */
+    if (_base.size() == 0) {
+        for (const auto& project: aggregated) {
+            const auto& obj_dir =
+                project->_processor->root_context()->obj_dir;
+            for (const auto& record: {obj_dir + "/check-dirs",
+                                      obj_dir + "/check-stamp"}) {
+                out->add_dep("all", record);
+                out->add_dep("check", record);
+            }
+        }
+    }
+
     out->add_standalone_target(cache_clean_target(aggregated));
     out->add_standalone_target(distclean_target(aggregated));
 
@@ -2718,8 +2746,6 @@ void project::write_makefile(const std::vector<makefile::implied_dep>& implied,
     out->write_to_file(path);
 
     write_bootstrap_makefile();
-    write_check_dirs(aggregated);
-    write_check_stamp();
     write_check_scopes(*out);
 }
 
@@ -3061,29 +3087,40 @@ void project::check_header_copy(const context::ptr& ctx)
     abort();
 }
 
+void project::write_check_records(const std::vector<ptr>& aggregated) const
+{
+    write_check_dirs(aggregated);
+    write_check_stamp();
+}
+
 void project::write_check_stamp(void) const
 {
     const auto& root = _processor->root_context();
 
-    mkdir(root->obj_dir.c_str(), 0777);
-
-    auto path = root->obj_dir + "/check-stamp";
-    auto file = fopen(path.c_str(), "w");
-    if (file == NULL) {
-        std::cerr << "Unable to open " << path << "\n";
-        abort();
-    }
-
     const auto& suite = _processor->default_test_suite();
-    if (suite.size() > 0)
-        fprintf(file, "%s\n",
-                root->unbased(root->obj_dir + "/check-suite-" + suite
-                              + "-done").c_str());
-    else
-        fprintf(file, "%s\n",
-                root->unbased(root->obj_dir + "/check-all-done").c_str());
+    auto stamp = suite.size() > 0
+               ? root->obj_dir + "/check-suite-" + suite + "-done"
+               : root->obj_dir + "/check-all-done";
 
-    fclose(file);
+    /* Through write_configure_output(), so that the Makefile carries a
+     * rule that writes it again: this lives in the object directory,
+     * and a deleted one used to take it along for good, leaving ptest
+     * to guess "check-all-done" -- a stamp a project with a
+     * DEFAULT_TEST_SUITE never builds, so every ptest after warned
+     * that "make check" was out of date however recently it ran. */
+    auto path = root->obj_dir + "/check-stamp";
+    file_utils::mkdir_p(root->obj_dir);
+    if (file_utils::write_configure_output(path,
+                                           root->unbased(stamp) + "\n"))
+        return;
+
+    std::cerr << "can't write '" << path << "': "
+              << strerror(errno) << "\n"
+              << "  this is where the stamp \"make check\" builds gets"
+              << " written down,\n"
+              << "  and \"ptest\" needs it to say whether its report is"
+              << " current\n";
+    abort();
 }
 
 void project::write_check_scopes(const makefile::makefile& out) const
@@ -3418,31 +3455,38 @@ void project::write_check_dirs(const std::vector<ptr>& aggregated) const
 {
     const auto& root = _processor->root_context();
 
-    /* The Makefile is what creates this directory during a build, and
-     * nothing has been built yet. */
-    mkdir(root->obj_dir.c_str(), 0777);
-
-    auto path = root->obj_dir + "/check-dirs";
-    auto file = fopen(path.c_str(), "w");
-    if (file == NULL) {
-        std::cerr << "Unable to open " << path << "\n";
-        abort();
-    }
-
     /* Written the way whoever reads it will be standing: "ptest" runs
      * where make runs, which for this file is this project.  A project
      * that said ABRT_IS_FAIL has that after a tab, so a bare "ptest"
      * scores its results the way "make report" does. */
+    auto out = std::string();
     for (const auto& project: aggregated) {
         if (project->has_check_dir() == false)
             continue;
-        fprintf(file, "%s%s\n",
-                root->unbased(
-                    project->processor()->root_context()->check_dir).c_str(),
-                project->processor()->abrt_is_fail() ? "\tabrt-is-fail" : "");
+        out += root->unbased(
+                   project->processor()->root_context()->check_dir);
+        if (project->processor()->abrt_is_fail())
+            out += "\tabrt-is-fail";
+        out += "\n";
     }
 
-    fclose(file);
+    /* The Makefile is what creates this directory during a build, and
+     * nothing has been built yet.  And through write_configure_output()
+     * because the object directory is a thing people delete: without
+     * a rule to write it again, the next ptest found only this
+     * project's results, missed every subproject's, and scored an
+     * ABRT_IS_FAIL project's aborts as errors. */
+    auto path = root->obj_dir + "/check-dirs";
+    file_utils::mkdir_p(root->obj_dir);
+    if (file_utils::write_configure_output(path, out))
+        return;
+
+    std::cerr << "can't write '" << path << "': "
+              << strerror(errno) << "\n"
+              << "  this is where the test results of every project this"
+              << " one covers get written down,\n"
+              << "  and \"ptest\" needs it to find them\n";
+    abort();
 }
 
 bool project::has_check_dir(void) const

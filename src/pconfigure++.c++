@@ -313,6 +313,8 @@ int main(int argc, const char **argv)
      * first, before a subproject's would have been. */
     for (const auto& project: projects)
         project->write_configureopts();
+    for (const auto& project: projects)
+        project->write_check_records(project::flatten(project));
 
     for (const auto& project: projects)
         project->write_makefile(edges[project->base()],
