@@ -649,6 +649,18 @@ int list_overwrite_defines(std::string filename,
                 abort();
             }
 
+            /* Inside a branch that isn't taken the compiler evaluates
+             * nothing, not even an "#if" it couldn't make sense of,
+             * and "#if 0" is exactly where code that is off for now
+             * goes.  Whatever the test says, everything up to the
+             * matching "#endif" is off, so there is no reason to work
+             * it out -- and an expression this reader can't follow is
+             * no reason to stop reading a file the compiler builds. */
+            if (state_stack.top() != state::OUTPUT) {
+                state_stack.push(state::DEAD);
+                return;
+            }
+
             auto resolved = resolve_pp_function(rest, defines);
             push_conditional(resolved);
         }, bare_directives);

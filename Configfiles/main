@@ -324,6 +324,7 @@ TESTSRC     += c-nested-ifdef-inside-false-branch-not-a-dependency.bash
 TESTSRC     += c-elif-taken-branch-include-is-linked.bash
 TESTSRC     += c-elif-after-taken-if-not-followed.bash
 TESTSRC     += c-elif-chain-takes-one-branch-only.bash
+TESTSRC     += c-if-arithmetic-in-untaken-branch-configures.bash
 TESTSRC     += c-elif-without-if-refused-at-its-line.bash
 TESTSRC     += c-undef-turns-ifdef-off.bash
 TESTSRC     += c-undef-of-compileopts-define-turns-ifdef-off.bash
