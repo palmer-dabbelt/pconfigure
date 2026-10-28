@@ -36,7 +36,7 @@ test ! -e lib
 
 # And twice over after a real install.
 make $MAKE_ARGS DESTDIR=$tempdir/dest install
-test "$(find dest -type f | wc -l)" -eq 4
+test "$(find dest -type f | wc -l | tr -d ' ')" -eq 4
 make $MAKE_ARGS DESTDIR=$tempdir/dest uninstall
 make $MAKE_ARGS DESTDIR=$tempdir/dest uninstall
 test -z "$(find dest -type f)"

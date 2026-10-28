@@ -25,7 +25,7 @@ chmod +x t.bash
 "$ptest" --test t.bash --out check/t.bash || true
 
 test "$(tar -xOf check/t.bash ptest__return)" = "0"
-test "$(tar -tf check/t.bash | wc -l)" -ge 20000
+test "$(tar -tf check/t.bash | wc -l | tr -d ' ')" -ge 20000
 
 "$ptest" --no-check-make-check --check-dir check > report.out || true
 cat report.out

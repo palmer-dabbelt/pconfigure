@@ -49,8 +49,8 @@ EOF
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 make $MAKE_ARGS check
-test "$(wc -l < c.log)" = "1"
-test "$(wc -l < bash.log)" = "1"
+test "$(wc -l < c.log | tr -d ' ')" = "1"
+test "$(wc -l < bash.log | tr -d ' ')" = "1"
 
 sleep 1
 cat >src/t.c <<'EOF'
@@ -60,7 +60,7 @@ make $MAKE_ARGS
 make $MAKE_ARGS check
 
 # Both of them, once more each.
-test "$(wc -l < bash.log)" = "2"
-test "$(wc -l < c.log)" = "2"
+test "$(wc -l < bash.log | tr -d ' ')" = "2"
+test "$(wc -l < c.log | tr -d ' ')" = "2"
 
 exit 0

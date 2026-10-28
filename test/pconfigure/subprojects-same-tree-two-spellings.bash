@@ -39,7 +39,7 @@ cat out
 test "$(grep -c '^include .*obj/Makefile.a$' Makefile)" = "1"
 test "$(grep -c '^pconfigure_subdir_a ?=' Makefile)" = "1"
 ls a/obj/Makefile.*
-test "$(ls a/obj/Makefile.* | wc -l)" = "1"
+test "$(ls a/obj/Makefile.* | wc -l | tr -d ' ')" = "1"
 
 # And make has nothing to warn about: a project read twice shows up as
 # "overriding recipe".

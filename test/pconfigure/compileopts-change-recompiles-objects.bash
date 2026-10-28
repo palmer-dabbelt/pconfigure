@@ -78,6 +78,6 @@ test "$(./bin/app)" = "2"
 # The compensation's shape: two objects sit in the source's object
 # directory, the abandoned one and the current one, rather than one
 # object rewritten in place.
-test "$(ls obj/src/app.c/*-static.o | wc -l)" -eq 2
+test "$(ls obj/src/app.c/*-static.o | wc -l | tr -d ' ')" -eq 2
 
 exit 0

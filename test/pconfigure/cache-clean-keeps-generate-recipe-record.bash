@@ -53,7 +53,7 @@ $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS > settled.out 2>&1
 cat settled.out
 grep -q "Nothing to be done" settled.out
-settled=$(( $(wc -l < deps-runs) - $(wc -l < deps-runs.settled-before) ))
+settled=$(( $(wc -l < deps-runs | tr -d ' ') - $(wc -l < deps-runs.settled-before | tr -d ' ') ))
 
 make $MAKE_ARGS cache-clean
 cp deps-runs deps-runs.after-before
@@ -65,7 +65,7 @@ if grep -q "^DEPS" after.out
 then
     exit 1
 fi
-after=$(( $(wc -l < deps-runs) - $(wc -l < deps-runs.after-before) ))
+after=$(( $(wc -l < deps-runs | tr -d ' ') - $(wc -l < deps-runs.after-before | tr -d ' ') ))
 test "$after" = "$settled"
 
 exit 0

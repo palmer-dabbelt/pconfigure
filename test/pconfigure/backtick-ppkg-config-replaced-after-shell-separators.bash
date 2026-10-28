@@ -42,7 +42,7 @@ for word in pipe semicolon and dollar-paren subshell tab
 do
     grep -qx "$word" my-ppkg.log
 done
-test "$(wc -l <my-ppkg.log)" = "6"
+test "$(wc -l <my-ppkg.log | tr -d ' ')" = "6"
 
 make $MAKE_ARGS
 test "$(./bin/test)" = "1"

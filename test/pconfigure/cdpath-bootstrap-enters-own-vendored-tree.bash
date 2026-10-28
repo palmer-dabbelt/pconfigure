@@ -72,5 +72,5 @@ make $MAKE_ARGS > fresh.out 2>&1 || { cat fresh.out; exit 1; }
 cat fresh.out
 
 test ! -e decoy-bootstraps
-test "$(wc -l < bootstraps)" -eq 1
+test "$(wc -l < bootstraps | tr -d ' ')" -eq 1
 test -x bin/hello

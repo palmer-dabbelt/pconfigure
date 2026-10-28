@@ -98,7 +98,7 @@ grep -q 'include \$(pconfigure_subdir_sub)obj/src/helper.c/' sub/obj/src/subbin.
 # build from inside leaves it alone.  There is exactly one fragment
 # here so far, and saying so is what makes the count below mean
 # something.
-test "$(ls sub/obj/src/subbin.c/*.d | wc -l)" -eq 1
+test "$(ls sub/obj/src/subbin.c/*.d | wc -l | tr -d ' ')" -eq 1
 from_the_top="$(echo sub/obj/src/subbin.c/*.d)"
 cp "$from_the_top" from-the-top.d
 
@@ -146,7 +146,7 @@ grep -q "subbin.h" "$from_the_top"
 # not something a file on disk should be able to say: the two of them
 # describe this source from different places, so a file they shared
 # would be one of the two answers wearing the other's name.
-test "$(ls sub/obj/src/subbin.c/*.d | wc -l)" -eq 2
+test "$(ls sub/obj/src/subbin.c/*.d | wc -l | tr -d ' ')" -eq 2
 if ! cmp from-the-top.d "$from_the_top"
 then
     diff -u from-the-top.d "$from_the_top" || true

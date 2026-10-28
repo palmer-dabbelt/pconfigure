@@ -44,7 +44,7 @@ if test "$(uname -s)" != "Darwin"
 then
     readelf -d inst/bin/app > app.dynamic
     cat app.dynamic
-    test "$(grep -o "$tempdir/inst/lib/sub" app.dynamic | wc -l)" = 1
+    test "$(grep -o "$tempdir/inst/lib/sub" app.dynamic | wc -l | tr -d ' ')" = 1
 fi
 
 mv lib lib.moved

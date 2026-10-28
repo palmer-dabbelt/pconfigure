@@ -29,7 +29,7 @@ EOF2
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS DESTDIR=$tempdir/dest install
 find dest -type f | sort > first
-test "$(wc -l < first)" -eq 4
+test "$(wc -l < first | tr -d ' ')" -eq 4
 
 sleep 1
 touch settled.stamp

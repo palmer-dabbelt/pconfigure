@@ -30,7 +30,7 @@ grep -a -q "^expected 4, got 5$" report.out
 
 # Text, and only the output: no tar member names, no other files'
 # contents, no NULs.
-test "$(tr -d -c '\000' < report.out | wc -c)" = "0"
+test "$(tr -d -c '\000' < report.out | wc -c | tr -d ' ')" = "0"
 if grep -a -q "ptest__return\|leftover\|not output" report.out
 then
     exit 1

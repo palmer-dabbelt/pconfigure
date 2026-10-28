@@ -74,7 +74,7 @@ test "$(./a/bin/test)" = "42"
 
 # The sibling's header, named from the top of the tree, which is where
 # the build that wrote this one was standing.
-test "$(ls a/obj/src/test.c/*.d | wc -l)" -eq 1
+test "$(ls a/obj/src/test.c/*.d | wc -l | tr -d ' ')" -eq 1
 from_the_top="$(echo a/obj/src/test.c/*.d)"
 grep -q "^b/src/b.h:\$" "$from_the_top"
 
@@ -102,7 +102,7 @@ test "$(cd a && ./bin/test)" = "42"
 # A second fragment, naming the sibling the way a build standing in
 # "a" reaches it -- up one and back down, rather than from a top of
 # the tree that is not where this build is.
-test "$(ls a/obj/src/test.c/*.d | wc -l)" -eq 2
+test "$(ls a/obj/src/test.c/*.d | wc -l | tr -d ' ')" -eq 2
 inside="$(ls a/obj/src/test.c/*.d | grep -v -x -F "$from_the_top")"
 cat "$inside"
 grep -q "^\.\./b/src/b.h:\$" "$inside"

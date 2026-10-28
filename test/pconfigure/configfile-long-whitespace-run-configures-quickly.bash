@@ -21,7 +21,7 @@ echo 'int main(void) { return 0; }' > src/main.c
     printf -- '-DB\n'
     echo 'SOURCES     += main.c'
 } > Configfile
-test $(wc -c < Configfile) -gt 2000000
+test $(wc -c < Configfile | tr -d ' ') -gt 2000000
 
 timeout 20 $PTEST_BINARY $PCONFIGURE_ARGS
 

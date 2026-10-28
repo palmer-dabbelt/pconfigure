@@ -77,8 +77,8 @@ make $MAKE_ARGS > first.out 2>&1
 cat first.out
 ./bin/hello
 
-test "$(wc -l < bootstraps)" -eq 1
-test "$(wc -l < configures)" -eq 1
+test "$(wc -l < bootstraps | tr -d ' ')" -eq 1
+test "$(wc -l < configures | tr -d ' ')" -eq 1
 
 # And the build has nothing to do from here on.
 make $MAKE_ARGS > settled.out 2>&1
@@ -97,7 +97,7 @@ cat second.out
 # The tool rebuilt -- not by bootstrap.sh, which has no reason to run
 # again, but through the ordinary subproject graph the bootstrap left
 # behind ...
-test "$(wc -l < bootstraps)" -eq 1
+test "$(wc -l < bootstraps | tr -d ' ')" -eq 1
 grep -q "^BASH	pconfigure$" second.out
 
 # ... but not reconfigured by it.  The relink happened in the build,
@@ -108,7 +108,7 @@ grep -q "^BASH	pconfigure$" second.out
 # not read yet, which bootstrap-real-tool-fresh-checkout pins.  This
 # stand-in has no fragments to get wrong, so the count is asserted to
 # show the rule's timing rather than for its own sake.
-test "$(wc -l < configures)" -eq 1
+test "$(wc -l < configures | tr -d ' ')" -eq 1
 
 # The next make is the one that runs the new tool, exactly once: the
 # new brain has not written anything down yet, and a make that leaves
@@ -116,8 +116,8 @@ test "$(wc -l < configures)" -eq 1
 # Unweakened: the test fails while the build settles for a relink.
 make $MAKE_ARGS > third.out 2>&1
 cat third.out
-test "$(wc -l < configures)" -eq 2
-test "$(wc -l < bootstraps)" -eq 1
+test "$(wc -l < configures | tr -d ' ')" -eq 2
+test "$(wc -l < bootstraps | tr -d ' ')" -eq 1
 
 # And then it settles -- the "once" in the name is the point, and a
 # loop would answer this make with another configure instead of
@@ -125,7 +125,7 @@ test "$(wc -l < bootstraps)" -eq 1
 make $MAKE_ARGS > fourth.out 2>&1
 cat fourth.out
 grep -q "Nothing to be done" fourth.out
-test "$(wc -l < configures)" -eq 2
-test "$(wc -l < bootstraps)" -eq 1
+test "$(wc -l < configures | tr -d ' ')" -eq 2
+test "$(wc -l < bootstraps | tr -d ' ')" -eq 1
 
 exit 0

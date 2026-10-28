@@ -191,7 +191,7 @@ fi
 # by a compiler its Configfile never named, and no error anywhere.
 grep -o "^obj/src/shared\.c/[0-9]*-static\.o:" Makefile | sort -u > shared.objs
 cat shared.objs
-test $(wc -l < shared.objs) -eq 3
+test $(wc -l < shared.objs | tr -d ' ') -eq 3
 
 # A LINKER, on the other hand, has nothing to do with how an object
 # was made, so it must not fork that cache.  ldone and ldtwo share
@@ -200,7 +200,7 @@ test $(wc -l < shared.objs) -eq 3
 # be doubling the build for no reason at all.
 grep -o "^obj/src/ldshared\.c/[0-9]*-static\.o:" Makefile | sort -u > ldshared.objs
 cat ldshared.objs
-test $(wc -l < ldshared.objs) -eq 1
+test $(wc -l < ldshared.objs | tr -d ' ') -eq 1
 
 ##############################################################################
 # Building                                                                   #
@@ -209,8 +209,8 @@ make $MAKE_ARGS
 
 # The object cache is a claim about files on a disk, so count them
 # there too rather than trusting the Makefile that asked for them.
-test $(ls obj/src/shared.c/*-static.o | wc -l) -eq 3
-test $(ls obj/src/ldshared.c/*-static.o | wc -l) -eq 1
+test $(ls obj/src/shared.c/*-static.o | wc -l | tr -d ' ') -eq 3
+test $(ls obj/src/ldshared.c/*-static.o | wc -l | tr -d ' ') -eq 1
 
 # Every wrapper really was executed.  This is the assertion that
 # separates "pconfigure wrote the name down" from "the build ran the

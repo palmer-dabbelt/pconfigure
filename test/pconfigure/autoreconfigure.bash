@@ -93,7 +93,7 @@ cmp off.objects on.objects
 # Four of them, which is the three the Configfile named plus the one
 # found only behind a header.  A comparison of two empty files would
 # pass and say nothing.
-test "$(wc -l < off.objects)" -eq 4
+test "$(wc -l < off.objects | tr -d ' ')" -eq 4
 
 # "helper.c++" is named by the Configfile and also sits behind a
 # header that "app.c++" reads, so pconfigure and pdeps both have
@@ -136,9 +136,9 @@ grep -q "^include obj/src/app.c++/[0-9]*-[0-9]*-static\.d$" on/Makefile
 # directory of its own, which is where somebody looking for one would
 # look.  Checked by name and by there being no such directory, because
 # a layout is the sort of thing that comes back.
-test "$(find on/obj -type d -name deps | wc -l)" -eq 0
-test "$(find on/obj/src/app.c++ -name '*-static.d' | wc -l)" -eq 1
-test "$(find on/obj/src/app.c++ -name '*-static.o' | wc -l)" -eq 1
+test "$(find on/obj -type d -name deps | wc -l | tr -d ' ')" -eq 0
+test "$(find on/obj/src/app.c++ -name '*-static.d' | wc -l | tr -d ' ')" -eq 1
+test "$(find on/obj/src/app.c++ -name '*-static.o' | wc -l | tr -d ' ')" -eq 1
 grep -q "echo \"DEPS	app.c++\"" on/Makefile
 grep -q '\$(filter %.o,\$^)' on/Makefile
 
@@ -250,9 +250,9 @@ grep -q "Nothing to be done" cacheclean.out
 # wrote, which is the context files, the same way it leaves the
 # Makefile.
 (cd on && make $MAKE_ARGS clean)
-test "$(find on/obj -name '*.d' | wc -l)" -eq 0
-test "$(find on/obj -name '*.o' | wc -l)" -eq 0
-test "$(find on/obj -name 'deps-context-*' | wc -l)" -ne 0
+test "$(find on/obj -name '*.d' | wc -l | tr -d ' ')" -eq 0
+test "$(find on/obj -name '*.o' | wc -l | tr -d ' ')" -eq 0
+test "$(find on/obj -name 'deps-context-*' | wc -l | tr -d ' ')" -ne 0
 
 (cd on && make $MAKE_ARGS)
 test "$(./on/bin/app)" = "15"
@@ -305,8 +305,8 @@ test "$(./bin/two)" = "20"
 # Four objects: both sources, once per set of options.  The source
 # behind the header is walked twice because the options it inherits
 # differ, which is what pconfigure does with it too.
-test "$(find obj -name '*.o' | wc -l)" -eq 4
-test "$(find obj -name 'deps-context-*' | wc -l)" -eq 2
+test "$(find obj -name '*.o' | wc -l | tr -d ' ')" -eq 4
+test "$(find obj -name 'deps-context-*' | wc -l | tr -d ' ')" -eq 2
 
 cd ..
 
@@ -356,13 +356,13 @@ test "$(./bin/first)" = "7"
 test "$(./bin/second)" = "7"
 
 # One object per source, shared by both links.
-test "$(find obj -name '*.o' | wc -l)" -eq 2
+test "$(find obj -name '*.o' | wc -l | tr -d ' ')" -eq 2
 
 # Two fragments per source, one per link, sitting beside that one
 # object.  Without the link in the name these would be one file with
 # two recipes, which pconfigure refuses outright rather than writing.
-test "$(find obj/src/main.c++ -name '*-static.d' | wc -l)" -eq 2
-test "$(find obj/src/common.c++ -name '*-static.d' | wc -l)" -eq 2
+test "$(find obj/src/main.c++ -name '*-static.d' | wc -l | tr -d ' ')" -eq 2
+test "$(find obj/src/common.c++ -name '*-static.d' | wc -l | tr -d ' ')" -eq 2
 
 if grep -q "overriding recipe" build.log
 then

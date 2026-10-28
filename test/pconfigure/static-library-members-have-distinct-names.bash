@@ -47,13 +47,13 @@ make $MAKE_ARGS
 # it's left out of the counting.
 ar t lib/libone.a | grep -v '^__\.SYMDEF' > members
 cat members
-test "$(wc -l < members)" = 3
-test "$(sort -u members | wc -l)" = 3
+test "$(wc -l < members | tr -d ' ')" = 3
+test "$(sort -u members | wc -l | tr -d ' ')" = 3
 
 mkdir extracted
 (cd extracted && ar x ../lib/libone.a && rm -f __.SYMDEF*)
 ls extracted
-test "$(ls extracted | wc -l)" = 3
+test "$(ls extracted | wc -l | tr -d ' ')" = 3
 
 # Mach-O spells a C function's symbol with a leading underscore, ELF
 # doesn't.  A defined function is a "T" either way, and an undefined

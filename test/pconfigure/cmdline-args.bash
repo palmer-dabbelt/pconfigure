@@ -73,7 +73,7 @@ diff help.out h.out
 options="$(grep -oE '^  (-h, )?--[a-z-]+' help.out | grep -oE '\-\-[a-z-]+')"
 echo "$options"
 test -n "$options"
-test "$(echo "$options" | wc -l)" -eq "$(grep -c -E '^ +-' help.out)"
+test "$(echo "$options" | wc -l | tr -d ' ')" -eq "$(grep -c -E '^ +-' help.out)"
 
 for option in $options
 do

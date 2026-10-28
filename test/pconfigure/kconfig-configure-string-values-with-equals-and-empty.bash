@@ -54,7 +54,7 @@ cat config-args
 # one away, so the count is checked as well as what follows each
 # --set-str.
 test "$(grep -c -- '^\[--set-str\]$' config-args)" = "2"
-test "$(wc -l <config-args)" = "10"
+test "$(wc -l <config-args | tr -d ' ')" = "10"
 grep -A2 -- '^\[--set-str\]$' config-args | grep -v '^--$' >set-str-args
 cat >expected-set-str-args <<'EOF'
 [--set-str]

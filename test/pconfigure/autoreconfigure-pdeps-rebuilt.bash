@@ -91,8 +91,8 @@ cat first.out
 # is a hash of the options it was compiled under rather than anything a
 # test should be spelling out.  Both of them exist, which is the shape
 # this test needs: the named source and the one behind the header.
-test "$(ls obj/src/app.c++/*-static.d | wc -l)" -eq 1
-test "$(ls obj/src/helper.c++/*-static.d | wc -l)" -eq 1
+test "$(ls obj/src/app.c++/*-static.d | wc -l | tr -d ' ')" -eq 1
+test "$(ls obj/src/helper.c++/*-static.d | wc -l | tr -d ' ')" -eq 1
 
 # Which is what makes everything below mean something: once a "nothing
 # to be done" is the ordinary answer, a build that says anything at all

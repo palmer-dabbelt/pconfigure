@@ -134,8 +134,8 @@ rm -rf vendor/pconfigure/Makefile vendor/pconfigure/bin vendor/pconfigure/obj
 make $MAKE_ARGS
 
 # It bootstrapped once, configured once, and built.
-test "$(wc -l < bootstraps)" -eq 1
-test "$(wc -l < configures)" -eq 1
+test "$(wc -l < bootstraps | tr -d ' ')" -eq 1
+test "$(wc -l < configures | tr -d ' ')" -eq 1
 test "$(./bin/hello)" = "hello"
 
 # And it left the committed file alone, which is the point of writing
@@ -171,8 +171,8 @@ grep -q "^pconfigure_subdir_vendor_pconfigure ?=$" \
 # worse.
 make $MAKE_ARGS > second.out 2>&1
 cat second.out
-test "$(wc -l < bootstraps)" -eq 1
-test "$(wc -l < configures)" -eq 1
+test "$(wc -l < bootstraps | tr -d ' ')" -eq 1
+test "$(wc -l < configures | tr -d ' ')" -eq 1
 
 # And it says nothing about the vendored tree while it's at it.  There
 # is no make being run in there to say anything: the tree's rules are
@@ -197,7 +197,7 @@ cat report.out
 grep -q "^NRUN	1$" report.out
 grep -q "PASS	hello/works.bash" report.out
 
-test "$(wc -l < configures)" -eq 1
+test "$(wc -l < configures | tr -d ' ')" -eq 1
 
 ##############################################################################
 # An edit to pconfigure's own sources                                        #
@@ -215,8 +215,8 @@ if grep -q "Entering directory" edit.out
 then
     exit 1
 fi
-test "$(wc -l < bootstraps)" -eq 1
-test "$(wc -l < configures)" -eq 1
+test "$(wc -l < bootstraps | tr -d ' ')" -eq 1
+test "$(wc -l < configures | tr -d ' ')" -eq 1
 
 ##############################################################################
 # A configure with no pconfigure to do it with                               #
@@ -237,7 +237,7 @@ test "$(./bin/hello)" = "hello"
 
 # It built one for itself rather than failing, which is the second
 # time this tree has had to.
-test "$(wc -l < bootstraps)" -eq 2
+test "$(wc -l < bootstraps | tr -d ' ')" -eq 2
 
 ##############################################################################
 # Asking for a reconfigure                                                   #
@@ -248,8 +248,8 @@ test "$(wc -l < bootstraps)" -eq 2
 make $MAKE_ARGS reconfigure > reconfigure.out 2>&1
 cat reconfigure.out
 grep -q "^PCONFIGURE$" reconfigure.out
-test "$(wc -l < configures)" -eq 3
-test "$(wc -l < bootstraps)" -eq 2
+test "$(wc -l < configures | tr -d ' ')" -eq 3
+test "$(wc -l < bootstraps | tr -d ' ')" -eq 2
 
 ##############################################################################
 # Undoing a configure                                                        #

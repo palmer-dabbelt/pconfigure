@@ -277,7 +277,7 @@ fi
 # until something refused to run.
 grep -o '^obj/src/common\.c/[0-9]*-static\.o:' Makefile | sort -u > common.objs
 cat common.objs
-test $(wc -l < common.objs) -eq 2
+test $(wc -l < common.objs | tr -d ' ') -eq 2
 
 # ... and no further than that.  hello and hello2 are built for the
 # same machine by the same toolchain, so the object they link is the
@@ -304,7 +304,7 @@ make $MAKE_ARGS
 
 # The Makefile's claim about the object cache, made against the files
 # that are actually on the disk.
-test $(ls obj/src/common.c/*-static.o | wc -l) -eq 2
+test $(ls obj/src/common.c/*-static.o | wc -l | tr -d ' ') -eq 2
 
 # Everything came out, and the things that are supposed to run on this
 # machine run on it.  The cross-compiled ones do too, since the

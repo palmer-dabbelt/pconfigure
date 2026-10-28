@@ -39,7 +39,7 @@ test "$(tar -xOf check/t/nested/second.bash ptest__return)" = "0"
 test "$(tar -xOf check/t/nested/second.bash got)" = "from first"
 test "$(tar -xOf check/t/nested/second.bash checkdir)" = "$PWD/check/t"
 test "$(tar -xOf check/t/nested/second.bash scratch)" = "$PWD/obj/check/t/nested/second.bash.scratch"
-test "$(wc -l < obj/check/t/nested/second.bash.scratch/runs)" = "1"
+test "$(wc -l < obj/check/t/nested/second.bash.scratch/runs | tr -d ' ')" = "1"
 
 # Nothing of the scratch made it into the result.
 if tar -tf check/t/nested/second.bash | grep -q runs
@@ -51,7 +51,7 @@ fi
 sleep 1
 touch test/t/first.bash
 make $MAKE_ARGS check
-test "$(wc -l < obj/check/t/nested/second.bash.scratch/runs)" = "2"
+test "$(wc -l < obj/check/t/nested/second.bash.scratch/runs | tr -d ' ')" = "2"
 
 make $MAKE_ARGS report > report.out
 cat report.out

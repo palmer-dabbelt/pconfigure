@@ -23,7 +23,7 @@ EOF
 
 # The line above is past twice the 2048 bytes a line used to be cut
 # at, which is the point: it would have come back in three pieces.
-test $(sed -n 4p Configfile | wc -c) -gt 4096
+test $(sed -n 4p Configfile | wc -c | tr -d ' ') -gt 4096
 
 cat >src/main.c <<'EOF'
 #if !defined(DEFINE_NUMBER_1) || !defined(DEFINE_NUMBER_400) || !defined(LAST_ONE)

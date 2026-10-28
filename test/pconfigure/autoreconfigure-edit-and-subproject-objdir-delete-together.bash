@@ -80,7 +80,7 @@ grep -q "^PCONFIGURE$" second.log
 # wrapper matched nothing and the check below says nothing.
 test "$(head -n 1 runs.log)" = "start"
 test "$(tail -n 1 runs.log)" = "end"
-test "$(uniq -d runs.log | wc -l)" = 0
+test "$(uniq -d runs.log | wc -l | tr -d ' ')" = 0
 test -x bin/added
 test -x sub/bin/subbin
 test -e sub/obj/Makefile.sub

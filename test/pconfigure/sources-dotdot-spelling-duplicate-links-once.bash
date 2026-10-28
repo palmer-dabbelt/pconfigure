@@ -23,4 +23,4 @@ make $MAKE_ARGS
 
 # And one object for it, not two, which is what the link failing was
 # a symptom of.
-test "$(find obj -name '*.o' -path '*main.c*' | wc -l)" = 1
+test "$(find obj -name '*.o' -path '*main.c*' | wc -l | tr -d ' ')" = 1

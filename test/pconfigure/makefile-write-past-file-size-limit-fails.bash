@@ -20,7 +20,7 @@ cp Makefile Makefile.before
 
 # The Makefile for even this project is bigger than 4 KiB, while
 # everything else configuring writes is far smaller.
-test "$(wc -c < Makefile)" -gt 4096
+test "$(wc -c < Makefile | tr -d ' ')" -gt 4096
 
 status=0
 ( trap '' XFSZ; ulimit -f 4; exec $PTEST_BINARY ) > configure.out 2>&1 || status=$?

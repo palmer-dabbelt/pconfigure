@@ -25,7 +25,7 @@ if grep -q -- "-DA-D" Makefile
 then
     exit 1
 fi
-test "$(grep -o -- "-DA" Makefile | wc -l)" -ge 1500
+test "$(grep -o -- "-DA" Makefile | wc -l | tr -d ' ')" -ge 1500
 
 make $MAKE_ARGS
 ./bin/main

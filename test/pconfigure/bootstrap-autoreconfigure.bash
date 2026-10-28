@@ -87,8 +87,8 @@ rm -rf Makefile.pconfigure obj bin check
 rm -rf vendor/pconfigure/Makefile vendor/pconfigure/bin vendor/pconfigure/obj
 
 make $MAKE_ARGS
-test "$(wc -l < bootstraps)" -eq 1
-test "$(wc -l < configures)" -eq 1
+test "$(wc -l < bootstraps | tr -d ' ')" -eq 1
+test "$(wc -l < configures | tr -d ' ')" -eq 1
 test "$(./bin/hello)" = "hello"
 
 ##############################################################################
@@ -102,7 +102,7 @@ sleep 1
 touch Configfile
 
 make $MAKE_ARGS
-test "$(wc -l < configures)" -eq 2
+test "$(wc -l < configures | tr -d ' ')" -eq 2
 
 ##############################################################################
 # And then it stops                                                          #
@@ -115,7 +115,7 @@ test "$(wc -l < configures)" -eq 2
 # again, for as long as anybody let it.
 make $MAKE_ARGS > again.out 2>&1
 cat again.out
-test "$(wc -l < configures)" -eq 2
+test "$(wc -l < configures | tr -d ' ')" -eq 2
 grep -q "Nothing to be done" again.out
 
 ##############################################################################
@@ -129,8 +129,8 @@ sleep 1
 touch src/hello.c
 
 make $MAKE_ARGS
-test "$(wc -l < configures)" -eq 2
-test "$(wc -l < bootstraps)" -eq 1
+test "$(wc -l < configures | tr -d ' ')" -eq 2
+test "$(wc -l < bootstraps | tr -d ' ')" -eq 1
 
 ##############################################################################
 # And neither does the vendored tree's Makefile                              #
@@ -150,8 +150,8 @@ sleep 1
 touch vendor/pconfigure/Makefile
 
 make $MAKE_ARGS
-test "$(wc -l < configures)" -eq 2
-test "$(wc -l < bootstraps)" -eq 1
+test "$(wc -l < configures | tr -d ' ')" -eq 2
+test "$(wc -l < bootstraps | tr -d ' ')" -eq 1
 
 # None of which was worth rewriting the file make was started on.
 cmp Makefile Makefile.committed

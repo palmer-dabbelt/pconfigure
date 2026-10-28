@@ -100,7 +100,7 @@ fi
 
 # Two sources reached, which is the one named plus the one behind the
 # header.  A walk that found nothing would satisfy every check above.
-test "$(find on/sub/obj -name '*.o' | wc -l)" -eq 2
+test "$(find on/sub/obj -name '*.o' | wc -l | tr -d ' ')" -eq 2
 
 ##############################################################################
 # An include added afterwards                                                #
@@ -128,7 +128,7 @@ SOURCE
 cat on/second.log
 
 test "$(./on/bin/top)" = "34"
-test "$(find on/sub/obj -name '*.o' | wc -l)" -eq 3
+test "$(find on/sub/obj -name '*.o' | wc -l | tr -d ' ')" -eq 3
 
 ##############################################################################
 # A subproject that said no                                                  #

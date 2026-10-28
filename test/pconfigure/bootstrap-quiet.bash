@@ -94,7 +94,7 @@ cat fresh.out
 # middle of this one, and a build that goes silent for that long and
 # then prints a wall of "CC" lines from a project nobody asked about is
 # harder to read than one that says whose they are.
-test "$(wc -l < bootstraps)" -eq 1
+test "$(wc -l < bootstraps | tr -d ' ')" -eq 1
 grep -q "^BOOTSTRAP	vendor/pconfigure/$" fresh.out
 
 # Once, though.  Both rules can announce it and only one of them
@@ -123,7 +123,7 @@ fi
 make $MAKE_ARGS > again.out 2>&1
 cat again.out
 
-test "$(wc -l < bootstraps)" -eq 1
+test "$(wc -l < bootstraps | tr -d ' ')" -eq 1
 
 # Said positively first, because the three checks below are all
 # negative and an empty file satisfies every one of them.  A make that
@@ -161,7 +161,7 @@ rm -f Makefile.pconfigure
 make $MAKE_ARGS > cleaned.out 2>&1
 cat cleaned.out
 
-test "$(wc -l < bootstraps)" -eq 2
+test "$(wc -l < bootstraps | tr -d ' ')" -eq 2
 grep -q "^BOOTSTRAP	vendor/pconfigure/$" cleaned.out
 test "$(grep -c '^BOOTSTRAP' cleaned.out)" -eq 1
 if grep -q "test -x" cleaned.out

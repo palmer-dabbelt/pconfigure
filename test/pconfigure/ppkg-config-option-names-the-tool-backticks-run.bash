@@ -32,7 +32,7 @@ EOF
 $PTEST_BINARY $PCONFIGURE_ARGS --ppkg-config "$(pwd)/my-ppkg"
 cat my-ppkg.log
 
-test "$(wc -l <my-ppkg.log)" = "1"
+test "$(wc -l <my-ppkg.log | tr -d ' ')" = "1"
 grep -q "^--optional thing --cflags$" my-ppkg.log
 grep -q -- "-DFROM_MY_PPKG=1" Makefile
 

@@ -839,7 +839,7 @@ diff expected-install-args3 install-args3
 # wrapper's witness missing.
 cat $top/tools/used
 test "$(sort -u $top/tools/used)" = "$abs/sub3"
-test $(wc -l < $top/tools/used) -eq 2
+test $(wc -l < $top/tools/used | tr -d ' ') -eq 2
 
 # The programs landed where the Makefile said they would, which is the
 # whole of what artifact_dir() is for -- a SUBPROJECT_TARGETS that
@@ -1998,7 +1998,7 @@ test -f "obj/it's/build-stamp"
 # inside the crate, on both halves of the recipe -- so the "--cargo"
 # survived being made absolute and quoted, twice.
 test "$(sort -u "$top/apostrophe/tools/used")" = "$abs/apostrophe/it's"
-test $(wc -l < "$top/apostrophe/tools/used") -eq 2
+test $(wc -l < "$top/apostrophe/tools/used" | tr -d ' ') -eq 2
 
 # And what cargo was handed, one line per argument: the apostrophe is
 # still in the middle of one path each time rather than having ended
@@ -2130,7 +2130,7 @@ cat nested.out
 # The subproject's own cargo ran, from inside the crate, on both
 # halves of the recipe.
 test "$(sort -u $top/nested/psub/tools/used)" = "$abs/nested/psub/crate"
-test $(wc -l < $top/nested/psub/tools/used) -eq 2
+test $(wc -l < $top/nested/psub/tools/used | tr -d ' ') -eq 2
 
 # And the one a level up never did, which is the half of this that a
 # reading of the Makefile can't promise on its own.
@@ -2163,7 +2163,7 @@ grep -q -- "--root '\$(abspath obj/stage)'" psub/Makefile
 cat nested-inside.out
 
 test "$(sort -u $top/nested/psub/tools/used)" = "$abs/nested/psub/crate"
-test $(wc -l < $top/nested/psub/tools/used) -eq 2
+test $(wc -l < $top/nested/psub/tools/used | tr -d ' ') -eq 2
 test ! -e $top/nested/decoy-ran
 test -f psub/obj/stage/bin/nest
 

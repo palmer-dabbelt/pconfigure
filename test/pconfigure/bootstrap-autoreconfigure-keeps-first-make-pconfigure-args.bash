@@ -70,7 +70,7 @@ echo "# a comment" >> Configfile
 make $MAKE_ARGS > second.log 2>&1
 cat second.log
 cat configures
-test "$(wc -l < configures)" -eq 2
+test "$(wc -l < configures | tr -d ' ')" -eq 2
 
 grep -q '^bin/extra:' Makefile.pconfigure
 

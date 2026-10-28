@@ -85,7 +85,7 @@ test ! -e tree-was-built
 make $MAKE_ARGS > all.log 2>&1 || { cat all.log; exit 1; }
 cat all.log
 test -e wrap/obj/tree/build/bin/tool
-test "$(wc -l < tree-was-built)" = 1
+test "$(wc -l < tree-was-built | tr -d ' ')" = 1
 
 # Now the tool exists and the tree's sources move on, so the tool is
 # out of date.  Neither a dry run nor a clean is a reason to build it.
@@ -95,10 +95,10 @@ rm -f tree-was-configured
 
 make $MAKE_ARGS -n clean > dry-run-2.log 2>&1 || { cat dry-run-2.log; exit 1; }
 cat dry-run-2.log
-test "$(wc -l < tree-was-built)" = 1
+test "$(wc -l < tree-was-built | tr -d ' ')" = 1
 test ! -e tree-was-configured
 
 make $MAKE_ARGS clean > clean-2.log 2>&1 || { cat clean-2.log; exit 1; }
 cat clean-2.log
-test "$(wc -l < tree-was-built)" = 1
+test "$(wc -l < tree-was-built | tr -d ' ')" = 1
 test ! -e tree-was-configured

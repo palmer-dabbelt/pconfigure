@@ -92,7 +92,7 @@ fi
 # right file from there.  A fragment is one build's answer about one
 # source, and the build that wrote this one was standing in the
 # subproject.
-test "$(ls sub/obj/src/subbin.c/*.d | wc -l)" -eq 1
+test "$(ls sub/obj/src/subbin.c/*.d | wc -l | tr -d ' ')" -eq 1
 from_inside="$(echo sub/obj/src/subbin.c/*.d)"
 grep -q "^include obj/src/buried.c/" "$from_inside"
 
@@ -107,7 +107,7 @@ make $MAKE_ARGS
 ./bin/top
 ./sub/bin/subbin
 
-test "$(ls sub/obj/src/subbin.c/*.d | wc -l)" -eq 2
+test "$(ls sub/obj/src/subbin.c/*.d | wc -l | tr -d ' ')" -eq 2
 from_the_top="$(ls sub/obj/src/subbin.c/*.d | grep -v -x -F "$from_inside")"
 cat "$from_the_top"
 grep -q "^include \$(pconfigure_subdir_sub)obj/src/buried.c/" "$from_the_top"

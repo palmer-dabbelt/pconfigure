@@ -52,4 +52,4 @@ make $MAKE_ARGS
 test "$(./bin/app)" = "21"
 
 # One object for util.c, built the target's way.
-test "$(ls obj/src/util.c/*-static.o | wc -l)" -eq 1
+test "$(ls obj/src/util.c/*-static.o | wc -l | tr -d ' ')" -eq 1

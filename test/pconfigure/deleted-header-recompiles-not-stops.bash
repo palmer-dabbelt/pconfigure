@@ -52,7 +52,7 @@ test "$(./bin/app)" = "3"
 
 # pdeps recorded the header on the object's behalf: the empty rule
 # the deletion will lean on, and the stamp the restale comes from.
-test "$(ls obj/src/main.c/*-static.d | wc -l)" -eq 1
+test "$(ls obj/src/main.c/*-static.d | wc -l | tr -d ' ')" -eq 1
 grep -q "^src/helper.h:$" obj/src/main.c/*-static.d
 grep -q "^obj/src/main.c/.*-static.o: src/main.c src/helper.h .*headers$" obj/src/main.c/*-static.d
 

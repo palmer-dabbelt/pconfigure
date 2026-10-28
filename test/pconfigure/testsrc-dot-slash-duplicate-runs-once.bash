@@ -27,4 +27,4 @@ $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS check
 
 cat runs
-test "$(wc -l < runs)" = 1
+test "$(wc -l < runs | tr -d ' ')" = 1

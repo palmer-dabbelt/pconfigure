@@ -36,10 +36,10 @@ EOF
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 test "$(./bin/app)" = "1"
-test "$(wc -l < generate-runs)" = "1"
+test "$(wc -l < generate-runs | tr -d ' ')" = "1"
 
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
-test "$(wc -l < generate-runs)" = "1"
+test "$(wc -l < generate-runs | tr -d ' ')" = "1"
 
 exit 0

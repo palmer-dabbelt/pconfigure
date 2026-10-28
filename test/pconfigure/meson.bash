@@ -449,7 +449,7 @@ grep -q "^arg=\[--prefix=/.*/script/obj/sub/prefix\]$" $build/args.txt
 grep -q "^arg=\[-Dbuildtype=release\]$" $build/args.txt
 grep -q "^arg=\[-Dtargets=one, two\]$" $build/args.txt
 grep -q "^arg=\[--target-list=riscv64-softmmu\]$" $build/args.txt
-test "$(wc -l < $build/args.txt)" -eq 4
+test "$(wc -l < $build/args.txt | tr -d ' ')" -eq 4
 grep -q "^MY_ENV=one two$" $build/env.txt
 
 # And from there on it's ninja's, as it is for any other tree.

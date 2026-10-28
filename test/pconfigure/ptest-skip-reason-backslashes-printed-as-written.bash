@@ -27,6 +27,6 @@ cat -A report.out
 grep -qF -- '- SKIP	skips	needs grep -P for \t and \n in patterns' report.out
 
 # One line per test, then the blank line and the five counts.
-test "$(wc -l < report.out)" = "7"
+test "$(wc -l < report.out | tr -d ' ')" = "7"
 
 exit 0

@@ -59,14 +59,14 @@ test -x bin/first
 grep -q '^Makefile.pconfigure:.*\$(wildcard tests)' Makefile.pconfigure
 
 make $MAKE_ARGS > settled.log 2>&1 || { cat settled.log; exit 1; }
-before="$(wc -l < configures)"
+before="$(wc -l < configures | tr -d ' ')"
 
 sleep 1
 touch tests/second
 make $MAKE_ARGS > second.log 2>&1 || { cat second.log; exit 1; }
 cat second.log
 test -x bin/second
-test "$(wc -l < configures)" -eq $((before + 1))
+test "$(wc -l < configures | tr -d ' ')" -eq $((before + 1))
 
 make $MAKE_ARGS > third.log 2>&1 || { cat third.log; exit 1; }
 grep -q "Nothing to be done" third.log

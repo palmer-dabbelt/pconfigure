@@ -67,7 +67,7 @@ echo "Running"
 valgrind -q $PTEST_BINARY 2> test.valgrind
 cat test.valgrind
 
-if [[ "$(cat test.valgrind | wc -l)" != "0" ]]
+if [[ "$(cat test.valgrind | wc -l | tr -d ' ')" != "0" ]]
 then
     exit 1
 fi

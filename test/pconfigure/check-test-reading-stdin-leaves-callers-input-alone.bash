@@ -37,6 +37,6 @@ do
 done < list
 
 cat seen
-test "$(wc -l < seen)" = "3"
+test "$(wc -l < seen | tr -d ' ')" = "3"
 
 exit 0

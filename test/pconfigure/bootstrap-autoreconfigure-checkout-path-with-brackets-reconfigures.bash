@@ -59,7 +59,7 @@ test -x bin/hello
 
 make $MAKE_ARGS > settled.log 2>&1 || { cat settled.log; exit 1; }
 cat settled.log
-test "$(wc -l < configures)" -eq 1
+test "$(wc -l < configures | tr -d ' ')" -eq 1
 
 sleep 1
 echo "# edited" >> vendor/pconfigure/src/pconfigure.bash
@@ -67,4 +67,4 @@ make $MAKE_ARGS > rebuilt.log 2>&1 || { cat rebuilt.log; exit 1; }
 cat rebuilt.log
 make $MAKE_ARGS > after.log 2>&1 || { cat after.log; exit 1; }
 cat after.log
-test "$(wc -l < configures)" -eq 2
+test "$(wc -l < configures | tr -d ' ')" -eq 2

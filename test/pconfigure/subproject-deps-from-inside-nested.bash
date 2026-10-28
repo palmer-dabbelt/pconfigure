@@ -83,7 +83,7 @@ make $MAKE_ARGS
 # The walk found the buried source, and the fragment names it through
 # the variable that says where this project is as the build that wrote
 # it sees things -- which from up here is two directories away.
-test "$(ls a/b/obj/src/bbin.c/*.d | wc -l)" -eq 1
+test "$(ls a/b/obj/src/bbin.c/*.d | wc -l | tr -d ' ')" -eq 1
 from_the_top="$(echo a/b/obj/src/bbin.c/*.d)"
 grep -q "^include \$(pconfigure_subdir_a_b)obj/src/buried.c/" "$from_the_top"
 cp "$from_the_top" from-the-top.d
@@ -112,7 +112,7 @@ fi
 
 # A second fragment, spelled from where this build was standing, and
 # the first one untouched.
-test "$(ls a/b/obj/src/bbin.c/*.d | wc -l)" -eq 2
+test "$(ls a/b/obj/src/bbin.c/*.d | wc -l | tr -d ' ')" -eq 2
 from_b="$(ls a/b/obj/src/bbin.c/*.d | grep -v -x -F "$from_the_top")"
 grep -q "^include obj/src/buried.c/" "$from_b"
 
@@ -143,7 +143,7 @@ test ! -e a/b/b
 # Three fragments now, one per build, each measured from where its
 # build was standing -- and the two written earlier still saying what
 # they said.
-test "$(ls a/b/obj/src/bbin.c/*.d | wc -l)" -eq 3
+test "$(ls a/b/obj/src/bbin.c/*.d | wc -l | tr -d ' ')" -eq 3
 from_a="$(ls a/b/obj/src/bbin.c/*.d \
           | grep -v -x -F "$from_the_top" | grep -v -x -F "$from_b")"
 cat "$from_a"
