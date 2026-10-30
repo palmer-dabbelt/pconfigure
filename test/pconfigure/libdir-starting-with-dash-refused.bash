@@ -34,7 +34,7 @@ done
 
 # The same line with an ordinary name builds, so what was refused
 # above was the '-' and not anything else about it.
-sed -i 's@^LIBDIR .*@LIBDIR      = lib@' Configfile
+sed -i.bak 's@^LIBDIR .*@LIBDIR      = lib@' Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 test -f lib/libf.so

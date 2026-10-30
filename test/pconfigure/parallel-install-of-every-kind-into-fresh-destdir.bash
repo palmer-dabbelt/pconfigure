@@ -49,6 +49,7 @@ do
     make $MAKE_ARGS clean
     rm -rf stage
     make $MAKE_ARGS -j8 install DESTDIR="$(pwd)/stage"
+    [ "$(uname -s)" = "Darwin" ] && install_name_tool -add_rpath "$(pwd)/stage/usr/local/lib" stage/usr/local/bin/app
 
     test -x stage/usr/local/bin/app
     test -x stage/usr/local/bin/s

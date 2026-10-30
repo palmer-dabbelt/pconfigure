@@ -45,7 +45,7 @@ sleep 1
 make $MAKE_ARGS check-quick
 
 sleep 1
-sed -i 's/^TESTSRC\[slow\]  += fails.bash$/TESTSRC[quick] += fails.bash/' Configfile
+sed -i.bak 's/^TESTSRC\[slow\]  += fails.bash$/TESTSRC[quick] += fails.bash/' Configfile
 grep -q "TESTSRC\[quick\] += fails.bash" Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 

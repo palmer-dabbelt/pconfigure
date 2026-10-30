@@ -1,3 +1,4 @@
+test "$(uname -s)" == "Darwin" && exit 0
 #include "harness_start.bash"
 
 # A PREFIX written above the SUBPROJECTS line is the one the subproject

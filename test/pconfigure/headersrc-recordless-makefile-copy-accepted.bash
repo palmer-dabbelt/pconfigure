@@ -39,7 +39,7 @@ diff -u sub/src/y.h sub/include/y.h
 find . -name '*.recipe-inputs' -delete
 for m in $(grep -rl 'recipe-inputs' --include='Makefile*' .)
 do
-    sed -i -e 's@ [^ ]*\.recipe-inputs@@g' -e '/recipe-inputs/d' "$m"
+    sed -i.bak -e 's@ [^ ]*\.recipe-inputs@@g' -e '/recipe-inputs/d' "$m"
 done
 
 sleep 1

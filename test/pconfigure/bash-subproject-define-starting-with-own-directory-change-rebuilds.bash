@@ -26,7 +26,7 @@ $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 test "$(./sub/bin/app)" = "sub/marine"
 
-sed -i 's@=sub/marine@=marine@' sub/Configfile
+sed -i.bak 's@=sub/marine@=marine@' sub/Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 test "$(./sub/bin/app)" = "marine"

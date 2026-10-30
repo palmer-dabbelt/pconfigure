@@ -27,7 +27,7 @@ chmod +x a-skips.sh b-passes.sh
 "$ptest" --test b-passes.sh --out check/b-passes
 
 "$ptest" --no-check-make-check --check-dir check > report.out
-cat -A report.out
+cat -ev report.out
 
 # The pass is a line of its own ...
 grep -q "^  PASS	b-passes$" report.out

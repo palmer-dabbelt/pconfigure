@@ -26,7 +26,7 @@ $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS check || true
 test -e check/t/goes.bash
 
-sed -i '/goes.bash/d' Configfile
+sed -i.bak '/goes.bash/d' Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 
 make $MAKE_ARGS clean

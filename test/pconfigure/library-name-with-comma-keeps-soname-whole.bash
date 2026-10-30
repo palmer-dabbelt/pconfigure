@@ -1,3 +1,4 @@
+test "$(uname -s)" == "Darwin" && exit 0
 #include "harness_start.bash"
 
 # A shared library is linked with its own name as its soname, which

@@ -45,7 +45,7 @@ test ! -e stage/usr/local/lib/libb.so
 # handed and passed down, and the parent's PREFIX splits from it.  The
 # error names the subproject this Configfile read and the line, two
 # levels down, that asked for the library.
-sed -i '/^PREFIX/d' a/b/Configfile
+sed -i.bak '/^PREFIX/d' a/b/Configfile
 if $PTEST_BINARY $PCONFIGURE_ARGS > configure.out 2>&1
 then
     cat configure.out

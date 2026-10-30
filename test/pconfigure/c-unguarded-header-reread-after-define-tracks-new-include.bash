@@ -38,7 +38,7 @@ make $MAKE_ARGS
 ./bin/tool
 
 sleep 1
-sed -i 's/EXTRA_VALUE 0/EXTRA_VALUE 7/' src/extra.h
+sed -i.bak 's/EXTRA_VALUE 0/EXTRA_VALUE 7/' src/extra.h
 make $MAKE_ARGS
 set +e
 ./bin/tool

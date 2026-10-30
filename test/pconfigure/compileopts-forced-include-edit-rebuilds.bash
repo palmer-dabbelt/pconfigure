@@ -39,7 +39,7 @@ test "$(./bin/app)" = "1"
 
 # Far enough in the past that the edit below is newer whatever the
 # filesystem's timestamp resolution.
-find . -type f -exec touch -d '2000-01-01' {} +
+find . -type f -exec touch -t 200001010000 {} +
 
 cat >src/config.h <<'EOF'
 #define VALUE 2

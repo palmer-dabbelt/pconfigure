@@ -37,7 +37,7 @@ grep -qF "error: PHONY can't be called 'src/hello.c'" configure.out
 grep -qF "sub/Configfile:4 'SOURCES += hello.c' reads it" configure.out
 
 # Moved up to the top it is a name and nothing else.
-sed -i '/^PHONY/d' sub/Configfile
+sed -i.bak '/^PHONY/d' sub/Configfile
 echo 'PHONY       += src/hello.c' >> Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 timeout 60 make $MAKE_ARGS

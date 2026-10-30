@@ -27,7 +27,7 @@ echo 'exit 1' > test/t/goes.bash
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS check || true
 
-sed -i '/goes.bash/d' Configfile
+sed -i.bak '/goes.bash/d' Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 
 suite=0

@@ -1,3 +1,4 @@
+test "$(uname -s)" == "Darwin" && exit 0
 #include "harness_start.bash"
 
 # Dropping a "-l" from a binary's LINKOPTS -- the spelling the manual

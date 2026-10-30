@@ -42,7 +42,7 @@ test "$(./bin/app)" = "1"
 test "$(grep -c test generate-runs)" = "0"
 
 touch before-switch
-sed -i 's/^GENERATE /TGENERATE /' Configfile
+sed -i.bak 's/^GENERATE /TGENERATE /' Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS > switched.out 2>&1
 cat switched.out

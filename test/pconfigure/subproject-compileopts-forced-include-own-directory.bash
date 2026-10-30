@@ -42,7 +42,7 @@ cat a/obj/Makefile.a
 make $MAKE_ARGS
 test "$(./a/bin/app)" = "1"
 
-find . -type f -exec touch -d '2000-01-01' {} +
+find . -type f -exec touch -t 200001010000 {} +
 
 cat >a/config.h <<'EOF'
 #define VALUE 2

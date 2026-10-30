@@ -39,7 +39,7 @@ make $MAKE_ARGS
 test -x tool/bin/tool
 
 sleep 1
-sed -i 's/^SOURCES.*/&\nCOMPILEOPTS     += -DRENAMED/' tool/Configfile
+sed -i.bak 's/^SOURCES.*/&\nCOMPILEOPTS     += -DRENAMED/' tool/Configfile
 cat tool/Configfile
 
 make $MAKE_ARGS > second.log 2>&1 || { cat second.log; exit 1; }

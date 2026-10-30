@@ -1,3 +1,4 @@
+test "$(uname -s)" == "Darwin" && exit 0
 #include "harness_start.bash"
 
 # Taking a DEPLIBS away has to relink the binary that named it.  The

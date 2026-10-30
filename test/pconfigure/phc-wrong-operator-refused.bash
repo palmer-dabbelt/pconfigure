@@ -35,6 +35,6 @@ grep -qF "write 'PHC = $phc'" pluseq.out
 
 # The same line spelled right is accepted, so it was the operator that
 # was refused and not the tool it names.
-sed -i 's@^PHC       += @PHC        = @' Configfile
+sed -i.bak 's@^PHC       += @PHC        = @' Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 test -e Makefile

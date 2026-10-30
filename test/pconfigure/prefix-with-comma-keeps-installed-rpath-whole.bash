@@ -25,4 +25,4 @@ $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 make $MAKE_ARGS DESTDIR=$tempdir/dest install
 test -x dest/opt/app,v2/bin/main
-readelf -d dest/opt/app,v2/bin/main | grep -F '[/opt/app,v2/lib]'
+if test "$(uname -s)" == "Darwin"; then otool -l dest/opt/app,v2/bin/main | grep -F '/opt/app,v2/lib'; else readelf -d dest/opt/app,v2/bin/main | grep -F '[/opt/app,v2/lib]'; fi

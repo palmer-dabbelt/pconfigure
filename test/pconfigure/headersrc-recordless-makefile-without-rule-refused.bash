@@ -18,7 +18,7 @@ $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 
 find . -name '*.recipe-inputs' -delete
-sed -i -e 's@ [^ ]*\.recipe-inputs@@g' -e '/recipe-inputs/d' Makefile
+sed -i.bak -e 's@ [^ ]*\.recipe-inputs@@g' -e '/recipe-inputs/d' Makefile
 
 # The old Makefile had never heard of z.h.
 cat >>Configfile <<'EOF2'

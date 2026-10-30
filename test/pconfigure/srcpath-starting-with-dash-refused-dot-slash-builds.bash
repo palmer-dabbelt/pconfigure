@@ -29,7 +29,7 @@ grep -qF "SRCPATH names a directory starting with a '-'" configure.out
 grep -qF "'SRCPATH = ./-sp'" configure.out
 test ! -e Makefile
 
-sed -i 's@^SRCPATH .*@SRCPATH    = ./-sp@' Configfile
+sed -i.bak 's@^SRCPATH .*@SRCPATH    = ./-sp@' Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 ./bin/main

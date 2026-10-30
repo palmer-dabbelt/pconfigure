@@ -34,7 +34,7 @@ fi
 # And under STRICT it is still the error it was, rather than the
 # missing tie having let the target through.
 rm -f Makefile
-sed -i '1i STRICT = v0.13' Configfile
+{ echo 'STRICT = v0.13'; cat Configfile; } > Configfile.new && mv Configfile.new Configfile
 if $PTEST_BINARY $PCONFIGURE_ARGS >strict.out 2>&1
 then
     cat strict.out

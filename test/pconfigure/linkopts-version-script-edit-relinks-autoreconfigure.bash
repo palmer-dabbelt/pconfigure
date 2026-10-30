@@ -1,3 +1,4 @@
+test "$(uname -s)" == "Darwin" && exit 0
 #include "harness_start.bash"
 
 # A version script decides which symbols a shared library exports, and
@@ -39,7 +40,7 @@ nm -D --defined-only lib/libx.so | grep -qw bar
 
 # Far enough in the past that the edit below is newer whatever the
 # filesystem's timestamp resolution.
-find . -type f -exec touch -d '2000-01-01' {} +
+find . -type f -exec touch -t 200001010000 {} +
 
 cat >src/x.map <<'EOF'
 X1 { global: foo; local: *; };

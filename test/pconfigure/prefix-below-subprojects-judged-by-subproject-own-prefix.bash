@@ -45,7 +45,7 @@ test ! -e stage/usr/local/lib/libsub.so
 # the SUBPROJECTS wouldn't change where the library goes, so the line
 # isn't what split the install and isn't refused for it.  The library
 # goes where its own Configfile said.
-sed -i 's@^PREFIX .*@PREFIX     = /opt/sub@' sub/Configfile
+sed -i.bak 's@^PREFIX .*@PREFIX     = /opt/sub@' sub/Configfile
 rm -rf stage
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS

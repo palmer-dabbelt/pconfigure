@@ -35,7 +35,7 @@ make $MAKE_ARGS
 test "$(./bin/app)" = "/opt/one"
 
 sleep 2
-sed -i 's@/opt/one@/opt/two@' Configfile
+sed -i.bak 's@/opt/one@/opt/two@' Configfile
 
 make $MAKE_ARGS
 test "$(./bin/app)" = "/opt/two"

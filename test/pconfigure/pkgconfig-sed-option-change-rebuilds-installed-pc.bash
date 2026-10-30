@@ -31,7 +31,7 @@ grep -q "^Version: 1.0$" lib/pkgconfig/x.pc
 grep -q "^Version: 1.0$" dest/usr/local/lib/pkgconfig/x.pc
 
 sleep 1
-sed -i 's@/1.0/@/2.0/@' Configfile
+sed -i.bak 's@/1.0/@/2.0/@' Configfile
 cat Configfile
 
 $PTEST_BINARY $PCONFIGURE_ARGS

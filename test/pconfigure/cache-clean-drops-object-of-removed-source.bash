@@ -32,7 +32,11 @@ EOF
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 ls obj/src/app.c/*.o > kept.before
-stat -c '%n %Y' obj/src/app.c/*.o bin/app > stamps.before
+if test "$(uname -s)" = "Darwin"; then
+	stat -f '%N %m' obj/src/app.c/*.o bin/app > stamps.before
+else
+	stat -c '%n %Y' obj/src/app.c/*.o bin/app > stamps.before
+fi
 
 make $MAKE_ARGS cache-clean
 
@@ -49,7 +53,11 @@ sleep 1
 make $MAKE_ARGS > after.out 2>&1
 cat after.out
 grep -q "Nothing to be done" after.out
-stat -c '%n %Y' obj/src/app.c/*.o bin/app > stamps.after
+if test "$(uname -s)" = "Darwin"; then
+	stat -f '%N %m' obj/src/app.c/*.o bin/app > stamps.after
+else
+	stat -c '%n %Y' obj/src/app.c/*.o bin/app > stamps.after
+fi
 diff -u stamps.before stamps.after
 
 exit 0

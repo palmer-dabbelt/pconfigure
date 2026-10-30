@@ -46,6 +46,6 @@ test ! -e Makefile
 
 # Saying again, on the target, the prefix the subproject already has
 # changes nothing and is fine.
-sed -i 's@^PREFIX .*@PREFIX       = /usr/local/@' Configfile
+sed -i.bak 's@^PREFIX .*@PREFIX       = /usr/local/@' Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 test -f Makefile

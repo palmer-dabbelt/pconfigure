@@ -43,7 +43,7 @@ grep -q "Nothing to be done" first.log
 
 # And from there on the record does its job.
 sleep 2
-sed -i 's/-DGREETING=hello/-DGREETING=goodbye/' Configfile
+sed -i.bak 's/-DGREETING=hello/-DGREETING=goodbye/' Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 test "$(./bin/tool)" = "goodbye"

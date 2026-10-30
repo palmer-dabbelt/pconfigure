@@ -43,7 +43,7 @@ test -f $top/hdr/lib/u.h
 # The way out the message suggests is one that works: the libraries
 # go somewhere else, the header stays a header, and distclean leaves
 # it where it was.
-sed -i '1a LIBDIR     = libs' $top/hdr/Configfile
+{ head -n 1 $top/hdr/Configfile; echo 'LIBDIR     = libs'; tail -n +2 $top/hdr/Configfile; } > $top/hdr/Configfile.new && mv $top/hdr/Configfile.new $top/hdr/Configfile
 (cd $top/hdr && $PTEST_BINARY $PCONFIGURE_ARGS)
 (cd $top/hdr && make $MAKE_ARGS)
 $top/hdr/bin/main

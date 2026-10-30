@@ -32,7 +32,7 @@ then
     exit 1
 fi
 
-sed -i '/^PHC/d' Configfile
+sed -i.bak '/^PHC/d' Configfile
 if $PTEST_BINARY --phc /nonexistent/phc > out 2>&1
 then
     cat out

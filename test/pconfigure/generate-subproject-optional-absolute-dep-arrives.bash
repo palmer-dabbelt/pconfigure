@@ -38,7 +38,7 @@ EOF
 chmod +x sub/src/gen.h.proc
 
 # Filled in here because the directory this runs in is only known now.
-sed -i "s|@OUTSIDE@|$(pwd)/toolchain/answer.txt|g" sub/src/gen.h.proc
+sed -i.bak "s|@OUTSIDE@|$(pwd)/toolchain/answer.txt|g" sub/src/gen.h.proc
 cat sub/src/gen.h.proc
 
 cat >sub/src/app.c <<'EOF'

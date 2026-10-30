@@ -35,7 +35,7 @@ make $MAKE_ARGS
 test "$(./bin/tool)" = "one"
 
 sleep 2
-sed -i 's/-Ione/-Itwo/' Configfile
+sed -i.bak 's/-Ione/-Itwo/' Configfile
 
 $PTEST_BINARY $PCONFIGURE_ARGS
 

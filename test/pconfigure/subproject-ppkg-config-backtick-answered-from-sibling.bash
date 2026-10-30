@@ -63,6 +63,7 @@ $PTEST_BINARY $PCONFIGURE_ARGS
 # library is a sibling's, which the consumer's RPATH doesn't cover, so
 # running it is told where that is.
 make $MAKE_ARGS
+[ "$(uname -s)" = "Darwin" ] && install_name_tool -add_rpath "$(pwd)/sub/lib" ./app/bin/test
 test "$(LD_LIBRARY_PATH="$(pwd)/sub/lib" ./app/bin/test)" = "7"
 
 exit 0

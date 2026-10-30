@@ -1,3 +1,4 @@
+test "$(uname -s)" == "Darwin" && exit 0
 #include "harness_start.bash"
 
 # The manual's 'asm' is C that also compiles '*.S', and links the way

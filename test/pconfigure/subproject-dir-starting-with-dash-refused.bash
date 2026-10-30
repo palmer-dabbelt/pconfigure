@@ -39,7 +39,7 @@ done
 # The same tree under an ordinary name builds, so what was refused
 # above was the '-' and not anything about the tree.
 mv ./-dep dep
-sed -i 's@^SUBPROJECTS .*@SUBPROJECTS += dep@' Configfile
+sed -i.bak 's@^SUBPROJECTS .*@SUBPROJECTS += dep@' Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 ./dep/bin/depmain

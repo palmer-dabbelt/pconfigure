@@ -47,7 +47,7 @@ $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 test "$(./bin/app)" = "1"
 
-sed -i 's/^GENERATE /TGENERATE /' Configfile
+sed -i.bak 's/^GENERATE /TGENERATE /' Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 test "$(./bin/app)" = "2"

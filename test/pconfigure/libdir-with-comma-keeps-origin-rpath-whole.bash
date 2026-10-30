@@ -36,4 +36,4 @@ test "$ret" == 3
 
 make $MAKE_ARGS DESTDIR=$tempdir/dest install
 test -f dest/usr/local/lib,v2/libf.so
-readelf -d dest/usr/local/bin/main | grep -F '[/usr/local/lib,v2]'
+if test "$(uname -s)" == "Darwin"; then otool -l dest/usr/local/bin/main | grep -F '/usr/local/lib,v2'; else readelf -d dest/usr/local/bin/main | grep -F '[/usr/local/lib,v2]'; fi

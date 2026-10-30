@@ -31,7 +31,7 @@ then
 fi
 
 # The failing test goes, and nothing else changes.
-sed -i '/goes.bash/d' Configfile
+sed -i.bak '/goes.bash/d' Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 
 make $MAKE_ARGS check

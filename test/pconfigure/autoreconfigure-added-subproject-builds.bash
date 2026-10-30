@@ -31,7 +31,7 @@ make $MAKE_ARGS
 test ! -e sub/obj
 
 sleep 1
-sed -i '1a SUBPROJECTS     += sub' Configfile
+{ head -n 1 Configfile; echo 'SUBPROJECTS     += sub'; tail -n +2 Configfile; } > Configfile.new && mv Configfile.new Configfile
 cat Configfile
 
 make $MAKE_ARGS > second.log 2>&1

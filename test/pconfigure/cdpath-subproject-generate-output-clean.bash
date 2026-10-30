@@ -51,7 +51,7 @@ fi
 
 # The script changes, so make regenerates the header from its own
 # recipe -- with the CDPATH of the shell make was started in.
-sed -i 's/42/43/' sub/src/gen.h.proc
+sed -i.bak 's/42/43/' sub/src/gen.h.proc
 make $MAKE_ARGS > remake.out 2>&1 || { cat remake.out; find . -name gen.h -exec cat {} \; ; exit 1; }
 cat remake.out
 test "$(./sub/bin/app)" = 43

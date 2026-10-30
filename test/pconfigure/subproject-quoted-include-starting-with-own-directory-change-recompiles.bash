@@ -31,7 +31,7 @@ $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 test "$(./sub/bin/app)" = "deep"
 
-sed -i 's@-I"sub/inc"@-I"inc"@' sub/Configfile
+sed -i.bak 's@-I"sub/inc"@-I"inc"@' sub/Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 test "$(./sub/bin/app)" = "shallow"

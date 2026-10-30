@@ -30,7 +30,7 @@ timeout 60 make $MAKE_ARGS
 test "$(./bin/app)" = "1"
 
 echo '#define V 2' > src/x.h
-touch -d '2000-01-01' src/x.h
+touch -t 200001010000 src/x.h
 
 timeout 60 make $MAKE_ARGS
 test "$(./bin/app)" = "2"

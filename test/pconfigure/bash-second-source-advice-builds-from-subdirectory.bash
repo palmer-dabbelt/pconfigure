@@ -41,7 +41,7 @@ grep -q "write '#include \"b.bash\"' in lib/a.bash" pconfigure.out
 include="$(sed -n "s/^.*write '\(#include \"[^\"]*\"\)' in lib\/a.bash.*$/\1/p" pconfigure.out)"
 test -n "$include"
 echo "$include" >> src/lib/a.bash
-sed -i '/SOURCES   += lib\/b.bash/d' Configfile
+sed -i.bak '/SOURCES   += lib\/b.bash/d' Configfile
 cat Configfile src/lib/a.bash
 
 $PTEST_BINARY $PCONFIGURE_ARGS

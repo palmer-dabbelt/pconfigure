@@ -46,7 +46,7 @@ grep -q "^NEROR	1$" report.out
 
 for value in yes 1 TRUE
 do
-    sed -i "s/^ABRT_IS_FAIL = .*/ABRT_IS_FAIL = $value/" Configfile
+    sed -i.bak "s/^ABRT_IS_FAIL = .*/ABRT_IS_FAIL = $value/" Configfile
     if $PTEST_BINARY $PCONFIGURE_ARGS > bad.out 2>&1
     then
         exit 1

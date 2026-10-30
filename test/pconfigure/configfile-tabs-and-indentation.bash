@@ -17,7 +17,7 @@ printf '\n' >> Configfile
 printf 'BINARIES\t\t+=   main   \n' >> Configfile
 printf '\tCOMPILEOPTS\t+=\t-DONE\t-DTWO\t\n' >> Configfile
 printf '    SOURCES += \t main.c \t \n' >> Configfile
-cat -A Configfile
+cat -ev Configfile
 
 $PTEST_BINARY $PCONFIGURE_ARGS >out 2>&1
 cat out

@@ -28,7 +28,7 @@ make $MAKE_ARGS
 grep -q "^prefix=/opt/old$" lib/pkgconfig/x.pc
 
 sleep 1
-sed -i 's@/opt/old@/opt/new@' Configfile
+sed -i.bak 's@/opt/old@/opt/new@' Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 cat lib/pkgconfig/x.pc

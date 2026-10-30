@@ -47,7 +47,7 @@ fi
 test "$(./bin/app)" = "3"
 
 sleep 2
-sed -i 's/ANSWER 3/ANSWER 4/' src/gen.h.proc
+sed -i.bak 's/ANSWER 3/ANSWER 4/' src/gen.h.proc
 make $MAKE_ARGS > again.out 2>&1
 cat again.out
 test "$(grep -c '^GEN' again.out)" = "1"

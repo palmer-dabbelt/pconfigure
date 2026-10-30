@@ -26,7 +26,11 @@ $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS DESTDIR=$tempdir/dest install
 
 cmp bin/tools/tool dest/usr/local/bin/tools/tool
-test "$(stat -c %a dest/usr/local/bin/tools/tool)" == 755
+if test "$(uname -s)" = "Darwin"; then
+	test "$(stat -f %Lp dest/usr/local/bin/tools/tool)" == 755
+else
+	test "$(stat -c %a dest/usr/local/bin/tools/tool)" == 755
+fi
 test "$(dest/usr/local/bin/tools/tool)" == hello
 
 make $MAKE_ARGS DESTDIR=$tempdir/dest uninstall

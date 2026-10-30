@@ -38,7 +38,7 @@ test "$(./bin/app)" = "1"
 
 # Far enough in the past that the new archive is newer whatever the
 # filesystem's timestamp resolution.
-find . -type f -exec touch -d '2000-01-01' {} +
+find . -type f -exec touch -t 200001010000 {} +
 
 build_vendor 2
 make $MAKE_ARGS

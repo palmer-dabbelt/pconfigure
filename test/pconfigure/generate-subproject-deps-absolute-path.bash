@@ -42,7 +42,7 @@ EOF
 # The script is written with its absolute path filled in afterwards,
 # since the directory this runs in is only known once it is running.
 echo 4 > outside.txt
-sed -i "s|@OUTSIDE@|$(pwd)/outside.txt|g" sub/src/gen.h.proc
+sed -i.bak "s|@OUTSIDE@|$(pwd)/outside.txt|g" sub/src/gen.h.proc
 cat sub/src/gen.h.proc
 
 $PTEST_BINARY $PCONFIGURE_ARGS

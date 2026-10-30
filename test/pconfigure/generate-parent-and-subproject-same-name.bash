@@ -60,7 +60,7 @@ grep -q "ANSWER 2" sub/obj/proc/gen.h
 # Editing one script regenerates that project's output and rebuilds
 # that project's binary, and leaves the other alone.
 sleep 2
-sed -i 's/ANSWER 2/ANSWER 3/' sub/src/gen.h.proc
+sed -i.bak 's/ANSWER 2/ANSWER 3/' sub/src/gen.h.proc
 make $MAKE_ARGS > again.out 2>&1
 cat again.out
 test "$(./bin/top)" = "1"

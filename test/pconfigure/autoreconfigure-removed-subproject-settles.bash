@@ -37,7 +37,7 @@ grep -q '^include \$(pconfigure_subdir_sub)obj/Makefile.sub$' Makefile
 grep -q ' \$(wildcard sub/Configfile)' Makefile
 
 sleep 1
-sed -i '/^SUBPROJECTS/d' Configfile
+sed -i.bak '/^SUBPROJECTS/d' Configfile
 
 make $MAKE_ARGS > second.log 2>&1
 cat second.log

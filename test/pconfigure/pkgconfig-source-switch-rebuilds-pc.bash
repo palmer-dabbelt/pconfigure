@@ -35,7 +35,7 @@ make $MAKE_ARGS
 make $MAKE_ARGS DESTDIR=$tempdir/dest install
 grep -q "^Name: old$" lib/pkgconfig/x.pc
 
-sed -i 's@old.pc@new.pc@' Configfile
+sed -i.bak 's@old.pc@new.pc@' Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 make $MAKE_ARGS DESTDIR=$tempdir/dest install

@@ -30,7 +30,7 @@ grep -q 'src/old\.c' Makefile
 
 sleep 1
 rm src/old.c
-sed -i '/old\.c/d' Configfile
+sed -i.bak '/old\.c/d' Configfile
 
 make $MAKE_ARGS > second.log 2>&1 || { cat second.log; exit 1; }
 cat second.log

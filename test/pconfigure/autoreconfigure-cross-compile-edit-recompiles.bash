@@ -29,7 +29,7 @@ make $MAKE_ARGS
 test ! -e fake.log
 
 sleep 1
-sed -i '1i CROSS_COMPILE    = fake-' Configfile
+{ echo 'CROSS_COMPILE    = fake-'; cat Configfile; } > Configfile.new && mv Configfile.new Configfile
 
 make $MAKE_ARGS > second.log 2>&1 || { cat second.log; exit 1; }
 cat second.log

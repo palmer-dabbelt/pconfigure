@@ -22,7 +22,7 @@ chmod +x skips.sh
 "$ptest" --test skips.sh --out check/skips
 
 "$ptest" --no-check-make-check --check-dir check > report.out
-cat -A report.out
+cat -ev report.out
 
 grep -qF -- '- SKIP	skips	needs grep -P for \t and \n in patterns' report.out
 

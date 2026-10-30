@@ -27,7 +27,7 @@ make $MAKE_ARGS
 grep -q '^Makefile:' Makefile
 
 sleep 1
-sed -i 's/^AUTORECONFIGURE .*/AUTORECONFIGURE  = false/' Configfile
+sed -i.bak 's/^AUTORECONFIGURE .*/AUTORECONFIGURE  = false/' Configfile
 
 make $MAKE_ARGS > second.log 2>&1
 cat second.log

@@ -38,7 +38,7 @@ grep -qF "give the PHONY a name of its own" configure.out
 test ! -e Makefile
 
 # The second spelling on its own, now that the first is out of the way.
-sed -i '2,3d' Configfile
+sed -i.bak '2,3d' Configfile
 if $PTEST_BINARY $PCONFIGURE_ARGS > configure.out 2>&1
 then
     cat configure.out

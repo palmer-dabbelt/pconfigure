@@ -42,7 +42,7 @@ make $MAKE_ARGS check || true
 test "$(tar -xOf check/tool/t.bash ptest__return)" != "0"
 
 sleep 2
-sed -i 's/-Ifail/-Ipass/' Configfile
+sed -i.bak 's/-Ifail/-Ipass/' Configfile
 
 $PTEST_BINARY $PCONFIGURE_ARGS
 grep -q "pbashc' -i test/tool/t.bash .*-Ipass" Makefile

@@ -45,7 +45,7 @@ got=$?
 set -e
 test "$got" = 1
 
-sed -i 's@-Lsub/pre@-Lpre@' sub/Configfile
+sed -i.bak 's@-Lsub/pre@-Lpre@' sub/Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 set +e

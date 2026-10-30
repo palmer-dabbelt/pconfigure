@@ -29,7 +29,7 @@ make $MAKE_ARGS
 test ! -e wrapped.log
 
 sleep 1
-sed -i "s@^LANGUAGES .*@&\nCOMPILER         = $(pwd)/wrapped-cc@" Configfile
+sed -i.bak "s@^LANGUAGES .*@&\nCOMPILER         = $(pwd)/wrapped-cc@" Configfile
 cat Configfile
 
 make $MAKE_ARGS > second.log 2>&1 || { cat second.log; exit 1; }

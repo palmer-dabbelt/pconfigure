@@ -46,7 +46,7 @@ cat third.log
 grep -q "Configfile:5" third.log
 
 sleep 1
-sed -i '$d' Configfile
+sed -i.bak '$d' Configfile
 cat >>Configfile <<'EOF'
 BINARIES        += other
 SOURCES         += other.c

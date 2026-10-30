@@ -73,7 +73,7 @@ grep -qxF '#define V (1+2)' obj/proc/gen.h
 
 # Putting it back as it was, mtime and all, gets back the build it was.
 echo 2 > b.txt.saved
-touch -d 2020-01-01 b.txt.saved
+touch -t 202001010000 b.txt.saved
 mv b.txt.saved src/parts/b.txt
 timeout 60 make $MAKE_ARGS > fourth.out 2>&1 || { cat fourth.out; exit 1; }
 cat fourth.out

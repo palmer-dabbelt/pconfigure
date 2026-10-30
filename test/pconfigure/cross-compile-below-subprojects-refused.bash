@@ -48,6 +48,6 @@ grep -q "the subproject 'sub' was already read, and its library 'libsub.so' is b
 
 # A subproject that names the same toolchain itself was built with it
 # whatever it was handed, so there's nothing to split.
-sed -i '1i CROSS_COMPILE = faketc-' sub/Configfile
+{ echo 'CROSS_COMPILE = faketc-'; cat sub/Configfile; } > sub/Configfile.new && mv sub/Configfile.new sub/Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 test -f Makefile

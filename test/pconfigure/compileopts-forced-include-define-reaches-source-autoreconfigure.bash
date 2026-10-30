@@ -44,7 +44,7 @@ cat Makefile
 make $MAKE_ARGS
 test "$(./bin/app)" = "1"
 
-find . -type f -exec touch -d '2000-01-01' {} +
+find . -type f -exec touch -t 200001010000 {} +
 
 cat >src/extra.h <<'EOF'
 #define VALUE 2

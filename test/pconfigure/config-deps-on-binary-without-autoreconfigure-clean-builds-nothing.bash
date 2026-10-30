@@ -28,13 +28,21 @@ test -x bin/main
 
 # A source of the binary changes, so it is out of date, and the goal is
 # one that does not ask for it.
-before="$(stat -c %Y bin/main)"
+if test "$(uname -s)" = "Darwin"; then
+	before="$(stat -f %m bin/main)"
+else
+	before="$(stat -c %Y bin/main)"
+fi
 sleep 1
 echo '/* edited */' >> src/main.c
 
 make $MAKE_ARGS -n clean > dry-run.log 2>&1 || { cat dry-run.log; exit 1; }
 cat dry-run.log
-test "$(stat -c %Y bin/main)" = "$before"
+if test "$(uname -s)" = "Darwin"; then
+	test "$(stat -f %m bin/main)" = "$before"
+else
+	test "$(stat -c %Y bin/main)" = "$before"
+fi
 
 make $MAKE_ARGS clean > clean.log 2>&1 || { cat clean.log; exit 1; }
 cat clean.log

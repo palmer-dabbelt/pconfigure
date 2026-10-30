@@ -28,7 +28,7 @@ chmod +x fails.sh passes.sh
 "$ptest" --test passes.sh --out 'check/b-passes'
 
 "$ptest" --no-check-make-check --check-dir check > report.out || true
-cat -A report.out
+cat -ev report.out
 
 grep -qxF -- '* FAIL	a-C:\cygwin\tmp' report.out
 grep -qx "  PASS	b-passes" report.out

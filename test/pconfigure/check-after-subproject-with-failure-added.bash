@@ -59,7 +59,7 @@ make $MAKE_ARGS
 make $MAKE_ARGS check
 
 sleep 1
-sed -i '1i SUBPROJECTS += dep' Configfile
+{ echo 'SUBPROJECTS += dep'; cat Configfile; } > Configfile.new && mv Configfile.new Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 

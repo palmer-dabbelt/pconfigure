@@ -45,7 +45,7 @@ done
 
 # Editing the header reached only through the other one rebuilds.
 sleep 1
-sed -i 's/B_VALUE 2/B_VALUE 3/' src/b.h
+sed -i.bak 's/B_VALUE 2/B_VALUE 3/' src/b.h
 make $MAKE_ARGS
 if ./bin/tool; then exit 1; fi
 exit 0

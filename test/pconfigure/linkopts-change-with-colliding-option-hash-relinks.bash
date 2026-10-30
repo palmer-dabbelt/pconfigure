@@ -72,7 +72,7 @@ got=$?
 set -e
 test "$got" = 1
 
-sed -i "s/-Ld$first/-Ld$second/" Configfile
+sed -i.bak "s/-Ld$first/-Ld$second/" Configfile
 cat Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS

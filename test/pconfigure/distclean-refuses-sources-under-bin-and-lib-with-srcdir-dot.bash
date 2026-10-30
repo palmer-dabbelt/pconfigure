@@ -74,7 +74,7 @@ grep -q "'LIBDIR = libs'" $top/libonly.out
 test ! -e $top/libonly/Makefile
 test -f $top/libonly/lib/util.c
 
-sed -i '1a LIBDIR     = libs' $top/libonly/Configfile
+{ head -n 1 $top/libonly/Configfile; echo 'LIBDIR     = libs'; tail -n +2 $top/libonly/Configfile; } > $top/libonly/Configfile.new && mv $top/libonly/Configfile.new $top/libonly/Configfile
 (cd $top/libonly && $PTEST_BINARY $PCONFIGURE_ARGS)
 (cd $top/libonly && make $MAKE_ARGS)
 $top/libonly/bin/main

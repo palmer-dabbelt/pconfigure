@@ -37,7 +37,7 @@ grep -q 'Makefile\.sub' Makefile
 
 sleep 1
 rm -rf sub
-sed -i '/^SUBPROJECTS/d' Configfile
+sed -i.bak '/^SUBPROJECTS/d' Configfile
 
 make $MAKE_ARGS > second.log 2>&1 || { cat second.log; exit 1; }
 cat second.log

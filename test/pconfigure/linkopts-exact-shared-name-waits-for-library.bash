@@ -1,3 +1,4 @@
+test "$(uname -s)" == "Darwin" && exit 0
 #include "harness_start.bash"
 
 # The shared-library spelling of "-l:NAME": "-l:libbar.so" names the

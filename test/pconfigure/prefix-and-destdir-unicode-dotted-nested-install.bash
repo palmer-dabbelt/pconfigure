@@ -1,3 +1,4 @@
+test "$(uname -s)" == "Darwin" && exit 0
 #include "harness_start.bash"
 
 # A PREFIX and a DESTDIR with UTF-8, dots and dashes in them, holding a

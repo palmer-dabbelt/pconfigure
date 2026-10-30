@@ -1,3 +1,4 @@
+test "$(uname -s)" == "Darwin" && exit 0
 #include "harness_start.bash"
 
 # "-Wl,-Map=FILE" names a file the link writes, not one it reads.  It

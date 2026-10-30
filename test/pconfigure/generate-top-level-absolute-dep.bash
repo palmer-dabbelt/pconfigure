@@ -28,7 +28,7 @@ chmod +x src/gen.h.proc
 # Filled in here because the directory this runs in is only known now.
 mkdir -p elsewhere
 echo 4 > elsewhere/answer.txt
-sed -i "s|@OUTSIDE@|$(pwd)/elsewhere/answer.txt|g" src/gen.h.proc
+sed -i.bak "s|@OUTSIDE@|$(pwd)/elsewhere/answer.txt|g" src/gen.h.proc
 
 cat >src/app.c <<'EOF'
   #include "gen.h"

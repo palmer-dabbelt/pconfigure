@@ -60,7 +60,7 @@ $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 test "$(./bin/app)" = "$first"
 
-sed -i "s/-DVALUE=$first/-DVALUE=$second/" Configfile
+sed -i.bak "s/-DVALUE=$first/-DVALUE=$second/" Configfile
 cat Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS

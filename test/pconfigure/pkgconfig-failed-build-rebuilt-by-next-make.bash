@@ -60,7 +60,7 @@ do
 done
 
 # And once the expression is fixed, the next make writes the real thing.
-sed -i 's@^COMPILEOPTS.*@COMPILEOPTS += s/^Version: 1/Version: 2/@' Configfile
+sed -i.bak 's@^COMPILEOPTS.*@COMPILEOPTS += s/^Version: 1/Version: 2/@' Configfile
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS lib/pkgconfig/x.pc obj/pkgconfig/x.pc
 for pc in lib/pkgconfig/x.pc obj/pkgconfig/x.pc

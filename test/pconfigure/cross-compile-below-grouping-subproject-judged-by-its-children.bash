@@ -39,7 +39,7 @@ test -f Makefile
 # Without that line the library is built for this machine, the way the
 # group was handed it, and the parent's CROSS_COMPILE splits from it.
 rm -f Makefile
-sed -i '/^CROSS_COMPILE/d' a/b/Configfile
+sed -i.bak '/^CROSS_COMPILE/d' a/b/Configfile
 if $PTEST_BINARY $PCONFIGURE_ARGS > configure.out 2>&1
 then
     cat configure.out

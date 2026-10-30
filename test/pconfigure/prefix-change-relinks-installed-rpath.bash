@@ -33,16 +33,16 @@ $PTEST_BINARY $PCONFIGURE_ARGS
 cat Makefile
 make $MAKE_ARGS
 make $MAKE_ARGS DESTDIR=$(pwd)/first install
-readelf -d first/opt/one/bin/app | grep -q "R.*PATH.*/opt/one/lib"
+if test "$(uname -s)" == "Darwin"; then otool -l first/opt/one/bin/app | grep -q '/opt/one/lib'; else readelf -d first/opt/one/bin/app | grep -q "R.*PATH.*/opt/one/lib"; fi
 
 sleep 2
-sed -i 's@/opt/one@/opt/two@' Configfile
+sed -i.bak 's@/opt/one@/opt/two@' Configfile
 
 make $MAKE_ARGS
 make $MAKE_ARGS DESTDIR=$(pwd)/second install
-readelf -d second/opt/two/bin/app > second.dyn
+if test "$(uname -s)" == "Darwin"; then otool -l second/opt/two/bin/app > second.dyn; else readelf -d second/opt/two/bin/app > second.dyn; fi
 cat second.dyn
-grep -q "R.*PATH.*/opt/two/lib" second.dyn
+if test "$(uname -s)" == "Darwin"; then grep -q '/opt/two/lib' second.dyn; else grep -q "R.*PATH.*/opt/two/lib" second.dyn; fi
 if grep -q "/opt/one" second.dyn
 then
     exit 1

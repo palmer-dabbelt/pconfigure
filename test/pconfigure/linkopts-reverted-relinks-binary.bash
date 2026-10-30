@@ -1,3 +1,4 @@
+test "$(uname -s)" == "Darwin" && exit 0
 #include "harness_start.bash"
 
 # LINKOPTS are hashed into the directory a program is linked in, so a

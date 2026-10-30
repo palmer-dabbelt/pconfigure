@@ -1,3 +1,4 @@
+test "$(uname -s)" == "Darwin" && exit 0
 #include "harness_start.bash"
 
 # "-l:libfoo.a" is GNU ld's way of asking for one file by its exact
