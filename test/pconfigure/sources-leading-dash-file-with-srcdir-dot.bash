@@ -24,8 +24,8 @@ EOF
 $PTEST_BINARY $PCONFIGURE_ARGS
 make $MAKE_ARGS
 ./bin/main
-test "$(ar t lib/libf.a | wc -l | tr -d ' ')" = 1
-nm lib/libf.a | grep -q ' T f$'
+test "$(ar t lib/libf.a | grep -v '^__\.SYMDEF' | wc -l | tr -d ' ')" = 1
+nm lib/libf.a | grep -qE ' T _?f$'
 
 sleep 1
 echo 'int f(void) { return 4; }' > ./-f.c
