@@ -298,17 +298,30 @@ static std::string quote_for_make(const std::string& path,
 /* The characters that make a word a glob.  make globs a prerequisite
  * with one of them in it and takes any other as the name it says,
  * while $(wildcard) globs everything it is handed; either way, once
- * it is a glob a backslash quotes the character after it, and a ']'
- * closes a class. */
+ * it is a glob a backslash quotes the character after it.
+ *
+ * Each of them is quoted by a class holding just that character,
+ * rather than by a backslash.  make takes a pattern with no glob left
+ * in it for a plain name, and only glibc's glob takes the backslashes
+ * back out before looking that name up: anywhere else make falls back
+ * on the glob.c it carries, which goes looking for a file with the
+ * backslashes in its name, finds nothing, and leaves the file silently
+ * unwatched.  A class is a glob to both of them.  The one class that
+ * glob.c gets wrong is "[]]", which is why a ']' is left alone: with
+ * every '[' quoted there is no class for it to close, so it is an
+ * ordinary character already.  Measured with GNU make 4.4.1 on macOS. */
 static const std::string glob_characters = "*?[";
 
 static std::string quote_for_glob(const std::string& path)
 {
     auto out = std::string();
     for (const auto& c: path) {
-        if (c == '\\' || c == ']' || glob_characters.find(c) != std::string::npos)
-            out += '\\';
-        out += c;
+        if (c == '\\')
+            out += "[\\\\]";
+        else if (glob_characters.find(c) != std::string::npos)
+            out += std::string("[") + c + "]";
+        else
+            out += c;
     }
     return out;
 }
@@ -426,9 +439,9 @@ std::string makefile::function_argument(const std::string& path)
  * class and a backslash quotes whatever follows it: "notes[1].txt" is
  * looked for as "notes1.txt" and "notes\1.txt" as "notes1.txt" too,
  * the wildcard comes to nothing, and the file is silently not watched.
- * Each of the glob's own characters gets the backslash the glob reads
- * as "this one is just a character", and the '$' is doubled as it is
- * for any function argument.  A '#' needs nothing inside the call. */
+ * Each of the glob's own characters is quoted as quote_for_glob()
+ * says, and the '$' is doubled as it is for any function argument.  A
+ * '#' needs nothing inside the call. */
 std::string makefile::wildcard_argument(const std::string& path)
 {
     return function_argument(quote_for_glob(path));

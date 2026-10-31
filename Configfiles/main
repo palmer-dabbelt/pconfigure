@@ -1059,6 +1059,7 @@ TESTSRC     += config-deps-path-with-pipe-watched.bash
 TESTSRC     += config-deps-path-with-comma-and-colon-watched.bash
 TESTSRC     += config-deps-path-with-brackets-watched.bash
 TESTSRC     += config-deps-path-with-backslash-watched.bash
+TESTSRC     += config-deps-path-with-glob-characters-watched.bash
 TESTSRC     += config-name-with-colon-autoreconfigure.bash
 TESTSRC     += bootstrap-autoreconfigure-checkout-path-with-colon-builds.bash
 TESTSRC     += bootstrap-autoreconfigure-checkout-path-with-brackets-reconfigures.bash
