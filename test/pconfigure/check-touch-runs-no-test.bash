@@ -37,6 +37,9 @@ EOF
 make $MAKE_ARGS
 cp check/t/side-effect.bash before.tar
 
+# The -nt below has to be told the touch came after the link, and the
+# bash that macOS ships compares whole seconds.
+sleep 1
 make $MAKE_ARGS -t check > touch.out
 cat touch.out
 grep -q "touch check/t/side-effect.bash" touch.out
