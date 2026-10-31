@@ -48,7 +48,7 @@ LANGUAGES   += c
 BINARIES    += test
 COMPILEOPTS += \`ppkg-config sub --cflags\`
 LINKOPTS    += \`ppkg-config sub --libs\`
-LINKOPTS    += \`cd .. && pwd\`/sub/lib
+LINKOPTS    += -Wl,-rpath,\`cd .. && pwd\`/sub/lib
 SOURCES     += test.c
 EOF
 
@@ -60,11 +60,10 @@ EOF
 $PTEST_BINARY $PCONFIGURE_ARGS
 
 # The header is found only through the -I the backtick printed, so
-# compiling the consumer at all says the package was found.  On
-# macOS the run-time search path is baked into the link line, so
-# the binary finds the sibling's library on its own; on Linux the
-# run is told where that is through LD_LIBRARY_PATH.
+# compiling the consumer at all says the package was found.  The
+# library is a sibling's, which the consumer's default RPATH doesn't
+# cover, so its link line names it.
 make $MAKE_ARGS
-test "$(LD_LIBRARY_PATH="$(pwd)/sub/lib" ./app/bin/test)" = "7"
+test "$(./app/bin/test)" = "7"
 
 exit 0
