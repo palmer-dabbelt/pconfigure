@@ -770,11 +770,10 @@ int main(int argc, const char **argv)
     if (ctx.autodeps == true) {
         for (const auto& header: headers) {
             for (const auto& found: cxx_sources_for_header(header)) {
-                if (found.compare(0, ctx.src_prefix.size(),
-                                  ctx.src_prefix) != 0)
+                auto sibling = cxx_name_in_source_dir(found, ctx.src_prefix);
+                if (sibling.size() == 0)
                     continue;
 
-                auto sibling = found.substr(ctx.src_prefix.size());
                 auto named = ctx.named.find(sibling);
 
                 /* A source found here is built, so its name lands
