@@ -50,6 +50,17 @@ const std::vector<std::string>& cxx_header_extensions(void);
 std::vector<std::string>
 cxx_sources_for_header(const std::string& full_header_path);
 
+/* What a file cxx_sources_for_header() found is called inside a source
+ * directory, or nothing if it isn't in there.
+ *
+ * Those two are spelled by different hands: a source directory is
+ * whatever SRCPATH was given glued onto SRCDIR, and so can read
+ * "/tree//src" or "./src", while what the include search finds has been
+ * tidied up on its way out and is relative to here whenever it can be.
+ * Comparing them as strings says a file in the directory isn't. */
+std::string
+cxx_name_in_source_dir(const std::string& path, const std::string& src_dir);
+
 /* The include directories and the defines a compiler command line
  * asks for, read the way the compiler reads them.
  *

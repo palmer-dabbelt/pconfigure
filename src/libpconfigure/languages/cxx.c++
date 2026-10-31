@@ -2705,10 +2705,9 @@ language_cxx::compile_source(const context::ptr& ctx,
 
         if (ctx->autodeps == true) {
             for (const auto& dep: find_files_for_header(header_dep)) {
-                auto src_prefix = child->src_dir + "/";
-                if (dep.compare(0, src_prefix.size(), src_prefix) != 0)
+                auto stripped_dep = cxx_name_in_source_dir(dep, child->src_dir);
+                if (stripped_dep.size() == 0)
                     continue;
-                std::string stripped_dep = dep.substr(src_prefix.size());
 
                 /* A source found here is built, which a header is
                  * not: its name goes on the left of the rule for its
@@ -2770,7 +2769,8 @@ language_cxx::compile_source(const context::ptr& ctx,
 
                 auto dep_out_name =
                     dep_ctx->obj_dir
-                    + "/" + dep_ctx->in_source_tree(dep)
+                    + "/" + dep_ctx->in_source_tree(dep_ctx->src_dir)
+                    + "/" + stripped_dep
                     + "/" + owner->hash_compile_options(ctx, dep_ctx);
 
                 bool should_process = true;
@@ -3249,6 +3249,25 @@ static std::string canonical_dir(const std::string& dir)
     if (out[out.size() - 1] == '/')
         out.pop_back();
     return out;
+}
+
+std::string
+cxx_name_in_source_dir(const std::string& path, const std::string& src_dir)
+{
+    auto dir = canonical_dir(src_dir);
+
+    /* Everything is under this directory by name, apart from what
+     * climbs out of it or starts over from the root. */
+    if (dir == ".") {
+        if (path.compare(0, 1, "/") == 0 || path.compare(0, 3, "../") == 0)
+            return "";
+        return path;
+    }
+
+    auto prefix = dir + "/";
+    if (path.compare(0, prefix.size(), prefix) != 0)
+        return "";
+    return path.substr(prefix.size());
 }
 
 /* The suffixes a linker will look for when it's asked for "-lfoo".

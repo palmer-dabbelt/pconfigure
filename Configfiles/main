@@ -485,6 +485,7 @@ TESTSRC     += execute-line.bash
 TESTSRC     += multi-static-link.bash
 TESTSRC     += dashdash-config.bash
 TESTSRC     += srcpath.bash
+TESTSRC     += srcpath-spellings-build-source-behind-header.bash
 TESTSRC     += srcpath-objects-land-under-objdir.bash
 TESTSRC     += srcpath-objects-stay-in-build-directory.bash
 TESTSRC     += srcpath-missing-directory-refused.bash
