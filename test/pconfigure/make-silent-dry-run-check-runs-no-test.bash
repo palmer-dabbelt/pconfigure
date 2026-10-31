@@ -52,7 +52,9 @@ do
 done
 
 # And letters that aren't a dry run don't stop the test: -k, -i and
-# -s together still run it.
+# -s together still run it.  The -ot below has to be told the test ran
+# after the link, and the bash that macOS ships compares whole seconds.
+sleep 1
 make $MAKE_ARGS -k -i -s check
 test "$(cat ran.log)" = "ran"
 test bin/t -ot check/t/side-effect.bash
