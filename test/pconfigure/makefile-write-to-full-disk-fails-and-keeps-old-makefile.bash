@@ -11,6 +11,16 @@
 # Makefile from the last configure exactly as it was.  The Makefile is
 # written beside itself and renamed into place, which is what lets a
 # full disk be stood in for here by pointing that file at /dev/full.
+#
+# That device is Linux's, so elsewhere there is nothing to stand in
+# with.  A failed write in general is makefile-write-past-file-size-
+# limit-fails, which runs everywhere.
+if ! test -w /dev/full
+then
+    echo "SKIP: no /dev/full on this host"
+    exit 0
+fi
+
 mkdir -p src
 echo 'int main(void) { return 0; }' > src/hello.c
 cat >Configfile <<'EOF2'
