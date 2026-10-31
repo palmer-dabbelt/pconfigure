@@ -20,7 +20,7 @@ $PTEST_BINARY
 make > quiet.out 2>&1
 cat quiet.out
 grep -q 'CC.*hello\.c' quiet.out
-if grep -q -- '-c lib/src/hello\.c\|cp --reflink=auto' quiet.out
+if grep -qE -- '-c lib/src/hello\.c|cp( --reflink=auto)? -f ' quiet.out
 then
     exit 1
 fi
@@ -30,5 +30,5 @@ make clean
 make > loud.out 2>&1
 cat loud.out
 grep -q -- '-c lib/src/hello\.c' loud.out
-grep -q 'cp --reflink=auto .* lib/bin/hello\.tmp' loud.out
+grep -qE 'cp( --reflink=auto)? -f .* lib/bin/hello\.tmp' loud.out
 ./lib/bin/hello
